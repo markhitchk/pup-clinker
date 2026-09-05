@@ -9,6 +9,7 @@ import java.util.ArrayDeque
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlin.random.Random
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,10 +38,22 @@ data class PuppyStyle(
     val redeemOnly: Boolean = false
 )
 
-/**
- * Every puppy style uses the original Puppy Clicker pup image as its visual base.
- * The emoji is only a small theme badge used by the Android UI.
- */
+enum class TicketRarity(
+    val displayName: String,
+    val emoji: String,
+    val discountPercent: Int,
+    val rarityWeight: Int
+) {
+    COMMON("Common", "🎟️", 10, 60),
+    UNCOMMON("Uncommon", "🟢", 20, 25),
+    RARE("Rare", "🔵", 35, 10),
+    EPIC("Epic", "🟣", 50, 4),
+    LEGENDARY("Legendary", "🟡", 75, 1)
+}
+
+fun emptyTicketInventory(): Map<TicketRarity, Int> = TicketRarity.entries.associateWith { 0 }
+
+/** Every puppy character keeps the original Puppy Clicker pup as its visual base. */
 val PUPPY_STYLES = listOf(
     PuppyStyle("classic", "Buddy", "🐾", "The original Puppy Clicker pup."),
     PuppyStyle("golden", "Sunny", "🌻", "The original pup with a sunny flower theme."),
@@ -70,7 +83,10 @@ data class GameState(
     val clickPower: Int = 1,
     val autoPerSecond: Int = 0,
     val upgrades: Map<String, Int> = emptyMap(),
-    val upgradeTickets: Int = 1,
+    val ticketInventory: Map<TicketRarity, Int> = emptyTicketInventory(),
+    val lastTicketDrop: TicketRarity? = null,
+    val ticketDropSerial: Long = 0,
+    val totalTicketsFound: Long = 0,
     val accessory: String = "None",
     val pupEyeStrikes: Int = 0,
     val cooldownUntilMs: Long = 0,
@@ -107,7 +123,11 @@ data class GameState(
             else -> "Very tired"
         }
 
-    // Kept for compatibility with older UI. Combos NEVER increase tap rewards.
+    // Compatibility property for older screens. New UI shows rarity inventory instead.
+    val upgradeTickets: Int
+        get() = ticketInventory.values.sum()
+
+    // Combos never increase tap rewards.
     val comboMultiplier: Int
         get() = 1
 
@@ -128,12 +148,12 @@ val ACHIEVEMENTS = listOf(
     Achievement("snack_stash", "Snack Stash", "Earn 100 lifetime treats.", "🍪") { it.lifetimeTreats >= 100 },
     Achievement("puppy_pro", "Puppy Pro", "Earn 1,000 lifetime treats.", "🏆") { it.lifetimeTreats >= 1_000 },
     Achievement("combo_hero", "Combo Hero", "Reach a 20 tap combo.", "🔥") { it.bestCombo >= 20 },
+    Achievement("ticket_hunter", "Ticket Hunter", "Find your first Upgrade Ticket while tapping.", "🎟️") { it.totalTicketsFound >= 1 },
     Achievement("big_taps", "Big Taps", "Buy enough Shop upgrades to reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
     Achievement("auto_pup", "Automatic Pup", "Reach 10 treats per second.", "⏱️") { it.autoPerSecond >= 10 },
     Achievement("happy_home", "Happy Home", "Keep all three care meters at 90 or higher.", "💖") {
         it.happiness >= 90 && it.fullness >= 90 && it.energy >= 90
     },
-    Achievement("park_regular", "Park Regular", "Complete 5 care actions.", "🌳") { it.careActions >= 5 },
     Achievement("level_ten", "Best Friend", "Reach level 10.", "💜") { it.level >= 10 }
 )
 
@@ -146,24 +166,32 @@ data class Mission(
     val complete: (GameState) -> Boolean
 )
 
+// Tickets intentionally do NOT come from missions. They are tap drops only.
 val MISSIONS = listOf(
-    Mission("tap_50", "Fast Paws", "Tap your puppy 50 times.", 250, ticketReward = 1) { it.totalTaps >= 50 },
+    Mission("tap_50", "Fast Paws", "Tap your puppy 50 times.", 250) { it.totalTaps >= 50 },
     Mission("combo_15", "Stay in the Groove", "Reach a 15 tap combo.", 400) { it.bestCombo >= 15 },
-    Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500, ticketReward = 1) { it.careActions >= 5 },
-    Mission("level_5", "Growing Up", "Reach level 5.", 750, ticketReward = 1) { it.level >= 5 },
-    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000, ticketReward = 1) { it.autoPerSecond >= 25 }
+    Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500) { it.careActions >= 5 },
+    Mission("level_5", "Growing Up", "Reach level 5.", 750) { it.level >= 5 },
+    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
 )
 
 data class RedeemOutcome(val success: Boolean, val message: String)
 
-/** Slightly friendlier than the old 1.58 growth curve without trivializing progression. */
+/** Slightly friendlier than the original 1.58 growth curve. */
 fun upgradeCost(upgrade: Upgrade, owned: Int): Long {
     val scaled = upgrade.baseCost.toDouble() * 1.54.pow(owned.toDouble())
     return scaled.toLong().coerceAtLeast(upgrade.baseCost)
 }
 
+/** Compatibility cost used by the old non-rarity ticket screen. */
 fun ticketUpgradeCost(upgrade: Upgrade, owned: Int): Long =
     (upgradeCost(upgrade, owned) * 0.80).toLong().coerceAtLeast(1L)
+
+fun rarityTicketUpgradeCost(upgrade: Upgrade, owned: Int, rarity: TicketRarity): Long {
+    val full = upgradeCost(upgrade, owned)
+    val remainingPercent = 100 - rarity.discountPercent
+    return ((full * remainingPercent) / 100L).coerceAtLeast(1L)
+}
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -208,7 +236,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             recentTapTimes.removeFirst()
         }
 
-        if (looksAutomated(now)) {
+        val suspiciousThisTap = looksAutomated(now)
+        if (suspiciousThisTap) {
             if (suspicionWindowStartedMs == 0L || now - suspicionWindowStartedMs > SUSPICION_CONFIRM_WINDOW_MS) {
                 suspicionWindowStartedMs = now
                 suspicionHits = 1
@@ -216,8 +245,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 suspicionHits += 1
             }
 
-            // One suspicious sample is treated as a warning only. Two machine-like
-            // samples close together are required before any cooldown is applied.
             if (suspicionHits >= REQUIRED_SUSPICION_HITS) {
                 recentTapTimes.clear()
                 suspicionHits = 0
@@ -244,15 +271,35 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             1
         }
 
-        // Tap reward is controlled ONLY by CLICK upgrades bought in the Shop.
+        // Every accepted tap always pays exactly the Shop-defined click power.
         val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
         val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
 
+        // Upgrade Tickets are tap-only loot. Suspicious machine-like samples do not
+        // receive a ticket roll even before the fair-play cooldown is confirmed.
+        val ticketDrop = if (!suspiciousThisTap && Random.nextInt(TICKET_DROP_ROLL_SIDES) == TICKET_DROP_WINNER) {
+            rollTicketRarity()
+        } else {
+            null
+        }
+
+        val nextInventory = if (ticketDrop != null) {
+            current.ticketInventory.toMutableMap().apply {
+                this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
+            }
+        } else {
+            current.ticketInventory
+        }
+
         _state.value = current.copy(
             treats = safeAdd(current.treats, reward),
             lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            ticketInventory = nextInventory,
+            lastTicketDrop = ticketDrop ?: current.lastTicketDrop,
+            ticketDropSerial = if (ticketDrop != null) current.ticketDropSerial + 1 else current.ticketDropSerial,
+            totalTicketsFound = if (ticketDrop != null) safeAdd(current.totalTicketsFound, 1) else current.totalTicketsFound,
             totalTaps = nextTotalTaps,
             combo = nextCombo,
             bestCombo = maxOf(current.bestCombo, nextCombo),
@@ -261,23 +308,55 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             happiness = (current.happiness + happinessGain).coerceIn(0, 100),
             offlineEarned = 0
         )
+
+        if (ticketDrop != null) saveState()
+    }
+
+    private fun rollTicketRarity(): TicketRarity {
+        val roll = Random.nextInt(1, 101)
+        var cumulative = 0
+        TicketRarity.entries.forEach { rarity ->
+            cumulative += rarity.rarityWeight
+            if (roll <= cumulative) return rarity
+        }
+        return TicketRarity.COMMON
     }
 
     /** Legacy call used by older screens. */
-    fun buyUpgrade(upgrade: Upgrade) = buyUpgrade(upgrade, useTicket = false)
+    fun buyUpgrade(upgrade: Upgrade) = buyUpgrade(upgrade, rarity = null)
 
+    /** Compatibility overload for the previous yes/no ticket UI. */
     fun buyUpgrade(upgrade: Upgrade, useTicket: Boolean) {
+        if (!useTicket) {
+            buyUpgrade(upgrade, rarity = null)
+            return
+        }
+        val current = _state.value
+        val selected = TicketRarity.entries
+            .filter { (current.ticketInventory[it] ?: 0) > 0 }
+            .minByOrNull { abs(it.discountPercent - TICKET_DISCOUNT_PERCENT) }
+        buyUpgrade(upgrade, selected)
+    }
+
+    fun buyUpgrade(upgrade: Upgrade, rarity: TicketRarity?) {
         val current = _state.value
         val owned = current.upgrades[upgrade.id] ?: 0
-        val ticketApplied = useTicket && current.upgradeTickets > 0
-        val cost = if (ticketApplied) ticketUpgradeCost(upgrade, owned) else upgradeCost(upgrade, owned)
+
+        if (rarity != null && (current.ticketInventory[rarity] ?: 0) <= 0) return
+
+        val cost = if (rarity == null) upgradeCost(upgrade, owned)
+        else rarityTicketUpgradeCost(upgrade, owned, rarity)
         if (current.treats < cost) return
 
         val nextUpgrades = current.upgrades.toMutableMap().apply { this[upgrade.id] = owned + 1 }
+        val nextInventory = current.ticketInventory.toMutableMap().apply {
+            if (rarity != null) this[rarity] = ((this[rarity] ?: 0) - 1).coerceAtLeast(0)
+        }
+
         _state.value = current.copy(
             treats = current.treats - cost,
             upgrades = nextUpgrades,
-            upgradeTickets = current.upgradeTickets - if (ticketApplied) 1 else 0,
+            ticketInventory = nextInventory,
             clickPower = current.clickPower + if (upgrade.effect == UpgradeEffect.CLICK) upgrade.amount else 0,
             autoPerSecond = current.autoPerSecond + if (upgrade.effect == UpgradeEffect.AUTO) upgrade.amount else 0,
             happiness = (current.happiness + 2).coerceAtMost(100),
@@ -359,7 +438,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = current.copy(
             treats = safeAdd(current.treats, reward),
             lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
-            upgradeTickets = (current.upgradeTickets + 1).coerceAtMost(MAX_UPGRADE_TICKETS),
             lastDailyClaimDay = today,
             happiness = (current.happiness + 10).coerceAtMost(100)
         )
@@ -372,7 +450,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = current.copy(
             treats = safeAdd(current.treats, mission.reward),
             lifetimeTreats = safeAdd(current.lifetimeTreats, mission.reward),
-            upgradeTickets = (current.upgradeTickets + mission.ticketReward).coerceAtMost(MAX_UPGRADE_TICKETS),
             claimedMissions = current.claimedMissions + mission.id
         )
         saveState()
@@ -414,10 +491,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         saveState()
     }
 
-    /**
-     * Offline promo redemption. The APK stores only salted SHA-256 digests of
-     * promo codes, not the plain-text codes. Rewards never modify clickPower.
-     */
+    /** Offline local Puppy Codes never grant upgrade tickets or tap power. */
     fun redeemCode(rawCode: String): RedeemOutcome {
         val reward = LocalRedeemCodes.find(rawCode)
             ?: return RedeemOutcome(false, "That Puppy Code is invalid or unavailable in this version.")
@@ -433,7 +507,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = current.copy(
             treats = safeAdd(current.treats, reward.treats),
             lifetimeTreats = safeAdd(current.lifetimeTreats, reward.treats),
-            upgradeTickets = (current.upgradeTickets + reward.tickets).coerceAtMost(MAX_UPGRADE_TICKETS),
             unlockedPuppies = nextUnlocked,
             puppyStyle = puppy?.id ?: current.puppyStyle,
             redeemedCodeIds = current.redeemedCodeIds + reward.id
@@ -454,7 +527,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         suspicionWindowStartedMs = 0L
         _state.value = GameState(
             upgrades = UPGRADES.associate { it.id to 0 },
-            upgradeTickets = 1,
+            ticketInventory = emptyTicketInventory(),
             unlockedPuppies = keep.unlockedPuppies,
             redeemedCodeIds = keep.redeemedCodeIds,
             hapticsEnabled = keep.hapticsEnabled,
@@ -467,14 +540,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private fun looksAutomated(now: Long): Boolean {
         val taps = recentTapTimes.filter { it >= now - FAIR_PLAY_SAMPLE_MS }
         if (taps.size < MIN_FAIR_PLAY_SAMPLE_TAPS) return false
-
-        // A truly extreme sustained rate is suspicious regardless of timing shape.
         if (taps.size >= EXTREME_TAPS_IN_SAMPLE) return true
 
         val intervals = taps.zipWithNext { a, b -> (b - a).toDouble() }
         if (intervals.size < MIN_INTERVAL_SAMPLE) return false
-
-        // Repeated sub-22 ms taps are outside reasonable touch-screen human input.
         if (intervals.takeLast(8).count { it <= IMPOSSIBLE_INTERVAL_MS } >= 6) return true
 
         val mean = intervals.average()
@@ -484,8 +553,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val stdDev = sqrt(variance)
         val nearMeanRatio = intervals.count { abs(it - mean) <= MACHINE_NEAR_MEAN_MS }.toDouble() / intervals.size
 
-        // Human fast tapping is noisy. Auto clickers tend to repeat nearly identical
-        // intervals for a sustained run, so regularity matters more than raw speed.
         return stdDev <= MACHINE_STDDEV_MAX_MS && nearMeanRatio >= MACHINE_REGULARITY_RATIO
     }
 
@@ -538,6 +605,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             ?.takeIf { it in unlocked && PUPPY_STYLES.any { style -> style.id == it } }
             ?: "classic"
 
+        // Do not migrate the old starter/daily generic ticket balance. Rarity tickets
+        // intentionally start at zero and are earned only from accepted puppy taps.
+        val ticketInventory = TicketRarity.entries.associateWith { rarity ->
+            prefs.getInt(ticketKey(rarity), 0).coerceIn(0, MAX_TICKETS_PER_RARITY)
+        }
+
         return GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = selectedStyle,
@@ -547,7 +620,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             clickPower = clickPower,
             autoPerSecond = autoPerSecond,
             upgrades = owned,
-            upgradeTickets = prefs.getInt(KEY_UPGRADE_TICKETS, 1).coerceIn(0, MAX_UPGRADE_TICKETS),
+            ticketInventory = ticketInventory,
+            totalTicketsFound = prefs.getLong(KEY_TOTAL_TICKETS_FOUND, 0L).coerceAtLeast(0L),
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
             pupEyeStrikes = prefs.getInt(KEY_STRIKES, 0).coerceAtLeast(0),
             cooldownUntilMs = prefs.getLong(KEY_COOLDOWN_UNTIL, 0L).coerceAtLeast(0L),
@@ -577,7 +651,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             putStringSet(KEY_UNLOCKED_PUPPIES, current.unlockedPuppies.toSet())
             putLong(KEY_TREATS, current.treats)
             putLong(KEY_LIFETIME, current.lifetimeTreats)
-            putInt(KEY_UPGRADE_TICKETS, current.upgradeTickets)
+            remove(KEY_LEGACY_UPGRADE_TICKETS)
+            TicketRarity.entries.forEach { rarity ->
+                putInt(ticketKey(rarity), current.ticketInventory[rarity] ?: 0)
+            }
+            putLong(KEY_TOTAL_TICKETS_FOUND, current.totalTicketsFound)
             putString(KEY_ACCESSORY, current.accessory)
             putInt(KEY_STRIKES, current.pupEyeStrikes)
             putLong(KEY_COOLDOWN_UNTIL, current.cooldownUntilMs)
@@ -619,15 +697,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         const val FEED_COST = 20L
         const val PARK_ADVENTURE_MS = 60_000L
         const val TICKET_DISCOUNT_PERCENT = 20
+        const val TICKET_DROP_DENOMINATOR = 100
 
-        private const val MAX_UPGRADE_TICKETS = 99
         private const val PREFS_NAME = "puppy_clicker_save"
         private const val KEY_NAME = "puppy_name"
         private const val KEY_PUPPY_STYLE = "puppy_style"
         private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"
         private const val KEY_TREATS = "treats"
         private const val KEY_LIFETIME = "lifetime_treats"
-        private const val KEY_UPGRADE_TICKETS = "upgrade_tickets"
+        private const val KEY_LEGACY_UPGRADE_TICKETS = "upgrade_tickets"
+        private const val KEY_TOTAL_TICKETS_FOUND = "total_tickets_found"
         private const val KEY_ACCESSORY = "accessory"
         private const val KEY_STRIKES = "pup_eye_strikes"
         private const val KEY_COOLDOWN_UNTIL = "fair_play_cooldown_until"
@@ -647,6 +726,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_ANIMATIONS = "setting_animations"
         private const val KEY_COMPACT_NUMBERS = "setting_compact_numbers"
 
+        private const val TICKET_DROP_ROLL_SIDES = 100
+        private const val TICKET_DROP_WINNER = 0
+        private const val MAX_TICKETS_PER_RARITY = 999
         private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
         private const val COMBO_CHAIN_MS = 900L
         private const val COMBO_TIMEOUT_MS = 1_600L
@@ -666,6 +748,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val SUSPICION_CONFIRM_WINDOW_MS = 5_000L
         private const val BASE_FAIR_PLAY_COOLDOWN_MS = 4_000L
         private const val MAX_FAIR_PLAY_COOLDOWN_MS = 20_000L
+
+        private fun ticketKey(rarity: TicketRarity): String = "upgrade_ticket_${rarity.name.lowercase()}"
     }
 }
 
