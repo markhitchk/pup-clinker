@@ -72,7 +72,7 @@ class PuppyClickerV6Activity : ComponentActivity() {
 }
 
 private enum class V6Tab(val label: String, val emoji: String) {
-    PLAY("Play", "🐾"), CARE("Care", "💖"), SHOP("Shop", "🛍️"), PUPS("Pups", "🐶"), SETTINGS("Settings", "⚙️")
+    PLAY("Play", "🐾"), CARE("Care", "💖"), SHOP("Shop", "🛍️"), PRESTIGE("Prestige", "⭐"), SETTINGS("Settings", "⚙️")
 }
 
 @Composable
@@ -115,7 +115,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 V6Tab.PLAY -> V6Play(state, vm)
                 V6Tab.CARE -> V6CareAndDaily(state, vm)
                 V6Tab.SHOP -> V6Shop(state, vm)
-                V6Tab.PUPS -> V6Pups(state, vm)
+                V6Tab.PRESTIGE -> V6Prestige(state, vm)
                 V6Tab.SETTINGS -> V6Settings(state, vm)
             }
         }
@@ -160,13 +160,6 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         V6Wallet(state)
         Spacer(Modifier.height(10.dp))
 
-        if (state.prestigeCount > 0) {
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.65f)) {
-                Text("⭐ Prestige ${state.prestigeCount} · ${state.skillPoints} unspent skill point${if (state.skillPoints == 1) "" else "s"}", Modifier.padding(10.dp), fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
         AnimatedVisibility(ticketVisible, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
             val rarity = state.lastTicketDrop ?: TicketRarity.COMMON
             Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = rarityContainerV6(rarity)) {
@@ -182,26 +175,27 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         }
         if (ticketVisible) Spacer(Modifier.height(8.dp))
 
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            V6NeedPill("💖", state.happiness, Modifier.weight(1f))
+            V6NeedPill("🍖", state.fullness, Modifier.weight(1f))
+            V6NeedPill("⚡", state.energy, Modifier.weight(1f))
+            V6NeedPill("🫧", state.cleanliness, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+
         Surface(
-            Modifier.fillMaxWidth().height(410.dp),
-            shape = RoundedCornerShape(32.dp),
+            Modifier.fillMaxWidth().height(365.dp),
+            shape = RoundedCornerShape(30.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.075f)
         ) {
             Box(Modifier.fillMaxSize()) {
-                Row(
-                    Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    V6NeedPill("💖", state.happiness, Modifier.weight(1f))
-                    V6NeedPill("🍖", state.fullness, Modifier.weight(1f))
-                    V6NeedPill("⚡", state.energy, Modifier.weight(1f))
-                    V6NeedPill("🫧", state.cleanliness, Modifier.weight(1f))
-                }
-
                 Box(
                     Modifier
                         .align(Alignment.Center)
-                        .size(294.dp)
+                        .size(258.dp)
                         .graphicsLayer {
                             translationY = idleY
                             scaleX = tapScale.value
@@ -221,7 +215,7 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    V6PuppyPortrait(state.puppyStyle, 270.dp, state.accessory)
+                    V6PuppyPortrait(state.puppyStyle, 238.dp, state.accessory)
                 }
 
                 Surface(
@@ -239,17 +233,6 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             }
         }
 
-        Spacer(Modifier.height(10.dp))
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)) {
-            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("🎟️", fontSize = 24.sp)
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text("1 ticket every 5 accepted taps", fontWeight = FontWeight.Black)
-                    Text("Common and Uncommon are the usual drops, but tickets only award every 5 accepted taps. Rare, Epic and Legendary stay much harder. Machine-like taps receive no ticket.", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -411,13 +394,17 @@ private fun V6DailyTask(id: String, title: String, description: String, progress
 private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var shopTab by rememberSaveable { mutableIntStateOf(0) }
     var redeemOpen by rememberSaveable { mutableStateOf(false) }
+    var pupsOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         V6Header("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
         Spacer(Modifier.height(12.dp))
         V6Wallet(state)
         Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = { redeemOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("🎫 Redeem Puppy Code") }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { redeemOpen = true }, modifier = Modifier.weight(1f)) { Text("🎫 Redeem Code") }
+            OutlinedButton(onClick = { pupsOpen = true }, modifier = Modifier.weight(1f)) { Text("🐶 Pups") }
+        }
 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -447,6 +434,13 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     }
 
     if (redeemOpen) V6RedeemDialog(vm) { redeemOpen = false }
+    if (pupsOpen) {
+        ModalBottomSheet(onDismissRequest = { pupsOpen = false }) {
+            Box(Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
+                V6Pups(state, vm)
+            }
+        }
+    }
 }
 
 @Composable
@@ -614,13 +608,38 @@ private fun V6Pups(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 }
 
 @Composable
+private fun V6Prestige(state: V6GameState, vm: PuppyClickerV6ViewModel) {
+    var prestigeConfirm by rememberSaveable { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
+        V6Header("Prestige", "Permanent progression and skill points.")
+        Spacer(Modifier.height(14.dp))
+        V6PrestigeCenter(state, vm, onPrestige = { prestigeConfirm = true })
+        Spacer(Modifier.height(18.dp))
+    }
+
+    if (prestigeConfirm) {
+        AlertDialog(
+            onDismissRequest = { prestigeConfirm = false },
+            title = { Text("⭐ Prestige this run?") },
+            text = {
+                Text("You will earn ${state.prestigePointsAvailable} skill point${if (state.prestigePointsAvailable == 1) "" else "s"}. Current treats, upgrades, tickets, daily progress and run stats reset. Puppy Code unlocks, puppy collection, settings, bond, prestige level and existing skills stay.")
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.prestige(); prestigeConfirm = false }, enabled = state.canPrestige) { Text("Prestige") }
+            },
+            dismissButton = { TextButton(onClick = { prestigeConfirm = false }) { Text("Cancel") } }
+        )
+    }
+}
+
+@Composable
 private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
-    var prestigeConfirm by rememberSaveable { mutableStateOf(false) }
     var resetConfirm by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        V6Header("Settings", "Game settings, fair play and permanent prestige progression.")
+        V6Header("Settings", "Game preferences, fair play and app information.")
         Spacer(Modifier.height(14.dp))
         V6Switch("📳", "Haptic feedback", "Direct Android vibration feedback.", state.hapticsEnabled, vm::setHapticsEnabled)
         Spacer(Modifier.height(7.dp))
@@ -629,9 +648,6 @@ private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         V6Switch("✨", "Animations", "Puppy idle and tap motion.", state.animationsEnabled, vm::setAnimationsEnabled)
         Spacer(Modifier.height(8.dp))
         V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
-
-        Spacer(Modifier.height(16.dp))
-        V6PrestigeCenter(state, vm, onPrestige = { prestigeConfirm = true })
 
         Spacer(Modifier.height(14.dp))
         Card(Modifier.fillMaxWidth()) {
@@ -657,20 +673,6 @@ private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         Spacer(Modifier.height(14.dp))
         OutlinedButton(onClick = { resetConfirm = true }, modifier = Modifier.fillMaxWidth()) { Text("Reset current run without prestige") }
         Spacer(Modifier.height(18.dp))
-    }
-
-    if (prestigeConfirm) {
-        AlertDialog(
-            onDismissRequest = { prestigeConfirm = false },
-            title = { Text("⭐ Prestige this run?") },
-            text = {
-                Text("You will earn ${state.prestigePointsAvailable} skill point${if (state.prestigePointsAvailable == 1) "" else "s"}. Current treats, upgrades, tickets, daily progress and run stats reset. Puppy Code unlocks, puppy collection, settings, bond, prestige level and existing skills stay.")
-            },
-            confirmButton = {
-                TextButton(onClick = { vm.prestige(); prestigeConfirm = false }, enabled = state.canPrestige) { Text("Prestige") }
-            },
-            dismissButton = { TextButton(onClick = { prestigeConfirm = false }) { Text("Cancel") } }
-        )
     }
 
     if (resetConfirm) {
@@ -747,26 +749,22 @@ private fun V6PrestigeCenter(state: V6GameState, vm: PuppyClickerV6ViewModel, on
 
 @Composable
 private fun V6Wallet(state: V6GameState) {
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("🍪 Treats", style = MaterialTheme.typography.labelMedium)
-                Text(formatV6(state.treats, state.compactNumbers), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            }
-            V6MiniStat("🎟️", state.ticketsOwned.toString(), "tickets")
-            Spacer(Modifier.width(8.dp))
-            V6MiniStat("👆", formatV6(state.clickPower.toLong(), state.compactNumbers), "per tap")
-            Spacer(Modifier.width(8.dp))
-            V6MiniStat("⏱️", formatV6(state.autoPerSecond.toLong(), state.compactNumbers), "per sec")
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+            V6MiniStat("🍪", formatV6(state.treats, state.compactNumbers), "Treats", Modifier.weight(1f))
+            V6MiniStat("🎟️", state.ticketsOwned.toString(), "Tickets", Modifier.weight(1f))
+            V6MiniStat("👆", formatV6(state.clickPower.toLong(), state.compactNumbers), "Per tap", Modifier.weight(1f))
+            V6MiniStat("⏱️", formatV6(state.autoPerSecond.toLong(), state.compactNumbers), "Per sec", Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun V6MiniStat(icon: String, value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$icon $value", fontWeight = FontWeight.Black)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun V6MiniStat(icon: String, value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(icon, fontSize = 18.sp)
+        Text(value, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }
 
