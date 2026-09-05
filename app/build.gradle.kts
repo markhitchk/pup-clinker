@@ -4,6 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val puppySourceCommit = "ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1"
+val generatedSourceRes = layout.buildDirectory.dir("generated/source-assets/res")
+val generatedSourceDrawables = layout.buildDirectory.dir("generated/source-assets/res/drawable-nodpi")
+
 android {
     namespace = "com.harleytg.puppyclicker"
     compileSdk = 35
@@ -42,9 +46,41 @@ android {
         buildConfig = true
     }
 
+    sourceSets["main"].res.srcDir(generatedSourceRes)
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+}
+
+val downloadPuppySourceAssets by tasks.registering {
+    description = "Downloads Puppy Clicker artwork pinned to the source repository commit."
+    group = "puppy clicker"
+    outputs.dir(generatedSourceDrawables)
+
+    doLast {
+        val outputDir = generatedSourceDrawables.get().asFile
+        outputDir.mkdirs()
+
+        val baseUrl = "https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/$puppySourceCommit/Images"
+        val assets = mapOf(
+            "source_pup.png" to "$baseUrl/pup.png",
+            "source_logo.png" to "$baseUrl/logo.png"
+        )
+
+        assets.forEach { (fileName, sourceUrl) ->
+            val target = outputDir.resolve(fileName)
+            if (!target.exists() || target.length() == 0L) {
+                java.net.URI(sourceUrl).toURL().openStream().use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(downloadPuppySourceAssets)
 }
 
 dependencies {

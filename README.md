@@ -1,10 +1,10 @@
 # Puppy Clicker — Android
 
-Native Android edition of **Puppy Clicker**, based on the original game concept from [`HarleyTG-O/Puppy-Clicker`](https://github.com/HarleyTG-O/Puppy-Clicker).
+Native Android edition of **Puppy Clicker**, based on the original game concept and artwork from [`HarleyTG-O/Puppy-Clicker`](https://github.com/HarleyTG-O/Puppy-Clicker).
 
 ## What is included
 
-- 🐶 Large tap-to-click puppy gameplay
+- 🐶 Large tap-to-click puppy gameplay using the original `Images/pup.png`
 - 🍪 Treat currency with lifetime progression and levels
 - 🛒 Six upgrades for tap power and automatic treat generation
 - ⏱️ Offline earnings, capped at 8 hours
@@ -16,6 +16,16 @@ Native Android edition of **Puppy Clicker**, based on the original game concept 
 - 🌗 Material 3 light/dark theme
 - 📱 Native Kotlin + Jetpack Compose UI
 - ⚙️ GitHub Actions build that uploads a debug APK artifact
+
+## Original Puppy Clicker artwork
+
+The build imports the original `pup.png` and `logo.png` directly from `HarleyTG-O/Puppy-Clicker`, pinned to source commit:
+
+```text
+ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1
+```
+
+The images are downloaded only while building and are packaged into the APK as Android resources. The installed game itself does **not** need internet access.
 
 ## Android configuration
 
@@ -31,7 +41,7 @@ Native Android edition of **Puppy Clicker**, based on the original game concept 
 
 ### Android Studio
 
-Open this repository as a Gradle project, allow Gradle sync to finish, then run the `app` configuration.
+Open this repository as a Gradle project, allow Gradle sync to finish, then run the `app` configuration. Internet access is required during the build to resolve normal Gradle dependencies and retrieve the two pinned Puppy Clicker source images.
 
 ### Command line
 
@@ -52,10 +62,6 @@ GitHub Actions also builds the same APK automatically after pushes to `main` and
 ## Pup Eye
 
 The Android edition keeps Pup Eye intentionally local and privacy-preserving. It watches only tap timing inside the app. Extremely fast tap bursts trigger a short cooldown and increment the local cooldown counter. No webhook, account identifier, device identifier, or personal information is sent anywhere.
-
-## Source artwork
-
-The original repository contains `Images/logo.png`, `Images/pup.png`, and HTG artwork. This first Android project uses a native/vector/emoji UI so the APK stays self-contained without requiring network access. Those source assets can be imported later as Android drawables without changing the game logic.
 
 ## Rights
 
