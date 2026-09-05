@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -71,7 +73,7 @@ val downloadPuppySourceAssets by tasks.registering {
         assets.forEach { (fileName, sourceUrl) ->
             val target = outputDir.resolve(fileName)
             if (!target.exists() || target.length() == 0L) {
-                java.net.URI(sourceUrl).toURL().openStream().use { input ->
+                URI(sourceUrl).toURL().openStream().use { input ->
                     target.outputStream().use { output -> input.copyTo(output) }
                 }
             }
