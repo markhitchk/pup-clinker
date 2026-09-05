@@ -82,7 +82,7 @@ object LocalRedeemCodes {
             id = "very_good_pup", treats = 4_000, message = "VERY good pup! +4,000 treats."
         ),
 
-        // Character unlock codes.
+        // V1 character unlock codes.
         "32b5b00ec5412ba5d3e939dfc9eecf2ce163db5cb004096da95a391753f49469" to LocalRedeemReward(
             id = "aurora_pup", treats = 500, puppyId = "aurora",
             message = "Aurora unlocked +500 treats."
@@ -130,6 +130,40 @@ object LocalRedeemCodes {
         "cce8b78471c3a6ef1ae5d2e911bfb6c51c868adb3d021173952bc501e119301a" to LocalRedeemReward(
             id = "classic_forever", puppyId = "classic_forever",
             message = "Classic Forever unlocked — original Puppy Clicker forever."
+        ),
+
+        // V2 character unlock codes. V2 uses new names and separate v2_ save IDs.
+        "78a9f1c7a2c13c59c739c112f6acd0856d410788139e02975c7315fe22816aa5" to LocalRedeemReward(
+            id = "v2_frost_code", treats = 500, puppyId = "v2_frost",
+            message = "V2 Frost unlocked +500 treats."
+        ),
+        "d49990ca1f097a64a665898af7f011fc6432c1bb8749fd24402399ded6dd2d1e" to LocalRedeemReward(
+            id = "v2_honey_code", treats = 500, puppyId = "v2_honey",
+            message = "V2 Honey unlocked +500 treats."
+        ),
+        "567f812bfafb3f3c340d90606cbe67266c96e59b4ff7e9e7984e0c5db9dab512" to LocalRedeemReward(
+            id = "v2_biscuit_code", treats = 500, puppyId = "v2_biscuit",
+            message = "V2 Biscuit unlocked +500 treats."
+        ),
+        "aca60e394b483e8dc009ddca2ff1cb5cc53675ed9335e8cddae8ac1104a58370" to LocalRedeemReward(
+            id = "v2_onyx_code", treats = 750, puppyId = "v2_onyx",
+            message = "V2 Onyx unlocked +750 treats."
+        ),
+        "bbdfc1541fa8f336f711e6e0218caa8dde577fcd493cf67d227d4af3f993e36f" to LocalRedeemReward(
+            id = "v2_domino_code", treats = 750, puppyId = "v2_domino",
+            message = "V2 Domino unlocked +750 treats."
+        ),
+        "4d39730452fce3c022a5e1a47f509ba129cee2b244249ab4ee1ab07de12a1505" to LocalRedeemReward(
+            id = "v2_chestnut_code", treats = 500, puppyId = "v2_chestnut",
+            message = "V2 Chestnut unlocked +500 treats."
+        ),
+        "6054e4ddf0904b42ee050cd5f2db42dd6544d664c92b5f9bc796b231d642fe15" to LocalRedeemReward(
+            id = "v2_prism_code", treats = 1_000, puppyId = "v2_prism",
+            message = "V2 Prism unlocked +1,000 treats."
+        ),
+        "0e758fdc60de866c674c25cd335bdcea712d0f5c6a18815398941a641070b8f4" to LocalRedeemReward(
+            id = "v2_flurry_code", treats = 750, puppyId = "v2_flurry",
+            message = "V2 Flurry unlocked +750 treats."
         )
     )
 
