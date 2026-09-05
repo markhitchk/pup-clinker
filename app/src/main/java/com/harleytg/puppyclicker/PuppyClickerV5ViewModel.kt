@@ -149,11 +149,13 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
 
     init {
         rollDailyDayIfNeeded()
+        consumeClaimedAfkReward()
         viewModelScope.launch {
             var seconds = 0
             while (isActive) {
                 delay(1_000)
                 seconds++
+                consumeClaimedAfkReward()
                 val now = System.currentTimeMillis()
                 val current = _state.value
 
@@ -216,9 +218,8 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         }
         val nextTaps = safeAdd(current.totalTaps, 1)
 
-        // Fair-play taps now get a true 50/50 ticket roll. The rarity table is
-        // deliberately weighted toward Common and Uncommon so entry upgrades
-        // are attainable, while the top tiers remain meaningfully rare.
+        // A legitimate tap now has a true 50/50 chance to drop a ticket.
+        // The successful half is heavily weighted toward the low tiers.
         val ticketDrop = if (!suspiciousThisTap && Random.nextBoolean()) rollTicketRarity() else null
         val inventory = if (ticketDrop == null) {
             current.ticketInventory
@@ -481,11 +482,13 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         val afkBackgroundAt = prefs.getLong(KEY_AFK_BACKGROUND_AT, 0L)
         val afkPending = prefs.getLong(KEY_AFK_PENDING, 0L)
         val afkAwayMs = prefs.getLong(KEY_AFK_AWAY_MS, 0L)
+        val afkClaim = prefs.getLong(KEY_AFK_CLAIM_READY, 0L)
         prefs.edit().clear().apply()
         prefs.edit()
             .putLong(KEY_AFK_BACKGROUND_AT, afkBackgroundAt)
             .putLong(KEY_AFK_PENDING, afkPending)
             .putLong(KEY_AFK_AWAY_MS, afkAwayMs)
+            .putLong(KEY_AFK_CLAIM_READY, afkClaim)
             .apply()
         recentTapTimes.clear()
         suspicionHits = 0
@@ -502,10 +505,9 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     private fun rollTicketRarity(): TicketRarity {
-        // Distribution inside the 50% successful ticket roll:
+        // Distribution within a successful 50% drop roll:
         // Common 80%, Uncommon 16%, Rare 3%, Epic 0.8%, Legendary 0.2%.
-        // Overall per accepted tap this is approximately 40%, 8%, 1.5%,
-        // 0.4%, and 0.1% respectively.
+        // Overall per accepted tap: ~40%, 8%, 1.5%, 0.4%, 0.1%.
         val roll = Random.nextInt(1, 1_001)
         return when {
             roll <= 800 -> TicketRarity.COMMON
@@ -556,6 +558,23 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         return stdDev <= MACHINE_STDDEV_MAX_MS && nearMeanRatio >= MACHINE_REGULARITY_RATIO
     }
 
+    private fun consumeClaimedAfkReward() {
+        val pending = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
+        if (pending <= 0L) return
+
+        // commit() makes the one-time handoff atomic enough for the live VM: once
+        // the key is cleared, the same AFK reward cannot be consumed twice.
+        if (!prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).commit()) return
+        _state.update {
+            it.copy(
+                treats = safeAdd(it.treats, pending),
+                lifetimeTreats = safeAdd(it.lifetimeTreats, pending),
+                offlineEarned = pending
+            )
+        }
+        saveState()
+    }
+
     private fun addTreats(amount: Long) {
         if (amount <= 0) return
         _state.update {
@@ -604,9 +623,8 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         val savedEnergy = prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100)
         val savedClean = prefs.getInt(KEY_CLEANLINESS, 100).coerceIn(0, 100)
 
-        // Off-app earnings are deliberately NOT calculated here anymore.
-        // PuppyClickerApplication owns the slow AFK clock and AfkWelcomeActivity
-        // makes the player explicitly collect that reward on return.
+        // Off-app auto-per-second earnings are intentionally disabled. AFK
+        // earnings are managed by PuppyClickerApplication at a fixed slow rate.
         return V5GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = style,
@@ -706,6 +724,7 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         const val KEY_AFK_BACKGROUND_AT = "afk_background_at_v6"
         const val KEY_AFK_PENDING = "afk_pending_treats_v6"
         const val KEY_AFK_AWAY_MS = "afk_away_ms_v6"
+        const val KEY_AFK_CLAIM_READY = "afk_claim_ready_v6"
         const val KEY_LAST_SEEN = "last_seen"
         const val KEY_TREATS = "treats"
         const val KEY_LIFETIME = "lifetime_treats"
