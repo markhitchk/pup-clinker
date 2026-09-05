@@ -390,6 +390,7 @@ private fun V6DailyTask(id: String, title: String, description: String, progress
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var shopTab by rememberSaveable { mutableIntStateOf(0) }
