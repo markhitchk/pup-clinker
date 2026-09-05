@@ -31,9 +31,32 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Upload debug APK
+      - name: Ensure APK Signature Scheme v4
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$APKSIGNER"
+          test -f "$HOME/.android/debug.keystore"
+
+          "$APKSIGNER" sign \
+            --v4-signing-enabled only \
+            --ks "$HOME/.android/debug.keystore" \
+            --ks-key-alias androiddebugkey \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            "$APK"
+
+          test -s "$APK.idsig"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          echo "V4 sidecar generated: $APK.idsig"
+
+      - name: Upload signed APK and v4 signature
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: puppy-clicker-v4-signed
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk.idsig
           if-no-files-found: error
