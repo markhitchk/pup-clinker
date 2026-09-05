@@ -55,7 +55,7 @@ jobs:
 
           if [ "$configured" -eq 0 ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Permanent signing secrets are not configured; this run will compile-test only."
+            echo "Permanent signing secrets are not configured; producing an unsigned release for external signing."
             exit 0
           fi
 
@@ -105,6 +105,14 @@ jobs:
             app/build/outputs/apk/release/*.idsig
           if-no-files-found: error
 
-      - name: Compile test without release key
+      - name: Build unsigned release when signing secrets are unavailable
         if: steps.signing.outputs.ready != 'true'
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+
+      - name: Upload unsigned release for external signing
+        if: steps.signing.outputs.ready != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-unsigned-release
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
