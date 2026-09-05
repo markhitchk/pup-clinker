@@ -10,6 +10,17 @@ val puppySourceCommit = "ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1"
 val generatedSourceRes = layout.buildDirectory.dir("generated/source-assets/res")
 val generatedSourceDrawables = layout.buildDirectory.dir("generated/source-assets/res/drawable-nodpi")
 
+val signingStoreFilePath = System.getenv("PUPPY_SIGNING_STORE_FILE")
+val signingStorePassword = System.getenv("PUPPY_SIGNING_STORE_PASSWORD")
+val signingKeyAlias = System.getenv("PUPPY_SIGNING_KEY_ALIAS")
+val signingKeyPassword = System.getenv("PUPPY_SIGNING_KEY_PASSWORD")
+val hasPermanentSigning = listOf(
+    signingStoreFilePath,
+    signingStorePassword,
+    signingKeyAlias,
+    signingKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.harleytg.puppyclicker"
     compileSdk = 35
@@ -18,8 +29,8 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -31,6 +42,19 @@ android {
             enableV3Signing = true
             enableV4Signing = true
         }
+
+        if (hasPermanentSigning) {
+            create("update") {
+                storeFile = file(signingStoreFilePath!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -39,6 +63,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            signingConfigs.findByName("update")?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
