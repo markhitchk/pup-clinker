@@ -23,47 +23,37 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           activity = Path('app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt')
           text = activity.read_text()
 
-          text = text.replace(
+          def replace_once(old, new, label):
+              global text
+              if old not in text:
+                  raise SystemExit(f'{label} was not found')
+              text = text.replace(old, new, 1)
+
+          replace_once(
               'V6Header("Puppy Collection", "Original Puppy Clicker character base with unique fur variants.")',
               'V6Header("Puppy Collection", "V1 classics and V2 puppies in one collection.")',
-              1,
+              'collection header',
           )
 
-          old_roster = '''        V6_PUPPY_STYLES.forEach { puppy ->
-              val unlocked = puppy.id in state.unlockedPuppies
-              val selected = state.puppyStyle == puppy.id
-              Card(
-                  Modifier.fillMaxWidth().clickable(enabled = unlocked) { vm.setPuppyStyle(puppy.id) },
-                  colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f) else MaterialTheme.colorScheme.surface)
-              ) {
-                  Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                      V6PuppyPortrait(puppy.id, 86.dp, unlocked = unlocked)
-                      Spacer(Modifier.width(11.dp))
-                      Column(Modifier.weight(1f)) {
-                          Text(puppy.name, fontWeight = FontWeight.Black)
-                          Text(v6FurDescription(puppy.id), style = MaterialTheme.typography.bodySmall)
-                          if (puppy.redeemOnly) Text(if (unlocked) "Puppy Code unlocked" else "Special Puppy Code unlock", style = MaterialTheme.typography.labelSmall)
-                      }
-                      Text(if (selected) "✓" else if (unlocked) "Choose" else "🔒", fontWeight = FontWeight.Bold)
-                  }
-              }
-              Spacer(Modifier.height(8.dp))
-          }
-          '''
-          new_roster = '''        V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES, state, vm)
-          Spacer(Modifier.height(8.dp))
-          V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)
-          '''
-          if old_roster not in text:
+          roster_pattern = re.compile(
+              r'(?ms)^        V6_PUPPY_STYLES\.forEach \{ puppy ->\n.*?^        \}\n(?=\n        OutlinedButton)'
+          )
+          if not roster_pattern.search(text):
               raise SystemExit('V6 roster block was not found')
-          text = text.replace(old_roster, new_roster, 1)
+          text = roster_pattern.sub(
+              '        V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES, state, vm)\n'
+              '        Spacer(Modifier.height(8.dp))\n'
+              '        V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)\n',
+              text,
+              count=1,
+          )
 
-          helper = '''
-          @Composable
+          helper = '''@Composable
           private fun V6PuppyRosterSection(
               title: String,
               puppies: List<PuppyStyle>,
@@ -108,25 +98,25 @@ jobs:
           pos = text.index(marker, text.index('private fun V6Pups'))
           text = text[:pos] + helper + text[pos:]
 
-          text = text.replace(
+          replace_once(
               '    val furFilter = v6PuppyFilter(styleId)\n',
               '    val furFilter = v6PuppyFilter(styleId)\n    val isV2 = styleId in V2_PUPPY_IDS\n',
-              1,
+              'V2 portrait flag',
           )
-          text = text.replace(
+          replace_once(
               '            painter = painterResource(R.drawable.source_pup),',
               '            painter = painterResource(v6PuppyDrawable(styleId)),',
-              1,
+              'portrait painter',
           )
-          text = text.replace(
+          replace_once(
               '            modifier = Modifier.size(size * 0.90f),',
               '            modifier = Modifier.size(size * if (isV2) 0.96f else 0.90f),',
-              1,
+              'portrait size',
           )
-          text = text.replace(
+          replace_once(
               '            colorFilter = furFilter\n',
               '            colorFilter = if (isV2) null else furFilter\n',
-              1,
+              'portrait filter',
           )
 
           drawable_helper = '''private fun v6PuppyDrawable(styleId: String): Int = when (styleId) {
@@ -142,13 +132,13 @@ jobs:
           }
 
           '''
-          text = text.replace(
+          replace_once(
               'private fun v6PuppyBackground(styleId: String): Color = when (styleId) {',
               drawable_helper + 'private fun v6PuppyBackground(styleId: String): Color = when (styleId) {',
-              1,
+              'drawable helper insertion',
           )
 
-          text = text.replace(
+          replace_once(
               '    "classic_forever" -> Color(0xFFFFE9C8)\n    else -> Color(0xFFF7F2F7)',
               '''    "classic_forever" -> Color(0xFFFFE9C8)
               "v2_frost" -> Color(0xFFF4F8FF)
@@ -160,10 +150,10 @@ jobs:
               "v2_prism" -> Color(0xFFE4D5FF)
               "v2_flurry" -> Color(0xFFF6FAFF)
               else -> Color(0xFFF7F2F7)''',
-              1,
+              'V2 backgrounds',
           )
 
-          text = text.replace(
+          replace_once(
               '    "classic_forever" -> "Special warm tribute to the original pup."\n    else -> "Original Puppy Clicker style."',
               '''    "classic_forever" -> "Special warm tribute to the original pup."
               "v2_frost" -> "Fluffy white V2 puppy with bright pink ears."
@@ -175,7 +165,7 @@ jobs:
               "v2_prism" -> "Pastel purple, teal and cream V2 puppy."
               "v2_flurry" -> "Fluffy snow-white V2 puppy with a curled tail."
               else -> "Original Puppy Clicker style."''',
-              1,
+              'V2 descriptions',
           )
 
           activity.write_text(text)
