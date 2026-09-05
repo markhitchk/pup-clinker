@@ -11,7 +11,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PuppyClicker">
         <activity
-            android:name=".PuppyClickerV3Activity"
+            android:name=".PuppyClickerV4Activity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
