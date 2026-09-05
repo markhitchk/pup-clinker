@@ -6,14 +6,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
 import java.util.ArrayDeque
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 enum class UpgradeEffect { CLICK, AUTO }
@@ -36,13 +37,17 @@ data class PuppyStyle(
     val redeemOnly: Boolean = false
 )
 
+/**
+ * Every puppy style uses the original Puppy Clicker pup image as its visual base.
+ * The emoji is only a small theme badge used by the Android UI.
+ */
 val PUPPY_STYLES = listOf(
-    PuppyStyle("classic", "Buddy", "🐶", "The original Puppy Clicker pup."),
-    PuppyStyle("golden", "Sunny", "🦮", "A cheerful golden pup."),
-    PuppyStyle("poodle", "Mochi", "🐩", "A fluffy little poodle."),
-    PuppyStyle("spotty", "Pepper", "🐕", "A playful spotted pup."),
-    PuppyStyle("midnight", "Midnight", "🐕‍🦺", "A rare night-sky pup.", redeemOnly = true),
-    PuppyStyle("cloud", "Cloud", "☁️🐶", "A soft limited-edition cloud pup.", redeemOnly = true)
+    PuppyStyle("classic", "Buddy", "🐾", "The original Puppy Clicker pup."),
+    PuppyStyle("golden", "Sunny", "🌻", "The original pup with a sunny flower theme."),
+    PuppyStyle("poodle", "Mochi", "🎀", "The original pup with a soft pink bow theme."),
+    PuppyStyle("spotty", "Pepper", "🖤", "The original pup with a playful dark-bandana theme."),
+    PuppyStyle("midnight", "Midnight", "🌙", "A moonlit version of the original pup.", redeemOnly = true),
+    PuppyStyle("cloud", "Cloud", "☁️", "A dreamy cloud version of the original pup.", redeemOnly = true)
 )
 
 val UPGRADES = listOf(
@@ -65,6 +70,7 @@ data class GameState(
     val clickPower: Int = 1,
     val autoPerSecond: Int = 0,
     val upgrades: Map<String, Int> = emptyMap(),
+    val upgradeTickets: Int = 1,
     val accessory: String = "None",
     val pupEyeStrikes: Int = 0,
     val cooldownUntilMs: Long = 0,
@@ -101,9 +107,12 @@ data class GameState(
             else -> "Very tired"
         }
 
-    // Kept for compatibility with older UI code. Combos no longer increase tap rewards.
+    // Kept for compatibility with older UI. Combos NEVER increase tap rewards.
     val comboMultiplier: Int
         get() = 1
+
+    val fairPlayStatus: String
+        get() = if (System.currentTimeMillis() < cooldownUntilMs) "Cooldown active" else "Fair play active"
 }
 
 data class Achievement(
@@ -133,27 +142,34 @@ data class Mission(
     val title: String,
     val description: String,
     val reward: Long,
+    val ticketReward: Int = 0,
     val complete: (GameState) -> Boolean
 )
 
 val MISSIONS = listOf(
-    Mission("tap_50", "Fast Paws", "Tap your puppy 50 times.", 250) { it.totalTaps >= 50 },
+    Mission("tap_50", "Fast Paws", "Tap your puppy 50 times.", 250, ticketReward = 1) { it.totalTaps >= 50 },
     Mission("combo_15", "Stay in the Groove", "Reach a 15 tap combo.", 400) { it.bestCombo >= 15 },
-    Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500) { it.careActions >= 5 },
-    Mission("level_5", "Growing Up", "Reach level 5.", 750) { it.level >= 5 },
-    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
+    Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500, ticketReward = 1) { it.careActions >= 5 },
+    Mission("level_5", "Growing Up", "Reach level 5.", 750, ticketReward = 1) { it.level >= 5 },
+    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000, ticketReward = 1) { it.autoPerSecond >= 25 }
 )
 
 data class RedeemOutcome(val success: Boolean, val message: String)
 
+/** Slightly friendlier than the old 1.58 growth curve without trivializing progression. */
 fun upgradeCost(upgrade: Upgrade, owned: Int): Long {
-    val scaled = upgrade.baseCost.toDouble() * 1.58.pow(owned.toDouble())
+    val scaled = upgrade.baseCost.toDouble() * 1.54.pow(owned.toDouble())
     return scaled.toLong().coerceAtLeast(upgrade.baseCost)
 }
+
+fun ticketUpgradeCost(upgrade: Upgrade, owned: Int): Long =
+    (upgradeCost(upgrade, owned) * 0.80).toLong().coerceAtLeast(1L)
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val recentTapTimes = ArrayDeque<Long>()
+    private var suspicionHits = 0
+    private var suspicionWindowStartedMs = 0L
 
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<GameState> = _state.asStateFlow()
@@ -188,21 +204,38 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         if (now < current.cooldownUntilMs) return
 
         recentTapTimes.addLast(now)
-        while (recentTapTimes.isNotEmpty() && recentTapTimes.first < now - 1_000) {
+        while (recentTapTimes.isNotEmpty() && recentTapTimes.first < now - FAIR_PLAY_HISTORY_MS) {
             recentTapTimes.removeFirst()
         }
 
-        if (recentTapTimes.size > MAX_TAPS_PER_SECOND) {
-            recentTapTimes.clear()
-            _state.update {
-                it.copy(
-                    pupEyeStrikes = it.pupEyeStrikes + 1,
-                    cooldownUntilMs = now + PUP_EYE_COOLDOWN_MS,
+        if (looksAutomated(now)) {
+            if (suspicionWindowStartedMs == 0L || now - suspicionWindowStartedMs > SUSPICION_CONFIRM_WINDOW_MS) {
+                suspicionWindowStartedMs = now
+                suspicionHits = 1
+            } else {
+                suspicionHits += 1
+            }
+
+            // One suspicious sample is treated as a warning only. Two machine-like
+            // samples close together are required before any cooldown is applied.
+            if (suspicionHits >= REQUIRED_SUSPICION_HITS) {
+                recentTapTimes.clear()
+                suspicionHits = 0
+                suspicionWindowStartedMs = 0L
+                val nextStrike = current.pupEyeStrikes + 1
+                val cooldown = (BASE_FAIR_PLAY_COOLDOWN_MS + (nextStrike - 1) * 2_000L)
+                    .coerceAtMost(MAX_FAIR_PLAY_COOLDOWN_MS)
+                _state.value = current.copy(
+                    pupEyeStrikes = nextStrike,
+                    cooldownUntilMs = now + cooldown,
                     combo = 0
                 )
+                saveState()
+                return
             }
-            saveState()
-            return
+        } else if (suspicionWindowStartedMs != 0L && now - suspicionWindowStartedMs > SUSPICION_CONFIRM_WINDOW_MS) {
+            suspicionHits = 0
+            suspicionWindowStartedMs = 0L
         }
 
         val nextCombo = if (now - current.lastTapMs <= COMBO_CHAIN_MS) {
@@ -211,7 +244,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             1
         }
 
-        // Tap reward is intentionally controlled ONLY by Shop CLICK upgrades.
+        // Tap reward is controlled ONLY by CLICK upgrades bought in the Shop.
         val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
@@ -230,16 +263,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun buyUpgrade(upgrade: Upgrade) {
+    /** Legacy call used by older screens. */
+    fun buyUpgrade(upgrade: Upgrade) = buyUpgrade(upgrade, useTicket = false)
+
+    fun buyUpgrade(upgrade: Upgrade, useTicket: Boolean) {
         val current = _state.value
         val owned = current.upgrades[upgrade.id] ?: 0
-        val cost = upgradeCost(upgrade, owned)
+        val ticketApplied = useTicket && current.upgradeTickets > 0
+        val cost = if (ticketApplied) ticketUpgradeCost(upgrade, owned) else upgradeCost(upgrade, owned)
         if (current.treats < cost) return
 
         val nextUpgrades = current.upgrades.toMutableMap().apply { this[upgrade.id] = owned + 1 }
         _state.value = current.copy(
             treats = current.treats - cost,
             upgrades = nextUpgrades,
+            upgradeTickets = current.upgradeTickets - if (ticketApplied) 1 else 0,
             clickPower = current.clickPower + if (upgrade.effect == UpgradeEffect.CLICK) upgrade.amount else 0,
             autoPerSecond = current.autoPerSecond + if (upgrade.effect == UpgradeEffect.AUTO) upgrade.amount else 0,
             happiness = (current.happiness + 2).coerceAtMost(100),
@@ -321,6 +359,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = current.copy(
             treats = safeAdd(current.treats, reward),
             lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            upgradeTickets = (current.upgradeTickets + 1).coerceAtMost(MAX_UPGRADE_TICKETS),
             lastDailyClaimDay = today,
             happiness = (current.happiness + 10).coerceAtMost(100)
         )
@@ -333,6 +372,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = current.copy(
             treats = safeAdd(current.treats, mission.reward),
             lifetimeTreats = safeAdd(current.lifetimeTreats, mission.reward),
+            upgradeTickets = (current.upgradeTickets + mission.ticketReward).coerceAtMost(MAX_UPGRADE_TICKETS),
             claimedMissions = current.claimedMissions + mission.id
         )
         saveState()
@@ -374,48 +414,32 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         saveState()
     }
 
+    /**
+     * Offline promo redemption. The APK stores only salted SHA-256 digests of
+     * promo codes, not the plain-text codes. Rewards never modify clickPower.
+     */
     fun redeemCode(rawCode: String): RedeemOutcome {
-        val verification = RedeemCodeManager.verify(rawCode)
-        if (verification is RedeemVerification.Invalid) {
-            return RedeemOutcome(false, verification.reason)
-        }
+        val reward = LocalRedeemCodes.find(rawCode)
+            ?: return RedeemOutcome(false, "That Puppy Code is invalid or unavailable in this version.")
 
-        val payload = (verification as RedeemVerification.Valid).payload
         val current = _state.value
-        if (payload.id in current.redeemedCodeIds) {
-            return RedeemOutcome(false, "This code has already been redeemed on this device.")
+        if (reward.id in current.redeemedCodeIds) {
+            return RedeemOutcome(false, "That Puppy Code has already been redeemed on this device.")
         }
 
-        val updated = when (payload.rewardType) {
-            "TREATS" -> {
-                if (payload.amount !in 1..MAX_REDEEM_TREATS) {
-                    return RedeemOutcome(false, "Treat reward is outside the allowed range.")
-                }
-                current.copy(
-                    treats = safeAdd(current.treats, payload.amount),
-                    lifetimeTreats = safeAdd(current.lifetimeTreats, payload.amount),
-                    redeemedCodeIds = current.redeemedCodeIds + payload.id
-                )
-            }
-            "PUPPY" -> {
-                val style = PUPPY_STYLES.firstOrNull { it.id == payload.value }
-                    ?: return RedeemOutcome(false, "This puppy reward is not supported by this app version.")
-                current.copy(
-                    unlockedPuppies = current.unlockedPuppies + style.id,
-                    puppyStyle = style.id,
-                    redeemedCodeIds = current.redeemedCodeIds + payload.id
-                )
-            }
-            else -> return RedeemOutcome(false, "This reward type is not supported.")
-        }
+        val puppy = reward.puppyId?.let { id -> PUPPY_STYLES.firstOrNull { it.id == id } }
+        val nextUnlocked = if (puppy != null) current.unlockedPuppies + puppy.id else current.unlockedPuppies
 
-        _state.value = updated
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, reward.treats),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, reward.treats),
+            upgradeTickets = (current.upgradeTickets + reward.tickets).coerceAtMost(MAX_UPGRADE_TICKETS),
+            unlockedPuppies = nextUnlocked,
+            puppyStyle = puppy?.id ?: current.puppyStyle,
+            redeemedCodeIds = current.redeemedCodeIds + reward.id
+        )
         saveState()
-        return when (payload.rewardType) {
-            "TREATS" -> RedeemOutcome(true, "Redeemed ${payload.amount} treats!")
-            "PUPPY" -> RedeemOutcome(true, "New puppy unlocked!")
-            else -> RedeemOutcome(true, "Code redeemed.")
-        }
+        return RedeemOutcome(true, reward.message)
     }
 
     fun dismissOfflineBonus() {
@@ -426,8 +450,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val keep = _state.value
         prefs.edit().clear().apply()
         recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
         _state.value = GameState(
             upgrades = UPGRADES.associate { it.id to 0 },
+            upgradeTickets = 1,
             unlockedPuppies = keep.unlockedPuppies,
             redeemedCodeIds = keep.redeemedCodeIds,
             hapticsEnabled = keep.hapticsEnabled,
@@ -435,6 +462,31 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             compactNumbers = keep.compactNumbers
         )
         saveState()
+    }
+
+    private fun looksAutomated(now: Long): Boolean {
+        val taps = recentTapTimes.filter { it >= now - FAIR_PLAY_SAMPLE_MS }
+        if (taps.size < MIN_FAIR_PLAY_SAMPLE_TAPS) return false
+
+        // A truly extreme sustained rate is suspicious regardless of timing shape.
+        if (taps.size >= EXTREME_TAPS_IN_SAMPLE) return true
+
+        val intervals = taps.zipWithNext { a, b -> (b - a).toDouble() }
+        if (intervals.size < MIN_INTERVAL_SAMPLE) return false
+
+        // Repeated sub-22 ms taps are outside reasonable touch-screen human input.
+        if (intervals.takeLast(8).count { it <= IMPOSSIBLE_INTERVAL_MS } >= 6) return true
+
+        val mean = intervals.average()
+        if (mean <= 0.0 || mean > MACHINE_MEAN_MAX_MS) return false
+
+        val variance = intervals.sumOf { (it - mean) * (it - mean) } / intervals.size
+        val stdDev = sqrt(variance)
+        val nearMeanRatio = intervals.count { abs(it - mean) <= MACHINE_NEAR_MEAN_MS }.toDouble() / intervals.size
+
+        // Human fast tapping is noisy. Auto clickers tend to repeat nearly identical
+        // intervals for a sustained run, so regularity matters more than raw speed.
+        return stdDev <= MACHINE_STDDEV_MAX_MS && nearMeanRatio >= MACHINE_REGULARITY_RATIO
     }
 
     private fun addTreats(amount: Long) {
@@ -495,8 +547,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             clickPower = clickPower,
             autoPerSecond = autoPerSecond,
             upgrades = owned,
+            upgradeTickets = prefs.getInt(KEY_UPGRADE_TICKETS, 1).coerceIn(0, MAX_UPGRADE_TICKETS),
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
             pupEyeStrikes = prefs.getInt(KEY_STRIKES, 0).coerceAtLeast(0),
+            cooldownUntilMs = prefs.getLong(KEY_COOLDOWN_UNTIL, 0L).coerceAtLeast(0L),
             offlineEarned = offlineEarned,
             happiness = (savedHappiness - elapsedMinutes.toInt()).coerceAtLeast(0),
             fullness = (savedFullness - elapsedMinutes.toInt()).coerceAtLeast(0),
@@ -523,8 +577,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             putStringSet(KEY_UNLOCKED_PUPPIES, current.unlockedPuppies.toSet())
             putLong(KEY_TREATS, current.treats)
             putLong(KEY_LIFETIME, current.lifetimeTreats)
+            putInt(KEY_UPGRADE_TICKETS, current.upgradeTickets)
             putString(KEY_ACCESSORY, current.accessory)
             putInt(KEY_STRIKES, current.pupEyeStrikes)
+            putLong(KEY_COOLDOWN_UNTIL, current.cooldownUntilMs)
             putLong(KEY_LAST_SEEN, System.currentTimeMillis())
             putInt(KEY_HAPPINESS, current.happiness)
             putInt(KEY_FULLNESS, current.fullness)
@@ -562,16 +618,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val ACCESSORIES = listOf("None", "Bandana", "Bow", "Crown")
         const val FEED_COST = 20L
         const val PARK_ADVENTURE_MS = 60_000L
-        private const val MAX_REDEEM_TREATS = 1_000_000_000L
+        const val TICKET_DISCOUNT_PERCENT = 20
 
+        private const val MAX_UPGRADE_TICKETS = 99
         private const val PREFS_NAME = "puppy_clicker_save"
         private const val KEY_NAME = "puppy_name"
         private const val KEY_PUPPY_STYLE = "puppy_style"
         private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"
         private const val KEY_TREATS = "treats"
         private const val KEY_LIFETIME = "lifetime_treats"
+        private const val KEY_UPGRADE_TICKETS = "upgrade_tickets"
         private const val KEY_ACCESSORY = "accessory"
         private const val KEY_STRIKES = "pup_eye_strikes"
+        private const val KEY_COOLDOWN_UNTIL = "fair_play_cooldown_until"
         private const val KEY_LAST_SEEN = "last_seen"
         private const val KEY_HAPPINESS = "happiness"
         private const val KEY_FULLNESS = "fullness"
@@ -587,11 +646,26 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_HAPTICS = "setting_haptics"
         private const val KEY_ANIMATIONS = "setting_animations"
         private const val KEY_COMPACT_NUMBERS = "setting_compact_numbers"
-        private const val MAX_TAPS_PER_SECOND = 24
-        private const val PUP_EYE_COOLDOWN_MS = 2_500L
+
         private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
         private const val COMBO_CHAIN_MS = 900L
         private const val COMBO_TIMEOUT_MS = 1_600L
+
+        // Fair-play thresholds intentionally favor avoiding false positives.
+        private const val FAIR_PLAY_HISTORY_MS = 3_000L
+        private const val FAIR_PLAY_SAMPLE_MS = 2_000L
+        private const val MIN_FAIR_PLAY_SAMPLE_TAPS = 12
+        private const val MIN_INTERVAL_SAMPLE = 11
+        private const val EXTREME_TAPS_IN_SAMPLE = 48
+        private const val IMPOSSIBLE_INTERVAL_MS = 22.0
+        private const val MACHINE_MEAN_MAX_MS = 115.0
+        private const val MACHINE_STDDEV_MAX_MS = 5.5
+        private const val MACHINE_NEAR_MEAN_MS = 7.0
+        private const val MACHINE_REGULARITY_RATIO = 0.82
+        private const val REQUIRED_SUSPICION_HITS = 2
+        private const val SUSPICION_CONFIRM_WINDOW_MS = 5_000L
+        private const val BASE_FAIR_PLAY_COOLDOWN_MS = 4_000L
+        private const val MAX_FAIR_PLAY_COOLDOWN_MS = 20_000L
     }
 }
 
