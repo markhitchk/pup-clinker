@@ -8,3 +8,9 @@
 .externalNativeBuild/
 .cxx/
 app/build/
+
+# Never commit Android signing credentials.
+*.jks
+*.keystore
+*.p12
+signing.properties
