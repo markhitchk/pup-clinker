@@ -28,6 +28,23 @@ data class Upgrade(
     val emoji: String
 )
 
+data class PuppyStyle(
+    val id: String,
+    val name: String,
+    val emoji: String,
+    val description: String,
+    val redeemOnly: Boolean = false
+)
+
+val PUPPY_STYLES = listOf(
+    PuppyStyle("classic", "Buddy", "🐶", "The original Puppy Clicker pup."),
+    PuppyStyle("golden", "Sunny", "🦮", "A cheerful golden pup."),
+    PuppyStyle("poodle", "Mochi", "🐩", "A fluffy little poodle."),
+    PuppyStyle("spotty", "Pepper", "🐕", "A playful spotted pup."),
+    PuppyStyle("midnight", "Midnight", "🐕‍🦺", "A rare night-sky pup.", redeemOnly = true),
+    PuppyStyle("cloud", "Cloud", "☁️🐶", "A soft limited-edition cloud pup.", redeemOnly = true)
+)
+
 val UPGRADES = listOf(
     Upgrade("better_treats", "Better Treats", "+1 treat per tap", 25, UpgradeEffect.CLICK, 1, "🦴"),
     Upgrade("chew_toy", "Chew Toy", "+1 treat every second", 75, UpgradeEffect.AUTO, 1, "🧸"),
@@ -41,6 +58,8 @@ val UPGRADES = listOf(
 
 data class GameState(
     val puppyName: String = "Buddy",
+    val puppyStyle: String = "classic",
+    val unlockedPuppies: Set<String> = DEFAULT_UNLOCKED_PUPPIES,
     val treats: Long = 0,
     val lifetimeTreats: Long = 0,
     val clickPower: Int = 1,
@@ -61,7 +80,11 @@ data class GameState(
     val parkActive: Boolean = false,
     val parkReadyAtMs: Long = 0,
     val lastDailyClaimDay: Long = Long.MIN_VALUE,
-    val claimedMissions: Set<String> = emptySet()
+    val claimedMissions: Set<String> = emptySet(),
+    val redeemedCodeIds: Set<String> = emptySet(),
+    val hapticsEnabled: Boolean = true,
+    val animationsEnabled: Boolean = true,
+    val compactNumbers: Boolean = true
 ) {
     val level: Int
         get() = 1 + sqrt(lifetimeTreats.coerceAtLeast(0).toDouble() / 100.0).toInt()
@@ -78,8 +101,9 @@ data class GameState(
             else -> "Very tired"
         }
 
+    // Kept for compatibility with older UI code. Combos no longer increase tap rewards.
     val comboMultiplier: Int
-        get() = (1 + (combo / 10)).coerceIn(1, 4)
+        get() = 1
 }
 
 data class Achievement(
@@ -95,7 +119,7 @@ val ACHIEVEMENTS = listOf(
     Achievement("snack_stash", "Snack Stash", "Earn 100 lifetime treats.", "🍪") { it.lifetimeTreats >= 100 },
     Achievement("puppy_pro", "Puppy Pro", "Earn 1,000 lifetime treats.", "🏆") { it.lifetimeTreats >= 1_000 },
     Achievement("combo_hero", "Combo Hero", "Reach a 20 tap combo.", "🔥") { it.bestCombo >= 20 },
-    Achievement("big_taps", "Big Taps", "Reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
+    Achievement("big_taps", "Big Taps", "Buy enough Shop upgrades to reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
     Achievement("auto_pup", "Automatic Pup", "Reach 10 treats per second.", "⏱️") { it.autoPerSecond >= 10 },
     Achievement("happy_home", "Happy Home", "Keep all three care meters at 90 or higher.", "💖") {
         it.happiness >= 90 && it.fullness >= 90 && it.energy >= 90
@@ -120,6 +144,8 @@ val MISSIONS = listOf(
     Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
 )
 
+data class RedeemOutcome(val success: Boolean, val message: String)
+
 fun upgradeCost(upgrade: Upgrade, owned: Int): Long {
     val scaled = upgrade.baseCost.toDouble() * 1.58.pow(owned.toDouble())
     return scaled.toLong().coerceAtLeast(upgrade.baseCost)
@@ -139,8 +165,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 delay(1_000)
                 seconds += 1
                 val now = System.currentTimeMillis()
-
                 val current = _state.value
+
                 if (current.autoPerSecond > 0) {
                     val moodBonus = if (current.careScore >= 80) current.autoPerSecond / 5 else 0
                     addTreats((current.autoPerSecond + moodBonus).toLong())
@@ -150,13 +176,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(combo = 0) }
                 }
 
-                if (seconds % 60 == 0) {
-                    decayNeeds()
-                }
-
-                if (seconds % 5 == 0) {
-                    saveState()
-                }
+                if (seconds % 60 == 0) decayNeeds()
+                if (seconds % 5 == 0) saveState()
             }
         }
     }
@@ -189,8 +210,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             1
         }
-        val multiplier = (1 + nextCombo / 10).coerceIn(1, 4)
-        val reward = safeMultiply(current.clickPower.toLong(), multiplier.toLong())
+
+        // Tap reward is intentionally controlled ONLY by Shop CLICK upgrades.
+        val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
         val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
@@ -214,10 +236,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val cost = upgradeCost(upgrade, owned)
         if (current.treats < cost) return
 
-        val nextUpgrades = current.upgrades.toMutableMap().apply {
-            this[upgrade.id] = owned + 1
-        }
-
+        val nextUpgrades = current.upgrades.toMutableMap().apply { this[upgrade.id] = owned + 1 }
         _state.value = current.copy(
             treats = current.treats - cost,
             upgrades = nextUpgrades,
@@ -326,10 +345,77 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         saveState()
     }
 
+    fun setPuppyStyle(styleId: String) {
+        val current = _state.value
+        if (styleId !in current.unlockedPuppies) return
+        if (PUPPY_STYLES.none { it.id == styleId }) return
+        _state.value = current.copy(puppyStyle = styleId)
+        saveState()
+    }
+
     fun setAccessory(accessory: String) {
         if (accessory !in ACCESSORIES) return
         _state.update { it.copy(accessory = accessory) }
         saveState()
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        _state.update { it.copy(hapticsEnabled = enabled) }
+        saveState()
+    }
+
+    fun setAnimationsEnabled(enabled: Boolean) {
+        _state.update { it.copy(animationsEnabled = enabled) }
+        saveState()
+    }
+
+    fun setCompactNumbers(enabled: Boolean) {
+        _state.update { it.copy(compactNumbers = enabled) }
+        saveState()
+    }
+
+    fun redeemCode(rawCode: String): RedeemOutcome {
+        val verification = RedeemCodeManager.verify(rawCode)
+        if (verification is RedeemVerification.Invalid) {
+            return RedeemOutcome(false, verification.reason)
+        }
+
+        val payload = (verification as RedeemVerification.Valid).payload
+        val current = _state.value
+        if (payload.id in current.redeemedCodeIds) {
+            return RedeemOutcome(false, "This code has already been redeemed on this device.")
+        }
+
+        val updated = when (payload.rewardType) {
+            "TREATS" -> {
+                if (payload.amount !in 1..MAX_REDEEM_TREATS) {
+                    return RedeemOutcome(false, "Treat reward is outside the allowed range.")
+                }
+                current.copy(
+                    treats = safeAdd(current.treats, payload.amount),
+                    lifetimeTreats = safeAdd(current.lifetimeTreats, payload.amount),
+                    redeemedCodeIds = current.redeemedCodeIds + payload.id
+                )
+            }
+            "PUPPY" -> {
+                val style = PUPPY_STYLES.firstOrNull { it.id == payload.value }
+                    ?: return RedeemOutcome(false, "This puppy reward is not supported by this app version.")
+                current.copy(
+                    unlockedPuppies = current.unlockedPuppies + style.id,
+                    puppyStyle = style.id,
+                    redeemedCodeIds = current.redeemedCodeIds + payload.id
+                )
+            }
+            else -> return RedeemOutcome(false, "This reward type is not supported.")
+        }
+
+        _state.value = updated
+        saveState()
+        return when (payload.rewardType) {
+            "TREATS" -> RedeemOutcome(true, "Redeemed ${payload.amount} treats!")
+            "PUPPY" -> RedeemOutcome(true, "New puppy unlocked!")
+            else -> RedeemOutcome(true, "Code redeemed.")
+        }
     }
 
     fun dismissOfflineBonus() {
@@ -337,9 +423,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetGame() {
+        val keep = _state.value
         prefs.edit().clear().apply()
         recentTapTimes.clear()
-        _state.value = GameState(upgrades = UPGRADES.associate { it.id to 0 })
+        _state.value = GameState(
+            upgrades = UPGRADES.associate { it.id to 0 },
+            unlockedPuppies = keep.unlockedPuppies,
+            redeemedCodeIds = keep.redeemedCodeIds,
+            hapticsEnabled = keep.hapticsEnabled,
+            animationsEnabled = keep.animationsEnabled,
+            compactNumbers = keep.compactNumbers
+        )
         saveState()
     }
 
@@ -368,30 +462,34 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val owned = UPGRADES.associate { upgrade ->
             upgrade.id to prefs.getInt("upgrade_${upgrade.id}", 0).coerceAtLeast(0)
         }
-
         val clickPower = 1 + UPGRADES
             .filter { it.effect == UpgradeEffect.CLICK }
             .sumOf { it.amount * (owned[it.id] ?: 0) }
-
         val autoPerSecond = UPGRADES
             .filter { it.effect == UpgradeEffect.AUTO }
             .sumOf { it.amount * (owned[it.id] ?: 0) }
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
-        val elapsedSeconds = ((now - lastSeen).coerceAtLeast(0) / 1_000)
-            .coerceAtMost(MAX_OFFLINE_SECONDS)
+        val elapsedSeconds = ((now - lastSeen).coerceAtLeast(0) / 1_000).coerceAtMost(MAX_OFFLINE_SECONDS)
         val offlineEarned = safeMultiply(autoPerSecond.toLong(), elapsedSeconds)
         val savedTreats = prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0)
         val savedLifetime = prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0)
         val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000).coerceAtMost(180)
-
         val savedHappiness = prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100)
         val savedFullness = prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100)
         val savedEnergy = prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100)
 
+        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_UNLOCKED_PUPPIES)?.toSet()
+            ?: DEFAULT_UNLOCKED_PUPPIES) + DEFAULT_UNLOCKED_PUPPIES
+        val selectedStyle = prefs.getString(KEY_PUPPY_STYLE, "classic")
+            ?.takeIf { it in unlocked && PUPPY_STYLES.any { style -> style.id == it } }
+            ?: "classic"
+
         return GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
+            puppyStyle = selectedStyle,
+            unlockedPuppies = unlocked,
             treats = safeAdd(savedTreats, offlineEarned),
             lifetimeTreats = safeAdd(savedLifetime, offlineEarned),
             clickPower = clickPower,
@@ -409,7 +507,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             parkActive = prefs.getBoolean(KEY_PARK_ACTIVE, false),
             parkReadyAtMs = prefs.getLong(KEY_PARK_READY_AT, 0),
             lastDailyClaimDay = prefs.getLong(KEY_DAILY_DAY, Long.MIN_VALUE),
-            claimedMissions = prefs.getStringSet(KEY_CLAIMED_MISSIONS, emptySet())?.toSet() ?: emptySet()
+            claimedMissions = prefs.getStringSet(KEY_CLAIMED_MISSIONS, emptySet())?.toSet() ?: emptySet(),
+            redeemedCodeIds = prefs.getStringSet(KEY_REDEEMED_CODES, emptySet())?.toSet() ?: emptySet(),
+            hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, true),
+            animationsEnabled = prefs.getBoolean(KEY_ANIMATIONS, true),
+            compactNumbers = prefs.getBoolean(KEY_COMPACT_NUMBERS, true)
         )
     }
 
@@ -417,6 +519,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val current = _state.value
         prefs.edit().apply {
             putString(KEY_NAME, current.puppyName)
+            putString(KEY_PUPPY_STYLE, current.puppyStyle)
+            putStringSet(KEY_UNLOCKED_PUPPIES, current.unlockedPuppies.toSet())
             putLong(KEY_TREATS, current.treats)
             putLong(KEY_LIFETIME, current.lifetimeTreats)
             putString(KEY_ACCESSORY, current.accessory)
@@ -432,6 +536,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             putLong(KEY_PARK_READY_AT, current.parkReadyAtMs)
             putLong(KEY_DAILY_DAY, current.lastDailyClaimDay)
             putStringSet(KEY_CLAIMED_MISSIONS, current.claimedMissions.toSet())
+            putStringSet(KEY_REDEEMED_CODES, current.redeemedCodeIds.toSet())
+            putBoolean(KEY_HAPTICS, current.hapticsEnabled)
+            putBoolean(KEY_ANIMATIONS, current.animationsEnabled)
+            putBoolean(KEY_COMPACT_NUMBERS, current.compactNumbers)
             current.upgrades.forEach { (id, count) -> putInt("upgrade_$id", count) }
         }.apply()
     }
@@ -454,9 +562,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val ACCESSORIES = listOf("None", "Bandana", "Bow", "Crown")
         const val FEED_COST = 20L
         const val PARK_ADVENTURE_MS = 60_000L
+        private const val MAX_REDEEM_TREATS = 1_000_000_000L
 
         private const val PREFS_NAME = "puppy_clicker_save"
         private const val KEY_NAME = "puppy_name"
+        private const val KEY_PUPPY_STYLE = "puppy_style"
+        private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"
         private const val KEY_TREATS = "treats"
         private const val KEY_LIFETIME = "lifetime_treats"
         private const val KEY_ACCESSORY = "accessory"
@@ -472,6 +583,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_PARK_READY_AT = "park_ready_at"
         private const val KEY_DAILY_DAY = "daily_claim_day"
         private const val KEY_CLAIMED_MISSIONS = "claimed_missions"
+        private const val KEY_REDEEMED_CODES = "redeemed_code_ids"
+        private const val KEY_HAPTICS = "setting_haptics"
+        private const val KEY_ANIMATIONS = "setting_animations"
+        private const val KEY_COMPACT_NUMBERS = "setting_compact_numbers"
         private const val MAX_TAPS_PER_SECOND = 24
         private const val PUP_EYE_COOLDOWN_MS = 2_500L
         private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
@@ -479,3 +594,5 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val COMBO_TIMEOUT_MS = 1_600L
     }
 }
+
+private val DEFAULT_UNLOCKED_PUPPIES = setOf("classic", "golden", "poodle", "spotty")
