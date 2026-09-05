@@ -28,34 +28,24 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK with v4 signing
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Build unsigned release APK
+        run: gradle :app:assembleRelease --stacktrace
 
-      - name: Verify APK and v4 sidecar
+      - name: Export APK signing tool
         shell: bash
         run: |
           set -euo pipefail
-          OUT="app/build/outputs/apk/debug"
-          APK="$OUT/app-debug.apk"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-
-          echo "Build output:"
-          ls -lah "$OUT"
-
-          test -s "$APK"
           test -x "$APKSIGNER"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          mkdir -p build-tools-export
+          cp "$(dirname "$APKSIGNER")/lib/apksigner.jar" build-tools-export/apksigner.jar
+          ls -lah app/build/outputs/apk/release build-tools-export
 
-          IDSIG="$(find "$OUT" -maxdepth 1 -type f -name '*.idsig' -print -quit)"
-          test -n "$IDSIG"
-          test -s "$IDSIG"
-          echo "APK Signature Scheme v4 sidecar: $IDSIG"
-
-      - name: Upload v4-signed APK
+      - name: Upload unsigned release and signing tool
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-v4-signed
+          name: puppy-clicker-update-prep
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/*.idsig
+            app/build/outputs/apk/release/*.apk
+            build-tools-export/apksigner.jar
           if-no-files-found: error
