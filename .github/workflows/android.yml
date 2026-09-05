@@ -34,6 +34,25 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Export Android apksigner tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$APKSIGNER"
+          TOOL_DIR="$RUNNER_TEMP/apksigner-tool"
+          mkdir -p "$TOOL_DIR/lib"
+          cp "$APKSIGNER" "$TOOL_DIR/apksigner"
+          cp "$(dirname "$APKSIGNER")/lib/apksigner.jar" "$TOOL_DIR/lib/apksigner.jar"
+          chmod +x "$TOOL_DIR/apksigner"
+
+      - name: Upload Android apksigner tool
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apksigner-tool
+          path: ${{ runner.temp }}/apksigner-tool
+          if-no-files-found: error
+
       - name: Prepare permanent update signing
         id: signing
         shell: bash
