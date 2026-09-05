@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,6 +17,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,14 +69,26 @@ private fun PuppyClickerApp(viewModel: GameViewModel) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                tonalElevation = 0.dp,
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+            ) {
                 AppTab.entries.forEach { item ->
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
                         icon = { Text(item.emoji, fontSize = 20.sp) },
-                        label = { Text(item.label) }
+                        label = {
+                            Text(
+                                item.label,
+                                fontWeight = if (tab == item) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                        )
                     )
                 }
             }
@@ -86,8 +100,9 @@ private fun PuppyClickerApp(viewModel: GameViewModel) {
                 .background(
                     Brush.verticalGradient(
                         listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
                             MaterialTheme.colorScheme.background,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)
                         )
                     )
                 )
@@ -118,214 +133,444 @@ private fun ScreenHeader(title: String, subtitle: String) {
 
 @Composable
 private fun PlayScreen(state: GameState, viewModel: GameViewModel) {
+    val today = LocalDate.now().toEpochDay()
+    val dailyAvailable = state.lastDailyClaimDay != today
+    val dailyReward = 100L + state.level * 25L
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painter = painterResource(R.drawable.source_logo),
-            contentDescription = "Original Puppy Clicker logo",
-            modifier = Modifier.fillMaxWidth().height(72.dp),
-            contentScale = ContentScale.Fit
-        )
-        Text(
-            "Original Puppy Clicker • Android Edition",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(14.dp))
+        GameHeader(state)
+        Spacer(Modifier.height(12.dp))
 
         if (state.offlineEarned > 0) {
-            AssistChip(
-                onClick = viewModel::dismissOfflineBonus,
-                label = { Text("Welcome back! +${formatNumber(state.offlineEarned)} offline treats ✨") }
-            )
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.13f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = viewModel::dismissOfflineBonus)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("✨", fontSize = 20.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Welcome back · +${formatNumber(state.offlineEarned)} treats",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text("×", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             Spacer(Modifier.height(10.dp))
         }
 
+        TreatHud(state)
+        Spacer(Modifier.height(12.dp))
+        PuppyPlayground(state, viewModel::tapPuppy)
+        Spacer(Modifier.height(12.dp))
+
+        QuickActions(
+            state = state,
+            dailyAvailable = dailyAvailable,
+            dailyReward = dailyReward,
+            viewModel = viewModel
+        )
+
+        Spacer(Modifier.height(12.dp))
+        ProgressStrip(state)
+        Spacer(Modifier.height(12.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            StatCard("Treats", formatNumber(state.treats), "🍪", Modifier.weight(1f))
-            StatCard("Per tap", formatNumber(state.clickPower.toLong()), "👆", Modifier.weight(1f))
-            StatCard("Per sec", formatNumber(state.autoPerSecond.toLong()), "⏱️", Modifier.weight(1f))
+            CompactInfoCard(
+                emoji = "🎯",
+                title = "Missions",
+                value = "${MISSIONS.count { it.complete(state) && it.id !in state.claimedMissions }} ready",
+                modifier = Modifier.weight(1f)
+            )
+            CompactInfoCard(
+                emoji = "🏆",
+                title = "Best combo",
+                value = state.bestCombo.toString(),
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(Modifier.height(12.dp))
-        LevelCard(state)
-        Spacer(Modifier.height(10.dp))
-        CareSummaryCard(state)
-        Spacer(Modifier.height(18.dp))
-        PuppyButton(state, viewModel::tapPuppy)
-        Spacer(Modifier.height(10.dp))
-
-        val inCooldown = System.currentTimeMillis() < state.cooldownUntilMs
-        Text(
-            when {
-                inCooldown -> "Pup Eye cooldown active"
-                state.combo >= 10 -> "🔥 ${state.combo} combo • x${state.comboMultiplier} treats"
-                else -> "Tap ${state.puppyName}! +${formatNumber(state.clickPower.toLong())} treats"
-            },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            "Best combo ${state.bestCombo} • ${formatNumber(state.totalTaps)} total taps",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(16.dp))
-        DailyRewardCard(state, viewModel)
-        Spacer(Modifier.height(10.dp))
         PupEyeCard(state)
         Spacer(Modifier.height(18.dp))
     }
 }
 
 @Composable
-private fun PuppyButton(state: GameState, onTap: () -> Unit) {
+private fun GameHeader(state: GameState) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            tonalElevation = 0.dp
+        ) {
+            Image(
+                painter = painterResource(R.drawable.source_logo),
+                contentDescription = "Puppy Clicker logo",
+                modifier = Modifier
+                    .padding(6.dp)
+                    .size(54.dp),
+                contentScale = ContentScale.Fit
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Puppy Clicker",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                "${state.puppyName} · ${state.mood}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("LVL", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(state.level.toString(), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TreatHud(state: GameState) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("🍪", fontSize = 28.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Treats", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    formatNumber(state.treats),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            HudDivider()
+            HudMetric("👆", formatNumber(state.clickPower.toLong()), "tap")
+            HudDivider()
+            HudMetric("⏱️", formatNumber(state.autoPerSecond.toLong()), "sec")
+        }
+    }
+}
+
+@Composable
+private fun HudDivider() {
+    Box(
+        Modifier
+            .padding(horizontal = 10.dp)
+            .width(1.dp)
+            .height(34.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+    )
+}
+
+@Composable
+private fun HudMetric(emoji: String, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(emoji, fontSize = 15.sp)
+            Spacer(Modifier.width(3.dp))
+            Text(value, fontWeight = FontWeight.Black)
+        }
+        Text("per $label", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PuppyPlayground(state: GameState, onTap: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.92f else 1f,
+        targetValue = if (pressed) 0.94f else 1f,
         animationSpec = spring(),
         label = "puppyScale"
     )
     val haptic = LocalHapticFeedback.current
+    val inCooldown = System.currentTimeMillis() < state.cooldownUntilMs
 
-    Box(
+    Surface(
         modifier = Modifier
-            .size(245.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f),
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+            .fillMaxWidth()
+            .height(390.dp),
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        tonalElevation = 0.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        )
                     )
                 )
-            )
-            .clickable(interactionSource = interactionSource, indication = null) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onTap()
-            },
-        contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 14.dp, start = 14.dp, end = 14.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                NeedPill("💖", state.happiness, Modifier.weight(1f))
+                NeedPill("🍖", state.fullness, Modifier.weight(1f))
+                NeedPill("⚡", state.energy, Modifier.weight(1f))
+            }
+
+            if (state.combo >= 5) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 64.dp, end = 16.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f)
+                ) {
+                    Text(
+                        "🔥 ${state.combo} · x${state.comboMultiplier}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 10.dp)
+                    .size(286.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                            )
+                        )
+                    )
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
+                    .clickable(interactionSource = interactionSource, indication = null) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onTap()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.source_pup),
+                    contentDescription = "${state.puppyName} the puppy",
+                    modifier = Modifier.size(264.dp),
+                    contentScale = ContentScale.Fit
+                )
+                when (state.accessory) {
+                    "Bandana" -> Text("🧣", fontSize = 54.sp, modifier = Modifier.offset(y = 86.dp))
+                    "Bow" -> Text("🎀", fontSize = 46.sp, modifier = Modifier.offset(y = (-92).dp))
+                    "Crown" -> Text("👑", fontSize = 56.sp, modifier = Modifier.offset(y = (-104).dp))
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 14.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)
+            ) {
+                Text(
+                    text = when {
+                        inCooldown -> "Pup Eye cooldown"
+                        state.combo >= 5 -> "Tap! +${formatNumber(state.clickPower.toLong() * state.comboMultiplier)} treats"
+                        else -> "Tap ${state.puppyName} · +${formatNumber(state.clickPower.toLong())}"
+                    },
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NeedPill(emoji: String, value: Int, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)
     ) {
-        Image(
-            painter = painterResource(R.drawable.source_pup),
-            contentDescription = "${state.puppyName} the puppy",
-            modifier = Modifier.size(222.dp),
-            contentScale = ContentScale.Fit
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 14.sp)
+            Spacer(Modifier.width(4.dp))
+            Text("$value%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun QuickActions(
+    state: GameState,
+    dailyAvailable: Boolean,
+    dailyReward: Long,
+    viewModel: GameViewModel
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        QuickAction(
+            emoji = "🍖",
+            label = "Feed",
+            detail = "${GameViewModel.FEED_COST} 🍪",
+            enabled = state.treats >= GameViewModel.FEED_COST && state.fullness < 100,
+            onClick = viewModel::feedPuppy,
+            modifier = Modifier.weight(1f)
         )
-        when (state.accessory) {
-            "Bandana" -> Text("🧣", fontSize = 52.sp, modifier = Modifier.offset(y = 76.dp))
-            "Bow" -> Text("🎀", fontSize = 44.sp, modifier = Modifier.offset(y = (-78).dp))
-            "Crown" -> Text("👑", fontSize = 52.sp, modifier = Modifier.offset(y = (-92).dp))
+        QuickAction(
+            emoji = "🎾",
+            label = "Play",
+            detail = "+mood",
+            enabled = state.energy >= 10,
+            onClick = viewModel::playWithPuppy,
+            modifier = Modifier.weight(1f)
+        )
+        QuickAction(
+            emoji = "🎁",
+            label = if (dailyAvailable) "Gift" else "Claimed",
+            detail = if (dailyAvailable) "+${formatNumber(dailyReward)}" else "tomorrow",
+            enabled = dailyAvailable,
+            onClick = viewModel::claimDailyReward,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun QuickAction(
+    emoji: String,
+    label: String,
+    detail: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .height(82.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(22.dp),
+        color = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.60f),
+        tonalElevation = if (enabled) 1.dp else 0.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(emoji, fontSize = 22.sp)
+            Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun StatCard(label: String, value: String, emoji: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(Modifier.padding(10.dp)) {
-            Text(emoji, fontSize = 20.sp)
-            Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun LevelCard(state: GameState) {
+private fun ProgressStrip(state: GameState) {
     val level = state.level
     val currentStart = (level - 1L) * (level - 1L) * 100L
     val nextTarget = level.toLong() * level.toLong() * 100L
     val span = max(1L, nextTarget - currentStart)
     val progress = ((state.lifetimeTreats - currentStart).toFloat() / span.toFloat()).coerceIn(0f, 1f)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(13.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Level $level", fontWeight = FontWeight.Bold)
-                Text("${formatNumber(state.lifetimeTreats)} / ${formatNumber(nextTarget)}")
+                Text("Level $level progress", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                Text("${formatNumber(state.lifetimeTreats)} / ${formatNumber(nextTarget)}", style = MaterialTheme.typography.labelMedium)
             }
             Spacer(Modifier.height(7.dp))
             LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(7.dp)
+                    .clip(CircleShape)
             )
         }
     }
 }
 
 @Composable
-private fun CareSummaryCard(state: GameState) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
+private fun CompactInfoCard(
+    emoji: String,
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
     ) {
-        Column(Modifier.padding(13.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${state.puppyName} is ${state.mood.lowercase()}", fontWeight = FontWeight.Bold)
-                Text("${state.careScore}%", fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MiniNeed("💖", state.happiness, Modifier.weight(1f))
-                MiniNeed("🍖", state.fullness, Modifier.weight(1f))
-                MiniNeed("⚡", state.energy, Modifier.weight(1f))
-            }
-            if (state.careScore >= 80 && state.autoPerSecond > 0) {
-                Spacer(Modifier.height(7.dp))
-                Text("Happy pup bonus: +20% automatic treats", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniNeed(emoji: String, value: Int, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(emoji)
-            Spacer(Modifier.width(4.dp))
-            Text("$value%", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(3.dp))
-        LinearProgressIndicator(progress = { value / 100f }, modifier = Modifier.fillMaxWidth().height(5.dp))
-    }
-}
-
-@Composable
-private fun DailyRewardCard(state: GameState, viewModel: GameViewModel) {
-    val today = LocalDate.now().toEpochDay()
-    val available = state.lastDailyClaimDay != today
-    val reward = 100L + state.level * 25L
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🎁", fontSize = 30.sp)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Daily Puppy Gift", fontWeight = FontWeight.Bold)
-                Text(
-                    if (available) "Claim ${formatNumber(reward)} treats today" else "Come back tomorrow for another gift",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Button(onClick = viewModel::claimDailyReward, enabled = available) {
-                Text(if (available) "Claim" else "Done")
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 22.sp)
+            Spacer(Modifier.width(8.dp))
+            Column {
+                Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleSmall)
             }
         }
     }
@@ -333,15 +578,19 @@ private fun DailyRewardCard(state: GameState, viewModel: GameViewModel) {
 
 @Composable
 private fun PupEyeCard(state: GameState) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🐶👁️", fontSize = 27.sp)
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("Pup Eye", fontWeight = FontWeight.Bold)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f)
+    ) {
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("🐶👁️", fontSize = 22.sp)
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Pup Eye protection", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                 Text(
-                    "Local anti-auto-click protection • ${state.pupEyeStrikes} cooldown${if (state.pupEyeStrikes == 1) "" else "s"}",
-                    style = MaterialTheme.typography.bodySmall,
+                    "Local fair-play protection · ${state.pupEyeStrikes} cooldown${if (state.pupEyeStrikes == 1) "" else "s"}",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
