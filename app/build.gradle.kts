@@ -18,8 +18,8 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -56,7 +56,7 @@ android {
 }
 
 val downloadPuppySourceAssets by tasks.registering {
-    description = "Downloads Puppy Clicker artwork pinned to the source repository commit."
+    description = "Downloads original Puppy Clicker artwork pinned to the source repository commit."
     group = "puppy clicker"
     outputs.dir(generatedSourceDrawables)
 
@@ -67,7 +67,8 @@ val downloadPuppySourceAssets by tasks.registering {
         val baseUrl = "https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/$puppySourceCommit/Images"
         val assets = mapOf(
             "source_pup.png" to "$baseUrl/pup.png",
-            "source_logo.png" to "$baseUrl/logo.png"
+            "source_logo.png" to "$baseUrl/logo.png",
+            "source_htg.png" to "$baseUrl/htg.png"
         )
 
         assets.forEach { (fileName, sourceUrl) ->
