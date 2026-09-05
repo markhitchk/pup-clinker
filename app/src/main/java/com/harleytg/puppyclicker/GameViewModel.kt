@@ -51,6 +51,12 @@ enum class TicketRarity(
     LEGENDARY("Legendary", "🟡", 75, 1)
 }
 
+data class UpgradeRequirement(
+    val rarity: TicketRarity,
+    val baseTickets: Int,
+    val baseTreatFee: Long
+)
+
 fun emptyTicketInventory(): Map<TicketRarity, Int> = TicketRarity.entries.associateWith { 0 }
 
 /** Every puppy character keeps the original Puppy Clicker pup as its visual base. */
@@ -73,6 +79,37 @@ val UPGRADES = listOf(
     Upgrade("treat_factory", "Treat Factory", "+100 treats every second", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
     Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", 40_000, UpgradeEffect.CLICK, 100, "✨")
 )
+
+/**
+ * Tickets are the primary upgrade currency. Every upgrade has one exact rarity
+ * requirement plus a deliberately small treat fee. Higher owned levels slowly
+ * ask for more matching tickets, but never accept a different rarity as a substitute.
+ */
+val UPGRADE_REQUIREMENTS = mapOf(
+    "better_treats" to UpgradeRequirement(TicketRarity.COMMON, 1, 10),
+    "chew_toy" to UpgradeRequirement(TicketRarity.COMMON, 2, 15),
+    "golden_bowl" to UpgradeRequirement(TicketRarity.UNCOMMON, 2, 40),
+    "playmate" to UpgradeRequirement(TicketRarity.UNCOMMON, 3, 60),
+    "puppy_power" to UpgradeRequirement(TicketRarity.RARE, 2, 125),
+    "dog_park_crew" to UpgradeRequirement(TicketRarity.RARE, 3, 200),
+    "treat_factory" to UpgradeRequirement(TicketRarity.EPIC, 3, 500),
+    "legendary_snacks" to UpgradeRequirement(TicketRarity.LEGENDARY, 2, 750)
+)
+
+fun upgradeRequirement(upgrade: Upgrade): UpgradeRequirement =
+    UPGRADE_REQUIREMENTS[upgrade.id] ?: UpgradeRequirement(TicketRarity.COMMON, 1, upgrade.baseCost.coerceAtLeast(1))
+
+fun requiredUpgradeTickets(upgrade: Upgrade, owned: Int): Int {
+    val requirement = upgradeRequirement(upgrade)
+    val extra = (owned.coerceAtLeast(0) / 3).coerceAtMost(2)
+    return requirement.baseTickets + extra
+}
+
+fun upgradeTreatFee(upgrade: Upgrade, owned: Int): Long {
+    val requirement = upgradeRequirement(upgrade)
+    val scaled = requirement.baseTreatFee.toDouble() * 1.20.pow(owned.coerceAtLeast(0).toDouble())
+    return scaled.toLong().coerceAtLeast(requirement.baseTreatFee)
+}
 
 data class GameState(
     val puppyName: String = "Buddy",
@@ -123,11 +160,9 @@ data class GameState(
             else -> "Very tired"
         }
 
-    // Compatibility property for older screens. New UI shows rarity inventory instead.
     val upgradeTickets: Int
         get() = ticketInventory.values.sum()
 
-    // Combos never increase tap rewards.
     val comboMultiplier: Int
         get() = 1
 
@@ -177,21 +212,14 @@ val MISSIONS = listOf(
 
 data class RedeemOutcome(val success: Boolean, val message: String)
 
-/** Slightly friendlier than the original 1.58 growth curve. */
-fun upgradeCost(upgrade: Upgrade, owned: Int): Long {
-    val scaled = upgrade.baseCost.toDouble() * 1.54.pow(owned.toDouble())
-    return scaled.toLong().coerceAtLeast(upgrade.baseCost)
-}
+/** Compatibility name used by older UI. It now returns the small treat fee. */
+fun upgradeCost(upgrade: Upgrade, owned: Int): Long = upgradeTreatFee(upgrade, owned)
 
-/** Compatibility cost used by the old non-rarity ticket screen. */
-fun ticketUpgradeCost(upgrade: Upgrade, owned: Int): Long =
-    (upgradeCost(upgrade, owned) * 0.80).toLong().coerceAtLeast(1L)
+/** Compatibility helper: tickets are no longer discounts. */
+fun ticketUpgradeCost(upgrade: Upgrade, owned: Int): Long = upgradeTreatFee(upgrade, owned)
 
-fun rarityTicketUpgradeCost(upgrade: Upgrade, owned: Int, rarity: TicketRarity): Long {
-    val full = upgradeCost(upgrade, owned)
-    val remainingPercent = 100 - rarity.discountPercent
-    return ((full * remainingPercent) / 100L).coerceAtLeast(1L)
-}
+/** Compatibility helper: the ticket rarity no longer changes the treat fee. */
+fun rarityTicketUpgradeCost(upgrade: Upgrade, owned: Int, rarity: TicketRarity): Long = upgradeTreatFee(upgrade, owned)
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -271,14 +299,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             1
         }
 
-        // Every accepted tap always pays exactly the Shop-defined click power.
         val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
         val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
 
-        // Upgrade Tickets are tap-only loot. Suspicious machine-like samples do not
-        // receive a ticket roll even before the fair-play cooldown is confirmed.
         val ticketDrop = if (!suspiciousThisTap && Random.nextInt(TICKET_DROP_ROLL_SIDES) == TICKET_DROP_WINNER) {
             rollTicketRarity()
         } else {
@@ -322,39 +347,32 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return TicketRarity.COMMON
     }
 
-    /** Legacy call used by older screens. */
-    fun buyUpgrade(upgrade: Upgrade) = buyUpgrade(upgrade, rarity = null)
+    /** Every upgrade purchase requires its exact matching rarity. */
+    fun buyUpgrade(upgrade: Upgrade) = buyUpgrade(upgrade, upgradeRequirement(upgrade).rarity)
 
-    /** Compatibility overload for the previous yes/no ticket UI. */
-    fun buyUpgrade(upgrade: Upgrade, useTicket: Boolean) {
-        if (!useTicket) {
-            buyUpgrade(upgrade, rarity = null)
-            return
-        }
-        val current = _state.value
-        val selected = TicketRarity.entries
-            .filter { (current.ticketInventory[it] ?: 0) > 0 }
-            .minByOrNull { abs(it.discountPercent - TICKET_DISCOUNT_PERCENT) }
-        buyUpgrade(upgrade, selected)
-    }
+    /** Legacy overload now follows the same mandatory matching-rarity rule. */
+    fun buyUpgrade(upgrade: Upgrade, useTicket: Boolean) =
+        buyUpgrade(upgrade, upgradeRequirement(upgrade).rarity)
 
     fun buyUpgrade(upgrade: Upgrade, rarity: TicketRarity?) {
         val current = _state.value
         val owned = current.upgrades[upgrade.id] ?: 0
+        val requirement = upgradeRequirement(upgrade)
+        val requiredTickets = requiredUpgradeTickets(upgrade, owned)
+        val ownedTickets = current.ticketInventory[requirement.rarity] ?: 0
+        val treatFee = upgradeTreatFee(upgrade, owned)
 
-        if (rarity != null && (current.ticketInventory[rarity] ?: 0) <= 0) return
-
-        val cost = if (rarity == null) upgradeCost(upgrade, owned)
-        else rarityTicketUpgradeCost(upgrade, owned, rarity)
-        if (current.treats < cost) return
+        if (rarity != requirement.rarity) return
+        if (ownedTickets < requiredTickets) return
+        if (current.treats < treatFee) return
 
         val nextUpgrades = current.upgrades.toMutableMap().apply { this[upgrade.id] = owned + 1 }
         val nextInventory = current.ticketInventory.toMutableMap().apply {
-            if (rarity != null) this[rarity] = ((this[rarity] ?: 0) - 1).coerceAtLeast(0)
+            this[requirement.rarity] = (ownedTickets - requiredTickets).coerceAtLeast(0)
         }
 
         _state.value = current.copy(
-            treats = current.treats - cost,
+            treats = current.treats - treatFee,
             upgrades = nextUpgrades,
             ticketInventory = nextInventory,
             clickPower = current.clickPower + if (upgrade.effect == UpgradeEffect.CLICK) upgrade.amount else 0,
@@ -605,8 +623,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             ?.takeIf { it in unlocked && PUPPY_STYLES.any { style -> style.id == it } }
             ?: "classic"
 
-        // Do not migrate the old starter/daily generic ticket balance. Rarity tickets
-        // intentionally start at zero and are earned only from accepted puppy taps.
         val ticketInventory = TicketRarity.entries.associateWith { rarity ->
             prefs.getInt(ticketKey(rarity), 0).coerceIn(0, MAX_TICKETS_PER_RARITY)
         }
@@ -733,7 +749,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val COMBO_CHAIN_MS = 900L
         private const val COMBO_TIMEOUT_MS = 1_600L
 
-        // Fair-play thresholds intentionally favor avoiding false positives.
         private const val FAIR_PLAY_HISTORY_MS = 3_000L
         private const val FAIR_PLAY_SAMPLE_MS = 2_000L
         private const val MIN_FAIR_PLAY_SAMPLE_TAPS = 12
