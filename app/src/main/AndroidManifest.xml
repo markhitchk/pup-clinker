@@ -4,12 +4,18 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".PuppyClickerApplication"
         android:allowBackup="true"
         android:icon="@drawable/source_logo"
         android:label="@string/app_name"
         android:roundIcon="@drawable/source_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.PuppyClicker">
+
+        <activity
+            android:name=".AfkWelcomeActivity"
+            android:exported="false" />
+
         <activity
             android:name=".PuppyClickerV5Activity"
             android:exported="true">
