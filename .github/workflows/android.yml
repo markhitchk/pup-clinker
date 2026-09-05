@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+env:
+  PUPPY_KEYSTORE_B64: ${{ secrets.PUPPY_KEYSTORE_B64 }}
+  PUPPY_SIGNING_STORE_PASSWORD: ${{ secrets.PUPPY_SIGNING_STORE_PASSWORD }}
+  PUPPY_SIGNING_KEY_ALIAS: ${{ secrets.PUPPY_SIGNING_KEY_ALIAS }}
+  PUPPY_SIGNING_KEY_PASSWORD: ${{ secrets.PUPPY_SIGNING_KEY_PASSWORD }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,24 +34,77 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build unsigned release APK
-        run: gradle :app:assembleRelease --stacktrace
-
-      - name: Export APK signing tool
+      - name: Prepare permanent update signing
+        id: signing
         shell: bash
         run: |
           set -euo pipefail
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          test -x "$APKSIGNER"
-          mkdir -p build-tools-export
-          cp "$(dirname "$APKSIGNER")/lib/apksigner.jar" build-tools-export/apksigner.jar
-          ls -lah app/build/outputs/apk/release build-tools-export
+          vars=(
+            PUPPY_KEYSTORE_B64
+            PUPPY_SIGNING_STORE_PASSWORD
+            PUPPY_SIGNING_KEY_ALIAS
+            PUPPY_SIGNING_KEY_PASSWORD
+          )
 
-      - name: Upload unsigned release and signing tool
+          configured=0
+          for name in "${vars[@]}"; do
+            if [ -n "${!name:-}" ]; then
+              configured=$((configured + 1))
+            fi
+          done
+
+          if [ "$configured" -eq 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Permanent signing secrets are not configured; this run will compile-test only."
+            exit 0
+          fi
+
+          if [ "$configured" -ne 4 ]; then
+            echo "::error::Permanent signing is only partially configured. Set all four PUPPY signing secrets."
+            exit 1
+          fi
+
+          keyfile="$RUNNER_TEMP/puppy-clicker-update-key.p12"
+          printf '%s' "$PUPPY_KEYSTORE_B64" | base64 --decode > "$keyfile"
+          chmod 600 "$keyfile"
+          test -s "$keyfile"
+
+          echo "PUPPY_SIGNING_STORE_FILE=$keyfile" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build updateable release APK
+        if: steps.signing.outputs.ready == 'true'
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+
+      - name: Verify permanent-signed APK and v4 sidecar
+        if: steps.signing.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="app/build/outputs/apk/release"
+          APK="$(find "$OUT" -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          IDSIG="$(find "$OUT" -maxdepth 1 -type f -name '*.idsig' -print -quit)"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+
+          test -n "$APK"
+          test -s "$APK"
+          test -n "$IDSIG"
+          test -s "$IDSIG"
+          test -x "$APKSIGNER"
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          echo "APK Signature Scheme v4 sidecar: $IDSIG"
+
+      - name: Upload updateable release APK
+        if: steps.signing.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-update-prep
+          name: puppy-clicker-updateable-release
           path: |
             app/build/outputs/apk/release/*.apk
-            build-tools-export/apksigner.jar
+            app/build/outputs/apk/release/*.idsig
           if-no-files-found: error
+
+      - name: Compile test without release key
+        if: steps.signing.outputs.ready != 'true'
+        run: gradle :app:assembleDebug --stacktrace
