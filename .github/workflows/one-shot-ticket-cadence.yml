@@ -1,0 +1,69 @@
+name: One-shot ticket cadence patch
+
+on:
+  push:
+    paths:
+      - .github/workflows/one-shot-ticket-cadence.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-ticket-cadence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch Puppy Clicker ticket cadence and UI copy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          vm_path = Path('app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt')
+          ui_path = Path('app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt')
+
+          vm = vm_path.read_text()
+          old_logic = '''        // 50/50 accepted-tap ticket system. Suspicious taps never roll.\n        val ticketDrop = if (!suspiciousThisTap && Random.nextBoolean()) rollTicketRarityV6() else null'''
+          new_logic = '''        // Tamed ticket cadence: one Upgrade Ticket on every 5th accepted human tap.\n        // Suspicious/machine-like taps never receive a ticket.\n        val ticketDrop = if (!suspiciousThisTap && nextTaps % 5L == 0L) {\n            rollTicketRarityV6()\n        } else null'''
+          if old_logic not in vm:
+              raise SystemExit('Expected V6 ticket-drop logic was not found; refusing to patch blindly.')
+          vm = vm.replace(old_logic, new_logic, 1)
+          vm = vm.replace('roll <= 680 -> TicketRarity.COMMON       // 68% of drops = 34% of accepted taps',
+                          'roll <= 680 -> TicketRarity.COMMON       // 68% of drops; about 1 common per 7.4 accepted taps')
+          vm = vm.replace('roll <= 920 -> TicketRarity.UNCOMMON    // 24% of drops = 12% of accepted taps',
+                          'roll <= 920 -> TicketRarity.UNCOMMON    // 24% of drops; about 1 uncommon per 20.8 accepted taps')
+          vm = vm.replace('roll <= 980 -> TicketRarity.RARE        // 6% of drops = 3% of accepted taps',
+                          'roll <= 980 -> TicketRarity.RARE        // 6% of drops; about 1 rare per 83 accepted taps')
+          vm = vm.replace('roll <= 997 -> TicketRarity.EPIC        // 1.7% of drops = 0.85% of accepted taps',
+                          'roll <= 997 -> TicketRarity.EPIC        // 1.7% of drops; about 1 epic per 294 accepted taps')
+          vm = vm.replace('else -> TicketRarity.LEGENDARY          // 0.3% of drops = 0.15% of accepted taps',
+                          'else -> TicketRarity.LEGENDARY          // 0.3% of drops; about 1 legendary per 1,667 accepted taps')
+          vm_path.write_text(vm)
+
+          ui = ui_path.read_text()
+          replacements = {
+              '50/50 ticket roll per accepted tap': '1 ticket every 5 accepted taps',
+              'Common and Uncommon dominate drops; Rare, Epic and Legendary stay much harder. Machine-like taps receive no ticket roll.': 'Common and Uncommon are the usual drops, but tickets only award every 5 accepted taps. Rare, Epic and Legendary stay much harder. Machine-like taps receive no ticket.',
+              'Accepted taps have a 50% chance to drop a ticket.': 'Every 5th accepted tap awards one ticket.',
+              'Suspicious taps receive no 50/50 ticket roll. No permanent bans or uploads.': 'Suspicious taps do not count toward ticket awards. No permanent bans or uploads.'
+          }
+          for old, new in replacements.items():
+              if old not in ui:
+                  raise SystemExit(f'Expected UI text not found: {old}')
+              ui = ui.replace(old, new)
+          ui_path.write_text(ui)
+          PY
+
+      - name: Commit source update and remove one-shot workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/one-shot-ticket-cadence.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Tame upgrade ticket drops to every 5 taps"
+          git push origin HEAD:main
