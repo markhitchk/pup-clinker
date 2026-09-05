@@ -209,11 +209,23 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
             suspicionWindowStartedMs = 0L
         }
 
-        val combo = if (now - current.lastTapMs <= COMBO_CHAIN_MS) (current.combo + 1).coerceAtMost(50) else 1
+        val combo = if (now - current.lastTapMs <= COMBO_CHAIN_MS) {
+            (current.combo + 1).coerceAtMost(50)
+        } else {
+            1
+        }
         val nextTaps = safeAdd(current.totalTaps, 1)
-        val ticketDrop = if (!suspiciousThisTap && Random.nextInt(100) == 0) rollTicketRarity() else null
-        val inventory = if (ticketDrop == null) current.ticketInventory else current.ticketInventory.toMutableMap().apply {
-            this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(999)
+
+        // Fair-play taps now get a true 50/50 ticket roll. The rarity table is
+        // deliberately weighted toward Common and Uncommon so entry upgrades
+        // are attainable, while the top tiers remain meaningfully rare.
+        val ticketDrop = if (!suspiciousThisTap && Random.nextBoolean()) rollTicketRarity() else null
+        val inventory = if (ticketDrop == null) {
+            current.ticketInventory
+        } else {
+            current.ticketInventory.toMutableMap().apply {
+                this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
+            }
         }
 
         _state.value = current.copy(
@@ -374,7 +386,11 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         val s = _state.value
         val today = LocalDate.now().toEpochDay()
         if (s.lastDailyClaimDay == today) return
-        val streak = if (s.lastDailyClaimDay == today - 1) (s.dailyStreak + 1).coerceAtMost(365) else 1
+        val streak = if (s.lastDailyClaimDay == today - 1) {
+            (s.dailyStreak + 1).coerceAtMost(365)
+        } else {
+            1
+        }
         val reward = 150L + streak * 25L + s.level * 10L
         _state.value = s.copy(
             treats = safeAdd(s.treats, reward),
@@ -410,7 +426,9 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         val reward = LocalRedeemCodes.find(rawCode)
             ?: return V5RedeemOutcome(false, "That Puppy Code is invalid or unavailable in this version.")
         val s = _state.value
-        if (reward.id in s.redeemedCodeIds) return V5RedeemOutcome(false, "That Puppy Code was already redeemed on this device.")
+        if (reward.id in s.redeemedCodeIds) {
+            return V5RedeemOutcome(false, "That Puppy Code was already redeemed on this device.")
+        }
         val puppy = reward.puppyId?.let { id -> PUPPY_STYLES.firstOrNull { it.id == id } }
         _state.value = s.copy(
             treats = safeAdd(s.treats, reward.treats),
@@ -443,13 +461,32 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         saveState()
     }
 
-    fun setHapticsEnabled(value: Boolean) { _state.update { it.copy(hapticsEnabled = value) }; saveState() }
-    fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
-    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+    fun setHapticsEnabled(value: Boolean) {
+        _state.update { it.copy(hapticsEnabled = value) }
+        saveState()
+    }
+
+    fun setAnimationsEnabled(value: Boolean) {
+        _state.update { it.copy(animationsEnabled = value) }
+        saveState()
+    }
+
+    fun setCompactNumbers(value: Boolean) {
+        _state.update { it.copy(compactNumbers = value) }
+        saveState()
+    }
 
     fun resetGame() {
         val keep = _state.value
+        val afkBackgroundAt = prefs.getLong(KEY_AFK_BACKGROUND_AT, 0L)
+        val afkPending = prefs.getLong(KEY_AFK_PENDING, 0L)
+        val afkAwayMs = prefs.getLong(KEY_AFK_AWAY_MS, 0L)
         prefs.edit().clear().apply()
+        prefs.edit()
+            .putLong(KEY_AFK_BACKGROUND_AT, afkBackgroundAt)
+            .putLong(KEY_AFK_PENDING, afkPending)
+            .putLong(KEY_AFK_AWAY_MS, afkAwayMs)
+            .apply()
         recentTapTimes.clear()
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
@@ -465,12 +502,16 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     private fun rollTicketRarity(): TicketRarity {
-        val roll = Random.nextInt(1, 101)
+        // Distribution inside the 50% successful ticket roll:
+        // Common 80%, Uncommon 16%, Rare 3%, Epic 0.8%, Legendary 0.2%.
+        // Overall per accepted tap this is approximately 40%, 8%, 1.5%,
+        // 0.4%, and 0.1% respectively.
+        val roll = Random.nextInt(1, 1_001)
         return when {
-            roll <= 60 -> TicketRarity.COMMON
-            roll <= 85 -> TicketRarity.UNCOMMON
-            roll <= 95 -> TicketRarity.RARE
-            roll <= 99 -> TicketRarity.EPIC
+            roll <= 800 -> TicketRarity.COMMON
+            roll <= 960 -> TicketRarity.UNCOMMON
+            roll <= 990 -> TicketRarity.RARE
+            roll <= 998 -> TicketRarity.EPIC
             else -> TicketRarity.LEGENDARY
         }
     }
@@ -517,18 +558,28 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
 
     private fun addTreats(amount: Long) {
         if (amount <= 0) return
-        _state.update { it.copy(treats = safeAdd(it.treats, amount), lifetimeTreats = safeAdd(it.lifetimeTreats, amount), offlineEarned = 0) }
+        _state.update {
+            it.copy(
+                treats = safeAdd(it.treats, amount),
+                lifetimeTreats = safeAdd(it.lifetimeTreats, amount),
+                offlineEarned = 0
+            )
+        }
     }
 
     private fun loadState(): V5GameState {
-        val owned = V5_UPGRADES.associate { upgrade -> upgrade.id to prefs.getInt("upgrade_${upgrade.id}", 0).coerceAtLeast(0) }
-        val clickPower = 1 + V5_UPGRADES.filter { it.effect == V5UpgradeEffect.CLICK }.sumOf { it.amount * (owned[it.id] ?: 0) }
-        val auto = V5_UPGRADES.filter { it.effect == V5UpgradeEffect.AUTO }.sumOf { it.amount * (owned[it.id] ?: 0) }
+        val owned = V5_UPGRADES.associate { upgrade ->
+            upgrade.id to prefs.getInt("upgrade_${upgrade.id}", 0).coerceAtLeast(0)
+        }
+        val clickPower = 1 + V5_UPGRADES
+            .filter { it.effect == V5UpgradeEffect.CLICK }
+            .sumOf { it.amount * (owned[it.id] ?: 0) }
+        val auto = V5_UPGRADES
+            .filter { it.effect == V5UpgradeEffect.AUTO }
+            .sumOf { it.amount * (owned[it.id] ?: 0) }
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
-        val elapsedSeconds = ((now - lastSeen).coerceAtLeast(0) / 1_000).coerceAtMost(MAX_OFFLINE_SECONDS)
-        val offline = safeMultiply(auto.toLong(), elapsedSeconds)
         val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000).coerceAtMost(240).toInt()
 
         val totalTaps = prefs.getLong(KEY_TOTAL_TAPS, 0).coerceAtLeast(0)
@@ -538,23 +589,31 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         val savedDailyDay = prefs.getLong(KEY_DAILY_DAY_V5, today)
         val isToday = savedDailyDay == today
 
-        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, setOf("classic", "golden", "poodle", "spotty"))?.toSet()
-            ?: setOf("classic", "golden", "poodle", "spotty")) + setOf("classic", "golden", "poodle", "spotty")
-        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")?.takeIf { it in unlocked } ?: "classic"
-        val inventory = TicketRarity.entries.associateWith { rarity -> prefs.getInt("upgrade_ticket_${rarity.name.lowercase()}", 0).coerceIn(0, 999) }
+        val defaultPuppies = setOf("classic", "golden", "poodle", "spotty")
+        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, defaultPuppies)?.toSet() ?: defaultPuppies) + defaultPuppies
+        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")
+            ?.takeIf { it in unlocked && PUPPY_STYLES.any { pup -> pup.id == it } }
+            ?: "classic"
+        val inventory = TicketRarity.entries.associateWith { rarity ->
+            prefs.getInt("upgrade_ticket_${rarity.name.lowercase()}", 0)
+                .coerceIn(0, MAX_TICKETS_PER_RARITY)
+        }
 
         val savedHappiness = prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100)
         val savedFullness = prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100)
         val savedEnergy = prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100)
         val savedClean = prefs.getInt(KEY_CLEANLINESS, 100).coerceIn(0, 100)
 
+        // Off-app earnings are deliberately NOT calculated here anymore.
+        // PuppyClickerApplication owns the slow AFK clock and AfkWelcomeActivity
+        // makes the player explicitly collect that reward on return.
         return V5GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = style,
             unlockedPuppies = unlocked,
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
-            treats = safeAdd(prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0), offline),
-            lifetimeTreats = safeAdd(prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0), offline),
+            treats = prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0),
+            lifetimeTreats = prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0),
             clickPower = clickPower,
             autoPerSecond = auto,
             upgrades = owned,
@@ -584,7 +643,7 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
             compactNumbers = prefs.getBoolean(KEY_COMPACT_NUMBERS, true),
             pupEyeStrikes = prefs.getInt(KEY_STRIKES, 0).coerceAtLeast(0),
             cooldownUntilMs = prefs.getLong(KEY_COOLDOWN, 0).coerceAtLeast(0),
-            offlineEarned = offline
+            offlineEarned = 0
         )
     }
 
@@ -599,7 +658,9 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
             putLong(KEY_LIFETIME, s.lifetimeTreats)
             putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)
             putLong(KEY_TOTAL_TICKETS_FOUND, s.totalTicketsFound)
-            TicketRarity.entries.forEach { putInt("upgrade_ticket_${it.name.lowercase()}", s.ticketInventory[it] ?: 0) }
+            TicketRarity.entries.forEach {
+                putInt("upgrade_ticket_${it.name.lowercase()}", s.ticketInventory[it] ?: 0)
+            }
             s.upgrades.forEach { (id, count) -> putInt("upgrade_$id", count) }
             putInt(KEY_HAPPINESS, s.happiness)
             putInt(KEY_FULLNESS, s.fullness)
@@ -628,23 +689,31 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         }.apply()
     }
 
-    override fun onCleared() { saveState(); super.onCleared() }
+    override fun onCleared() {
+        saveState()
+        super.onCleared()
+    }
 
-    private fun safeAdd(a: Long, b: Long): Long = if (b > 0 && a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
-    private fun safeMultiply(a: Long, b: Long): Long = if (a <= 0 || b <= 0) 0 else if (a > Long.MAX_VALUE / b) Long.MAX_VALUE else a * b
+    private fun safeAdd(a: Long, b: Long): Long =
+        if (b > 0 && a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
 
     companion object {
         val ACCESSORIES = listOf("None", "Bandana", "Bow", "Crown")
         const val FEED_COST = 20L
         const val PARK_ADVENTURE_MS = 60_000L
 
-        private const val PREFS_NAME = "puppy_clicker_save"
+        const val PREFS_NAME = "puppy_clicker_save"
+        const val KEY_AFK_BACKGROUND_AT = "afk_background_at_v6"
+        const val KEY_AFK_PENDING = "afk_pending_treats_v6"
+        const val KEY_AFK_AWAY_MS = "afk_away_ms_v6"
+        const val KEY_LAST_SEEN = "last_seen"
+        const val KEY_TREATS = "treats"
+        const val KEY_LIFETIME = "lifetime_treats"
+
         private const val KEY_NAME = "puppy_name"
         private const val KEY_PUPPY_STYLE = "puppy_style"
         private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"
         private const val KEY_ACCESSORY = "accessory"
-        private const val KEY_TREATS = "treats"
-        private const val KEY_LIFETIME = "lifetime_treats"
         private const val KEY_TOTAL_SHOP = "total_shop_purchases_v5"
         private const val KEY_TOTAL_TICKETS_FOUND = "total_tickets_found"
         private const val KEY_HAPPINESS = "happiness"
@@ -670,9 +739,8 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
         private const val KEY_COMPACT_NUMBERS = "setting_compact_numbers"
         private const val KEY_STRIKES = "pup_eye_strikes"
         private const val KEY_COOLDOWN = "fair_play_cooldown_until"
-        private const val KEY_LAST_SEEN = "last_seen"
 
-        private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
+        private const val MAX_TICKETS_PER_RARITY = 9_999
         private const val COMBO_CHAIN_MS = 900L
         private const val COMBO_TIMEOUT_MS = 1_600L
         private const val FAIR_PLAY_HISTORY_MS = 3_000L
