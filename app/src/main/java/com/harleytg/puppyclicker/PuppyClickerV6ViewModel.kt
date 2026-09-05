@@ -237,8 +237,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         val nextTaps = safeAdd(current.totalTaps, 1)
 
-        // 50/50 accepted-tap ticket system. Suspicious taps never roll.
-        val ticketDrop = if (!suspiciousThisTap && Random.nextBoolean()) rollTicketRarityV6() else null
+        // Tamed ticket cadence: one Upgrade Ticket on every 5th accepted human tap.
+        // Suspicious/machine-like taps never receive a ticket.
+        val ticketDrop = if (!suspiciousThisTap && nextTaps % 5L == 0L) {
+            rollTicketRarityV6()
+        } else null
         val inventory = if (ticketDrop == null) current.ticketInventory else {
             current.ticketInventory.toMutableMap().apply {
                 this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
@@ -584,11 +587,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private fun rollTicketRarityV6(): TicketRarity {
         val roll = Random.nextInt(1, 1001)
         return when {
-            roll <= 680 -> TicketRarity.COMMON       // 68% of drops = 34% of accepted taps
-            roll <= 920 -> TicketRarity.UNCOMMON    // 24% of drops = 12% of accepted taps
-            roll <= 980 -> TicketRarity.RARE        // 6% of drops = 3% of accepted taps
-            roll <= 997 -> TicketRarity.EPIC        // 1.7% of drops = 0.85% of accepted taps
-            else -> TicketRarity.LEGENDARY          // 0.3% of drops = 0.15% of accepted taps
+            roll <= 680 -> TicketRarity.COMMON       // 68% of drops; about 1 common per 7.4 accepted taps
+            roll <= 920 -> TicketRarity.UNCOMMON    // 24% of drops; about 1 uncommon per 20.8 accepted taps
+            roll <= 980 -> TicketRarity.RARE        // 6% of drops; about 1 rare per 83 accepted taps
+            roll <= 997 -> TicketRarity.EPIC        // 1.7% of drops; about 1 epic per 294 accepted taps
+            else -> TicketRarity.LEGENDARY          // 0.3% of drops; about 1 legendary per 1,667 accepted taps
         }
     }
 

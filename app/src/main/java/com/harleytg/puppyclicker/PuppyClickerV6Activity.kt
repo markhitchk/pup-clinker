@@ -245,8 +245,8 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                 Text("🎟️", fontSize = 24.sp)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("50/50 ticket roll per accepted tap", fontWeight = FontWeight.Black)
-                    Text("Common and Uncommon dominate drops; Rare, Epic and Legendary stay much harder. Machine-like taps receive no ticket roll.", style = MaterialTheme.typography.bodySmall)
+                    Text("1 ticket every 5 accepted taps", fontWeight = FontWeight.Black)
+                    Text("Common and Uncommon are the usual drops, but tickets only award every 5 accepted taps. Rare, Epic and Legendary stay much harder. Machine-like taps receive no ticket.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -508,7 +508,7 @@ private fun V6TicketInventory(state: V6GameState) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
             Text("🎟️ Ticket inventory", fontWeight = FontWeight.Black)
-            Text("Accepted taps have a 50% chance to drop a ticket.", style = MaterialTheme.typography.bodySmall)
+            Text("Every 5th accepted tap awards one ticket.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(7.dp))
             TicketRarity.entries.forEach { rarity ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
@@ -638,7 +638,7 @@ private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Column(Modifier.padding(13.dp)) {
                 Text("🐶👁️ Pup Eye Fair Play", fontWeight = FontWeight.Black)
                 Text("Fast human tapping is allowed. Repeated machine-like timing and extreme sustained rates trigger a short cooldown.", style = MaterialTheme.typography.bodySmall)
-                Text("Suspicious taps receive no 50/50 ticket roll. No permanent bans or uploads.", style = MaterialTheme.typography.bodySmall)
+                Text("Suspicious taps do not count toward ticket awards. No permanent bans or uploads.", style = MaterialTheme.typography.bodySmall)
                 Text("Confirmed cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)
             }
         }
