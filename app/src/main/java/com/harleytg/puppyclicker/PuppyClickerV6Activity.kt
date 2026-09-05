@@ -559,31 +559,14 @@ private fun V6RedeemDialog(vm: PuppyClickerV6ViewModel, close: () -> Unit) {
 private fun V6Pups(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var renameOpen by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        V6Header("Puppy Collection", "Original Puppy Clicker character base with unique fur variants.")
+        V6Header("Puppy Collection", "V1 classics and V2 puppies in one collection.")
         Spacer(Modifier.height(14.dp))
         Text("Unlocked ${state.unlockedPuppies.count { it in V6_PUPPY_IDS }} / ${V6_PUPPY_STYLES.size}", fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(9.dp))
 
-        V6_PUPPY_STYLES.forEach { puppy ->
-            val unlocked = puppy.id in state.unlockedPuppies
-            val selected = state.puppyStyle == puppy.id
-            Card(
-                Modifier.fillMaxWidth().clickable(enabled = unlocked) { vm.setPuppyStyle(puppy.id) },
-                colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f) else MaterialTheme.colorScheme.surface)
-            ) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    V6PuppyPortrait(puppy.id, 86.dp, unlocked = unlocked)
-                    Spacer(Modifier.width(11.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(puppy.name, fontWeight = FontWeight.Black)
-                        Text(v6FurDescription(puppy.id), style = MaterialTheme.typography.bodySmall)
-                        if (puppy.redeemOnly) Text(if (unlocked) "Puppy Code unlocked" else "Special Puppy Code unlock", style = MaterialTheme.typography.labelSmall)
-                    }
-                    Text(if (selected) "✓" else if (unlocked) "Choose" else "🔒", fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
+        V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES, state, vm)
+        Spacer(Modifier.height(8.dp))
+        V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)
 
         OutlinedButton(onClick = { renameOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Rename ${state.puppyName}") }
         Spacer(Modifier.height(12.dp))
@@ -605,6 +588,46 @@ private fun V6Pups(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             confirmButton = { TextButton(onClick = { vm.renamePuppy(name); renameOpen = false }) { Text("Save") } },
             dismissButton = { TextButton(onClick = { renameOpen = false }) { Text("Cancel") } }
         )
+    }
+}
+
+@Composable
+private fun V6PuppyRosterSection(
+    title: String,
+    puppies: List<PuppyStyle>,
+    state: V6GameState,
+    vm: PuppyClickerV6ViewModel
+) {
+    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+    Spacer(Modifier.height(7.dp))
+    puppies.forEach { puppy ->
+        val unlocked = puppy.id in state.unlockedPuppies
+        val selected = state.puppyStyle == puppy.id
+        Card(
+            Modifier.fillMaxWidth().clickable(enabled = unlocked) { vm.setPuppyStyle(puppy.id) },
+            colors = CardDefaults.cardColors(
+                containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+                else MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                V6PuppyPortrait(puppy.id, 86.dp, unlocked = unlocked)
+                Spacer(Modifier.width(11.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(puppy.name, fontWeight = FontWeight.Black)
+                    Text(v6FurDescription(puppy.id), style = MaterialTheme.typography.bodySmall)
+                    if (puppy.redeemOnly) {
+                        val generation = if (puppy.id in V2_PUPPY_IDS) "V2" else "V1"
+                        Text(
+                            if (unlocked) "$generation Puppy Code unlocked" else "$generation Puppy Code unlock",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+                Text(if (selected) "✓" else if (unlocked) "Choose" else "🔒", fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -816,14 +839,15 @@ private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None
     val style = V6_PUPPY_STYLES.firstOrNull { it.id == styleId } ?: V6_PUPPY_STYLES.first()
     val background = v6PuppyBackground(styleId)
     val furFilter = v6PuppyFilter(styleId)
+    val isV2 = styleId in V2_PUPPY_IDS
 
     Box(Modifier.size(size).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
         Image(
-            painter = painterResource(R.drawable.source_pup),
+            painter = painterResource(v6PuppyDrawable(styleId)),
             contentDescription = style.name,
-            modifier = Modifier.size(size * 0.90f),
+            modifier = Modifier.size(size * if (isV2) 0.96f else 0.90f),
             contentScale = ContentScale.Fit,
-            colorFilter = furFilter
+            colorFilter = if (isV2) null else furFilter
         )
         Surface(Modifier.align(Alignment.TopEnd).padding(size * 0.05f), shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)) {
             Text(style.emoji, fontSize = (size.value * 0.13f).sp, modifier = Modifier.padding(size * 0.025f))
@@ -840,6 +864,18 @@ private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None
             }
         }
     }
+}
+
+private fun v6PuppyDrawable(styleId: String): Int = when (styleId) {
+    "v2_frost" -> R.drawable.v2_frost
+    "v2_honey" -> R.drawable.v2_honey
+    "v2_biscuit" -> R.drawable.v2_biscuit
+    "v2_onyx" -> R.drawable.v2_onyx
+    "v2_domino" -> R.drawable.v2_domino
+    "v2_chestnut" -> R.drawable.v2_chestnut
+    "v2_prism" -> R.drawable.v2_prism
+    "v2_flurry" -> R.drawable.v2_flurry
+    else -> R.drawable.source_pup
 }
 
 private fun v6PuppyBackground(styleId: String): Color = when (styleId) {
@@ -860,6 +896,14 @@ private fun v6PuppyBackground(styleId: String): Color = when (styleId) {
     "dev_pup" -> Color(0xFFCFE8FF)
     "secret_snoot" -> Color(0xFFD7CEDF)
     "classic_forever" -> Color(0xFFFFE9C8)
+    "v2_frost" -> Color(0xFFF4F8FF)
+    "v2_honey" -> Color(0xFFFFE9BC)
+    "v2_biscuit" -> Color(0xFFFFE4C2)
+    "v2_onyx" -> Color(0xFFD9DDF0)
+    "v2_domino" -> Color(0xFFF3F3F3)
+    "v2_chestnut" -> Color(0xFFE4C2A9)
+    "v2_prism" -> Color(0xFFE4D5FF)
+    "v2_flurry" -> Color(0xFFF6FAFF)
     else -> Color(0xFFF7F2F7)
 }
 
@@ -903,6 +947,14 @@ private fun v6FurDescription(styleId: String): String = when (styleId) {
     "dev_pup" -> "Cool developer-blue styling."
     "secret_snoot" -> "Hidden smoky-purple mystery fur."
     "classic_forever" -> "Special warm tribute to the original pup."
+    "v2_frost" -> "Fluffy white V2 puppy with bright pink ears."
+    "v2_honey" -> "Happy golden V2 puppy with a cream chest and tail tip."
+    "v2_biscuit" -> "Curly apricot V2 puppy with soft cream curls."
+    "v2_onyx" -> "Dark navy V2 puppy with warm cream markings."
+    "v2_domino" -> "Spotted Dalmatian V2 puppy with a bold eye patch."
+    "v2_chestnut" -> "Cocoa-brown V2 puppy with a cream muzzle and paws."
+    "v2_prism" -> "Pastel purple, teal and cream V2 puppy."
+    "v2_flurry" -> "Fluffy snow-white V2 puppy with a curled tail."
     else -> "Original Puppy Clicker style."
 }
 
