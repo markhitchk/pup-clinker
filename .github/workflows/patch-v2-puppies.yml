@@ -1,0 +1,199 @@
+name: Apply V2 Puppy Source Patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-v2-puppies.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch V2 puppy source
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          activity = Path('app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt')
+          text = activity.read_text()
+
+          text = text.replace(
+              'V6Header("Puppy Collection", "Original Puppy Clicker character base with unique fur variants.")',
+              'V6Header("Puppy Collection", "V1 classics and V2 puppies in one collection.")',
+              1,
+          )
+
+          old_roster = '''        V6_PUPPY_STYLES.forEach { puppy ->
+              val unlocked = puppy.id in state.unlockedPuppies
+              val selected = state.puppyStyle == puppy.id
+              Card(
+                  Modifier.fillMaxWidth().clickable(enabled = unlocked) { vm.setPuppyStyle(puppy.id) },
+                  colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f) else MaterialTheme.colorScheme.surface)
+              ) {
+                  Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                      V6PuppyPortrait(puppy.id, 86.dp, unlocked = unlocked)
+                      Spacer(Modifier.width(11.dp))
+                      Column(Modifier.weight(1f)) {
+                          Text(puppy.name, fontWeight = FontWeight.Black)
+                          Text(v6FurDescription(puppy.id), style = MaterialTheme.typography.bodySmall)
+                          if (puppy.redeemOnly) Text(if (unlocked) "Puppy Code unlocked" else "Special Puppy Code unlock", style = MaterialTheme.typography.labelSmall)
+                      }
+                      Text(if (selected) "✓" else if (unlocked) "Choose" else "🔒", fontWeight = FontWeight.Bold)
+                  }
+              }
+              Spacer(Modifier.height(8.dp))
+          }
+          '''
+          new_roster = '''        V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES, state, vm)
+          Spacer(Modifier.height(8.dp))
+          V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)
+          '''
+          if old_roster not in text:
+              raise SystemExit('V6 roster block was not found')
+          text = text.replace(old_roster, new_roster, 1)
+
+          helper = '''
+          @Composable
+          private fun V6PuppyRosterSection(
+              title: String,
+              puppies: List<PuppyStyle>,
+              state: V6GameState,
+              vm: PuppyClickerV6ViewModel
+          ) {
+              Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+              Spacer(Modifier.height(7.dp))
+              puppies.forEach { puppy ->
+                  val unlocked = puppy.id in state.unlockedPuppies
+                  val selected = state.puppyStyle == puppy.id
+                  Card(
+                      Modifier.fillMaxWidth().clickable(enabled = unlocked) { vm.setPuppyStyle(puppy.id) },
+                      colors = CardDefaults.cardColors(
+                          containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+                          else MaterialTheme.colorScheme.surface
+                      )
+                  ) {
+                      Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                          V6PuppyPortrait(puppy.id, 86.dp, unlocked = unlocked)
+                          Spacer(Modifier.width(11.dp))
+                          Column(Modifier.weight(1f)) {
+                              Text(puppy.name, fontWeight = FontWeight.Black)
+                              Text(v6FurDescription(puppy.id), style = MaterialTheme.typography.bodySmall)
+                              if (puppy.redeemOnly) {
+                                  val generation = if (puppy.id in V2_PUPPY_IDS) "V2" else "V1"
+                                  Text(
+                                      if (unlocked) "$generation Puppy Code unlocked" else "$generation Puppy Code unlock",
+                                      style = MaterialTheme.typography.labelSmall
+                                  )
+                              }
+                          }
+                          Text(if (selected) "✓" else if (unlocked) "Choose" else "🔒", fontWeight = FontWeight.Bold)
+                      }
+                  }
+                  Spacer(Modifier.height(8.dp))
+              }
+          }
+
+          '''
+          marker = '@Composable\nprivate fun V6Prestige(state: V6GameState, vm: PuppyClickerV6ViewModel) {'
+          pos = text.index(marker, text.index('private fun V6Pups'))
+          text = text[:pos] + helper + text[pos:]
+
+          text = text.replace(
+              '    val furFilter = v6PuppyFilter(styleId)\n',
+              '    val furFilter = v6PuppyFilter(styleId)\n    val isV2 = styleId in V2_PUPPY_IDS\n',
+              1,
+          )
+          text = text.replace(
+              '            painter = painterResource(R.drawable.source_pup),',
+              '            painter = painterResource(v6PuppyDrawable(styleId)),',
+              1,
+          )
+          text = text.replace(
+              '            modifier = Modifier.size(size * 0.90f),',
+              '            modifier = Modifier.size(size * if (isV2) 0.96f else 0.90f),',
+              1,
+          )
+          text = text.replace(
+              '            colorFilter = furFilter\n',
+              '            colorFilter = if (isV2) null else furFilter\n',
+              1,
+          )
+
+          drawable_helper = '''private fun v6PuppyDrawable(styleId: String): Int = when (styleId) {
+              "v2_frost" -> R.drawable.v2_frost
+              "v2_honey" -> R.drawable.v2_honey
+              "v2_biscuit" -> R.drawable.v2_biscuit
+              "v2_onyx" -> R.drawable.v2_onyx
+              "v2_domino" -> R.drawable.v2_domino
+              "v2_chestnut" -> R.drawable.v2_chestnut
+              "v2_prism" -> R.drawable.v2_prism
+              "v2_flurry" -> R.drawable.v2_flurry
+              else -> R.drawable.source_pup
+          }
+
+          '''
+          text = text.replace(
+              'private fun v6PuppyBackground(styleId: String): Color = when (styleId) {',
+              drawable_helper + 'private fun v6PuppyBackground(styleId: String): Color = when (styleId) {',
+              1,
+          )
+
+          text = text.replace(
+              '    "classic_forever" -> Color(0xFFFFE9C8)\n    else -> Color(0xFFF7F2F7)',
+              '''    "classic_forever" -> Color(0xFFFFE9C8)
+              "v2_frost" -> Color(0xFFF4F8FF)
+              "v2_honey" -> Color(0xFFFFE9BC)
+              "v2_biscuit" -> Color(0xFFFFE4C2)
+              "v2_onyx" -> Color(0xFFD9DDF0)
+              "v2_domino" -> Color(0xFFF3F3F3)
+              "v2_chestnut" -> Color(0xFFE4C2A9)
+              "v2_prism" -> Color(0xFFE4D5FF)
+              "v2_flurry" -> Color(0xFFF6FAFF)
+              else -> Color(0xFFF7F2F7)''',
+              1,
+          )
+
+          text = text.replace(
+              '    "classic_forever" -> "Special warm tribute to the original pup."\n    else -> "Original Puppy Clicker style."',
+              '''    "classic_forever" -> "Special warm tribute to the original pup."
+              "v2_frost" -> "Fluffy white V2 puppy with bright pink ears."
+              "v2_honey" -> "Happy golden V2 puppy with a cream chest and tail tip."
+              "v2_biscuit" -> "Curly apricot V2 puppy with soft cream curls."
+              "v2_onyx" -> "Dark navy V2 puppy with warm cream markings."
+              "v2_domino" -> "Spotted Dalmatian V2 puppy with a bold eye patch."
+              "v2_chestnut" -> "Cocoa-brown V2 puppy with a cream muzzle and paws."
+              "v2_prism" -> "Pastel purple, teal and cream V2 puppy."
+              "v2_flurry" -> "Fluffy snow-white V2 puppy with a curled tail."
+              else -> "Original Puppy Clicker style."''',
+              1,
+          )
+
+          activity.write_text(text)
+
+          gradle = Path('app/build.gradle.kts')
+          build = gradle.read_text()
+          if 'versionCode = 12' not in build or 'versionName = "1.6.2"' not in build:
+              raise SystemExit('Expected current app version was not found')
+          build = build.replace('versionCode = 12', 'versionCode = 13', 1)
+          build = build.replace('versionName = "1.6.2"', 'versionName = "1.7.0"', 1)
+          gradle.write_text(build)
+          PY
+
+      - name: Commit source patch
+        shell: bash
+        run: |
+          git config user.name "Puppy Clicker Build Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt app/build.gradle.kts
+          git commit -m "Wire V2 puppy artwork into collection UI"
+          git push origin HEAD:main
