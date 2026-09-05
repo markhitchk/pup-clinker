@@ -1,0 +1,32 @@
+name: One-shot Material3 opt-in fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-material3-optin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply Material3 opt-in
+        run: python3 .github/scripts/material3_optin_fix.py
+
+      - name: Commit fix
+        run: |
+          set -euo pipefail
+          git config user.name "markhitchk"
+          git config user.email "mark.hitchk@gmail.com"
+          git add app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt
+          git diff --cached --check
+          git commit -m "Opt in to Material3 bottom sheet API"
+          git push
