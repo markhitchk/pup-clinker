@@ -9,7 +9,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PuppyClicker">
         <activity
-            android:name=".AnimatedMainActivity"
+            android:name=".PuppyClickerV2Activity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
