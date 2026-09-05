@@ -177,7 +177,7 @@ private fun V4Play(state: GameState, viewModel: GameViewModel) {
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("${rarity.displayName} Upgrade Ticket found!", fontWeight = FontWeight.Black)
-                        Text("-${rarity.discountPercent}% on one Shop upgrade", style = MaterialTheme.typography.bodySmall)
+                        Text("Use it only on matching ${rarity.displayName} Shop upgrades.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -245,6 +245,7 @@ private fun V4Play(state: GameState, viewModel: GameViewModel) {
             Column(Modifier.padding(12.dp)) {
                 Text("🎟️ Upgrade Ticket drop", fontWeight = FontWeight.Black)
                 Text("Every accepted tap rolls 1–100. A ticket drops on 1 roll out of 100.", style = MaterialTheme.typography.bodySmall)
+                Text("Tickets must match an upgrade's rarity; treats are only a small extra fee.", style = MaterialTheme.typography.bodySmall)
                 Text("Auto-clicker-like taps do not receive ticket rolls.", style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -373,7 +374,7 @@ private fun V4Shop(state: GameState, viewModel: GameViewModel) {
     var codeSuccess by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        V4Header("Puppy Shop", "Spend treats or use rarity tickets to make upgrades cheaper.")
+        V4Header("Puppy Shop", "Matching rarity tickets + a small treat fee are required for every upgrade.")
         Spacer(Modifier.height(12.dp))
         V4Wallet(state)
         Spacer(Modifier.height(12.dp))
@@ -389,7 +390,7 @@ private fun V4Shop(state: GameState, viewModel: GameViewModel) {
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(rarity.displayName, fontWeight = FontWeight.Bold)
-                            Text("${rarity.rarityWeight}% of ticket drops · ${rarity.discountPercent}% upgrade discount", style = MaterialTheme.typography.labelSmall)
+                            Text("${rarity.rarityWeight}% of ticket drops · only for ${rarity.displayName} upgrades", style = MaterialTheme.typography.labelSmall)
                         }
                         Text("×${state.ticketInventory[rarity] ?: 0}", fontWeight = FontWeight.Black)
                     }
@@ -436,7 +437,7 @@ private fun V4Shop(state: GameState, viewModel: GameViewModel) {
 
         Spacer(Modifier.height(18.dp))
         Text("Upgrades", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        Text("Only Shop purchases can increase treats per tap.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Each upgrade has a fixed rarity. You need enough matching tickets plus the listed treat fee.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(10.dp))
         UPGRADES.forEach { upgrade ->
             V4UpgradeCard(state, upgrade, viewModel)
@@ -449,9 +450,17 @@ private fun V4Shop(state: GameState, viewModel: GameViewModel) {
 @Composable
 private fun V4UpgradeCard(state: GameState, upgrade: Upgrade, viewModel: GameViewModel) {
     val owned = state.upgrades[upgrade.id] ?: 0
-    val fullCost = upgradeCost(upgrade, owned)
+    val requirement = upgradeRequirement(upgrade)
+    val ticketsNeeded = requiredUpgradeTickets(upgrade, owned)
+    val ticketsOwned = state.ticketInventory[requirement.rarity] ?: 0
+    val treatFee = upgradeTreatFee(upgrade, owned)
+    val canBuy = ticketsOwned >= ticketsNeeded && state.treats >= treatFee
+    val ticketsMissing = (ticketsNeeded - ticketsOwned).coerceAtLeast(0)
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = rarityContainer(requirement.rarity).copy(alpha = 0.52f))
+    ) {
         Column(Modifier.padding(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(upgrade.emoji, fontSize = 32.sp)
@@ -461,26 +470,54 @@ private fun V4UpgradeCard(state: GameState, upgrade: Upgrade, viewModel: GameVie
                     Text(upgrade.description, style = MaterialTheme.typography.bodySmall)
                     Text("Owned $owned", style = MaterialTheme.typography.labelMedium)
                 }
-                Button(onClick = { viewModel.buyUpgrade(upgrade) }, enabled = state.treats >= fullCost) {
-                    Text("${formatV4(fullCost, state.compactNumbers)} 🍪")
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)) {
+                    Text(
+                        "${requirement.rarity.emoji} ${requirement.rarity.displayName}",
+                        Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
 
             Spacer(Modifier.height(10.dp))
-            Text("Use a rarity ticket", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                TicketRarity.entries.forEach { rarity ->
-                    val count = state.ticketInventory[rarity] ?: 0
-                    val discounted = rarityTicketUpgradeCost(upgrade, owned, rarity)
-                    AssistChip(
-                        onClick = { viewModel.buyUpgrade(upgrade, rarity) },
-                        enabled = count > 0 && state.treats >= discounted,
-                        label = {
-                            Text("${rarity.emoji} ${rarity.displayName} ×$count · ${formatV4(discounted, state.compactNumbers)}")
-                        }
+            Surface(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
+            ) {
+                Column(Modifier.padding(10.dp)) {
+                    Text("Required for next upgrade", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        "${requirement.rarity.emoji} ${requirement.rarity.displayName} Tickets ×$ticketsNeeded  +  ${formatV4(treatFee, state.compactNumbers)} 🍪",
+                        fontWeight = FontWeight.Black
                     )
+                    Text("You own $ticketsOwned matching tickets", style = MaterialTheme.typography.bodySmall)
                 }
+            }
+
+            Spacer(Modifier.height(9.dp))
+            Button(
+                onClick = { viewModel.buyUpgrade(upgrade, requirement.rarity) },
+                enabled = canBuy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (canBuy) "Upgrade · ${requirement.rarity.emoji} ×$ticketsNeeded + ${formatV4(treatFee, state.compactNumbers)} 🍪"
+                    else when {
+                        ticketsMissing > 0 -> "Need $ticketsMissing more ${requirement.rarity.displayName} ticket${if (ticketsMissing == 1) "" else "s"}"
+                        else -> "Need ${formatV4((treatFee - state.treats).coerceAtLeast(0), state.compactNumbers)} more treats"
+                    }
+                )
+            }
+
+            if (owned >= 3) {
+                Text(
+                    "Higher upgrade levels slowly require more matching tickets.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
             }
         }
     }
