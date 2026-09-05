@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import java.time.LocalDate
 import java.util.ArrayDeque
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -33,7 +34,9 @@ val UPGRADES = listOf(
     Upgrade("golden_bowl", "Golden Bowl", "+5 treats per tap", 350, UpgradeEffect.CLICK, 5, "🥣"),
     Upgrade("playmate", "Playmate", "+5 treats every second", 700, UpgradeEffect.AUTO, 5, "🐕"),
     Upgrade("puppy_power", "Puppy Power", "+25 treats per tap", 2_500, UpgradeEffect.CLICK, 25, "⚡"),
-    Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", 5_000, UpgradeEffect.AUTO, 25, "🌳")
+    Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", 5_000, UpgradeEffect.AUTO, 25, "🌳"),
+    Upgrade("treat_factory", "Treat Factory", "+100 treats every second", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
+    Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", 40_000, UpgradeEffect.CLICK, 100, "✨")
 )
 
 data class GameState(
@@ -46,10 +49,37 @@ data class GameState(
     val accessory: String = "None",
     val pupEyeStrikes: Int = 0,
     val cooldownUntilMs: Long = 0,
-    val offlineEarned: Long = 0
+    val offlineEarned: Long = 0,
+    val happiness: Int = 100,
+    val fullness: Int = 100,
+    val energy: Int = 100,
+    val totalTaps: Long = 0,
+    val combo: Int = 0,
+    val bestCombo: Int = 0,
+    val lastTapMs: Long = 0,
+    val careActions: Int = 0,
+    val parkActive: Boolean = false,
+    val parkReadyAtMs: Long = 0,
+    val lastDailyClaimDay: Long = Long.MIN_VALUE,
+    val claimedMissions: Set<String> = emptySet()
 ) {
     val level: Int
         get() = 1 + sqrt(lifetimeTreats.coerceAtLeast(0).toDouble() / 100.0).toInt()
+
+    val careScore: Int
+        get() = ((happiness + fullness + energy) / 3).coerceIn(0, 100)
+
+    val mood: String
+        get() = when {
+            careScore >= 85 -> "Thrilled"
+            careScore >= 65 -> "Happy"
+            careScore >= 40 -> "Okay"
+            careScore >= 20 -> "Needs care"
+            else -> "Very tired"
+        }
+
+    val comboMultiplier: Int
+        get() = (1 + (combo / 10)).coerceIn(1, 4)
 }
 
 data class Achievement(
@@ -64,9 +94,30 @@ val ACHIEVEMENTS = listOf(
     Achievement("first_treat", "First Treat", "Give your puppy its first treat.", "🐾") { it.lifetimeTreats >= 1 },
     Achievement("snack_stash", "Snack Stash", "Earn 100 lifetime treats.", "🍪") { it.lifetimeTreats >= 100 },
     Achievement("puppy_pro", "Puppy Pro", "Earn 1,000 lifetime treats.", "🏆") { it.lifetimeTreats >= 1_000 },
+    Achievement("combo_hero", "Combo Hero", "Reach a 20 tap combo.", "🔥") { it.bestCombo >= 20 },
     Achievement("big_taps", "Big Taps", "Reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
     Achievement("auto_pup", "Automatic Pup", "Reach 10 treats per second.", "⏱️") { it.autoPerSecond >= 10 },
+    Achievement("happy_home", "Happy Home", "Keep all three care meters at 90 or higher.", "💖") {
+        it.happiness >= 90 && it.fullness >= 90 && it.energy >= 90
+    },
+    Achievement("park_regular", "Park Regular", "Complete 5 care actions.", "🌳") { it.careActions >= 5 },
     Achievement("level_ten", "Best Friend", "Reach level 10.", "💜") { it.level >= 10 }
+)
+
+data class Mission(
+    val id: String,
+    val title: String,
+    val description: String,
+    val reward: Long,
+    val complete: (GameState) -> Boolean
+)
+
+val MISSIONS = listOf(
+    Mission("tap_50", "Fast Paws", "Tap your puppy 50 times.", 250) { it.totalTaps >= 50 },
+    Mission("combo_15", "Stay in the Groove", "Reach a 15 tap combo.", 400) { it.bestCombo >= 15 },
+    Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500) { it.careActions >= 5 },
+    Mission("level_5", "Growing Up", "Reach level 5.", 750) { it.level >= 5 },
+    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
 )
 
 fun upgradeCost(upgrade: Upgrade, owned: Int): Long {
@@ -83,18 +134,37 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
+            var seconds = 0
             while (isActive) {
                 delay(1_000)
-                val auto = _state.value.autoPerSecond
-                if (auto > 0) addTreats(auto.toLong())
-                saveState()
+                seconds += 1
+                val now = System.currentTimeMillis()
+
+                val current = _state.value
+                if (current.autoPerSecond > 0) {
+                    val moodBonus = if (current.careScore >= 80) current.autoPerSecond / 5 else 0
+                    addTreats((current.autoPerSecond + moodBonus).toLong())
+                }
+
+                if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
+                    _state.update { it.copy(combo = 0) }
+                }
+
+                if (seconds % 60 == 0) {
+                    decayNeeds()
+                }
+
+                if (seconds % 5 == 0) {
+                    saveState()
+                }
             }
         }
     }
 
     fun tapPuppy() {
         val now = System.currentTimeMillis()
-        if (now < _state.value.cooldownUntilMs) return
+        val current = _state.value
+        if (now < current.cooldownUntilMs) return
 
         recentTapTimes.addLast(now)
         while (recentTapTimes.isNotEmpty() && recentTapTimes.first < now - 1_000) {
@@ -106,15 +176,36 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             _state.update {
                 it.copy(
                     pupEyeStrikes = it.pupEyeStrikes + 1,
-                    cooldownUntilMs = now + PUP_EYE_COOLDOWN_MS
+                    cooldownUntilMs = now + PUP_EYE_COOLDOWN_MS,
+                    combo = 0
                 )
             }
             saveState()
             return
         }
 
-        addTreats(_state.value.clickPower.toLong())
-        saveState()
+        val nextCombo = if (now - current.lastTapMs <= COMBO_CHAIN_MS) {
+            (current.combo + 1).coerceAtMost(50)
+        } else {
+            1
+        }
+        val multiplier = (1 + nextCombo / 10).coerceIn(1, 4)
+        val reward = safeMultiply(current.clickPower.toLong(), multiplier.toLong())
+        val nextTotalTaps = safeAdd(current.totalTaps, 1)
+        val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
+        val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
+
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, reward),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            totalTaps = nextTotalTaps,
+            combo = nextCombo,
+            bestCombo = maxOf(current.bestCombo, nextCombo),
+            lastTapMs = now,
+            energy = (current.energy - energyLoss).coerceIn(0, 100),
+            happiness = (current.happiness + happinessGain).coerceIn(0, 100),
+            offlineEarned = 0
+        )
     }
 
     fun buyUpgrade(upgrade: Upgrade) {
@@ -132,7 +223,98 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             upgrades = nextUpgrades,
             clickPower = current.clickPower + if (upgrade.effect == UpgradeEffect.CLICK) upgrade.amount else 0,
             autoPerSecond = current.autoPerSecond + if (upgrade.effect == UpgradeEffect.AUTO) upgrade.amount else 0,
+            happiness = (current.happiness + 2).coerceAtMost(100),
             offlineEarned = 0
+        )
+        saveState()
+    }
+
+    fun feedPuppy() {
+        val current = _state.value
+        if (current.treats < FEED_COST || current.fullness >= 100) return
+        _state.value = current.copy(
+            treats = current.treats - FEED_COST,
+            fullness = (current.fullness + 30).coerceAtMost(100),
+            happiness = (current.happiness + 5).coerceAtMost(100),
+            careActions = current.careActions + 1
+        )
+        saveState()
+    }
+
+    fun playWithPuppy() {
+        val current = _state.value
+        if (current.energy < 10) return
+        val reward = (5L * current.level).coerceAtLeast(5L)
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, reward),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            happiness = (current.happiness + 25).coerceAtMost(100),
+            fullness = (current.fullness - 3).coerceAtLeast(0),
+            energy = (current.energy - 10).coerceAtLeast(0),
+            careActions = current.careActions + 1
+        )
+        saveState()
+    }
+
+    fun restPuppy() {
+        val current = _state.value
+        if (current.energy >= 100) return
+        _state.value = current.copy(
+            energy = (current.energy + 30).coerceAtMost(100),
+            happiness = (current.happiness + 3).coerceAtMost(100),
+            careActions = current.careActions + 1
+        )
+        saveState()
+    }
+
+    fun startParkAdventure() {
+        val current = _state.value
+        if (current.parkActive || current.energy < 20) return
+        _state.value = current.copy(
+            parkActive = true,
+            parkReadyAtMs = System.currentTimeMillis() + PARK_ADVENTURE_MS,
+            energy = (current.energy - 20).coerceAtLeast(0)
+        )
+        saveState()
+    }
+
+    fun claimParkAdventure() {
+        val current = _state.value
+        if (!current.parkActive || System.currentTimeMillis() < current.parkReadyAtMs) return
+        val reward = 250L + current.level * 50L
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, reward),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            happiness = (current.happiness + 15).coerceAtMost(100),
+            fullness = (current.fullness - 5).coerceAtLeast(0),
+            parkActive = false,
+            parkReadyAtMs = 0,
+            careActions = current.careActions + 1
+        )
+        saveState()
+    }
+
+    fun claimDailyReward() {
+        val current = _state.value
+        val today = LocalDate.now().toEpochDay()
+        if (current.lastDailyClaimDay == today) return
+        val reward = 100L + current.level * 25L
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, reward),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, reward),
+            lastDailyClaimDay = today,
+            happiness = (current.happiness + 10).coerceAtMost(100)
+        )
+        saveState()
+    }
+
+    fun claimMission(mission: Mission) {
+        val current = _state.value
+        if (!mission.complete(current) || mission.id in current.claimedMissions) return
+        _state.value = current.copy(
+            treats = safeAdd(current.treats, mission.reward),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, mission.reward),
+            claimedMissions = current.claimedMissions + mission.id
         )
         saveState()
     }
@@ -172,6 +354,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun decayNeeds() {
+        _state.update {
+            it.copy(
+                happiness = (it.happiness - 1).coerceAtLeast(0),
+                fullness = (it.fullness - 1).coerceAtLeast(0),
+                energy = (it.energy + 1).coerceAtMost(100)
+            )
+        }
+    }
+
     private fun loadState(): GameState {
         val owned = UPGRADES.associate { upgrade ->
             upgrade.id to prefs.getInt("upgrade_${upgrade.id}", 0).coerceAtLeast(0)
@@ -192,6 +384,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val offlineEarned = safeMultiply(autoPerSecond.toLong(), elapsedSeconds)
         val savedTreats = prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0)
         val savedLifetime = prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0)
+        val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000).coerceAtMost(180)
+
+        val savedHappiness = prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100)
+        val savedFullness = prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100)
+        val savedEnergy = prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100)
 
         return GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
@@ -202,7 +399,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             upgrades = owned,
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
             pupEyeStrikes = prefs.getInt(KEY_STRIKES, 0).coerceAtLeast(0),
-            offlineEarned = offlineEarned
+            offlineEarned = offlineEarned,
+            happiness = (savedHappiness - elapsedMinutes.toInt()).coerceAtLeast(0),
+            fullness = (savedFullness - elapsedMinutes.toInt()).coerceAtLeast(0),
+            energy = (savedEnergy + elapsedMinutes.toInt()).coerceAtMost(100),
+            totalTaps = prefs.getLong(KEY_TOTAL_TAPS, 0).coerceAtLeast(0),
+            bestCombo = prefs.getInt(KEY_BEST_COMBO, 0).coerceAtLeast(0),
+            careActions = prefs.getInt(KEY_CARE_ACTIONS, 0).coerceAtLeast(0),
+            parkActive = prefs.getBoolean(KEY_PARK_ACTIVE, false),
+            parkReadyAtMs = prefs.getLong(KEY_PARK_READY_AT, 0),
+            lastDailyClaimDay = prefs.getLong(KEY_DAILY_DAY, Long.MIN_VALUE),
+            claimedMissions = prefs.getStringSet(KEY_CLAIMED_MISSIONS, emptySet())?.toSet() ?: emptySet()
         )
     }
 
@@ -215,6 +422,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             putString(KEY_ACCESSORY, current.accessory)
             putInt(KEY_STRIKES, current.pupEyeStrikes)
             putLong(KEY_LAST_SEEN, System.currentTimeMillis())
+            putInt(KEY_HAPPINESS, current.happiness)
+            putInt(KEY_FULLNESS, current.fullness)
+            putInt(KEY_ENERGY, current.energy)
+            putLong(KEY_TOTAL_TAPS, current.totalTaps)
+            putInt(KEY_BEST_COMBO, current.bestCombo)
+            putInt(KEY_CARE_ACTIONS, current.careActions)
+            putBoolean(KEY_PARK_ACTIVE, current.parkActive)
+            putLong(KEY_PARK_READY_AT, current.parkReadyAtMs)
+            putLong(KEY_DAILY_DAY, current.lastDailyClaimDay)
+            putStringSet(KEY_CLAIMED_MISSIONS, current.claimedMissions.toSet())
             current.upgrades.forEach { (id, count) -> putInt("upgrade_$id", count) }
         }.apply()
     }
@@ -235,6 +452,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         val ACCESSORIES = listOf("None", "Bandana", "Bow", "Crown")
+        const val FEED_COST = 20L
+        const val PARK_ADVENTURE_MS = 60_000L
+
         private const val PREFS_NAME = "puppy_clicker_save"
         private const val KEY_NAME = "puppy_name"
         private const val KEY_TREATS = "treats"
@@ -242,8 +462,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_ACCESSORY = "accessory"
         private const val KEY_STRIKES = "pup_eye_strikes"
         private const val KEY_LAST_SEEN = "last_seen"
+        private const val KEY_HAPPINESS = "happiness"
+        private const val KEY_FULLNESS = "fullness"
+        private const val KEY_ENERGY = "energy"
+        private const val KEY_TOTAL_TAPS = "total_taps"
+        private const val KEY_BEST_COMBO = "best_combo"
+        private const val KEY_CARE_ACTIONS = "care_actions"
+        private const val KEY_PARK_ACTIVE = "park_active"
+        private const val KEY_PARK_READY_AT = "park_ready_at"
+        private const val KEY_DAILY_DAY = "daily_claim_day"
+        private const val KEY_CLAIMED_MISSIONS = "claimed_missions"
         private const val MAX_TAPS_PER_SECOND = 24
         private const val PUP_EYE_COOLDOWN_MS = 2_500L
         private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
+        private const val COMBO_CHAIN_MS = 900L
+        private const val COMBO_TIMEOUT_MS = 1_600L
     }
 }
