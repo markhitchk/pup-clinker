@@ -30,8 +30,8 @@ val v2ProtectedPuppyIds = listOf(
 )
 
 // Build-time counterpart of the split runtime key in ProtectedPuppyArt.kt.
-private const val PUPPY_KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
-private const val PUPPY_KEY_MASK_B = "aad54e1243c251683af5c3709dfb34ff888e9f8de7b81104716bb120c239984f"
+val PUPPY_KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
+val PUPPY_KEY_MASK_B = "aad54e1243c251683af5c3709dfb34ff888e9f8de7b81104716bb120c239984f"
 
 fun puppyHexToBytes(hex: String): ByteArray = ByteArray(hex.length / 2) { index ->
     hex.substring(index * 2, index * 2 + 2).toInt(16).toByte()
@@ -180,12 +180,12 @@ val prepareProtectedPuppyAssets by tasks.registering {
         }
 
         vectorDrawableDir.resolve("source_pup.xml").writeText(
-            """<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<vector xmlns:android=\"http://schemas.android.com/apk/res/android\"
-    android:width=\"256dp\" android:height=\"256dp\"
-    android:viewportWidth=\"256\" android:viewportHeight=\"256\">
-    <path android:fillColor=\"#00B8F0\"
-        android:pathData=\"M128,38C87,38 54,70 54,109c0,27 15,50 38,62 -10,10 -17,24 -17,39 0,7 6,12 13,12h80c7,0 13,-5 13,-12 0,-15 -7,-29 -17,-39 23,-12 38,-35 38,-62 0,-39 -33,-71 -74,-71zM92,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM164,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM104,145c14,12 34,12 48,0 4,-3 9,2 6,6 -16,19 -44,19 -60,0 -3,-4 2,-9 6,-6z\"/>
+            """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp" android:height="256dp"
+    android:viewportWidth="256" android:viewportHeight="256">
+    <path android:fillColor="#00B8F0"
+        android:pathData="M128,38C87,38 54,70 54,109c0,27 15,50 38,62 -10,10 -17,24 -17,39 0,7 6,12 13,12h80c7,0 13,-5 13,-12 0,-15 -7,-29 -17,-39 23,-12 38,-35 38,-62 0,-39 -33,-71 -74,-71zM92,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM164,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM104,145c14,12 34,12 48,0 4,-3 9,2 6,6 -16,19 -44,19 -60,0 -3,-4 2,-9 6,-6z"/>
 </vector>
 """
         )
@@ -207,7 +207,7 @@ val generateProtectedPuppyActivity by tasks.registering {
         }
 
         val replacement = """@Composable
-private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = \"None\", unlocked: Boolean = true) {
+private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None", unlocked: Boolean = true) {
     ProtectedPuppyPortrait(
         styleId = styleId,
         size = size,
