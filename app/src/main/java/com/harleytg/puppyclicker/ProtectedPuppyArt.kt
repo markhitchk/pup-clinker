@@ -1,13 +1,11 @@
 package com.harleytg.puppyclicker
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.Xml
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,11 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -47,17 +42,14 @@ import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 
 /**
- * Runtime loader for protected Puppy Clicker artwork.
+ * Runtime renderer for encrypted Puppy Clicker Android VectorDrawable artwork.
  *
- * Puppy artwork is AES-256-GCM encrypted into generated APK assets during the build.
- * V1 styles share one encrypted base puppy and keep their existing tint treatment.
- * Every V2 puppy is stored as an encrypted vector payload and parsed only after decrypting in memory.
+ * Every V1 puppy now has its own vector model. V1 no longer reuses one bitmap
+ * with a tint/filter. V2 keeps its existing vector models. Both generations are
+ * AES-256-GCM protected during the build and decrypted only when rendered.
  *
- * Loading/decryption/parsing is deliberately kept off the UI thread. The puppy roster can compose many
- * portraits at once, and doing vector parsing synchronously there can stall the app on slower devices.
- *
- * This raises the bar for casual APK extraction. It is not DRM: a determined reverse engineer can
- * still recover artwork from a running client because the app must ultimately render it.
+ * Decryption and vector parsing stay off the UI thread so opening the roster does
+ * not freeze the app on slower Android devices.
  */
 @Composable
 internal fun ProtectedPuppyPortrait(
@@ -66,19 +58,18 @@ internal fun ProtectedPuppyPortrait(
     accessory: String = "None",
     unlocked: Boolean = true,
     background: Color,
-    furFilter: ColorFilter?
+    @Suppress("UNUSED_PARAMETER") furFilter: ColorFilter?
 ) {
     val style = V6_PUPPY_STYLES.firstOrNull { it.id == styleId } ?: V6_PUPPY_STYLES.first()
-    val isV2 = styleId in V2_PUPPY_IDS
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
 
-    val payload = produceState<ProtectedPuppyPayload?>(
-        initialValue = ProtectedPuppyAssets.peek(styleId),
-        key1 = styleId
+    val vector = produceState<SecureVector?>(
+        initialValue = ProtectedPuppyAssets.peek(style.id),
+        key1 = style.id
     ) {
         if (value == null) {
             value = withContext(Dispatchers.Default) {
-                runCatching { ProtectedPuppyAssets.load(appContext, styleId) }.getOrNull()
+                runCatching { ProtectedPuppyAssets.load(appContext, style.id) }.getOrNull()
             }
         }
     }.value
@@ -90,26 +81,14 @@ internal fun ProtectedPuppyPortrait(
             .background(background),
         contentAlignment = Alignment.Center
     ) {
-        when (payload) {
-            is ProtectedBitmapPayload -> {
-                Image(
-                    bitmap = payload.bitmap,
-                    contentDescription = style.name,
-                    modifier = Modifier.size(size * if (isV2) 0.96f else 0.90f),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = if (isV2) null else furFilter
-                )
-            }
-
-            is ProtectedVectorPayload -> {
-                ProtectedVectorImage(
-                    vector = payload.vector,
-                    description = style.name,
-                    modifier = Modifier.size(size * 0.96f)
-                )
-            }
-
-            null -> Text("🐶", fontSize = (size.value * 0.42f).sp)
+        if (vector != null) {
+            ProtectedVectorImage(
+                vector = vector,
+                description = style.name,
+                modifier = Modifier.size(size * 0.96f)
+            )
+        } else {
+            Text("🐶", fontSize = (size.value * 0.42f).sp)
         }
 
         Surface(
@@ -149,17 +128,17 @@ private fun ProtectedVectorImage(
     description: String,
     modifier: Modifier = Modifier
 ) {
-    // Paint creation is relatively expensive. Build immutable render commands once per decrypted vector
-    // instead of allocating one or two Paint instances for every path on every Compose draw pass.
     val renderPaths = remember(vector) {
         vector.paths.map { item ->
-            val fillPaint = item.fillColor?.takeIf { AndroidColor.alpha(it) != 0 && item.fillAlpha > 0f }?.let { color ->
-                Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    style = Paint.Style.FILL
-                    this.color = color
-                    alpha = (item.fillAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+            val fillPaint = item.fillColor
+                ?.takeIf { AndroidColor.alpha(it) != 0 && item.fillAlpha > 0f }
+                ?.let { color ->
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.FILL
+                        this.color = color
+                        alpha = (item.fillAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+                    }
                 }
-            }
 
             val strokePaint = item.strokeColor
                 ?.takeIf { item.strokeWidth > 0f && AndroidColor.alpha(it) != 0 && item.strokeAlpha > 0f }
@@ -200,10 +179,6 @@ private fun ProtectedVectorImage(
     }
 }
 
-private sealed interface ProtectedPuppyPayload
-private data class ProtectedBitmapPayload(val bitmap: ImageBitmap) : ProtectedPuppyPayload
-private data class ProtectedVectorPayload(val vector: SecureVector) : ProtectedPuppyPayload
-
 private data class SecureVector(
     val viewportWidth: Float,
     val viewportHeight: Float,
@@ -231,46 +206,46 @@ private data class SecureRenderPath(
 private object ProtectedPuppyAssets {
     private const val PREFIX = "puppies"
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
-    private val cache = ConcurrentHashMap<String, ProtectedPuppyPayload>()
+    private val cache = ConcurrentHashMap<String, SecureVector>()
 
     private const val KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
     private const val KEY_MASK_B = "aad54e1243c251683af5c3709dfb34ff888e9f8de7b81104716bb120c239984f"
 
-    fun peek(styleId: String): ProtectedPuppyPayload? = cache[assetIdFor(styleId)]
+    fun peek(styleId: String): SecureVector? = cache[assetIdFor(styleId)]
 
-    fun load(context: Context, styleId: String): ProtectedPuppyPayload {
+    fun load(context: Context, styleId: String): SecureVector {
         val assetId = assetIdFor(styleId)
-        return cache[assetId] ?: synchronized(this) {
-            cache[assetId] ?: loadUncached(context, assetId).also { cache[assetId] = it }
-        }
+        cache[assetId]?.let { return it }
+
+        val loaded = loadUncached(context, assetId)
+        return cache.putIfAbsent(assetId, loaded) ?: loaded
     }
 
     private fun assetIdFor(styleId: String): String =
-        if (styleId in V2_PUPPY_IDS) styleId else "v1_base"
+        if (styleId in V2_PUPPY_IDS) styleId else "v1_$styleId"
 
-    private fun loadUncached(context: Context, assetId: String): ProtectedPuppyPayload {
+    private fun loadUncached(context: Context, assetId: String): SecureVector {
         val protectedBytes = context.assets.open("$PREFIX/$assetId.pup").use { it.readBytes() }
         val plain = decrypt(assetId, protectedBytes)
-
-        return if (assetId.startsWith("v2_")) {
-            ProtectedVectorPayload(parseVector(plain.toString(Charsets.UTF_8)))
-        } else {
-            val bitmap = BitmapFactory.decodeByteArray(plain, 0, plain.size)
-                ?: error("Unable to decode protected V1 puppy artwork")
-            ProtectedBitmapPayload(bitmap.asImageBitmap())
-        }
+        return parseVector(plain.toString(Charsets.UTF_8))
     }
 
     private fun decrypt(assetId: String, payload: ByteArray): ByteArray {
         require(payload.size > 32) { "Protected puppy payload is too small" }
-        require(payload.copyOfRange(0, 4).contentEquals(byteArrayOf('P'.code.toByte(), 'C'.code.toByte(), 'P'.code.toByte(), '1'.code.toByte()))) {
-            "Invalid protected puppy payload"
-        }
+        require(
+            payload.copyOfRange(0, 4).contentEquals(
+                byteArrayOf('P'.code.toByte(), 'C'.code.toByte(), 'P'.code.toByte(), '1'.code.toByte())
+            )
+        ) { "Invalid protected puppy payload" }
 
         val nonce = payload.copyOfRange(4, 16)
         val ciphertext = payload.copyOfRange(16, payload.size)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(assetKey(), "AES"), GCMParameterSpec(128, nonce))
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(assetKey(), "AES"),
+            GCMParameterSpec(128, nonce)
+        )
         cipher.updateAAD("puppy-clicker:$assetId".toByteArray(Charsets.UTF_8))
         return cipher.doFinal(ciphertext)
     }
@@ -286,9 +261,7 @@ private object ProtectedPuppyAssets {
     }
 
     private fun parseVector(xml: String): SecureVector {
-        val parser = Xml.newPullParser().apply {
-            setInput(StringReader(xml))
-        }
+        val parser = Xml.newPullParser().apply { setInput(StringReader(xml)) }
 
         var viewportWidth = 1f
         var viewportHeight = 1f
