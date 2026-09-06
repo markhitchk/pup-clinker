@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,8 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 
 /**
@@ -49,6 +52,9 @@ import org.xmlpull.v1.XmlPullParser
  * Puppy artwork is AES-256-GCM encrypted into generated APK assets during the build.
  * V1 styles share one encrypted base puppy and keep their existing tint treatment.
  * Every V2 puppy is stored as an encrypted vector payload and parsed only after decrypting in memory.
+ *
+ * Loading/decryption/parsing is deliberately kept off the UI thread. The puppy roster can compose many
+ * portraits at once, and doing vector parsing synchronously there can stall the app on slower devices.
  *
  * This raises the bar for casual APK extraction. It is not DRM: a determined reverse engineer can
  * still recover artwork from a running client because the app must ultimately render it.
@@ -64,10 +70,18 @@ internal fun ProtectedPuppyPortrait(
 ) {
     val style = V6_PUPPY_STYLES.firstOrNull { it.id == styleId } ?: V6_PUPPY_STYLES.first()
     val isV2 = styleId in V2_PUPPY_IDS
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val payload = remember(styleId) {
-        runCatching { ProtectedPuppyAssets.load(context, styleId) }.getOrNull()
-    }
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+
+    val payload = produceState<ProtectedPuppyPayload?>(
+        initialValue = ProtectedPuppyAssets.peek(styleId),
+        key1 = styleId
+    ) {
+        if (value == null) {
+            value = withContext(Dispatchers.Default) {
+                runCatching { ProtectedPuppyAssets.load(appContext, styleId) }.getOrNull()
+            }
+        }
+    }.value
 
     Box(
         Modifier
@@ -135,6 +149,36 @@ private fun ProtectedVectorImage(
     description: String,
     modifier: Modifier = Modifier
 ) {
+    // Paint creation is relatively expensive. Build immutable render commands once per decrypted vector
+    // instead of allocating one or two Paint instances for every path on every Compose draw pass.
+    val renderPaths = remember(vector) {
+        vector.paths.map { item ->
+            val fillPaint = item.fillColor?.takeIf { AndroidColor.alpha(it) != 0 && item.fillAlpha > 0f }?.let { color ->
+                Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.FILL
+                    this.color = color
+                    alpha = (item.fillAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+                }
+            }
+
+            val strokePaint = item.strokeColor
+                ?.takeIf { item.strokeWidth > 0f && AndroidColor.alpha(it) != 0 && item.strokeAlpha > 0f }
+                ?.let { color ->
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.STROKE
+                        this.color = color
+                        strokeWidth = item.strokeWidth
+                        strokeCap = item.strokeCap
+                        strokeJoin = item.strokeJoin
+                        strokeMiter = item.strokeMiter
+                        alpha = (item.strokeAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+                    }
+                }
+
+            SecureRenderPath(item.path, fillPaint, strokePaint)
+        }
+    }
+
     Canvas(modifier.semantics { contentDescription = description }) {
         drawIntoCanvas { composeCanvas ->
             val native = composeCanvas.nativeCanvas
@@ -146,32 +190,9 @@ private fun ProtectedVectorImage(
             native.translate(dx, dy)
             native.scale(scale, scale)
 
-            vector.paths.forEach { item ->
-                item.fillColor?.let { color ->
-                    if (AndroidColor.alpha(color) != 0 && item.fillAlpha > 0f) {
-                        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            style = Paint.Style.FILL
-                            this.color = color
-                            alpha = (item.fillAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
-                        }
-                        native.drawPath(item.path, paint)
-                    }
-                }
-
-                item.strokeColor?.let { color ->
-                    if (item.strokeWidth > 0f && AndroidColor.alpha(color) != 0 && item.strokeAlpha > 0f) {
-                        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            style = Paint.Style.STROKE
-                            this.color = color
-                            strokeWidth = item.strokeWidth
-                            strokeCap = item.strokeCap
-                            strokeJoin = item.strokeJoin
-                            strokeMiter = item.strokeMiter
-                            alpha = (item.strokeAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
-                        }
-                        native.drawPath(item.path, paint)
-                    }
-                }
+            renderPaths.forEach { item ->
+                item.fillPaint?.let { native.drawPath(item.path, it) }
+                item.strokePaint?.let { native.drawPath(item.path, it) }
             }
 
             native.restore()
@@ -201,6 +222,12 @@ private data class SecureVectorPath(
     val strokeMiter: Float
 )
 
+private data class SecureRenderPath(
+    val path: Path,
+    val fillPaint: Paint?,
+    val strokePaint: Paint?
+)
+
 private object ProtectedPuppyAssets {
     private const val PREFIX = "puppies"
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
@@ -209,12 +236,17 @@ private object ProtectedPuppyAssets {
     private const val KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
     private const val KEY_MASK_B = "aad54e1243c251683af5c3709dfb34ff888e9f8de7b81104716bb120c239984f"
 
+    fun peek(styleId: String): ProtectedPuppyPayload? = cache[assetIdFor(styleId)]
+
     fun load(context: Context, styleId: String): ProtectedPuppyPayload {
-        val assetId = if (styleId in V2_PUPPY_IDS) styleId else "v1_base"
+        val assetId = assetIdFor(styleId)
         return cache[assetId] ?: synchronized(this) {
             cache[assetId] ?: loadUncached(context, assetId).also { cache[assetId] = it }
         }
     }
+
+    private fun assetIdFor(styleId: String): String =
+        if (styleId in V2_PUPPY_IDS) styleId else "v1_base"
 
     private fun loadUncached(context: Context, assetId: String): ProtectedPuppyPayload {
         val protectedBytes = context.assets.open("$PREFIX/$assetId.pup").use { it.readBytes() }
