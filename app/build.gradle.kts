@@ -130,11 +130,16 @@ android {
     sourceSets["main"].res.srcDir(generatedSourceRes)
     sourceSets["main"].res.exclude("**/v2_*.xml")
     sourceSets["main"].assets.srcDir(generatedProtectedAssets)
-    sourceSets["main"].java.srcDir(generatedProtectedSource)
-    sourceSets["main"].java.exclude("**/PuppyClickerV6Activity.kt")
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+kotlin {
+    sourceSets.getByName("main").kotlin {
+        exclude("**/PuppyClickerV6Activity.kt")
+        srcDir(generatedProtectedSource)
     }
 }
 
