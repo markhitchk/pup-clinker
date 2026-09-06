@@ -16,7 +16,7 @@ val generatedSourceDrawables = layout.buildDirectory.dir("generated/source-asset
 val generatedSourceVectorDrawables = layout.buildDirectory.dir("generated/source-assets/res/drawable")
 val generatedProtectedAssets = layout.buildDirectory.dir("generated/protected-puppies/assets")
 val generatedProtectedSource = layout.buildDirectory.dir("generated/protected-puppies/source")
-val originalV6Activity = layout.projectDirectory.file("src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt")
+val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
 val v2PuppySourceDir = layout.projectDirectory.dir("src/main/res/drawable-anydpi")
 val v2ProtectedPuppyIds = listOf(
     "v2_frost",
@@ -29,7 +29,6 @@ val v2ProtectedPuppyIds = listOf(
     "v2_flurry"
 )
 
-// Build-time counterpart of the split runtime key in ProtectedPuppyArt.kt.
 val PUPPY_KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
 val PUPPY_KEY_MASK_B = "aad54e1243c251683af5c3709dfb34ff888e9f8de7b81104716bb120c239984f"
 
@@ -73,7 +72,6 @@ android {
         targetSdk = 35
         versionCode = 14
         versionName = "1.7.1"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -130,16 +128,10 @@ android {
     sourceSets["main"].res.srcDir(generatedSourceRes)
     sourceSets["main"].res.exclude("**/v2_*.xml")
     sourceSets["main"].assets.srcDir(generatedProtectedAssets)
+    sourceSets["main"].java.setSrcDirs(listOf(generatedProtectedSource))
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
-    }
-}
-
-kotlin {
-    sourceSets.getByName("main").kotlin {
-        exclude("**/PuppyClickerV6Activity.kt")
-        srcDir(generatedProtectedSource)
     }
 }
 
@@ -170,9 +162,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
         v2ProtectedPuppyIds.forEach { assetId ->
             val source = v2PuppySourceDir.file("$assetId.xml").asFile
             require(source.isFile) { "Missing protected puppy source: ${source.path}" }
-            puppyAssetDir.resolve("$assetId.pup").writeBytes(
-                protectPuppyAsset(assetId, source.readBytes())
-            )
+            puppyAssetDir.resolve("$assetId.pup").writeBytes(protectPuppyAsset(assetId, source.readBytes()))
         }
 
         mapOf(
@@ -197,14 +187,26 @@ val prepareProtectedPuppyAssets by tasks.registering {
     }
 }
 
-val generateProtectedPuppyActivity by tasks.registering {
-    description = "Generates the V6 activity copy that renders encrypted puppy assets."
+val generateProtectedPuppySources by tasks.registering {
+    description = "Copies app Kotlin sources and patches V6 to render only encrypted puppy artwork."
     group = "puppy clicker"
-    inputs.file(originalV6Activity)
+    inputs.dir(originalMainSourceDir)
     outputs.dir(generatedProtectedSource)
 
     doLast {
-        val source = originalV6Activity.asFile.readText()
+        val targetRoot = generatedProtectedSource.get().asFile
+        targetRoot.deleteRecursively()
+        targetRoot.mkdirs()
+
+        project.copy {
+            from(originalMainSourceDir)
+            into(targetRoot)
+        }
+
+        val target = targetRoot.resolve("com/harleytg/puppyclicker/PuppyClickerV6Activity.kt")
+        require(target.isFile) { "Unable to locate copied PuppyClickerV6Activity.kt" }
+
+        val source = target.readText()
         val portraitStart = source.indexOf("@Composable\nprivate fun V6PuppyPortrait")
         val backgroundStart = source.indexOf("\nprivate fun v6PuppyBackground", portraitStart)
         require(portraitStart >= 0 && backgroundStart > portraitStart) {
@@ -224,16 +226,12 @@ private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None
 }
 """
 
-        val patched = source.substring(0, portraitStart) + replacement + source.substring(backgroundStart)
-        val target = generatedProtectedSource.get().asFile
-            .resolve("com/harleytg/puppyclicker/PuppyClickerV6ActivityProtected.kt")
-        target.parentFile.mkdirs()
-        target.writeText(patched)
+        target.writeText(source.substring(0, portraitStart) + replacement + source.substring(backgroundStart))
     }
 }
 
 tasks.named("preBuild").configure {
-    dependsOn(prepareProtectedPuppyAssets, generateProtectedPuppyActivity)
+    dependsOn(prepareProtectedPuppyAssets, generateProtectedPuppySources)
 }
 
 dependencies {
