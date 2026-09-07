@@ -17,29 +17,7 @@ val generatedSourceVectorDrawables = layout.buildDirectory.dir("generated/source
 val generatedProtectedAssets = layout.buildDirectory.dir("generated/protected-puppies/assets")
 val generatedProtectedSource = layout.buildDirectory.dir("generated/protected-puppies/source")
 val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
-val protectedPuppySourceDir = layout.projectDirectory.dir("src/main/res/drawable-anydpi")
-
-val v1ProtectedPuppyIds = listOf(
-    "classic",
-    "golden",
-    "poodle",
-    "spotty",
-    "midnight",
-    "cloud",
-    "aurora",
-    "cocoa",
-    "snowball",
-    "galaxy",
-    "neon_buddy",
-    "golden_night",
-    "halloween",
-    "santa",
-    "birthday",
-    "dev_pup",
-    "secret_snoot",
-    "classic_forever"
-)
-
+val v2PuppySourceDir = layout.projectDirectory.dir("src/main/res/drawable-anydpi")
 val v2ProtectedPuppyIds = listOf(
     "v2_frost",
     "v2_honey",
@@ -148,7 +126,6 @@ android {
     }
 
     sourceSets["main"].res.srcDir(generatedSourceRes)
-    sourceSets["main"].res.exclude("**/v1_*.xml")
     sourceSets["main"].res.exclude("**/v2_*.xml")
     sourceSets["main"].assets.srcDir(generatedProtectedAssets)
     sourceSets["main"].java.setSrcDirs(listOf(generatedProtectedSource))
@@ -159,10 +136,9 @@ android {
 }
 
 val prepareProtectedPuppyAssets by tasks.registering {
-    description = "Encrypts all V1/V2 Android vector puppy artwork into generated APK assets."
+    description = "Encrypts the original V1 puppy and all V2 vector artwork into generated APK assets."
     group = "puppy clicker"
-    inputs.files(v1ProtectedPuppyIds.map { protectedPuppySourceDir.file("v1_$it.xml") })
-    inputs.files(v2ProtectedPuppyIds.map { protectedPuppySourceDir.file("$it.xml") })
+    inputs.files(v2ProtectedPuppyIds.map { v2PuppySourceDir.file("$it.xml") })
     outputs.dir(generatedProtectedAssets)
     outputs.dir(generatedSourceDrawables)
     outputs.dir(generatedSourceVectorDrawables)
@@ -178,24 +154,18 @@ val prepareProtectedPuppyAssets by tasks.registering {
         drawableDir.mkdirs()
         vectorDrawableDir.mkdirs()
 
-        v1ProtectedPuppyIds.forEach { styleId ->
-            val assetId = "v1_$styleId"
-            val source = protectedPuppySourceDir.file("$assetId.xml").asFile
-            require(source.isFile) { "Missing protected V1 puppy vector: ${source.path}" }
-            puppyAssetDir.resolve("$assetId.pup").writeBytes(
-                protectPuppyAsset(assetId, source.readBytes())
-            )
-        }
+        val baseUrl = "https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/$puppySourceCommit/Images"
+        val v1Bytes = URI("$baseUrl/pup.png").toURL().openStream().use { it.readBytes() }
+        puppyAssetDir.resolve("v1_base.pup").writeBytes(protectPuppyAsset("v1_base", v1Bytes))
 
         v2ProtectedPuppyIds.forEach { assetId ->
-            val source = protectedPuppySourceDir.file("$assetId.xml").asFile
+            val source = v2PuppySourceDir.file("$assetId.xml").asFile
             require(source.isFile) { "Missing protected V2 puppy vector: ${source.path}" }
             puppyAssetDir.resolve("$assetId.pup").writeBytes(
                 protectPuppyAsset(assetId, source.readBytes())
             )
         }
 
-        val baseUrl = "https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/$puppySourceCommit/Images"
         mapOf(
             "source_logo.png" to "$baseUrl/logo.png",
             "source_htg.png" to "$baseUrl/htg.png"
@@ -252,7 +222,7 @@ private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None
         accessory = accessory,
         unlocked = unlocked,
         background = v6PuppyBackground(styleId),
-        furFilter = null
+        furFilter = v6PuppyFilter(styleId)
     )
 }
 """
