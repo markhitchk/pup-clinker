@@ -1,0 +1,105 @@
+name: Verify installable Puppy Clicker release
+
+on:
+  push:
+    branches: [fix/v1-installable-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v1-installable-release
+          persist-credentials: true
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Set release version in actual source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/build.gradle.kts')
+          text = p.read_text()
+          assert text.count('versionCode = 15') == 1
+          assert text.count('versionName = "1.7.2"') == 1
+          text = text.replace('versionCode = 15', 'versionCode = 19', 1)
+          text = text.replace('versionName = "1.7.2"', 'versionName = "1.7.6"', 1)
+          p.write_text(text)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/build.gradle.kts
+          git commit -m 'Bump Puppy Clicker to 1.7.6 (19) for clean repair release'
+          git push origin HEAD:fix/v1-installable-release
+
+      - name: Build from source using Android Gradle Plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleRelease --stacktrace
+          mkdir -p "$RUNNER_TEMP/puppy-release"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/puppy-release/app-release-unsigned.apk"
+
+      - name: Validate and temporarily sign installation-test copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -x "$BT/aapt"
+          test -x "$BT/zipalign"
+          test -x "$BT/apksigner"
+          UNSIGNED="$RUNNER_TEMP/puppy-release/app-release-unsigned.apk"
+          ALIGNED="$RUNNER_TEMP/puppy-release/app-release-aligned.apk"
+          TEST_APK="$RUNNER_TEMP/puppy-release/puppy-smoke-test.apk"
+          "$BT/aapt" dump badging "$UNSIGNED" | grep -E '^(package:|sdkVersion:|targetSdkVersion:|native-code:)'
+          "$BT/zipalign" -f -P 16 4 "$UNSIGNED" "$ALIGNED"
+          "$BT/zipalign" -c -P 16 -v 4 "$ALIGNED"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$RUNNER_TEMP/puppy-smoke.p12" -storepass android -keypass android -alias smoke -keyalg RSA -keysize 2048 -validity 1 -dname 'CN=Temporary Puppy Clicker CI Test'
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/puppy-smoke.p12" --ks-type PKCS12 --ks-key-alias smoke --ks-pass pass:android --key-pass pass:android --min-sdk-version 26 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --v4-signing-enabled false --out "$TEST_APK" "$ALIGNED"
+          "$BT/apksigner" verify --verbose --print-certs --min-sdk-version 26 --max-sdk-version 35 "$TEST_APK"
+          "$BT/aapt" dump badging "$TEST_APK" | grep '^package:' | grep "name='com.harleytg.puppyclicker' versionCode='19' versionName='1.7.6'"
+          echo 'This test key is temporary and is never used for the user release.'
+
+      - name: Install and launch on Android 14 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            adb install -r "$RUNNER_TEMP/puppy-release/puppy-smoke-test.apk"
+            adb shell am start -W -n com.harleytg.puppyclicker/.PuppyClickerV6Activity
+            sleep 10
+            adb shell pidof com.harleytg.puppyclicker
+            adb shell dumpsys activity activities | grep -m 1 'com.harleytg.puppyclicker'
+            echo 'Android 14 installation and launch smoke test passed.'
+
+      - name: Upload source-built unsigned APK for permanent signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-1.7.6-19-verified-unsigned
+          path: ${{ runner.temp }}/puppy-release/app-release-aligned.apk
+          if-no-files-found: error
+          retention-days: 30
