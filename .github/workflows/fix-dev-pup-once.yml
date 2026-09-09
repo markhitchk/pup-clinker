@@ -1,0 +1,88 @@
+name: Fix Dev Pup PNG Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-dev-pup-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-dev-pup:
+    if: github.event.head_commit.message != 'Fix Dev Pup PNG transparency'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install image tooling
+        run: python -m pip install --disable-pip-version-check pillow numpy scipy
+
+      - name: Convert original Dev Pup to true-alpha PNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import numpy as np
+          from scipy import ndimage
+
+          path = Path('assets/v1/v1_dev_pup.png')
+          source = Image.open(path)
+          if source.size != (1254, 1254):
+              raise SystemExit(f'Unexpected Dev Pup dimensions: {source.size}')
+
+          if source.mode == 'RGBA' and source.getchannel('A').getextrema()[0] == 0:
+              print('Dev Pup already has transparency; leaving pixels unchanged.')
+          else:
+              rgb = np.asarray(source.convert('RGB'), dtype=np.uint8)
+
+              # Build the alpha silhouette from the existing artwork only. The RGB artwork
+              # is never redrawn or recolored. Closing the silhouette keeps intentional
+              # black hoodie/fur areas from being mistaken for the old black matte.
+              visible = rgb.max(axis=2) > 3
+              radius = 12
+              closed = ndimage.binary_dilation(visible, iterations=radius)
+              closed = ndimage.binary_fill_holes(closed)
+              closed = ndimage.binary_erosion(closed, iterations=radius)
+
+              labels, count = ndimage.label(closed)
+              sizes = ndimage.sum(closed, labels, range(1, count + 1))
+              keep = np.where(sizes > 100)[0] + 1
+              mask = np.isin(labels, keep)
+              alpha = np.where(mask, 255, 0).astype(np.uint8)
+
+              rgba = np.dstack((rgb, alpha))
+              Image.fromarray(rgba, 'RGBA').save(path, optimize=True)
+
+          check = Image.open(path)
+          if check.mode != 'RGBA':
+              raise SystemExit(f'Dev Pup is not RGBA after conversion: {check.mode}')
+          alpha = np.asarray(check.getchannel('A'))
+          if alpha.min() != 0 or alpha.max() != 255:
+              raise SystemExit('Dev Pup alpha channel is invalid')
+          if any(alpha[y, x] != 0 for x, y in ((0,0),(1253,0),(0,1253),(1253,1253))):
+              raise SystemExit('Dev Pup corners are not transparent')
+          if int((alpha == 0).sum()) < 800000:
+              raise SystemExit('Dev Pup transparent background validation failed')
+          print(f'Validated RGBA Dev Pup with {(alpha == 0).sum()} transparent pixels.')
+          PY
+
+      - name: Commit the repaired PNG and remove this one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-dev-pup-once.yml
+          git add assets/v1/v1_dev_pup.png
+          git commit -m 'Fix Dev Pup PNG transparency'
+          git push origin HEAD:main
