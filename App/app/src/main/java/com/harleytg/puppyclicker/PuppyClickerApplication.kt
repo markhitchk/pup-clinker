@@ -22,6 +22,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(this)
+        StreamedRedeemCodes.initialize(this)
 
         // If Android killed the process while it was in the background, the
         // timestamp survives and is converted into a pending reward here.
