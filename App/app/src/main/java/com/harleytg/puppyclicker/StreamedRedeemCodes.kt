@@ -11,10 +11,12 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -37,18 +39,24 @@ internal object StreamedRedeemCodes {
     private const val MAX_TREATS = 10_000_000L
     private const val REFRESH_INTERVAL_MS = 60L * 60L * 1_000L
     private const val RETRY_INTERVAL_MS = 5L * 60L * 1_000L
+    private const val LOOP_INTERVAL_MS = 15L * 60L * 1_000L
     private val hashRegex = Regex("[0-9a-f]{64}")
     private val idRegex = Regex("[a-z0-9_]{1,64}")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val started = AtomicBoolean(false)
 
     @Volatile
     private var catalog: Map<String, LocalRedeemReward>? = null
 
     fun initialize(context: Context) {
+        if (!started.compareAndSet(false, true)) return
         val app = context.applicationContext
         scope.launch {
             loadPersistentCache(app)
-            refresh(app)
+            while (true) {
+                refresh(app)
+                delay(LOOP_INTERVAL_MS)
+            }
         }
     }
 
