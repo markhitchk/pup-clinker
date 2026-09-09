@@ -16,54 +16,169 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal data class SaveTransferResult(val success: Boolean, val message: String)
 
-/** Portable, typed save format used by Settings import/export. */
+/** Password-protected AES-256-GCM save transfer format. */
 internal object GameSaveTransfer {
-    private const val FORMAT = "puppy-clicker-save"
-    private const val VERSION = 2
+    private const val PAYLOAD_FORMAT = "puppy-clicker-transfer-payload"
+    private const val PAYLOAD_VERSION = 3
+    private const val LEGACY_FORMAT = "puppy-clicker-save"
     private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
     private const val SEASONAL_PREFS = "puppy_seasonal_v1"
     private const val MAX_IMPORT_BYTES = 4 * 1024 * 1024
 
-    fun export(context: Context, uri: Uri): SaveTransferResult = runCatching {
+    fun export(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
+        require(password.length >= 8) { "Backup password must be at least 8 characters" }
         val stores = JSONObject().apply {
-            put(MAIN_PREFS, encodeStore(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
-            put(SEASONAL_PREFS, encodeStore(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
+            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+            put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
         }
-        val document = JSONObject().apply {
-            put("format", FORMAT)
-            put("version", VERSION)
+        val payload = JSONObject().apply {
+            put("format", PAYLOAD_FORMAT)
+            put("version", PAYLOAD_VERSION)
             put("package", context.packageName)
             put("exportedAtEpochMs", System.currentTimeMillis())
             put("stores", stores)
         }
+        val encrypted = PuppySaveCrypto.encryptTransfer(
+            payload.toString().toByteArray(Charsets.UTF_8),
+            password.toCharArray()
+        )
 
         val output = context.contentResolver.openOutputStream(uri, "wt")
             ?: error("Unable to open the selected export file")
-        output.bufferedWriter(Charsets.UTF_8).use { it.write(document.toString(2)) }
-        SaveTransferResult(true, "Save exported successfully.")
+        output.use { it.write(encrypted) }
+        SaveTransferResult(true, "Encrypted save exported successfully.")
     }.getOrElse { error ->
         SaveTransferResult(false, "Export failed: ${error.message ?: "unknown error"}")
     }
 
-    fun import(context: Context, uri: Uri): SaveTransferResult = runCatching {
+    fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
+        val bytes = readBounded(context, uri)
+        val root = JSONObject(bytes.toString(Charsets.UTF_8))
+
+        if (root.optString("format") == LEGACY_FORMAT) {
+            importLegacy(context, root)
+        } else {
+            require(password.length >= 8) { "Enter the backup password used for this save" }
+            val plain = try {
+                PuppySaveCrypto.decryptTransfer(bytes, password.toCharArray())
+            } catch (error: Exception) {
+                PupEyeSaveGuard.recordTamper(context, "Encrypted import failed authentication")
+                throw IllegalArgumentException("Wrong password or modified save file")
+            }
+            val payload = JSONObject(plain.toString(Charsets.UTF_8))
+            require(payload.optString("format") == PAYLOAD_FORMAT) { "Invalid decrypted save payload" }
+            require(payload.optInt("version") == PAYLOAD_VERSION) { "Unsupported save payload version" }
+            restoreStores(context, payload.getJSONObject("stores"))
+        }
+
+        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        PupEyeSaveGuard.seal(context, mainPrefs)
+        ExternalGameSave.write(context, mainPrefs)
+        SaveTransferResult(true, "Save imported and authenticated. Reloading Puppy Clicker…")
+    }.getOrElse { error ->
+        SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
+    }
+
+    private fun restoreStores(context: Context, stores: JSONObject) {
+        val mainStore = stores.optJSONObject(MAIN_PREFS)
+            ?: error("Save does not contain the main game store")
+        SecurePreferenceCodec.restore(
+            context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE),
+            mainStore
+        )
+        stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
+            SecurePreferenceCodec.restore(
+                context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
+                seasonalStore
+            )
+        }
+    }
+
+    /** Read-only migration path for saves created before encrypted v3 backups. */
+    private fun importLegacy(context: Context, root: JSONObject) {
+        val version = root.optInt("version", 1)
+        require(version in 1..2) { "Unsupported legacy save version $version" }
+        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        if (version >= 2 && root.has("stores")) {
+            val stores = root.getJSONObject("stores")
+            restoreStores(context, stores)
+        } else {
+            val legacyValues = root.optJSONObject("values")
+                ?: error("Legacy save is missing values")
+            restoreLegacyStore(mainPrefs, legacyValues)
+        }
+    }
+
+    private fun restoreLegacyStore(prefs: SharedPreferences, values: JSONObject) {
+        val editor = prefs.edit().clear()
+        val keys = values.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val value = values.get(key)
+            when (inferLegacyType(prefs, key, value)) {
+                "string" -> editor.putString(key, value.toString())
+                "boolean" -> editor.putBoolean(key, value as? Boolean ?: value.toString().toBoolean())
+                "int" -> editor.putInt(key, (value as Number).toInt())
+                "long" -> editor.putLong(key, (value as Number).toLong())
+                "float" -> editor.putFloat(key, (value as Number).toFloat())
+                "string_set" -> {
+                    val array = value as JSONArray
+                    val set = buildSet {
+                        for (index in 0 until array.length()) add(array.getString(index))
+                    }
+                    editor.putStringSet(key, set)
+                }
+            }
+        }
+        check(editor.commit()) { "Unable to write imported legacy save" }
+    }
+
+    private fun inferLegacyType(prefs: SharedPreferences, key: String, value: Any): String = when (prefs.all[key]) {
+        is String -> "string"
+        is Boolean -> "boolean"
+        is Int -> "int"
+        is Long -> "long"
+        is Float -> "float"
+        is Set<*> -> "string_set"
+        else -> when (value) {
+            is String -> "string"
+            is Boolean -> "boolean"
+            is JSONArray -> "string_set"
+            is Number -> if (isLegacyIntKey(key)) "int" else "long"
+            else -> "string"
+        }
+    }
+
+    private fun isLegacyIntKey(key: String): Boolean =
+        key.startsWith("upgrade_") ||
+            key.startsWith("prestige_skill_") ||
+            key in setOf(
+                "happiness", "fullness", "energy", "cleanliness_v5", "bond_v5",
+                "best_combo", "daily_streak_v5", "pup_eye_strikes", "prestige_count_v6",
+                "prestige_skill_points_v6", "birthday_month", "birthday_day"
+            )
+
+    private fun readBounded(context: Context, uri: Uri): ByteArray {
         val input = context.contentResolver.openInputStream(uri)
             ?: error("Unable to open the selected save file")
-        val bytes = input.use { stream ->
+        return input.use { stream ->
             val buffer = ByteArray(MAX_IMPORT_BYTES + 1)
             var total = 0
             while (total < buffer.size) {
@@ -74,150 +189,6 @@ internal object GameSaveTransfer {
             if (total > MAX_IMPORT_BYTES) error("Save file is larger than 4 MB")
             buffer.copyOf(total)
         }
-        val root = JSONObject(bytes.toString(Charsets.UTF_8))
-        require(root.optString("format") == FORMAT) { "Not a Puppy Clicker save" }
-        val version = root.optInt("version", 1)
-        require(version in 1..VERSION) { "Unsupported save version $version" }
-
-        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
-        if (version >= 2 && root.has("stores")) {
-            val stores = root.getJSONObject("stores")
-            val mainStore = stores.optJSONObject(MAIN_PREFS)
-                ?: error("Save does not contain the main game store")
-            restoreStore(mainPrefs, mainStore)
-            stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
-                restoreStore(
-                    context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
-                    seasonalStore
-                )
-            }
-        } else {
-            // Compatibility with the readable v1 Android/data snapshot.
-            val legacyValues = root.optJSONObject("values")
-                ?: error("Legacy save is missing values")
-            restoreLegacyStore(mainPrefs, legacyValues)
-        }
-
-        ExternalGameSave.write(context, mainPrefs)
-        SaveTransferResult(true, "Save imported. Reloading Puppy Clicker…")
-    }.getOrElse { error ->
-        SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
-    }
-
-    private fun encodeStore(prefs: SharedPreferences): JSONObject {
-        val values = JSONObject()
-        val types = JSONObject()
-        prefs.all.toSortedMap().forEach { (key, value) ->
-            when (value) {
-                is String -> {
-                    values.put(key, value)
-                    types.put(key, "string")
-                }
-                is Boolean -> {
-                    values.put(key, value)
-                    types.put(key, "boolean")
-                }
-                is Int -> {
-                    values.put(key, value)
-                    types.put(key, "int")
-                }
-                is Long -> {
-                    values.put(key, value)
-                    types.put(key, "long")
-                }
-                is Float -> {
-                    values.put(key, value.toDouble())
-                    types.put(key, "float")
-                }
-                is Set<*> -> {
-                    values.put(key, JSONArray(value.filterIsInstance<String>().sorted()))
-                    types.put(key, "string_set")
-                }
-            }
-        }
-        return JSONObject().apply {
-            put("values", values)
-            put("types", types)
-        }
-    }
-
-    private fun restoreStore(prefs: SharedPreferences, store: JSONObject) {
-        val values = store.getJSONObject("values")
-        val types = store.optJSONObject("types") ?: JSONObject()
-        val editor = prefs.edit().clear()
-        val keys = values.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = values.get(key)
-            val type = types.optString(key).ifBlank { inferType(prefs, key, value) }
-            putTyped(editor, key, type, value)
-        }
-        check(editor.commit()) { "Unable to write imported save" }
-    }
-
-    private fun restoreLegacyStore(prefs: SharedPreferences, values: JSONObject) {
-        val editor = prefs.edit().clear()
-        val keys = values.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = values.get(key)
-            putTyped(editor, key, inferType(prefs, key, value), value)
-        }
-        check(editor.commit()) { "Unable to write imported legacy save" }
-    }
-
-    private fun inferType(prefs: SharedPreferences, key: String, value: Any): String {
-        return when (prefs.all[key]) {
-            is String -> "string"
-            is Boolean -> "boolean"
-            is Int -> "int"
-            is Long -> "long"
-            is Float -> "float"
-            is Set<*> -> "string_set"
-            else -> when (value) {
-                is String -> "string"
-                is Boolean -> "boolean"
-                is JSONArray -> "string_set"
-                is Number -> if (isLegacyIntKey(key)) "int" else "long"
-                else -> "string"
-            }
-        }
-    }
-
-    private fun isLegacyIntKey(key: String): Boolean =
-        key.startsWith("upgrade_") ||
-            key.startsWith("prestige_skill_") ||
-            key in setOf(
-                "happiness",
-                "fullness",
-                "energy",
-                "cleanliness_v5",
-                "bond_v5",
-                "best_combo",
-                "daily_streak_v5",
-                "pup_eye_strikes",
-                "prestige_count_v6",
-                "prestige_skill_points_v6",
-                "birthday_month",
-                "birthday_day"
-            )
-
-    private fun putTyped(editor: SharedPreferences.Editor, key: String, type: String, value: Any) {
-        when (type) {
-            "string" -> editor.putString(key, value.toString())
-            "boolean" -> editor.putBoolean(key, value as? Boolean ?: value.toString().toBoolean())
-            "int" -> editor.putInt(key, (value as Number).toInt())
-            "long" -> editor.putLong(key, (value as Number).toLong())
-            "float" -> editor.putFloat(key, (value as Number).toFloat())
-            "string_set" -> {
-                val array = value as JSONArray
-                val set = buildSet {
-                    for (index in 0 until array.length()) add(array.getString(index))
-                }
-                editor.putStringSet(key, set)
-            }
-            else -> error("Unsupported preference type '$type' for $key")
-        }
     }
 }
 
@@ -225,18 +196,19 @@ internal object GameSaveTransfer {
 internal fun SaveTransferSettings() {
     val context = LocalContext.current
     val activity = context as? Activity
-    var status by remember { mutableStateOf<String?>(null) }
+    var password by rememberSaveable { mutableStateOf("") }
+    var status by rememberSaveable { mutableStateOf<String?>(null) }
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
-        if (uri != null) status = GameSaveTransfer.export(context, uri).message
+        if (uri != null) status = GameSaveTransfer.export(context, uri, password).message
     }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            val result = GameSaveTransfer.import(context, uri)
+            val result = GameSaveTransfer.import(context, uri, password)
             status = result.message
             if (result.success) activity?.recreate()
         }
@@ -244,22 +216,33 @@ internal fun SaveTransferSettings() {
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
-            Text("💾 Save system", fontWeight = FontWeight.Black)
+            Text("🔐 Encrypted save system", fontWeight = FontWeight.Black)
             Text(
-                "Portable v2 backups include game progress plus seasonal settings. Legacy v1 Android/data saves can also be imported.",
+                "Automatic Android/data saves use Android Keystore AES-GCM. Manual backups use password-protected AES-256-GCM so they can move between devices.",
                 style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.size(9.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it.take(128) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Backup password") },
+                supportingText = { Text("8+ characters. The password is never stored in the save file.") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
             )
             Spacer(Modifier.size(9.dp))
             Row(Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = { exportLauncher.launch("puppy_clicker_save_v2.json") },
+                    onClick = { exportLauncher.launch("puppy_clicker_save_v3.pupsave") },
+                    enabled = password.length >= 8,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Export save")
+                    Text("Export encrypted")
                 }
                 Spacer(Modifier.size(8.dp))
                 OutlinedButton(
-                    onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                    onClick = { importLauncher.launch(arrayOf("application/octet-stream", "application/json", "*/*")) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Import save")
@@ -267,7 +250,11 @@ internal fun SaveTransferSettings() {
             }
             Spacer(Modifier.size(7.dp))
             Text(
-                "Import replaces the current local game save and reloads the app. The automatic readable Android/data snapshot remains enabled.",
+                "Encrypted v3 imports require the same password. Old v1/v2 plaintext backups remain import-only for migration and are converted on the next export.",
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                "If the password is lost, an encrypted manual backup cannot be recovered.",
                 style = MaterialTheme.typography.labelSmall
             )
             status?.let {
