@@ -19,6 +19,7 @@ val generatedProtectedSource = layout.buildDirectory.dir("generated/protected-pu
 val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
 val puppySvgSourceDir = layout.projectDirectory.dir("src/main/puppy-svg")
 val protectedPuppySourceDir = layout.buildDirectory.dir("generated/puppy-vectors").get()
+val legalSourceDir = rootProject.file("../assets/legal")
 
 val v1ProtectedPuppyIds = listOf(
     "classic",
@@ -174,10 +175,11 @@ val compilePuppySvg by tasks.registering(Exec::class) {
 
 val prepareProtectedPuppyAssets by tasks.registering {
     dependsOn(compilePuppySvg)
-    description = "Encrypts all V1/V2 Android vector puppy artwork into generated APK assets."
+    description = "Encrypts V1/V2 puppy artwork and packages repository-managed legal documents into APK assets."
     group = "puppy clicker"
     inputs.files(v1ProtectedPuppyIds.map { protectedPuppySourceDir.file("v1_$it.xml") })
     inputs.files(v2ProtectedPuppyIds.map { protectedPuppySourceDir.file("$it.xml") })
+    inputs.dir(legalSourceDir)
     outputs.dir(generatedProtectedAssets)
     outputs.dir(generatedSourceDrawables)
     outputs.dir(generatedSourceVectorDrawables)
@@ -185,13 +187,23 @@ val prepareProtectedPuppyAssets by tasks.registering {
     doLast {
         val assetRoot = generatedProtectedAssets.get().asFile
         val puppyAssetDir = assetRoot.resolve("puppies")
+        val legalAssetDir = assetRoot.resolve("legal")
         val drawableDir = generatedSourceDrawables.get().asFile
         val vectorDrawableDir = generatedSourceVectorDrawables.get().asFile
 
         puppyAssetDir.deleteRecursively()
         puppyAssetDir.mkdirs()
+        legalAssetDir.deleteRecursively()
+        legalAssetDir.mkdirs()
         drawableDir.mkdirs()
         vectorDrawableDir.mkdirs()
+
+        require(legalSourceDir.isDirectory) { "Missing repository legal source directory: ${legalSourceDir.path}" }
+        listOf("terms-of-use.txt", "privacy-policy.txt").forEach { fileName ->
+            val source = legalSourceDir.resolve(fileName)
+            require(source.isFile) { "Missing repository legal document: ${source.path}" }
+            source.copyTo(legalAssetDir.resolve(fileName), overwrite = true)
+        }
 
         v1ProtectedPuppyIds.forEach { styleId ->
             val assetId = "v1_$styleId"
