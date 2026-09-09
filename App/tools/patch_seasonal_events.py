@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Apply Android-only seasonal integration to the existing generated V6 sources.
+"""Apply Android-only seasonal and dynamic-roster integration to generated V6 sources.
 
-The Android project already compiles from a generated source copy. Keep the original
-sources untouched and fail the build if an integration anchor changes upstream.
+The Android project compiles from a generated source copy. Keep the original sources
+stable and fail the build if an integration anchor changes upstream.
 """
 from pathlib import Path
 import sys
@@ -27,9 +27,30 @@ def patch_view_model(source: str) -> str:
     val seasonalSettings: StateFlow<SeasonalPuppySettings> = seasonalStore.settings
     val seasonalClock: StateFlow<SeasonalPuppyClock> = seasonalStore.clock
 ''', 'seasonal store')
+    source = replace_once(source,
+        '''    init {
+        rollDailyDayIfNeeded()''',
+        '''    init {
+        syncDynamicFreePuppies()
+        viewModelScope.launch {
+            DynamicPuppyRoster.groups.collect { syncDynamicFreePuppies() }
+        }
+        rollDailyDayIfNeeded()''',
+        'dynamic free roster observer')
     source = replace_once(source, '                seconds++\n                consumeClaimedAfkReward()',
         '                seconds++\n                if (seconds % 30 == 0) refreshSeasonalEvents()\n                consumeClaimedAfkReward()', 'event clock')
-    source = replace_once(source, '    fun redeemCode(rawCode: String): V6RedeemOutcome {', '''    fun refreshSeasonalEvents() = seasonalStore.refreshClock()
+    source = replace_once(source, '    fun redeemCode(rawCode: String): V6RedeemOutcome {', '''    private fun syncDynamicFreePuppies() {
+        val free = DynamicPuppyRoster.freeIds()
+        if (free.isEmpty()) return
+        val current = _state.value
+        val next = current.unlockedPuppies + free
+        if (next != current.unlockedPuppies) {
+            _state.value = current.copy(unlockedPuppies = next)
+            saveState()
+        }
+    }
+
+    fun refreshSeasonalEvents() = seasonalStore.refreshClock()
 
     fun setSeasonalBirthday(month: Int, day: Int): Boolean = seasonalStore.saveBirthday(month, day)
     fun clearSeasonalBirthday() = seasonalStore.clearBirthday()
@@ -63,7 +84,7 @@ def patch_view_model(source: str) -> str:
         return V6RedeemOutcome(true, "${event.title} unlocked permanently!")
     }
 
-    fun redeemCode(rawCode: String): V6RedeemOutcome {''', 'seasonal ViewModel methods')
+    fun redeemCode(rawCode: String): V6RedeemOutcome {''', 'seasonal and dynamic ViewModel methods')
     source = replace_once(source,
         '        val reward = LocalRedeemCodes.find(rawCode)\n',
         '        val reward = StreamedRedeemCodes.find(rawCode)\n',
@@ -83,6 +104,29 @@ def patch_view_model(source: str) -> str:
         }
 
         val puppy =''', 'seasonal code gate')
+    source = replace_once(source,
+        '        val puppy = reward.puppyId?.let { id -> V6_PUPPY_STYLES.firstOrNull { it.id == id } }',
+        '        val puppy = reward.puppyId?.let(DynamicPuppyRoster::style)',
+        'dynamic redeem puppy lookup')
+    source = replace_once(source,
+        '''    fun setPuppyStyle(id: String) {
+        val s = _state.value
+        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return''',
+        '''    fun setPuppyStyle(id: String) {
+        val s = _state.value
+        if (id !in s.unlockedPuppies || !DynamicPuppyRoster.isKnown(id)) return''',
+        'dynamic puppy selection')
+    source = replace_once(source,
+        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) + DEFAULT_V6_PUPPIES
+        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")
+            ?.takeIf { it in unlocked && it in V6_PUPPY_IDS }
+            ?: "classic"''',
+        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) +
+            DEFAULT_V6_PUPPIES + DynamicPuppyRoster.freeIds()
+        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")
+            ?.takeIf { it in unlocked && DynamicPuppyRoster.isKnown(it) }
+            ?: "classic"''',
+        'dynamic save restore')
     return source
 
 
@@ -91,9 +135,53 @@ def patch_activity(source: str) -> str:
         '    var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }',
         '    var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }\n    SeasonalWelcomeGate(vm)', 'welcome overlay')
     source = replace_once(source,
+        '    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {',
+        '''    var renameOpen by rememberSaveable { mutableStateOf(false) }
+    val dynamicGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
+    val dynamicIds = remember(dynamicGroups) {
+        dynamicGroups.flatMap { group -> group.puppies.map { it.id } }.toSet()
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {''',
+        'dynamic roster state')
+    source = replace_once(source,
+        '        V6Header("Puppy Collection", "V1 classics and V2 puppies in one collection.")',
+        '        V6Header("Puppy Collection", "V1, V2, test and future streamed puppy rosters in one collection.")',
+        'dynamic roster header')
+    source = replace_once(source,
+        '        Text("Unlocked ${state.unlockedPuppies.count { it in V6_PUPPY_IDS }} / ${V6_PUPPY_STYLES.size}", fontWeight = FontWeight.Bold)',
+        '        Text("Unlocked ${state.unlockedPuppies.count { it in dynamicIds }} / ${dynamicIds.size}", fontWeight = FontWeight.Bold)',
+        'dynamic roster count')
+    source = replace_once(source,
         '        V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES, state, vm)',
         '''        SeasonalCollectionPanel(state, vm)
         V6PuppyRosterSection("V1 Puppies", V1_PUPPY_STYLES.filterNot { SeasonalPuppyEvents.isSeasonal(it.id) }, state, vm)''', 'seasonal collection')
+    source = replace_once(source,
+        '        V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)',
+        '''        V6PuppyRosterSection("V2 Puppies", V2_PUPPY_STYLES, state, vm)
+        dynamicGroups.filterNot { it.id == "v1" || it.id == "v2" }.forEach { group ->
+            Spacer(Modifier.height(8.dp))
+            V6PuppyRosterSection(group.title, group.puppies, state, vm)
+        }''',
+        'dynamic roster groups')
+    source = replace_once(source,
+        '''                    if (puppy.redeemOnly) {
+                        val generation = if (puppy.id in V2_PUPPY_IDS) "V2" else "V1"
+                        Text(
+                            if (unlocked) "$generation Puppy Code unlocked" else "$generation Puppy Code unlock",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }''',
+        '''                    val rosterAsset = DynamicPuppyRoster.asset(puppy.id)
+                    if (rosterAsset?.free == true) {
+                        Text("Free puppy · automatically owned", style = MaterialTheme.typography.labelSmall)
+                    } else if (puppy.redeemOnly) {
+                        val rosterName = rosterAsset?.groupTitle?.removeSuffix(" Puppies") ?: "Special"
+                        Text(
+                            if (unlocked) "$rosterName special puppy unlocked" else "$rosterName special puppy unlock",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }''',
+        'dynamic roster labels')
     source = replace_once(source,
         '        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)',
         '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
