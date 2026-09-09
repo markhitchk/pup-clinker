@@ -1,0 +1,59 @@
+name: V1 Artwork Source Audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v1-art-source-export.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current project history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: project
+      - name: Checkout original Puppy Clicker image source
+        uses: actions/checkout@v4
+        with:
+          repository: HarleyTG-O/Puppy-Clicker
+          ref: ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1
+          path: original
+          persist-credentials: false
+      - name: Export original images and historical vectors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit/original audit/current audit/history
+          cp original/Images/pup.png audit/original/pup.png
+          cp original/Images/logo.png audit/original/logo.png
+          cp original/Images/htg.png audit/original/htg.png
+          cp project/app/src/main/res/drawable-anydpi/v1_*.xml audit/current/
+          cd project
+          for ref in b681c518f1c2df954d869d194784536a24029b06 1342a5dd99d89fded8f7e665136351e593b7485a a8b7ea8897bbb2899d590ed2ad3c4222feabe73a 7808a34a776ac6e4976d5b81aeb4f69a6fbaecf1; do
+            mkdir -p "../audit/history/$ref"
+            for file in app/src/main/res/drawable-anydpi/v1_*.xml; do
+              git show "$ref:$file" > "../audit/history/$ref/${file##*/}" 2>/dev/null || rm -f "../audit/history/$ref/${file##*/}"
+            done
+          done
+          git rev-parse HEAD > ../audit/current-commit.txt
+          cd ..
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          result = {str(p.relative_to('audit')): hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('audit').rglob('*') if p.is_file()}
+          Path('audit/SHA256.json').write_text(json.dumps(result, indent=2) + '\n')
+          print('Exported', len(result), 'source files')
+          PY
+      - name: Upload source-only audit bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-v1-original-source-audit
+          path: audit/
+          if-no-files-found: error
+          retention-days: 7
