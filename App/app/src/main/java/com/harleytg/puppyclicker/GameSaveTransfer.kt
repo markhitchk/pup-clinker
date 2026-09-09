@@ -53,6 +53,7 @@ internal object GameSaveTransfer {
             put("version", PAYLOAD_VERSION)
             put("package", context.packageName)
             put("exportedAtEpochMs", System.currentTimeMillis())
+            put("identity", PuppyPlayerIdentity.metadata(context))
             put("stores", stores)
         }
         val encrypted = PuppySaveCrypto.encryptTransfer(
@@ -63,7 +64,7 @@ internal object GameSaveTransfer {
         val output = context.contentResolver.openOutputStream(uri, "wt")
             ?: error("Unable to open the selected export file")
         output.use { it.write(encrypted) }
-        SaveTransferResult(true, "Encrypted save exported successfully.")
+        SaveTransferResult(true, "Encrypted save exported for ${PuppyPlayerIdentity.username(context)}.")
     }.getOrElse { error ->
         SaveTransferResult(false, "Export failed: ${error.message ?: "unknown error"}")
     }
@@ -85,15 +86,40 @@ internal object GameSaveTransfer {
             val payload = JSONObject(plain.toString(Charsets.UTF_8))
             require(payload.optString("format") == PAYLOAD_FORMAT) { "Invalid decrypted save payload" }
             require(payload.optInt("version") == PAYLOAD_VERSION) { "Unsupported save payload version" }
+
+            val identity = payload.optJSONObject("identity")
+                ?: error("Encrypted save is missing player identity")
+            validateImportedIdentity(context, identity)
             restoreStores(context, payload.getJSONObject("stores"))
+            PuppyPlayerIdentity.applyImportedUsername(context, identity)
         }
 
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         PupEyeSaveGuard.seal(context, mainPrefs)
         ExternalGameSave.write(context, mainPrefs)
-        SaveTransferResult(true, "Save imported and authenticated. Reloading Puppy Clicker…")
+        SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Reloading Puppy Clicker…")
     }.getOrElse { error ->
         SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
+    }
+
+    fun suggestedFileName(context: Context): String {
+        val username = PuppyPlayerIdentity.username(context)
+        val device = PuppyPlayerIdentity.deviceModel()
+        return "puppy_clicker_${username}_${device}_v3.pupsave"
+    }
+
+    private fun validateImportedIdentity(context: Context, identity: JSONObject) {
+        val importedUsername = PuppyPlayerIdentity.normalizeUsername(identity.optString("username"))
+        val importedDevice = identity.optString("deviceModel").trim().lowercase()
+        require(importedUsername.isNotBlank()) { "Encrypted save has no valid username" }
+        require(importedDevice.isNotBlank()) { "Encrypted save has no source device model" }
+
+        val currentUsername = PuppyPlayerIdentity.username(context)
+        if (currentUsername != "localplayer" && currentUsername != importedUsername) {
+            throw IllegalArgumentException(
+                "This save belongs to '$importedUsername', not '$currentUsername'."
+            )
+        }
     }
 
     private fun restoreStores(context: Context, stores: JSONObject) {
@@ -196,6 +222,7 @@ internal object GameSaveTransfer {
 internal fun SaveTransferSettings() {
     val context = LocalContext.current
     val activity = context as? Activity
+    var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     var password by rememberSaveable { mutableStateOf("") }
     var status by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -218,9 +245,38 @@ internal fun SaveTransferSettings() {
         Column(Modifier.padding(13.dp)) {
             Text("🔐 Encrypted save system", fontWeight = FontWeight.Black)
             Text(
-                "Automatic Android/data saves use Android Keystore AES-GCM. Manual backups use password-protected AES-256-GCM so they can move between devices.",
+                "Saves include your lowercase Puppy Clicker username and source device model inside the encrypted payload.",
                 style = MaterialTheme.typography.bodySmall
             )
+            Spacer(Modifier.size(9.dp))
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = PuppyPlayerIdentity.normalizeUsername(it) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Player username") },
+                supportingText = { Text("Stored lowercase. Letters, numbers, _, - and . only.") },
+                singleLine = true
+            )
+            Spacer(Modifier.size(6.dp))
+            OutlinedButton(
+                onClick = {
+                    username = PuppyPlayerIdentity.setUsername(context, username)
+                    PupEyeSaveGuard.seal(
+                        context,
+                        context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE)
+                    )
+                    status = "Player username saved as $username."
+                },
+                enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save player username")
+            }
+            Text(
+                "Device label: ${PuppyPlayerIdentity.deviceModel()}",
+                style = MaterialTheme.typography.labelSmall
+            )
+
             Spacer(Modifier.size(9.dp))
             OutlinedTextField(
                 value = password,
@@ -234,7 +290,7 @@ internal fun SaveTransferSettings() {
             Spacer(Modifier.size(9.dp))
             Row(Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = { exportLauncher.launch("puppy_clicker_save_v3.pupsave") },
+                    onClick = { exportLauncher.launch(GameSaveTransfer.suggestedFileName(context)) },
                     enabled = password.length >= 8,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -250,11 +306,11 @@ internal fun SaveTransferSettings() {
             }
             Spacer(Modifier.size(7.dp))
             Text(
-                "Encrypted v3 imports require the same password. Old v1/v2 plaintext backups remain import-only for migration and are converted on the next export.",
+                "Automatic Android/data saves are device-bound by Android Keystore. Portable v3 backups require the password and reject a different configured username.",
                 style = MaterialTheme.typography.labelSmall
             )
             Text(
-                "If the password is lost, an encrypted manual backup cannot be recovered.",
+                "No IMEI, serial number, Android ID, phone number, or account token is stored.",
                 style = MaterialTheme.typography.labelSmall
             )
             status?.let {
