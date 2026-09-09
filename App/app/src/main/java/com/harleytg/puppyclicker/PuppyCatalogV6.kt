@@ -1,11 +1,11 @@
 package com.harleytg.puppyclicker
 
 /**
- * Puppy Clicker character catalogue.
+ * Puppy Clicker compatibility catalogue.
  *
- * V1 keeps the original Puppy Clicker roster and special variants.
- * V2 is a separate generation with its own names and uploaded character artwork.
- * V2 names intentionally never reuse a V1 display name.
+ * V1/V2 keep their stable save IDs. Test and v3+ manifests are generated into
+ * EXTRA_PUPPY_STYLES during the Android build and appended without changing the
+ * legacy IDs used by saves, seasonal events, or existing redeem rewards.
  */
 val V1_PUPPY_STYLES = PUPPY_STYLES + listOf(
     PuppyStyle("aurora", "Aurora", "🌌", "Aurora-purple and teal fur glow.", redeemOnly = true),
@@ -22,10 +22,6 @@ val V1_PUPPY_STYLES = PUPPY_STYLES + listOf(
     PuppyStyle("classic_forever", "Classic Forever", "🕹️", "A special tribute variant of the original Puppy Clicker pup.", redeemOnly = true)
 )
 
-/**
- * V2 roster. These IDs are prefixed with v2_ so saves, redeem rewards and UI grouping
- * can distinguish the new generation from visually similar V1 puppies.
- */
 val V2_PUPPY_STYLES = listOf(
     PuppyStyle("v2_frost", "Frost", "🧊", "V2 fluffy white puppy with bright pink ears.", redeemOnly = true),
     PuppyStyle("v2_honey", "Honey", "🍯", "V2 happy golden puppy with a cream chest and tail tip.", redeemOnly = true),
@@ -38,7 +34,7 @@ val V2_PUPPY_STYLES = listOf(
     PuppyStyle("v2_harleytg", "HarleyTG Puppy", "🐾", "Fluffy golden-cream puppy with cyan-blue eyes and a raised waving paw.", redeemOnly = true)
 )
 
-val V6_PUPPY_STYLES = V1_PUPPY_STYLES + V2_PUPPY_STYLES
+val V6_PUPPY_STYLES = V1_PUPPY_STYLES + V2_PUPPY_STYLES + EXTRA_PUPPY_STYLES
 val V1_PUPPY_IDS: Set<String> = V1_PUPPY_STYLES.mapTo(linkedSetOf()) { it.id }
 val V2_PUPPY_IDS: Set<String> = V2_PUPPY_STYLES.mapTo(linkedSetOf()) { it.id }
 val V6_PUPPY_IDS: Set<String> = V6_PUPPY_STYLES.mapTo(linkedSetOf()) { it.id }
