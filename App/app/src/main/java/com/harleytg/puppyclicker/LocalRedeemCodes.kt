@@ -29,7 +29,7 @@ object LocalRedeemCodes {
         "6a034a81325644219d0521630bbe7586ba6232b8bf30f2682d3fba0a348de5aa" to LocalRedeemReward(
             id = "paw_pass_2026", treats = 1_000, message = "Paw Pass redeemed! +1,000 treats."
         ),
-        "3c7f2f76a3310dbcbc787ca9be87a6530d7020a66dfb67426277782b4a6c" to LocalRedeemReward(
+        "3c7f2f76a3310dbcbc787ca9be87a6530d7020a66df7614ea1b9bf052944f74c" to LocalRedeemReward(
             id = "pup_shop_boost", treats = 2_500, message = "Shop Boost redeemed! +2,500 treats."
         ),
         "9c80a7116a0bdd3a9332f4935aa79ece71bc530c4ef44b656fdb67426277782b" to LocalRedeemReward(
@@ -74,7 +74,7 @@ object LocalRedeemCodes {
             id = "thank_you_pups", treats = 10_000, message = "Thank you, pups! +10,000 treats."
         ),
         "6ee7c0b55cb72470dd834f94035f191088d51719875abb2e0e8e6bc928fcbcd6" to LocalRedeemReward(
-            id = "one_more_treat", treats = 250, message = "Okay... ONE more treat."
+            id = "one_more_treat", treats = 250, message = "Okay... ONE more treat. +250 treats."
         ),
         "f05571f68faa9579c14922dd78b62657247ee502bb0f02717ec8faafd0540698" to LocalRedeemReward(
             id = "who_ate_the_treats", treats = 1, message = "Mystery solved. You found exactly 1 treat."
@@ -92,7 +92,7 @@ object LocalRedeemCodes {
             id = "cocoa_cuddles", treats = 500, puppyId = "cocoa",
             message = "Cocoa unlocked +500 treats."
         ),
-        "f8c145053f3623125b58b65c5f17a5af55fab6ac3df02dc33db02" to LocalRedeemReward(
+        "f8c145053f3623125b58b65c5f17a5af55fab6ac3dfc5f67322ddbc2dc33db02" to LocalRedeemReward(
             id = "snowball_26", treats = 750, puppyId = "snowball",
             message = "Snowball unlocked +750 treats."
         ),
