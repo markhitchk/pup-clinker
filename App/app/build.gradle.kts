@@ -70,7 +70,7 @@ fun protectPuppyAsset(assetId: String, plain: ByteArray): ByteArray {
     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
     cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(puppyAssetKey(), "AES"), GCMParameterSpec(128, nonce))
     cipher.updateAAD("puppy-clicker:$assetId".toByteArray(Charsets.UTF_8))
-    val encrypted = cipher.doFinal(plain)
+    val encrypted = cipher.doFinal(cipher)
     return "PCP1".toByteArray(Charsets.US_ASCII) + nonce + encrypted
 }
 
@@ -234,7 +234,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
 }
 
 val generateProtectedPuppySources by tasks.registering {
-    description = "Copies app Kotlin sources and patches V6 to render only encrypted puppy artwork."
+    description = "Copies app Kotlin sources and routes V6 portraits through streamed PNG artwork."
     group = "puppy clicker"
     inputs.dir(originalMainSourceDir)
     outputs.dir(generatedProtectedSource)
@@ -261,7 +261,7 @@ val generateProtectedPuppySources by tasks.registering {
 
         val replacement = """@Composable
 private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None", unlocked: Boolean = true) {
-    ProtectedPuppyPortrait(
+    StreamedPuppyPortrait(
         styleId = styleId,
         size = size,
         accessory = accessory,
@@ -299,4 +299,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
