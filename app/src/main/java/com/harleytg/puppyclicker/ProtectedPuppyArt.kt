@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
 import android.graphics.Path
+import android.util.Log
 import android.util.Xml
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,20 +37,19 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.min
-import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 
 /**
- * Runtime renderer for encrypted Puppy Clicker Android VectorDrawable artwork.
+ * Runtime renderer for individually encrypted Puppy Clicker Android vectors.
  *
- * Every V1 puppy now has its own vector model. V1 no longer reuses one bitmap
- * with a tint/filter. V2 keeps its existing vector models. Both generations are
- * AES-256-GCM protected during the build and decrypted only when rendered.
- *
- * Decryption and vector parsing stay off the UI thread so opening the roster does
- * not freeze the app on slower Android devices.
+ * V1 and V2 keep their existing PCP1 assets and independent vector models.
+ * Loading and parsing happen off the UI thread. The source format is a flat
+ * Android VectorDrawable subset: paths with solid fills and strokes. Unsupported
+ * features are rejected rather than silently rendered incorrectly. In particular,
+ * raw decrypted XML must not be passed to Android's compiled-resource inflater.
  */
 @Composable
 internal fun ProtectedPuppyPortrait(
@@ -65,11 +65,19 @@ internal fun ProtectedPuppyPortrait(
 
     val vector = produceState<SecureVector?>(
         initialValue = ProtectedPuppyAssets.peek(style.id),
-        key1 = style.id
+        key1 = appContext,
+        key2 = style.id
     ) {
         if (value == null) {
-            value = withContext(Dispatchers.Default) {
-                runCatching { ProtectedPuppyAssets.load(appContext, style.id) }.getOrNull()
+            value = try {
+                withContext(Dispatchers.IO) {
+                    ProtectedPuppyAssets.load(appContext, style.id)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e("PuppyClickerArt", "Unable to load puppy ${style.id}", error)
+                null
             }
         }
     }.value
@@ -136,7 +144,7 @@ private fun ProtectedVectorImage(
                     Paint(Paint.ANTI_ALIAS_FLAG).apply {
                         style = Paint.Style.FILL
                         this.color = color
-                        alpha = (item.fillAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+                        alpha = combinedVectorAlpha(color, item.fillAlpha)
                     }
                 }
 
@@ -150,7 +158,7 @@ private fun ProtectedVectorImage(
                         strokeCap = item.strokeCap
                         strokeJoin = item.strokeJoin
                         strokeMiter = item.strokeMiter
-                        alpha = (item.strokeAlpha.coerceIn(0f, 1f) * 255f).roundToInt()
+                        alpha = combinedVectorAlpha(color, item.strokeAlpha)
                     }
                 }
 
@@ -160,21 +168,24 @@ private fun ProtectedVectorImage(
 
     Canvas(modifier.semantics { contentDescription = description }) {
         drawIntoCanvas { composeCanvas ->
+            if (size.width <= 0f || size.height <= 0f) return@drawIntoCanvas
             val native = composeCanvas.nativeCanvas
             val scale = min(size.width / vector.viewportWidth, size.height / vector.viewportHeight)
             val dx = (size.width - vector.viewportWidth * scale) / 2f
             val dy = (size.height - vector.viewportHeight * scale) / 2f
 
-            native.save()
-            native.translate(dx, dy)
-            native.scale(scale, scale)
-
-            renderPaths.forEach { item ->
-                item.fillPaint?.let { native.drawPath(item.path, it) }
-                item.strokePaint?.let { native.drawPath(item.path, it) }
+            val saveCount = native.save()
+            try {
+                native.translate(dx, dy)
+                native.scale(scale, scale)
+                native.clipRect(0f, 0f, vector.viewportWidth, vector.viewportHeight)
+                renderPaths.forEach { item ->
+                    item.fillPaint?.let { native.drawPath(item.path, it) }
+                    item.strokePaint?.let { native.drawPath(item.path, it) }
+                }
+            } finally {
+                native.restoreToCount(saveCount)
             }
-
-            native.restore()
         }
     }
 }
@@ -206,6 +217,8 @@ private data class SecureRenderPath(
 private object ProtectedPuppyAssets {
     private const val PREFIX = "puppies"
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
+    private const val MAX_ASSET_BYTES = 2 * 1024 * 1024
+    private const val MAX_PATHS = 8192
     private val cache = ConcurrentHashMap<String, SecureVector>()
 
     private const val KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
@@ -216,17 +229,20 @@ private object ProtectedPuppyAssets {
     fun load(context: Context, styleId: String): SecureVector {
         val assetId = assetIdFor(styleId)
         cache[assetId]?.let { return it }
-
         val loaded = loadUncached(context, assetId)
         return cache.putIfAbsent(assetId, loaded) ?: loaded
     }
 
-    private fun assetIdFor(styleId: String): String =
-        if (styleId in V2_PUPPY_IDS) styleId else "v1_$styleId"
+    private fun assetIdFor(styleId: String): String {
+        require(styleId in V6_PUPPY_IDS) { "Unknown puppy style: $styleId" }
+        return if (styleId in V2_PUPPY_IDS) styleId else "v1_$styleId"
+    }
 
     private fun loadUncached(context: Context, assetId: String): SecureVector {
         val protectedBytes = context.assets.open("$PREFIX/$assetId.pup").use { it.readBytes() }
+        require(protectedBytes.size <= MAX_ASSET_BYTES) { "Protected puppy asset is too large" }
         val plain = decrypt(assetId, protectedBytes)
+        require(plain.size <= MAX_ASSET_BYTES) { "Decrypted puppy asset is too large" }
         return parseVector(plain.toString(Charsets.UTF_8))
     }
 
@@ -261,66 +277,98 @@ private object ProtectedPuppyAssets {
     }
 
     private fun parseVector(xml: String): SecureVector {
+        require(!xml.contains("<!DOCTYPE", ignoreCase = true)) { "DOCTYPE is not allowed in puppy vectors" }
+        require(!xml.contains("<!ENTITY", ignoreCase = true)) { "Entities are not allowed in puppy vectors" }
         val parser = Xml.newPullParser().apply { setInput(StringReader(xml)) }
-
-        var viewportWidth = 1f
-        var viewportHeight = 1f
+        var viewportWidth = Float.NaN
+        var viewportHeight = Float.NaN
+        var rootSeen = false
         val paths = mutableListOf<SecureVectorPath>()
 
         while (parser.eventType != XmlPullParser.END_DOCUMENT) {
             if (parser.eventType == XmlPullParser.START_TAG) {
                 when (parser.name) {
                     "vector" -> {
-                        viewportWidth = parser.androidAttr("viewportWidth")?.toFloatOrNull() ?: 1f
-                        viewportHeight = parser.androidAttr("viewportHeight")?.toFloatOrNull() ?: 1f
+                        require(!rootSeen && parser.depth == 1) { "Unexpected nested vector" }
+                        rootSeen = true
+                        viewportWidth = parser.vectorFloat("viewportWidth", Float.NaN, 0f, Float.MAX_VALUE, exclusiveMin = true)
+                        viewportHeight = parser.vectorFloat("viewportHeight", Float.NaN, 0f, Float.MAX_VALUE, exclusiveMin = true)
+                        require(parser.androidAttr("alpha") == null && parser.androidAttr("tint") == null && parser.androidAttr("autoMirrored") == null) {
+                            "Unsupported root vector effect"
+                        }
                     }
 
                     "path" -> {
-                        val pathData = parser.androidAttr("pathData")
-                        if (!pathData.isNullOrBlank()) {
-                            val path = PathParser.createPathFromPathData(pathData)
-                                ?: error("Invalid protected vector path")
-                            path.fillType = when (parser.androidAttr("fillType")?.lowercase()) {
-                                "evenodd", "even_odd" -> Path.FillType.EVEN_ODD
-                                else -> Path.FillType.WINDING
-                            }
+                        require(rootSeen && parser.depth == 2) { "Unsupported nested vector path" }
+                        require(paths.size < MAX_PATHS) { "Too many vector paths" }
+                        val pathData = requireNotNull(parser.androidAttr("pathData")) { "Missing vector pathData" }
+                        require(pathData.isNotBlank()) { "Empty vector pathData" }
+                        val path = PathParser.createPathFromPathData(pathData)
+                            ?: error("Invalid protected vector path")
+                        path.fillType = when (parser.androidAttr("fillType")?.lowercase()) {
+                            null, "nonzero", "winding" -> Path.FillType.WINDING
+                            "evenodd", "even_odd" -> Path.FillType.EVEN_ODD
+                            else -> error("Unsupported vector fillType")
+                        }
 
-                            paths += SecureVectorPath(
-                                path = path,
-                                fillColor = parser.androidAttr("fillColor")?.let(::parseColor),
-                                fillAlpha = parser.androidAttr("fillAlpha")?.toFloatOrNull() ?: 1f,
-                                strokeColor = parser.androidAttr("strokeColor")?.let(::parseColor),
-                                strokeAlpha = parser.androidAttr("strokeAlpha")?.toFloatOrNull() ?: 1f,
-                                strokeWidth = parser.androidAttr("strokeWidth")?.toFloatOrNull() ?: 0f,
-                                strokeCap = when (parser.androidAttr("strokeLineCap")?.lowercase()) {
-                                    "round" -> Paint.Cap.ROUND
-                                    "square" -> Paint.Cap.SQUARE
-                                    else -> Paint.Cap.BUTT
-                                },
-                                strokeJoin = when (parser.androidAttr("strokeLineJoin")?.lowercase()) {
-                                    "round" -> Paint.Join.ROUND
-                                    "bevel" -> Paint.Join.BEVEL
-                                    else -> Paint.Join.MITER
-                                },
-                                strokeMiter = parser.androidAttr("strokeMiterLimit")?.toFloatOrNull() ?: 4f
-                            )
+                        paths += SecureVectorPath(
+                            path = path,
+                            fillColor = parser.androidAttr("fillColor")?.let(::parseColor),
+                            fillAlpha = parser.vectorFloat("fillAlpha", 1f, 0f, 1f),
+                            strokeColor = parser.androidAttr("strokeColor")?.let(::parseColor),
+                            strokeAlpha = parser.vectorFloat("strokeAlpha", 1f, 0f, 1f),
+                            strokeWidth = parser.vectorFloat("strokeWidth", 0f, 0f, Float.MAX_VALUE),
+                            strokeCap = when (parser.androidAttr("strokeLineCap")?.lowercase()) {
+                                null, "butt" -> Paint.Cap.BUTT
+                                "round" -> Paint.Cap.ROUND
+                                "square" -> Paint.Cap.SQUARE
+                                else -> error("Unsupported vector strokeLineCap")
+                            },
+                            strokeJoin = when (parser.androidAttr("strokeLineJoin")?.lowercase()) {
+                                null, "miter" -> Paint.Join.MITER
+                                "round" -> Paint.Join.ROUND
+                                "bevel" -> Paint.Join.BEVEL
+                                else -> error("Unsupported vector strokeLineJoin")
+                            },
+                            strokeMiter = parser.vectorFloat("strokeMiterLimit", 4f, 0f, Float.MAX_VALUE, exclusiveMin = true)
+                        )
+                        require(parser.androidAttr("trimPathStart") == null && parser.androidAttr("trimPathEnd") == null && parser.androidAttr("trimPathOffset") == null) {
+                            "Unsupported vector path trimming"
                         }
                     }
+
+                    else -> error("Unsupported protected vector element: ${parser.name}")
                 }
             }
             parser.next()
         }
 
+        require(rootSeen && paths.isNotEmpty()) { "Empty protected vector" }
         return SecureVector(viewportWidth, viewportHeight, paths)
     }
 
     private fun XmlPullParser.androidAttr(name: String): String? =
         getAttributeValue(ANDROID_NS, name) ?: getAttributeValue(null, name)
 
+    private fun XmlPullParser.vectorFloat(
+        name: String,
+        default: Float,
+        min: Float,
+        max: Float,
+        exclusiveMin: Boolean = false
+    ): Float {
+        val raw = androidAttr(name)
+        val value = if (raw == null) default else raw.toFloatOrNull()
+        require(value != null && value.isFinite() && value <= max && (if (exclusiveMin) value > min else value >= min)) {
+            "Invalid vector $name: $raw"
+        }
+        return value
+    }
+
     private fun parseColor(raw: String): Int = when {
         raw == "@android:color/transparent" -> AndroidColor.TRANSPARENT
         raw.equals("transparent", ignoreCase = true) -> AndroidColor.TRANSPARENT
         raw.startsWith("#") -> AndroidColor.parseColor(raw)
-        else -> AndroidColor.TRANSPARENT
+        else -> error("Unsupported vector color: $raw")
     }
 }
