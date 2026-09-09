@@ -204,7 +204,14 @@ internal fun SeasonalCollectionPanel(state: V6GameState, vm: PuppyClickerV6ViewM
                         Text(if (owned) "Permanently owned" else if (active) "Limited-time claim available" else "Not currently available", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                if (!owned && active) {
+                if (owned) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { vm.setPuppyStyle(event.puppyId) },
+                        enabled = state.puppyStyle != event.puppyId,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (state.puppyStyle == event.puppyId) "Selected" else "Choose ${event.title}") }
+                } else if (active) {
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { message = vm.claimSeasonalPuppy(event.puppyId).message }, modifier = Modifier.fillMaxWidth()) { Text("Claim ${event.title}") }
                 }
