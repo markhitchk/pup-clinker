@@ -7,7 +7,8 @@ tasks.named("generateProtectedPuppySources").configure {
     val seasonalPatch = rootProject.file("tools/patch_seasonal_events.py")
     val transparencyPatch = rootProject.file("tools/patch_roster_transparency.py")
     val uxPatch = rootProject.file("tools/patch_puppy_ux.py")
-    inputs.files(seasonalPatch, transparencyPatch, uxPatch)
+    val pupEyeSecurityPatch = rootProject.file("tools/patch_pupeye_security.py")
+    inputs.files(seasonalPatch, transparencyPatch, uxPatch, pupEyeSecurityPatch)
     doLast {
         val generatedSourceRoot = layout.buildDirectory
             .dir("generated/protected-puppies/source")
@@ -22,6 +23,9 @@ tasks.named("generateProtectedPuppySources").configure {
         }
         project.exec {
             commandLine("python3", uxPatch.absolutePath, generatedSourceRoot)
+        }
+        project.exec {
+            commandLine("python3", pupEyeSecurityPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
