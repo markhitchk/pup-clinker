@@ -1,0 +1,46 @@
+name: Puppy Vector Quality
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/res/drawable-anydpi/**'
+      - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
+      - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
+      - 'tools/check_puppy_vectors.py'
+      - '.github/workflows/vector-quality.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/src/main/res/drawable-anydpi/**'
+      - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
+      - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
+      - 'tools/check_puppy_vectors.py'
+      - '.github/workflows/vector-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate all protected puppy source vectors
+        run: python tools/check_puppy_vectors.py --json vector-quality-report.json
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-vector-quality-report
+          path: vector-quality-report.json
+          if-no-files-found: warn
