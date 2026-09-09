@@ -9,6 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ internal object StreamedRedeemCodes {
         "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/redeem-codes.json"
 
     private const val TAG = "PuppyRedeemStream"
+    private const val SALT = "PUPPY_CLICKER_LOCAL_2026_V1|"
     private const val SCHEMA = 1
     private const val MAX_DOWNLOAD_BYTES = 256 * 1024
     private const val MAX_REWARDS = 1_000
@@ -48,6 +50,18 @@ internal object StreamedRedeemCodes {
             loadPersistentCache(app)
             refresh(app)
         }
+    }
+
+    fun find(rawCode: String): LocalRedeemReward? {
+        val normalized = rawCode.trim()
+            .uppercase(Locale.US)
+            .replace(Regex("\\s+"), "")
+        if (normalized.length !in 6..64) return null
+        val hash = sha256(SALT + normalized)
+        val streamed = catalog
+        // Once a streamed or cached catalogue exists, it is authoritative. This
+        // allows remote removals to revoke codes instead of falling back to APK data.
+        return if (streamed != null) streamed[hash] else LocalRedeemCodes.find(rawCode)
     }
 
     fun snapshot(): Map<String, LocalRedeemReward>? = catalog
@@ -186,4 +200,8 @@ internal object StreamedRedeemCodes {
         }
         return output.toByteArray()
     }
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 }
