@@ -22,6 +22,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(this)
+        DynamicPuppyRoster.initialize(this)
         StreamedRedeemCodes.initialize(this)
 
         // If Android killed the process while it was in the background, the
