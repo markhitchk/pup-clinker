@@ -1,5 +1,6 @@
-// Add canonical roster artwork and seasonal features to the Android generated-source pipeline.
+// Add canonical roster artwork, dynamic manifest rosters, and seasonal features.
 apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
+apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
