@@ -4,14 +4,20 @@ apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
-    val patch = rootProject.file("tools/patch_seasonal_events.py")
-    inputs.file(patch)
+    val seasonalPatch = rootProject.file("tools/patch_seasonal_events.py")
+    val transparencyPatch = rootProject.file("tools/patch_roster_transparency.py")
+    inputs.files(seasonalPatch, transparencyPatch)
     doLast {
+        val generatedSourceRoot = layout.buildDirectory
+            .dir("generated/protected-puppies/source")
+            .get()
+            .asFile
+            .absolutePath
         project.exec {
-            commandLine(
-                "python3", patch.absolutePath,
-                layout.buildDirectory.dir("generated/protected-puppies/source").get().asFile.absolutePath
-            )
+            commandLine("python3", seasonalPatch.absolutePath, generatedSourceRoot)
+        }
+        project.exec {
+            commandLine("python3", transparencyPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
