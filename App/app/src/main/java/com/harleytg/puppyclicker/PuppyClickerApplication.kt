@@ -23,26 +23,35 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     }
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
-    private val externalSaveWriter = Runnable { ExternalGameSave.write(this, prefs) }
+    private val externalSaveWriter = Runnable {
+        PupEyeSaveGuard.seal(this, prefs)
+        ExternalGameSave.write(this, prefs)
+    }
     private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-        // One saveState() changes many keys. Debounce those callbacks into one external write.
+        // One saveState() changes many keys. Debounce those callbacks into one encrypted write/seal.
         mainHandler.removeCallbacks(externalSaveWriter)
         mainHandler.postDelayed(externalSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
     }
 
     override fun onCreate() {
         super.onCreate()
+
+        // Validate the private runtime save before any ViewModel is allowed to consume it.
+        // If an out-of-band edit is found, restore the last Keystore-authenticated state.
+        PupEyeSaveGuard.verifyAndRecover(this, prefs)
+
         registerActivityLifecycleCallbacks(this)
         prefs.registerOnSharedPreferenceChangeListener(saveChangeListener)
         DynamicPuppyRoster.initialize(this)
         StreamedRedeemCodes.initialize(this)
 
-        // Ensure a readable save snapshot exists in emulated Android/data storage.
+        // Ensure an AES-GCM encrypted Android/data mirror exists and authenticate any existing copy.
         ExternalGameSave.write(this, prefs)
 
-        // If Android killed the process while it was in the background, the
-        // timestamp survives and is converted into a pending reward here.
+        // If Android killed the process while it was in the background, the timestamp survives
+        // and is converted into a pending reward here.
         prepareAfkReward(System.currentTimeMillis())
+        PupEyeSaveGuard.seal(this, prefs)
     }
 
     override fun onActivityStarted(activity: Activity) {
@@ -70,9 +79,8 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, System.currentTimeMillis())
                 .apply()
 
-            // Flush the most recent persisted state into the user-requested
-            // app-specific emulated-storage location when leaving the app.
             mainHandler.removeCallbacks(externalSaveWriter)
+            PupEyeSaveGuard.seal(this, prefs)
             ExternalGameSave.write(this, prefs)
         }
     }
@@ -101,6 +109,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, safeAdd(existingPending, earned))
             .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, safeAdd(existingAway, awayMs))
             .apply()
+        PupEyeSaveGuard.seal(this, prefs)
     }
 
     private fun maybeShowWelcome(activity: Activity) {
