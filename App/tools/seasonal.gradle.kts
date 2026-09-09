@@ -7,7 +7,7 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine(
                 "python3", patch.absolutePath,
-                layout.buildDirectory.dir("generated/puppy-vectors").get().asFile.absolutePath
+                layout.buildDirectory.dir("generated/protected-puppies/source").get().asFile.absolutePath
             )
         }
     }
