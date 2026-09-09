@@ -104,3 +104,19 @@ Pup Eye remains local and privacy-preserving. It watches tap timing inside the a
 ## Rights
 
 Puppy Clicker is based on the original HarleyTG-O Puppy Clicker project. All rights reserved by the project owner; this repository does not declare the game open source.
+
+
+## Exact SVG character sources
+
+All 26 existing puppy characters (18 V1 and 8 V2) live in
+`app/src/main/puppy-svg/`, with the same identifiers and artwork as source
+commit `b53e910e9dab34a7f48cbde3aaea137eeaeba806`. No new characters or
+redrawn paths were introduced. Each file is a standalone, transparent SVG.
+
+Builds require Python 3 in addition to the Android toolchain. Gradle runs
+`tools/puppy_svg.py` to translate SVG attributes into generated Android XML
+before the existing encryption step. The app keeps its existing renderer,
+asset IDs and save compatibility. Generated XML is build output; edit the SVGs.
+The compiler rejects unsupported SVG features instead of dropping them.
+
+Validate the complete roster with `python3 tools/check_puppy_vectors.py`.

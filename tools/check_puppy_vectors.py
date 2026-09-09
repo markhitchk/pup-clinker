@@ -10,6 +10,7 @@ import json
 import math
 import re
 import sys
+import tempfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -144,9 +145,16 @@ def validate(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-dir", type=Path, default=Path(__file__).resolve().parents[1] / "app/src/main/res/drawable-anydpi")
+    parser.add_argument("--source-dir", type=Path, default=None, help="Optional compiled Android XML directory; by default validate repository SVG sources")
     parser.add_argument("--json", type=Path, help="Write a machine-readable validation report")
     args = parser.parse_args()
+    temporary = tempfile.TemporaryDirectory()
+    if args.source_dir is None:
+        from puppy_svg import compile_svg
+        svg_dir = Path(__file__).resolve().parents[1] / "app/src/main/puppy-svg"
+        args.source_dir = Path(temporary.name)
+        for source in svg_dir.glob("*.svg"):
+            (args.source_dir / (source.stem + ".xml")).write_bytes(compile_svg(source))
     expected = {"v1_" + name + ".xml" for name in V1} | {name + ".xml" for name in V2}
     actual = {p.name for p in args.source_dir.glob("v1_*.xml")} | {p.name for p in args.source_dir.glob("v2_*.xml")}
     errors, results = [], []
@@ -169,8 +177,10 @@ def main():
     print("Total source bytes:", sum(r["bytes"] for r in results))
     if not errors:
         print("PASS: source integrity and supported vector syntax")
+    temporary.cleanup()
     return 1 if errors else 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
+

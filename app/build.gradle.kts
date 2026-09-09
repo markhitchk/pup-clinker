@@ -17,7 +17,8 @@ val generatedSourceVectorDrawables = layout.buildDirectory.dir("generated/source
 val generatedProtectedAssets = layout.buildDirectory.dir("generated/protected-puppies/assets")
 val generatedProtectedSource = layout.buildDirectory.dir("generated/protected-puppies/source")
 val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
-val protectedPuppySourceDir = layout.projectDirectory.dir("src/main/res/drawable-anydpi")
+val puppySvgSourceDir = layout.projectDirectory.dir("src/main/puppy-svg")
+val protectedPuppySourceDir = layout.buildDirectory.dir("generated/puppy-vectors").get()
 
 val v1ProtectedPuppyIds = listOf(
     "classic",
@@ -158,7 +159,21 @@ android {
     }
 }
 
+val compilePuppySvg by tasks.registering(Exec::class) {
+    description = "Compiles exact SVG paths for the existing Android puppy renderer."
+    group = "puppy clicker"
+    inputs.dir(puppySvgSourceDir)
+    inputs.files(rootProject.file("tools/puppy_svg.py"), rootProject.file("tools/check_puppy_vectors.py"))
+    outputs.dir(protectedPuppySourceDir)
+    commandLine(
+        "python3", rootProject.file("tools/puppy_svg.py").absolutePath,
+        "--source-dir", puppySvgSourceDir.asFile.absolutePath,
+        "--output-dir", protectedPuppySourceDir.asFile.absolutePath
+    )
+}
+
 val prepareProtectedPuppyAssets by tasks.registering {
+    dependsOn(compilePuppySvg)
     description = "Encrypts all V1/V2 Android vector puppy artwork into generated APK assets."
     group = "puppy clicker"
     inputs.files(v1ProtectedPuppyIds.map { protectedPuppySourceDir.file("v1_$it.xml") })
@@ -284,3 +299,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+

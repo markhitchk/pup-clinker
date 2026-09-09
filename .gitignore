@@ -16,3 +16,7 @@ app/build/
 *.pem
 signing.properties
 private-keys/
+
+
+__pycache__/
+*.py[cod]

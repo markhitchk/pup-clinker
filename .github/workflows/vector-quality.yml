@@ -4,18 +4,22 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app/src/main/res/drawable-anydpi/**'
+      - 'app/src/main/puppy-svg/**'
       - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
       - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
       - 'tools/check_puppy_vectors.py'
+      - 'tools/puppy_svg.py'
+      - 'app/build.gradle.kts'
       - '.github/workflows/vector-quality.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'app/src/main/res/drawable-anydpi/**'
+      - 'app/src/main/puppy-svg/**'
       - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
       - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
       - 'tools/check_puppy_vectors.py'
+      - 'tools/puppy_svg.py'
+      - 'app/build.gradle.kts'
       - '.github/workflows/vector-quality.yml'
   workflow_dispatch:
 
@@ -44,3 +48,4 @@ jobs:
           name: puppy-vector-quality-report
           path: vector-quality-report.json
           if-no-files-found: warn
+
