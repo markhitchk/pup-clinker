@@ -47,7 +47,10 @@ enum class PuppyLegalDocument(
         title = "Privacy Policy",
         fileName = "privacy-policy.txt",
         rawUrl = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/legal/privacy-policy.txt"
-    )
+    );
+
+    val assetPath: String
+        get() = "legal/$fileName"
 }
 
 private data class LegalLoadResult(
@@ -55,6 +58,14 @@ private data class LegalLoadResult(
     val source: String
 )
 
+/**
+ * Repository-managed legal document loader.
+ *
+ * The canonical files live at repository root assets/legal/. The Android build copies those
+ * exact files into the APK as assets/legal/*, so the app can always render the repository copy
+ * internally without opening a browser or requiring GitHub credentials. If the raw GitHub file
+ * is publicly reachable, a newer copy may be cached and rendered in the same in-app viewer.
+ */
 private object StreamedLegalRepository {
     private const val CACHE_DIRECTORY = "legal"
     private const val REFRESH_MS = 6L * 60L * 60L * 1_000L
@@ -64,29 +75,51 @@ private object StreamedLegalRepository {
 
     suspend fun load(context: Context, document: PuppyLegalDocument): LegalLoadResult =
         withContext(Dispatchers.IO) {
+            val bundled = loadBundledRepositoryCopy(context, document)
             val cacheDir = File(context.filesDir, CACHE_DIRECTORY).apply { mkdirs() }
             val cache = File(cacheDir, document.fileName)
             val now = System.currentTimeMillis()
 
             if (cache.isFile && now - cache.lastModified() < REFRESH_MS) {
-                return@withContext LegalLoadResult(cache.readText(Charsets.UTF_8), "cached GitHub copy")
+                val cached = runCatching { cache.readText(Charsets.UTF_8) }.getOrNull()
+                if (!cached.isNullOrBlank()) {
+                    return@withContext LegalLoadResult(cached, "repository update cache")
+                }
             }
 
+            // This succeeds only when the repository file is anonymously reachable. No GitHub
+            // token is ever embedded in Puppy Clicker.
             val network = runCatching { download(document.rawUrl) }.getOrNull()
             if (!network.isNullOrBlank()) {
                 runCatching { cache.writeText(network, Charsets.UTF_8) }
-                return@withContext LegalLoadResult(network, "GitHub")
+                return@withContext LegalLoadResult(network, "GitHub repository")
             }
 
             if (cache.isFile) {
-                return@withContext LegalLoadResult(cache.readText(Charsets.UTF_8), "cached GitHub copy")
+                val cached = runCatching { cache.readText(Charsets.UTF_8) }.getOrNull()
+                if (!cached.isNullOrBlank()) {
+                    return@withContext LegalLoadResult(cached, "cached GitHub repository copy")
+                }
+            }
+
+            if (!bundled.isNullOrBlank()) {
+                return@withContext LegalLoadResult(bundled, "repository copy packaged with app")
             }
 
             LegalLoadResult(
-                text = "This legal document could not be loaded right now. Connect to the internet and try again.",
+                text = "This legal document is unavailable in this build.",
                 source = "unavailable"
             )
         }
+
+    private fun loadBundledRepositoryCopy(
+        context: Context,
+        document: PuppyLegalDocument
+    ): String? = runCatching {
+        context.assets.open(document.assetPath).bufferedReader(Charsets.UTF_8).use { reader ->
+            reader.readText().takeIf { it.isNotBlank() }
+        }
+    }.getOrNull()
 
     private fun download(rawUrl: String): String {
         val connection = URL(rawUrl).openConnection() as HttpURLConnection
@@ -199,10 +232,7 @@ private fun StreamedLegalDialog(
                     .heightIn(min = 180.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    body,
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(body, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.padding(bottom = 4.dp))
             }
         },
