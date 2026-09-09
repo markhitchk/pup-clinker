@@ -6,7 +6,8 @@ apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 tasks.named("generateProtectedPuppySources").configure {
     val seasonalPatch = rootProject.file("tools/patch_seasonal_events.py")
     val transparencyPatch = rootProject.file("tools/patch_roster_transparency.py")
-    inputs.files(seasonalPatch, transparencyPatch)
+    val uxPatch = rootProject.file("tools/patch_puppy_ux.py")
+    inputs.files(seasonalPatch, transparencyPatch, uxPatch)
     doLast {
         val generatedSourceRoot = layout.buildDirectory
             .dir("generated/protected-puppies/source")
@@ -18,6 +19,9 @@ tasks.named("generateProtectedPuppySources").configure {
         }
         project.exec {
             commandLine("python3", transparencyPatch.absolutePath, generatedSourceRoot)
+        }
+        project.exec {
+            commandLine("python3", uxPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
