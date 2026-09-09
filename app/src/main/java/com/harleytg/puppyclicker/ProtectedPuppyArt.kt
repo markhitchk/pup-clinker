@@ -112,13 +112,16 @@ internal fun ProtectedPuppyPortrait(
         }
 
         if (!unlocked) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.42f)),
-                contentAlignment = Alignment.Center
+            Surface(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(size * 0.06f),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface
             ) {
-                Text("🔒", fontSize = (size.value * 0.22f).sp)
+                Text(
+                    "🔒",
+                    fontSize = (size.value * 0.13f).sp,
+                    modifier = Modifier.padding(size * 0.035f)
+                )
             }
         } else {
             when (accessory) {
@@ -372,3 +375,4 @@ private object ProtectedPuppyAssets {
         else -> error("Unsupported vector color: $raw")
     }
 }
+

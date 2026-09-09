@@ -11,9 +11,10 @@ subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<com.android.build.api.variant.ApplicationAndroidComponentsExtension> {
             finalizeDsl { android ->
-                android.defaultConfig.versionCode = 16
-                android.defaultConfig.versionName = "1.7.3"
+                android.defaultConfig.versionCode = 20
+                android.defaultConfig.versionName = "1.7.7"
             }
         }
     }
 }
+
