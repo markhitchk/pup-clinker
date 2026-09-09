@@ -34,7 +34,8 @@ val V2_PUPPY_STYLES = listOf(
     PuppyStyle("v2_domino", "Domino", "🎲", "V2 spotted Dalmatian puppy with a bold eye patch.", redeemOnly = true),
     PuppyStyle("v2_chestnut", "Chestnut", "🌰", "V2 cocoa-brown puppy with cream muzzle and paws.", redeemOnly = true),
     PuppyStyle("v2_prism", "Prism", "🔮", "V2 pastel purple, teal and cream fluffy puppy.", redeemOnly = true),
-    PuppyStyle("v2_flurry", "Flurry", "🌨️", "V2 fluffy snow-white puppy with a curled tail.", redeemOnly = true)
+    PuppyStyle("v2_flurry", "Flurry", "🌨️", "V2 fluffy snow-white puppy with a curled tail.", redeemOnly = true),
+    PuppyStyle("v2_harleytg", "HarleyTG Puppy", "🐾", "Fluffy golden-cream puppy with cyan-blue eyes and a raised waving paw.", redeemOnly = true)
 )
 
 val V6_PUPPY_STYLES = V1_PUPPY_STYLES + V2_PUPPY_STYLES
