@@ -62,9 +62,10 @@ private data class LegalLoadResult(
  * Repository-managed legal document loader.
  *
  * The canonical files live at repository root assets/legal/. The Android build copies those
- * exact files into the APK as assets/legal/*, so the app can always render the repository copy
- * internally without opening a browser or requiring GitHub credentials. If the raw GitHub file
- * is publicly reachable, a newer copy may be cached and rendered in the same in-app viewer.
+ * exact files into the APK under the legal assets directory, so the app can always render the
+ * repository copy internally without opening a browser or requiring GitHub credentials. If the
+ * raw GitHub file is publicly reachable, a newer copy may be cached and rendered in the same
+ * in-app viewer.
  */
 private object StreamedLegalRepository {
     private const val CACHE_DIRECTORY = "legal"
