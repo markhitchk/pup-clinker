@@ -15,13 +15,15 @@ import org.json.JSONObject
  *
  * The Android/data copy is device-bound through Android Keystore. Any byte-level edit,
  * replacement, or ciphertext corruption fails GCM authentication and is recorded by PupEye.
+ * The encrypted payload includes the normalized lowercase player username and a coarse
+ * manufacturer/model label for source identification without storing hardware identifiers.
  */
 object ExternalGameSave {
     const val DIRECTORY_NAME = "PuppyClicker"
     const val FILE_NAME = "puppy_clicker_save.pup"
     private const val LEGACY_FILE_NAME = "puppy_clicker_save.json"
     private const val FORMAT = "puppy-clicker-device-save"
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     fun write(context: Context, prefs: SharedPreferences): File? {
         val externalRoot = context.getExternalFilesDir(null) ?: return null
@@ -38,6 +40,7 @@ object ExternalGameSave {
             put("version", VERSION)
             put("package", context.packageName)
             put("updatedAtEpochMs", System.currentTimeMillis())
+            put("identity", PuppyPlayerIdentity.metadata(context))
             put("store", SecurePreferenceCodec.encode(prefs))
         }
         val encrypted = PuppySaveCrypto.encryptDevice(document.toString().toByteArray(Charsets.UTF_8))
@@ -73,7 +76,12 @@ object ExternalGameSave {
             val plain = PuppySaveCrypto.decryptDevice(target.readBytes())
             val document = JSONObject(plain.toString(Charsets.UTF_8))
             require(document.optString("format") == FORMAT) { "Unexpected device-save format" }
-            require(document.optInt("version") == VERSION) { "Unexpected device-save version" }
+            require(document.optInt("version") in 2..VERSION) { "Unexpected device-save version" }
+            document.optJSONObject("identity")?.let { identity ->
+                val username = PuppyPlayerIdentity.normalizeUsername(identity.optString("username"))
+                require(username.isNotBlank()) { "Missing protected player username" }
+                require(identity.optString("deviceModel").isNotBlank()) { "Missing protected device model" }
+            }
             true
         }.getOrElse {
             PupEyeSaveGuard.recordTamper(
