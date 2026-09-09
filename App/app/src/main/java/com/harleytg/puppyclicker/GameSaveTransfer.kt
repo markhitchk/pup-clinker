@@ -104,8 +104,7 @@ internal object GameSaveTransfer {
 
     fun suggestedFileName(context: Context): String {
         val username = PuppyPlayerIdentity.username(context)
-        val device = PuppyPlayerIdentity.deviceModel()
-        return "puppy_clicker_${username}_${device}_v3.pupsave"
+        return "puppy_clicker_${username}_v3.pupsave"
     }
 
     private fun validateImportedIdentity(context: Context, identity: JSONObject) {
@@ -245,7 +244,7 @@ internal fun SaveTransferSettings() {
         Column(Modifier.padding(13.dp)) {
             Text("🔐 Encrypted save system", fontWeight = FontWeight.Black)
             Text(
-                "Saves include your lowercase Puppy Clicker username and source device model inside the encrypted payload.",
+                "Encrypted backups include your lowercase Puppy Clicker username and protected game data.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.size(9.dp))
@@ -272,10 +271,6 @@ internal fun SaveTransferSettings() {
             ) {
                 Text("Save player username")
             }
-            Text(
-                "Device label: ${PuppyPlayerIdentity.deviceModel()}",
-                style = MaterialTheme.typography.labelSmall
-            )
 
             Spacer(Modifier.size(9.dp))
             OutlinedTextField(
