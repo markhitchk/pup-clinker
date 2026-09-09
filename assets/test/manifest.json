@@ -1,0 +1,26 @@
+{
+  "roster": "TEST",
+  "version": "test",
+  "count": 2,
+  "ownership": "free",
+  "puppies": [
+    {
+      "number": 1,
+      "name": "Crash Test Pup V1",
+      "asset_id": "test_v1_crash_dummy",
+      "file": "v1_test_crash_dummy.png",
+      "base_generation": "v1",
+      "free": true,
+      "redeem_only": false
+    },
+    {
+      "number": 2,
+      "name": "Crash Test Pup V2",
+      "asset_id": "test_v2_crash_dummy",
+      "file": "v2_test_crash_dummy.png",
+      "base_generation": "v2",
+      "free": true,
+      "redeem_only": false
+    }
+  ]
+}
