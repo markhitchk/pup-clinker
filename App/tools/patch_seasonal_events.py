@@ -64,6 +64,10 @@ def patch_view_model(source: str) -> str:
     }
 
     fun redeemCode(rawCode: String): V6RedeemOutcome {''', 'seasonal ViewModel methods')
+    source = replace_once(source,
+        '        val reward = LocalRedeemCodes.find(rawCode)\n',
+        '        val reward = StreamedRedeemCodes.find(rawCode)\n',
+        'streamed redeem lookup')
     source = replace_once(source, '''        if (reward.id in s.redeemedCodeIds) {
             return V6RedeemOutcome(false, "That Puppy Code was already redeemed on this device.")
         }
@@ -95,6 +99,10 @@ def patch_activity(source: str) -> str:
         '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
         Spacer(Modifier.height(14.dp))
         SeasonalBirthdaySettings(vm)''', 'birthday settings')
+    source = replace_once(source,
+        '                Text("Puppy Codes work locally. They can grant treats or special puppies, but never Upgrade Tickets or prestige points.")',
+        '                Text("Puppy Codes sync from the live catalog when available and stay cached for offline use. They can grant treats or special puppies, but never seasonal puppies, Upgrade Tickets or prestige points.")',
+        'redeem dialog copy')
     return source
 
 
