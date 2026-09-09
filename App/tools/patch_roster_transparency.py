@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch the generated Android roster renderer to preserve PNG transparency."""
+"""Patch the generated Android roster renderer while preserving native PNG alpha."""
 from pathlib import Path
 import sys
 
@@ -71,6 +71,8 @@ def main(root: Path) -> None:
             inSampleSize = sample
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }) ?: return null
+        // True-alpha PNGs render directly. Only old opaque V1/V2 matte exports need cleanup.
+        if (decoded.hasAlpha()) return decoded
         return LegacyPuppyTransparency.apply(assetId, decoded)
 ''',
         "legacy matte cleanup",
