@@ -1,4 +1,6 @@
-// Add seasonal features to the existing Android-only generated source pipeline.
+// Add canonical roster artwork and seasonal features to the Android generated-source pipeline.
+apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
+
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
     val patch = rootProject.file("tools/patch_seasonal_events.py")
