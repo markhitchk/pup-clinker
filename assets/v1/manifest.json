@@ -1,0 +1,236 @@
+[
+  {
+    "number": 1,
+    "name": "Buddy / Classic",
+    "asset_id": "v1_classic",
+    "filename": "v1_classic.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "sha256": "2786ffe25fb4cbc4c9474514494699cf4b8dcb8670490e33cc7a6f47d883edf2",
+    "source": "a_clean_high_quality_vector_cute_cartoon_illustra.png",
+    "source_type": "approved individual render"
+  },
+  {
+    "number": 2,
+    "name": "Sunny",
+    "asset_id": "v1_golden",
+    "filename": "v1_golden.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "sha256": "50217249abb065312e41c266b01ebf8f16b24253b9a81a7f64337a88263f66fc",
+    "source": "cute_golden_puppy_on_blue_shadow.png",
+    "source_type": "approved individual render"
+  },
+  {
+    "number": 3,
+    "name": "Mochi",
+    "asset_id": "v1_poodle",
+    "filename": "v1_poodle.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "sha256": "a3c3593de9310e1ae536dba69ca28f249b5d6059423db00be844a287fa44787a",
+    "source": "cute_cream_poodle_with_pink_bow.png",
+    "source_type": "approved individual render"
+  },
+  {
+    "number": 4,
+    "name": "Pepper",
+    "asset_id": "v1_spotty",
+    "filename": "v1_spotty.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "eb415e6deb8d2138581b3871656cae63af7269843500d6132fe7b5a1a6da15c4",
+    "source": "v1_puppies_separated/v1_spotty.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 5,
+    "name": "Midnight",
+    "asset_id": "v1_midnight",
+    "filename": "v1_midnight.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "5818775cc6dac6686b01253009699ee5277989a4987298764e2f95738bdc131f",
+    "source": "v1_puppies_separated/v1_midnight.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 6,
+    "name": "Cloud",
+    "asset_id": "v1_cloud",
+    "filename": "v1_cloud.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "e4c121750d53717125cc79d3b00667c2d745574c67b638ebea84435e6601cb8b",
+    "source": "v1_puppies_separated/v1_cloud.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 7,
+    "name": "Aurora",
+    "asset_id": "v1_aurora",
+    "filename": "v1_aurora.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "3078fa32a5a5b0b4558af2c4562d8d46c22898993aea6a115716949e2c61e7a7",
+    "source": "v1_puppies_separated/v1_aurora.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 8,
+    "name": "Cocoa",
+    "asset_id": "v1_cocoa",
+    "filename": "v1_cocoa.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "41b79d1a809c5480c87fc71d95d25a9f872032b55ab0887e72a0025808dbe7ba",
+    "source": "v1_puppies_separated/v1_cocoa.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 9,
+    "name": "Snowball",
+    "asset_id": "v1_snowball",
+    "filename": "v1_snowball.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "053f0efac478e8c2b89fc77a9f52951861cf4c4b18afc6348857fe7729e60103",
+    "source": "v1_puppies_separated/v1_snowball.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 10,
+    "name": "Galaxy",
+    "asset_id": "v1_galaxy",
+    "filename": "v1_galaxy.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "2174491a1695c03cf6e7787a274d13c21d6918484b4bc6a483309c908ac0036e",
+    "source": "v1_puppies_separated/v1_galaxy.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 11,
+    "name": "Neon Buddy",
+    "asset_id": "v1_neon_buddy",
+    "filename": "v1_neon_buddy.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "eae0d1be4a1840bd82e54e9704147f5a608be6e0f9a8aaf8e51f2f86aafc8bfd",
+    "source": "v1_puppies_separated/v1_neon_buddy.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 12,
+    "name": "Golden Night",
+    "asset_id": "v1_golden_night",
+    "filename": "v1_golden_night.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "b86c3ef4be93c6b5325f5746f3828efde9d00aa30c4c77d724520a3f19c29fb1",
+    "source": "v1_puppies_separated/v1_golden_night.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 13,
+    "name": "Pumpkin Pup",
+    "asset_id": "v1_halloween",
+    "filename": "v1_halloween.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "01ef8cd3e93382801fd5b585e0d85f2bd527293b6e0c5bed41cd5133743de7da",
+    "source": "v1_puppies_separated/v1_halloween.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 14,
+    "name": "Santa Paws",
+    "asset_id": "v1_santa",
+    "filename": "v1_santa.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "ea78475452c7df649998031d17f07322bba8462ec02b2b58f66df62f0f69b003",
+    "source": "v1_puppies_separated/v1_santa.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 15,
+    "name": "Birthday Buddy",
+    "asset_id": "v1_birthday",
+    "filename": "v1_birthday.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "48f21f4dfdcbaef74ea77664a1901de06e3e0a66e725a8c1a440c29071c1e58b",
+    "source": "v1_puppies_separated/v1_birthday.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 16,
+    "name": "Dev Pup",
+    "asset_id": "v1_dev_pup",
+    "filename": "v1_dev_pup.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "sha256": "14a7e731eb8e20c14d637d4adf93281ef95c37e910ba3bd1fab29b93cc1d258b",
+    "source": "cyber_hoodie_puppy_mascot.png",
+    "source_type": "approved individual render"
+  },
+  {
+    "number": 17,
+    "name": "Secret Snoot",
+    "asset_id": "v1_secret_snoot",
+    "filename": "v1_secret_snoot.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "48a38c3e1b44ba80a44790d300431921fe8a8dbe66e072bbde39d146bfa9560d",
+    "source": "v1_puppies_separated/v1_secret_snoot.png",
+    "source_type": "previously separated gallery artwork"
+  },
+  {
+    "number": 18,
+    "name": "Classic Forever",
+    "asset_id": "v1_classic_forever",
+    "filename": "v1_classic_forever.png",
+    "size": [
+      1024,
+      1024
+    ],
+    "sha256": "b2d1c491763066be94c030a6a6873fda62677707cb1e2acd252a7383507c43fd",
+    "source": "v1_puppies_separated/v1_classic_forever.png",
+    "source_type": "previously separated gallery artwork"
+  }
+]

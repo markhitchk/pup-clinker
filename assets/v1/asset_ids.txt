@@ -1,0 +1,28 @@
+PUPPY CLICKER — V1 CHARACTER ASSETS
+18 individual PNG files, in roster order.
+
+Update: Dev Pup (#16) uses the approved dark-black puppy with a black hooded sweatshirt, cyan trim and coding emblem, ears covered by the hood, and a black/cyan muzzle mask.
+Mochi (#3) uses the latest pink-outfit version.
+Images contain no added titles or gallery layouts. Existing artwork is preserved without re-rendering.
+Assets #4–15 and #17–18 were previously extracted and upscaled from a generated gallery; they are not newly rendered originals. Exact original game-roster outfit matching has not been verified.
+Asset IDs below are the supplied roster identifiers, not externally verified game-database IDs.
+
+Number | Name | Asset ID | Filename
+01 | Buddy / Classic | v1_classic | v1_classic.png
+02 | Sunny | v1_golden | v1_golden.png
+03 | Mochi | v1_poodle | v1_poodle.png
+04 | Pepper | v1_spotty | v1_spotty.png
+05 | Midnight | v1_midnight | v1_midnight.png
+06 | Cloud | v1_cloud | v1_cloud.png
+07 | Aurora | v1_aurora | v1_aurora.png
+08 | Cocoa | v1_cocoa | v1_cocoa.png
+09 | Snowball | v1_snowball | v1_snowball.png
+10 | Galaxy | v1_galaxy | v1_galaxy.png
+11 | Neon Buddy | v1_neon_buddy | v1_neon_buddy.png
+12 | Golden Night | v1_golden_night | v1_golden_night.png
+13 | Pumpkin Pup | v1_halloween | v1_halloween.png
+14 | Santa Paws | v1_santa | v1_santa.png
+15 | Birthday Buddy | v1_birthday | v1_birthday.png
+16 | Dev Pup | v1_dev_pup | v1_dev_pup.png
+17 | Secret Snoot | v1_secret_snoot | v1_secret_snoot.png
+18 | Classic Forever | v1_classic_forever | v1_classic_forever.png
