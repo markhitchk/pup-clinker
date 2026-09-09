@@ -12,3 +12,8 @@ tasks.named("generateProtectedPuppySources").configure {
         }
     }
 }
+
+// Release builds also run the pure JVM calendar regression tests.
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    dependsOn("testDebugUnitTest")
+}
