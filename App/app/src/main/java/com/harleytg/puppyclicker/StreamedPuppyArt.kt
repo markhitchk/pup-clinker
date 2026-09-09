@@ -24,8 +24,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import java.io.ByteArrayOutputStream
@@ -43,10 +41,10 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Android-only artwork renderer. The original game and character IDs are unchanged.
- * Artwork is downloaded from the canonical repository, never from a GitHub HTML page.
- * Cached PNGs remain available offline; the existing protected vectors are retained
- * as the initial/offline fallback for characters that have packaged artwork.
+ * V6 roster renderer. Every roster ID resolves to the exact PNG in assets/v1 or assets/v2.
+ * The build packages those canonical PNGs so a private GitHub repository can never force
+ * the UI back to older generated vectors. A valid remote PNG may still replace the bundled
+ * copy when the configured raw endpoint is publicly reachable.
  */
 @Composable
 internal fun StreamedPuppyPortrait(
@@ -129,9 +127,10 @@ internal fun StreamedPuppyPortrait(
     }
 }
 
-/** All network and disk operations run on Dispatchers.IO; no remote code is executed. */
+/** All network and disk operations run on Dispatchers.IO; downloaded content is data only. */
 internal object RemotePuppyAssets {
     private const val BASE = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets"
+    private const val BUNDLED_ROOT = "canonical-puppies"
     private const val MAX_DOWNLOAD_BYTES = 8 * 1024 * 1024
     private const val MAX_IMAGE_EDGE = 4096
     private const val DECODE_EDGE = 1536
@@ -149,40 +148,70 @@ internal object RemotePuppyAssets {
         return if (styleId in V2_PUPPY_IDS) styleId else "v1_$styleId"
     }
 
+    internal fun bundledPathFor(styleId: String): String {
+        val id = assetIdFor(styleId)
+        val version = if (id.startsWith("v2_")) "v2" else "v1"
+        return "$BUNDLED_ROOT/$version/$id.png"
+    }
+
     private fun checkedId(assetId: String): String {
         require(assetId.matches(Regex("v[12]_[a-z0-9_]+"))) { "Invalid asset ID" }
-        require(assetId == assetIdFor(V6_PUPPY_STYLES.firstOrNull {
-            assetIdFor(it.id) == assetId
-        }?.id ?: error("Unknown puppy asset: $assetId"))) { "Unknown puppy asset" }
+        val style = V6_PUPPY_STYLES.firstOrNull { assetIdFor(it.id) == assetId }
+            ?: error("Unknown puppy asset: $assetId")
+        require(assetId == assetIdFor(style.id)) { "Unknown puppy asset" }
         return assetId
     }
 
     fun peek(assetId: String): Bitmap? = memory.get(checkedId(assetId))
 
     private fun directory(context: Context): File =
-        File(context.cacheDir, "puppy-stream").apply { mkdirs() }
+        File(context.cacheDir, "puppy-stream-v2").apply { mkdirs() }
 
     private fun file(context: Context, assetId: String): File =
         File(directory(context), "${checkedId(assetId)}.png")
 
     private fun prefs(context: Context) =
-        context.getSharedPreferences("puppy_stream_v1", Context.MODE_PRIVATE)
+        context.getSharedPreferences("puppy_stream_v2", Context.MODE_PRIVATE)
 
     private fun lock(assetId: String): Mutex =
         locks.computeIfAbsent(checkedId(assetId)) { Mutex() }
 
     suspend fun cached(context: Context, assetId: String): Bitmap? = withContext(Dispatchers.IO) {
-        lock(assetId).withLock { readCached(context, assetId) }
+        lock(assetId).withLock { readAvailable(context, checkedId(assetId)) }
     }
 
-    private fun readCached(context: Context, assetId: String): Bitmap? {
+    private fun readAvailable(context: Context, assetId: String): Bitmap? {
         memory.get(assetId)?.let { return it }
+
         val disk = file(context, assetId)
-        if (!disk.isFile || disk.length() > MAX_DOWNLOAD_BYTES) return null
+        if (disk.isFile && disk.length() in 1..MAX_DOWNLOAD_BYTES.toLong()) {
+            try {
+                decode(disk.readBytes())?.let { bitmap ->
+                    memory.put(assetId, bitmap)
+                    return bitmap
+                }
+            } catch (error: Exception) {
+                Log.w("PuppyClickerArt", "Ignoring invalid cached image: $assetId", error)
+            }
+        }
+
+        return readBundled(context, assetId)
+    }
+
+    private fun readBundled(context: Context, assetId: String): Bitmap? {
+        val id = checkedId(assetId)
+        val version = if (id.startsWith("v2_")) "v2" else "v1"
+        val path = "$BUNDLED_ROOT/$version/$id.png"
         return try {
-            decode(disk.readBytes())?.also { memory.put(assetId, it) }
+            val bytes = context.assets.open(path).use { it.readBytes() }
+            if (bytes.size > MAX_DOWNLOAD_BYTES) {
+                Log.e("PuppyClickerArt", "Bundled puppy exceeds size limit: $id")
+                null
+            } else {
+                decode(bytes)?.also { memory.put(id, it) }
+            }
         } catch (error: Exception) {
-            Log.w("PuppyClickerArt", "Invalid cached image: $assetId", error)
+            Log.e("PuppyClickerArt", "Missing canonical bundled puppy: $path", error)
             null
         }
     }
@@ -190,7 +219,7 @@ internal object RemotePuppyAssets {
     suspend fun refresh(context: Context, assetId: String): Bitmap? = withContext(Dispatchers.IO) {
         lock(assetId).withLock {
             val id = checkedId(assetId)
-            val cached = readCached(context, id)
+            val cached = readAvailable(context, id)
             val settings = prefs(context)
             val now = System.currentTimeMillis()
             val checked = settings.getLong("$id.checked", 0L)
@@ -208,14 +237,14 @@ internal object RemotePuppyAssets {
                 connection.instanceFollowRedirects = false
                 connection.setRequestProperty("Accept", "image/png")
                 connection.setRequestProperty("User-Agent", "PuppyClicker-Android")
-                // A missing cache must never generate a conditional request or accept 304.
                 val etag = settings.getString("$id.etag", null)
                 if (cached != null && !etag.isNullOrBlank()) {
                     connection.setRequestProperty("If-None-Match", etag)
                 }
+
                 when (connection.responseCode) {
                     HttpURLConnection.HTTP_NOT_MODIFIED -> {
-                        if (cached == null) throw IOException("304 without a cached image")
+                        if (cached == null) throw IOException("304 without cached or bundled image")
                         settings.edit().putLong("$id.checked", now).apply()
                         cached
                     }
@@ -245,7 +274,7 @@ internal object RemotePuppyAssets {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                Log.w("PuppyClickerArt", "Using cached artwork for $id", error)
+                Log.w("PuppyClickerArt", "Using canonical bundled artwork for $id", error)
                 cached
             } finally {
                 connection.disconnect()
@@ -283,7 +312,7 @@ internal object RemotePuppyAssets {
     }
 
     private fun trimDisk(directory: File, keep: File) {
-        val files = directory.listFiles { file -> file.isFile && file.extension == "png" }
+        val files = directory.listFiles { candidate -> candidate.isFile && candidate.extension == "png" }
             ?.sortedBy { it.lastModified() } ?: return
         var total = files.sumOf { it.length() }
         for (candidate in files) {
