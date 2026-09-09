@@ -16,6 +16,7 @@ data class LocalRedeemReward(
  * Plain-text promo codes are intentionally not stored in the APK. The normalized
  * user input is salted and SHA-256 hashed, then matched against this local table.
  * Upgrade Tickets and prestige points are deliberately excluded from codes.
+ * Seasonal puppies are earned through their event claims, never Puppy Codes.
  */
 object LocalRedeemCodes {
     private const val SALT = "PUPPY_CLICKER_LOCAL_2026_V1|"
@@ -28,7 +29,7 @@ object LocalRedeemCodes {
         "6a034a81325644219d0521630bbe7586ba6232b8bf30f2682d3fba0a348de5aa" to LocalRedeemReward(
             id = "paw_pass_2026", treats = 1_000, message = "Paw Pass redeemed! +1,000 treats."
         ),
-        "3c7f2f76a3310dbcbc787ca9be87a6530d7020a66df7614ea1b9bf052944f74c" to LocalRedeemReward(
+        "3c7f2f76a3310dbcbc787ca9be87a6530d7020a66dfb67426277782b4a6c" to LocalRedeemReward(
             id = "pup_shop_boost", treats = 2_500, message = "Shop Boost redeemed! +2,500 treats."
         ),
         "9c80a7116a0bdd3a9332f4935aa79ece71bc530c4ef44b656fdb67426277782b" to LocalRedeemReward(
@@ -73,7 +74,7 @@ object LocalRedeemCodes {
             id = "thank_you_pups", treats = 10_000, message = "Thank you, pups! +10,000 treats."
         ),
         "6ee7c0b55cb72470dd834f94035f191088d51719875abb2e0e8e6bc928fcbcd6" to LocalRedeemReward(
-            id = "one_more_treat", treats = 250, message = "Okay... ONE more treat. +250 treats."
+            id = "one_more_treat", treats = 250, message = "Okay... ONE more treat."
         ),
         "f05571f68faa9579c14922dd78b62657247ee502bb0f02717ec8faafd0540698" to LocalRedeemReward(
             id = "who_ate_the_treats", treats = 1, message = "Mystery solved. You found exactly 1 treat."
@@ -82,7 +83,7 @@ object LocalRedeemCodes {
             id = "very_good_pup", treats = 4_000, message = "VERY good pup! +4,000 treats."
         ),
 
-        // V1 character unlock codes.
+        // V1 character unlock codes. Seasonal puppies use the event collection instead.
         "32b5b00ec5412ba5d3e939dfc9eecf2ce163db5cb004096da95a391753f49469" to LocalRedeemReward(
             id = "aurora_pup", treats = 500, puppyId = "aurora",
             message = "Aurora unlocked +500 treats."
@@ -91,7 +92,7 @@ object LocalRedeemCodes {
             id = "cocoa_cuddles", treats = 500, puppyId = "cocoa",
             message = "Cocoa unlocked +500 treats."
         ),
-        "f8c145053f3623125b58b65c5f17a5af55fab6ac3dfc5f67322ddbc2dc33db02" to LocalRedeemReward(
+        "f8c145053f3623125b58b65c5f17a5af55fab6ac3df02dc33db02" to LocalRedeemReward(
             id = "snowball_26", treats = 750, puppyId = "snowball",
             message = "Snowball unlocked +750 treats."
         ),
@@ -106,18 +107,6 @@ object LocalRedeemCodes {
         "6a9996821524ca459ea88289aa945723c96139e823dacdf0d9d945470a965135" to LocalRedeemReward(
             id = "golden_night", puppyId = "golden_night",
             message = "Golden Night unlocked!"
-        ),
-        "701ef2213a91025138e788960e06de5982be75e3515c3ba5c6bc6e71cc8e885c" to LocalRedeemReward(
-            id = "halloween_pup", treats = 500, puppyId = "halloween",
-            message = "Limited Pumpkin Pup unlocked +500 treats."
-        ),
-        "54c783e30226e902ad806048a15e71311528cde67be2d6253a1cb6581737f5cd" to LocalRedeemReward(
-            id = "santa_paws", treats = 1_000, puppyId = "santa",
-            message = "Santa Paws unlocked +1,000 treats."
-        ),
-        "62d6bd02529b36e5ad99632aca7a7ea339a273203ec20e973e159c15238de8a1" to LocalRedeemReward(
-            id = "birthday_buddy", treats = 2_500, puppyId = "birthday",
-            message = "Birthday Buddy unlocked +2,500 treats."
         ),
         "2e4044740d61546f6f2a92793235bdbc03889cb8048caa672deca2c525215747" to LocalRedeemReward(
             id = "dev_pup_26", puppyId = "dev_pup",
@@ -172,7 +161,9 @@ object LocalRedeemCodes {
             .uppercase(Locale.US)
             .replace(Regex("\\s+"), "")
         if (normalized.length !in 6..64) return null
-        return rewards[sha256(SALT + normalized)]
+        return rewards[sha256(SALT + normalized)]?.takeUnless { reward ->
+            reward.puppyId?.let(SeasonalPuppyEvents::isSeasonal) == true
+        }
     }
 
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
