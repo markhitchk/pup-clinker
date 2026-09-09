@@ -4,22 +4,24 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Environment
 import java.io.File
-import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Mirrors Puppy Clicker's SharedPreferences save into the app-specific folder on
- * primary emulated/external storage.
+ * Mirrors Puppy Clicker's runtime save into an AES-GCM encrypted file in the app-specific
+ * folder on primary emulated storage.
  *
  * Typical path:
- * /storage/emulated/0/Android/data/com.harleytg.puppyclicker/files/PuppyClicker/puppy_clicker_save.json
+ * /storage/emulated/0/Android/data/com.harleytg.puppyclicker/files/PuppyClicker/puppy_clicker_save.pup
  *
- * SharedPreferences remains the runtime source of truth. This file is a readable
- * snapshot of the current save for inspection/backup while the app is installed.
+ * The Android/data copy is device-bound through Android Keystore. Any byte-level edit,
+ * replacement, or ciphertext corruption fails GCM authentication and is recorded by PupEye.
  */
 object ExternalGameSave {
     const val DIRECTORY_NAME = "PuppyClicker"
-    const val FILE_NAME = "puppy_clicker_save.json"
+    const val FILE_NAME = "puppy_clicker_save.pup"
+    private const val LEGACY_FILE_NAME = "puppy_clicker_save.json"
+    private const val FORMAT = "puppy-clicker-device-save"
+    private const val VERSION = 2
 
     fun write(context: Context, prefs: SharedPreferences): File? {
         val externalRoot = context.getExternalFilesDir(null) ?: return null
@@ -28,42 +30,68 @@ object ExternalGameSave {
         val directory = File(externalRoot, DIRECTORY_NAME)
         if (!directory.exists() && !directory.mkdirs()) return null
 
-        val values = JSONObject()
-        prefs.all.toSortedMap().forEach { (key, value) ->
-            values.put(
-                key,
-                when (value) {
-                    is Set<*> -> JSONArray(value.filterIsInstance<String>().sorted())
-                    null -> JSONObject.NULL
-                    else -> value
-                }
-            )
-        }
+        val target = File(directory, FILE_NAME)
+        verifyExisting(context, target)
 
         val document = JSONObject().apply {
-            put("format", "puppy-clicker-save")
-            put("version", 1)
+            put("format", FORMAT)
+            put("version", VERSION)
             put("package", context.packageName)
             put("updatedAtEpochMs", System.currentTimeMillis())
-            put("values", values)
+            put("store", SecurePreferenceCodec.encode(prefs))
         }
-
-        val target = File(directory, FILE_NAME)
+        val encrypted = PuppySaveCrypto.encryptDevice(document.toString().toByteArray(Charsets.UTF_8))
         val temporary = File(directory, "$FILE_NAME.tmp")
 
         return runCatching {
-            temporary.writeText(document.toString(2), Charsets.UTF_8)
+            temporary.writeBytes(encrypted)
             if (target.exists() && !target.delete()) {
-                error("Unable to replace existing external save")
+                error("Unable to replace encrypted external save")
             }
             if (!temporary.renameTo(target)) {
-                target.writeText(temporary.readText(Charsets.UTF_8), Charsets.UTF_8)
+                target.writeBytes(temporary.readBytes())
                 temporary.delete()
             }
+
+            // Remove the old readable JSON mirror after the encrypted replacement succeeds.
+            File(directory, LEGACY_FILE_NAME).takeIf { it.exists() }?.delete()
             target
         }.getOrElse {
             temporary.delete()
             null
+        }
+    }
+
+    fun verifyExisting(context: Context): Boolean {
+        val externalRoot = context.getExternalFilesDir(null) ?: return true
+        return verifyExisting(context, File(File(externalRoot, DIRECTORY_NAME), FILE_NAME))
+    }
+
+    private fun verifyExisting(context: Context, target: File): Boolean {
+        if (!target.isFile) return true
+        return runCatching {
+            val plain = PuppySaveCrypto.decryptDevice(target.readBytes())
+            val document = JSONObject(plain.toString(Charsets.UTF_8))
+            require(document.optString("format") == FORMAT) { "Unexpected device-save format" }
+            require(document.optInt("version") == VERSION) { "Unexpected device-save version" }
+            true
+        }.getOrElse {
+            PupEyeSaveGuard.recordTamper(
+                context,
+                "Android/data save failed PupEye AES-GCM authentication"
+            )
+            quarantineTamperedFile(target)
+            false
+        }
+    }
+
+    private fun quarantineTamperedFile(target: File) {
+        runCatching {
+            val quarantine = File(
+                target.parentFile,
+                "puppy_clicker_save.tampered.${System.currentTimeMillis()}.pup"
+            )
+            if (!target.renameTo(quarantine)) target.delete()
         }
     }
 
