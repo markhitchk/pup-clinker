@@ -44,6 +44,13 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             PupEyeSaveGuard.verifyAndRecover(this, prefs)
         }
 
+        // Older releases and legacy JSON imports may contain the right value under a different
+        // SharedPreferences numeric type. Normalize those values before V6 constructs its state,
+        // otherwise Android's typed getters can throw ClassCastException during first launch.
+        startupSafely("legacy save compatibility") {
+            PuppySaveCompatibility.normalizeMainSave(prefs)
+        }
+
         registerActivityLifecycleCallbacks(this)
         prefs.registerOnSharedPreferenceChangeListener(saveChangeListener)
 
