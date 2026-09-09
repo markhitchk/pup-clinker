@@ -226,7 +226,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
     android:width="256dp" android:height="256dp"
     android:viewportWidth="256" android:viewportHeight="256">
     <path android:fillColor="#00B8F0"
-        android:pathData="M128,38C87,38 54,70 54,109c0,27 15,50 38,62 -10,10 -17,24 -17,39 0,7 6,12 13,12h80c7,0 13,-5 13,-12 0,-15 -7,-29 -17,-39 23,-12 38,-35 38,-62 0,-39 -33,-71 -74,-71zM92,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM164,94a16,16 0,1 1,0 32,16,0 0,1 0,-32zM104,145c14,12 34,12 48,0 4,-3 9,2 6,6 -16,19 -44,19 -60,0 -3,-4 2,-9 6,-6z"/>
+        android:pathData="M128,38C87,38 54,70 54,109c0,27 15,50 38,62 -10,10 -17,24 -17,39 0,7 6,12 13,12h80c7,0 13,-5 13,-12 0,-15 -7,-29 -17,-39 23,-12 38,-35 38,-62 0,-39 -33,-71 -74,-71zM92,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM164,94a16,16 0,1 1,0 32,16 16,0 0,1 0,-32zM104,145c14,12 34,12 48,0 4,-3 9,2 6,6 -16,19 -44,19 -60,0 -3,-4 2,-9 6,-6z"/>
 </vector>
 """
         )
@@ -298,4 +298,7 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("junit:junit:4.13.2")
 }
+
+apply(from = rootProject.file("tools/seasonal.gradle.kts"))
