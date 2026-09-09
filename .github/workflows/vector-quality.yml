@@ -4,22 +4,22 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app/src/main/puppy-svg/**'
-      - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
-      - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
-      - 'tools/check_puppy_vectors.py'
-      - 'tools/puppy_svg.py'
-      - 'app/build.gradle.kts'
+      - 'App/app/src/main/puppy-svg/**'
+      - 'App/app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
+      - 'App/app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
+      - 'App/tools/check_puppy_vectors.py'
+      - 'App/tools/puppy_svg.py'
+      - 'App/app/build.gradle.kts'
       - '.github/workflows/vector-quality.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'app/src/main/puppy-svg/**'
-      - 'app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
-      - 'app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
-      - 'tools/check_puppy_vectors.py'
-      - 'tools/puppy_svg.py'
-      - 'app/build.gradle.kts'
+      - 'App/app/src/main/puppy-svg/**'
+      - 'App/app/src/main/java/com/harleytg/puppyclicker/ProtectedPuppyArt.kt'
+      - 'App/app/src/main/java/com/harleytg/puppyclicker/PuppyVectorAlpha.kt'
+      - 'App/tools/check_puppy_vectors.py'
+      - 'App/tools/puppy_svg.py'
+      - 'App/app/build.gradle.kts'
       - '.github/workflows/vector-quality.yml'
   workflow_dispatch:
 
@@ -29,6 +29,9 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: puppy-vector-quality-report
-          path: vector-quality-report.json
+          path: App/vector-quality-report.json
           if-no-files-found: warn
-

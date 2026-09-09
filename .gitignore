@@ -1,13 +1,12 @@
 *.iml
 .gradle/
-/local.properties
-/.idea/
+local.properties
+.idea/
 .DS_Store
-/build/
-/captures/
+build/
+captures/
 .externalNativeBuild/
 .cxx/
-app/build/
 
 # Never commit Android or redeem-code signing credentials.
 *.jks
@@ -17,6 +16,12 @@ app/build/
 signing.properties
 private-keys/
 
-
+# Generated files and local dependencies.
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
 __pycache__/
 *.py[cod]

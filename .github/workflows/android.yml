@@ -19,6 +19,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -125,8 +128,8 @@ jobs:
         with:
           name: puppy-clicker-updateable-release
           path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/release/*.idsig
+            App/app/build/outputs/apk/release/*.apk
+            App/app/build/outputs/apk/release/*.idsig
           if-no-files-found: error
 
       - name: Build unsigned release when signing secrets are unavailable
@@ -138,6 +141,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: puppy-clicker-unsigned-release
-          path: app/build/outputs/apk/release/*.apk
+          path: App/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
-

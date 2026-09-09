@@ -1,127 +1,41 @@
-# Puppy Clicker — Android
+# Puppy Clicker
 
-Native Android edition of **Puppy Clicker**, based on the original game concept and artwork from [`HarleyTG-O/Puppy-Clicker`](https://github.com/HarleyTG-O/Puppy-Clicker).
+Puppy Clicker is organized as a multi-platform project. The existing native Android game and shared artwork are preserved; the website and desktop areas are reserved for their own implementations.
 
-## Current game
+## Project folders
 
-- 🐶 Original `Images/pup.png`, `logo.png`, and `htg.png` preserved in the Android build
-- 🍪 Tap-to-earn treat gameplay with levels, care, missions, daily rewards, and dog-park adventures
-- 🛒 Shop upgrades for tap power and automatic treat production
-- 🔒 **Tap power rule:** treats-per-tap can only increase through Shop CLICK upgrades
-- 🔥 Combos remain visual/progression achievements and do **not** multiply tap rewards
-- 🐕 Puppy Collection with Classic, Sunny, Mochi, Pepper, Midnight, and Cloud puppy styles
-- 🎟️ RSA-signed `PC1` redeem codes for treats and special puppy unlocks
-- ⚙️ Dedicated Settings screen for haptics, animations/reduced motion, compact numbers, redeem codes, app info, and reset controls
-- 🎀 Bandana, bow, and crown accessories
-- ⏱️ Offline earnings capped at 8 hours
-- 👁️ Pup Eye local rapid-tap protection
-- 💾 SharedPreferences save compatibility with earlier Android builds
-- 🌗 Material 3 light/dark UI
-- 📱 Native Kotlin + Jetpack Compose
+| Folder | Purpose |
+| --- | --- |
+| [`App/`](App/) | Native Android project, Gradle configuration, source code, build tools, and signing documentation. |
+| [`Website/`](Website/) | Website and browser edition. No website implementation is included yet. |
+| [`assets/`](assets/) | Existing shared artwork and versioned puppy assets. Keep this path stable for all platforms. |
+| [`Desktop/`](Desktop/) | Future desktop edition, installers, and platform-specific packaging. No desktop implementation is included yet. |
 
-## Original Puppy Clicker artwork
+The root `.github/` directory contains repository automation. The root `.gitignore` and this README apply to the entire repository and are not separate products.
 
-The build imports the original images from `HarleyTG-O/Puppy-Clicker`, pinned to source commit:
+## Android
 
-```text
-ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1
-```
-
-The artwork is downloaded at build time and packaged into the APK. The installed game itself does not need network access for the original assets.
-
-## Android configuration
-
-- Package: `com.harleytg.puppyclicker`
-- Minimum Android: 8.0 / API 26
-- Target Android API: 35
-- Compile API: 35
-- Kotlin: 2.0.21
-- Java: 17
-- Current version: `1.3.0` (`versionCode 4`)
-
-## Update signing
-
-Release/update builds use one permanent signing identity. Never regenerate or replace that key if existing installs must continue updating normally.
-
-The repository does not contain the private Android signing key. GitHub Actions can consume it from these repository secrets:
-
-- `PUPPY_KEYSTORE_B64`
-- `PUPPY_SIGNING_STORE_PASSWORD`
-- `PUPPY_SIGNING_KEY_ALIAS`
-- `PUPPY_SIGNING_KEY_PASSWORD`
-
-When those secrets are absent, CI produces an unsigned release artifact for external permanent signing rather than publishing a random debug-key build as an update.
-
-## Redeem-code security
-
-Redeem codes use this format:
-
-```text
-PC1.<base64url payload>.<RSA-SHA256 signature>
-```
-
-The Android app contains only the RSA **public verification key**. The private redeem-code key must remain outside the APK and outside GitHub.
-
-Supported v1.3 reward types:
-
-- `TREATS` — grants signed treat rewards
-- `PUPPY` — unlocks special puppy styles such as `midnight` or `cloud`
-
-Redeem codes intentionally cannot change `clickPower` or treats-per-tap.
-
-A command-line generator is included at:
-
-```text
-tools/redeem-code-generator.py
-```
-
-Example:
+The existing Android project is now in `App/`. Open that directory in Android Studio, or build from the repository root:
 
 ```bash
-python3 tools/redeem-code-generator.py \
-  --private-key /secure/path/redeem-private.pem \
-  --id event-001 \
-  --type TREATS \
-  --amount 500
-```
-
-Code IDs are recorded locally after redemption. Resetting game progress preserves that redeemed-code history. A server-side service would be required for globally one-time codes across multiple devices or a full app-data wipe.
-
-## Build
-
-With Java 17, Android SDK 35, and Gradle 8.9 installed:
-
-```bash
+cd App
 gradle :app:assembleRelease
 ```
 
-If the permanent signing environment variables are configured, the release is signed using that update identity. Otherwise the release is unsigned and must be signed externally before distribution.
+The Android application ID, existing source, game data compatibility, version configuration, and permanent signing setup are unchanged. Build output is under `App/app/build/outputs/apk/`. See [`App/README.md`](App/README.md) and [`App/SIGNING.md`](App/SIGNING.md).
 
-## Pup Eye
+## Shared assets
 
-Pup Eye remains local and privacy-preserving. It watches tap timing inside the app. Extremely fast tap bursts trigger a short cooldown and increment the local cooldown counter. It does not send account IDs, device IDs, tap logs, or personal information anywhere.
+Use the existing [`assets/`](assets/) directory as the single source of shared artwork. Preserve its existing file names, character IDs, and V1/V2 organization. Platform implementations may generate or package their own optimized copies without altering the source assets. Do not create a second root-level assets folder or replace the original character art with placeholders.
+
+## Website and desktop
+
+The website and desktop folders have README files so Git tracks them. They are not claims that a playable browser or desktop version already exists. Their implementations can be added independently while reusing the shared assets and established Puppy Clicker game design.
+
+## Repository history
+
+This organization preserves the prior Android files and assets in Git history. Older commits and releases remain available. Paths in scripts or external documentation that referenced the old Android root must use `App/` for the current branch.
 
 ## Rights
 
 Puppy Clicker is based on the original HarleyTG-O Puppy Clicker project. All rights reserved by the project owner; this repository does not declare the game open source.
-
-
-## SVG character artwork
-
-All 26 existing puppy characters (18 V1 and 8 V2) live in
-`app/src/main/puppy-svg/` with their existing game identifiers.
-V1 artwork was rebuilt using smooth curves guided by the original `pup.png`:
-clothing follows the body, capes sit behind the forelegs, and headwear leaves
-faces visible. The eight distinct V2 designs are preserved.
-
-Run `python3 tools/rebuild_v1_art.py` to reproduce the 18 authored V1 SVGs.
-These are transparent vector paths, without embedded raster images.
-Locked previews retain the full artwork colors with a small corner lock.
-
-Builds require Python 3 in addition to the Android toolchain. Gradle runs
-`tools/puppy_svg.py` to translate SVG attributes into generated Android XML
-before the existing encryption step. The app keeps its existing renderer,
-asset IDs and save compatibility. Generated XML is build output.
-The compiler rejects unsupported SVG features instead of dropping them.
-
-Validate the complete roster with `python3 tools/check_puppy_vectors.py`.

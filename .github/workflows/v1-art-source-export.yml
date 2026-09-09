@@ -33,7 +33,7 @@ jobs:
           cp original/Images/pup.png audit/original/pup.png
           cp original/Images/logo.png audit/original/logo.png
           cp original/Images/htg.png audit/original/htg.png
-          cp project/app/src/main/puppy-svg/v1_*.svg audit/current/
+          cp project/App/app/src/main/puppy-svg/v1_*.svg audit/current/
           cd project
           for ref in b681c518f1c2df954d869d194784536a24029b06 1342a5dd99d89fded8f7e665136351e593b7485a a8b7ea8897bbb2899d590ed2ad3c4222feabe73a 7808a34a776ac6e4976d5b81aeb4f69a6fbaecf1; do
             mkdir -p "../audit/history/$ref"
@@ -57,4 +57,3 @@ jobs:
           path: audit/
           if-no-files-found: error
           retention-days: 7
-
