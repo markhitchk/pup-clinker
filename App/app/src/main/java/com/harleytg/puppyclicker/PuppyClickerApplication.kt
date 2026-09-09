@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 
 /** Shared foreground state used to stop live production while the app is away. */
 object PuppyAppRuntime {
@@ -24,8 +25,8 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val externalSaveWriter = Runnable {
-        PupEyeSaveGuard.seal(this, prefs)
-        ExternalGameSave.write(this, prefs)
+        startupSafely("background PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
+        startupSafely("background Android/data save") { ExternalGameSave.write(this, prefs) }
     }
     private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         // One saveState() changes many keys. Debounce those callbacks into one encrypted write/seal.
@@ -36,22 +37,25 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     override fun onCreate() {
         super.onCreate()
 
-        // Validate the private runtime save before any ViewModel is allowed to consume it.
-        // If an out-of-band edit is found, restore the last Keystore-authenticated state.
-        PupEyeSaveGuard.verifyAndRecover(this, prefs)
+        // Optional protection/mirroring features must never make the game process unlaunchable.
+        // If a vendor Keystore, external storage provider, or old cached file is broken, the
+        // internal SharedPreferences save remains usable and the app continues to the UI.
+        startupSafely("PupEye save verification") {
+            PupEyeSaveGuard.verifyAndRecover(this, prefs)
+        }
 
         registerActivityLifecycleCallbacks(this)
         prefs.registerOnSharedPreferenceChangeListener(saveChangeListener)
-        DynamicPuppyRoster.initialize(this)
-        StreamedRedeemCodes.initialize(this)
 
-        // Ensure an AES-GCM encrypted Android/data mirror exists and authenticate any existing copy.
-        ExternalGameSave.write(this, prefs)
+        startupSafely("dynamic puppy roster") { DynamicPuppyRoster.initialize(this) }
+        startupSafely("redeem code stream") { StreamedRedeemCodes.initialize(this) }
+        startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
 
         // If Android killed the process while it was in the background, the timestamp survives
-        // and is converted into a pending reward here.
-        prepareAfkReward(System.currentTimeMillis())
-        PupEyeSaveGuard.seal(this, prefs)
+        // and is converted into a pending reward here. A malformed legacy value is ignored here;
+        // the ViewModel contains its own compatibility reads for gameplay state.
+        startupSafely("AFK reward preparation") { prepareAfkReward(System.currentTimeMillis()) }
+        startupSafely("initial PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
     }
 
     override fun onActivityStarted(activity: Activity) {
@@ -65,7 +69,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
 
         if (returningFromBackground) {
-            prepareAfkReward(System.currentTimeMillis())
+            startupSafely("foreground AFK reward preparation") {
+                prepareAfkReward(System.currentTimeMillis())
+            }
         }
         maybeShowWelcome(activity)
     }
@@ -75,13 +81,15 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startedActivities = (startedActivities - 1).coerceAtLeast(0)
         if (startedActivities == 0) {
             PuppyAppRuntime.isForeground = false
-            prefs.edit()
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, System.currentTimeMillis())
-                .apply()
+            runCatching {
+                prefs.edit()
+                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, System.currentTimeMillis())
+                    .apply()
+            }.onFailure { Log.w(TAG, "Unable to store AFK background timestamp", it) }
 
             mainHandler.removeCallbacks(externalSaveWriter)
-            PupEyeSaveGuard.seal(this, prefs)
-            ExternalGameSave.write(this, prefs)
+            startupSafely("stop PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
+            startupSafely("stop Android/data save") { ExternalGameSave.write(this, prefs) }
         }
     }
 
@@ -114,11 +122,24 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
     private fun maybeShowWelcome(activity: Activity) {
         if (welcomeVisible || activity is AfkWelcomeActivity) return
-        val pending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+        val pending = runCatching {
+            prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+        }.getOrDefault(0L)
         if (pending <= 0L) return
 
         welcomeVisible = true
-        activity.startActivity(Intent(activity, AfkWelcomeActivity::class.java))
+        runCatching {
+            activity.startActivity(Intent(activity, AfkWelcomeActivity::class.java))
+        }.onFailure {
+            welcomeVisible = false
+            Log.w(TAG, "Unable to show AFK welcome activity", it)
+        }
+    }
+
+    private inline fun startupSafely(label: String, block: () -> Unit) {
+        runCatching(block).onFailure { error ->
+            Log.e(TAG, "$label failed; continuing app startup", error)
+        }
     }
 
     private fun safeAdd(a: Long, b: Long): Long =
@@ -136,6 +157,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
     companion object {
+        private const val TAG = "PuppyClickerStartup"
         const val AFK_TREATS_PER_DAY = 1_000L
         const val DAY_MS = 24L * 60L * 60L * 1_000L
         private const val EXTERNAL_SAVE_DEBOUNCE_MS = 300L
