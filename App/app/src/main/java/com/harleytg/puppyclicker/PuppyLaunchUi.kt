@@ -145,7 +145,12 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
             ) {
                 Text("Play Puppy Clicker", fontWeight = FontWeight.Black)
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
+            PuppyLegalLinks(
+                modifier = Modifier.fillMaxWidth(),
+                acknowledgementText = "By continuing, you agree to the Terms of Use and acknowledge the Privacy Policy."
+            )
+            Spacer(Modifier.height(4.dp))
             Text(
                 "Harley's Studios",
                 style = MaterialTheme.typography.labelMedium,
@@ -226,11 +231,6 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                     },
                     singleLine = true
                 )
-                Text(
-                    "Device: ${PuppyPlayerIdentity.deviceModel()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(
@@ -266,7 +266,12 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                 ) {
                     Text("Continue with Local Save", fontWeight = FontWeight.Black)
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(4.dp))
+                PuppyLegalLinks(
+                    modifier = Modifier.fillMaxWidth(),
+                    acknowledgementText = "Creating a local player means you agree to the Terms of Use and acknowledge the Privacy Policy."
+                )
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "PupEye does not store IMEI, serial number, Android ID, phone number, or account tokens in save metadata.",
                     style = MaterialTheme.typography.labelSmall,
