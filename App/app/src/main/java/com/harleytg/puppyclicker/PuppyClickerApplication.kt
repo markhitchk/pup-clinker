@@ -3,7 +3,10 @@ package com.harleytg.puppyclicker
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 
 /** Shared foreground state used to stop live production while the app is away. */
 object PuppyAppRuntime {
@@ -19,11 +22,23 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         getSharedPreferences(PuppyClickerV5ViewModel.PREFS_NAME, MODE_PRIVATE)
     }
 
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val externalSaveWriter = Runnable { ExternalGameSave.write(this, prefs) }
+    private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        // One saveState() changes many keys. Debounce those callbacks into one external write.
+        mainHandler.removeCallbacks(externalSaveWriter)
+        mainHandler.postDelayed(externalSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
+    }
+
     override fun onCreate() {
         super.onCreate()
         registerActivityLifecycleCallbacks(this)
+        prefs.registerOnSharedPreferenceChangeListener(saveChangeListener)
         DynamicPuppyRoster.initialize(this)
         StreamedRedeemCodes.initialize(this)
+
+        // Ensure a readable save snapshot exists in emulated Android/data storage.
+        ExternalGameSave.write(this, prefs)
 
         // If Android killed the process while it was in the background, the
         // timestamp survives and is converted into a pending reward here.
@@ -54,6 +69,11 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, System.currentTimeMillis())
                 .apply()
+
+            // Flush the most recent persisted state into the user-requested
+            // app-specific emulated-storage location when leaving the app.
+            mainHandler.removeCallbacks(externalSaveWriter)
+            ExternalGameSave.write(this, prefs)
         }
     }
 
@@ -109,5 +129,6 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     companion object {
         const val AFK_TREATS_PER_DAY = 1_000L
         const val DAY_MS = 24L * 60L * 60L * 1_000L
+        private const val EXTERNAL_SAVE_DEBOUNCE_MS = 300L
     }
 }
