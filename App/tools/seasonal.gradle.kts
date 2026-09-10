@@ -7,6 +7,14 @@ dependencies {
     add("implementation", "io.github.webrtc-sdk:android:150.7871.01")
 }
 
+// Patch release for the compact Roster + Account & Profile Settings redesign.
+android {
+    defaultConfig {
+        versionCode = 23
+        versionName = "1.7.10"
+    }
+}
+
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
     val rosterRevampPatch = rootProject.file("tools/patch_roster_revamp.py")
