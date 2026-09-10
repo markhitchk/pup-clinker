@@ -78,6 +78,11 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            PuppyFixedAppBar(
+                onOpenSettings = { internalDestination = PuppyInternalDestination.SETTINGS }
+            )
+        },
         bottomBar = {
             if (internalDestination == null) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) {
@@ -142,17 +147,48 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     )
                 }
 
-                if (tab != V6Tab.ROSTER) {
-                    IconButton(
-                        onClick = { internalDestination = PuppyInternalDestination.SETTINGS },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 2.dp, end = 5.dp)
-                            .semantics { contentDescription = "Open settings" }
-                    ) {
-                        Text("⚙️", fontSize = 21.sp)
-                    }
-                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 3.dp,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .height(56.dp)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(R.drawable.source_logo),
+                contentDescription = "Puppy Clicker logo",
+                modifier = Modifier.size(36.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.width(9.dp))
+            Text(
+                "Puppy Clicker",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier
+                    .size(44.dp)
+                    .semantics { contentDescription = "Open settings" }
+            ) {
+                Text("⚙️", fontSize = 22.sp)
             }
         }
     }
