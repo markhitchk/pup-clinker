@@ -92,8 +92,6 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                     .padding(horizontal = 22.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                PuppyDevelopmentNotice()
-                Spacer(Modifier.height(12.dp))
                 OnboardingProgress(step)
                 Spacer(Modifier.height(16.dp))
 
@@ -193,6 +191,8 @@ private fun WelcomeStep(onNext: () -> Unit) {
         Button(onClick = onNext, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Get Started", fontWeight = FontWeight.Black) }
         Spacer(Modifier.height(7.dp))
         PuppyLegalLinks(modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        PuppyDevelopmentNotice()
     }
 }
 
