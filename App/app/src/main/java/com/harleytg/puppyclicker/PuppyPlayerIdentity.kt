@@ -24,6 +24,14 @@ internal object PuppyPlayerIdentity {
     private const val FRIEND_CODE_CHARS = 12
     private const val FRIEND_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
+    // Reserved HarleyTG developer identity. Canonical values remain protocol/storage-safe;
+    // the custom values are presentation/input aliases and are never written over the
+    // device-bound identity preferences.
+    private const val HARLEYTG_CANONICAL_PLAYER_ID = "PC-5AD7F57F80FBE69809F96AEA963E2426"
+    private const val HARLEYTG_CANONICAL_FRIEND_CODE = "PUP-5XUV-SGZB-S9CX"
+    const val HARLEYTG_PUBLIC_PLAYER_ID = "PC-HARLEYTG-DEV-0001"
+    const val HARLEYTG_PUBLIC_FRIEND_CODE = "PUP-HTG-DEV-0001"
+
     private val playerIdRegex = Regex("^PC-[0-9A-F]{32}$")
     private val friendCodeRegex = Regex("^PUP-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$")
     private val random = SecureRandom()
@@ -68,6 +76,38 @@ internal object PuppyPlayerIdentity {
                 }
             }
     }
+
+    /**
+     * Official HarleyTG aliases are deliberately presentation/input aliases.
+     * Keeping the canonical values underneath preserves ownership ledgers, WebRTC
+     * protocol validation and PupEye's authenticated save state.
+     */
+    fun isHarleyTgDeveloper(context: Context): Boolean =
+        playerId(context) == HARLEYTG_CANONICAL_PLAYER_ID &&
+            friendCode(context) == HARLEYTG_CANONICAL_FRIEND_CODE
+
+    fun publicPlayerId(context: Context): String =
+        if (isHarleyTgDeveloper(context)) HARLEYTG_PUBLIC_PLAYER_ID else playerId(context)
+
+    fun publicFriendCode(context: Context): String =
+        if (isHarleyTgDeveloper(context)) HARLEYTG_PUBLIC_FRIEND_CODE else friendCode(context)
+
+    fun displayPlayerId(value: String): String =
+        if (value == HARLEYTG_CANONICAL_PLAYER_ID) HARLEYTG_PUBLIC_PLAYER_ID else value
+
+    fun displayFriendCode(value: String): String =
+        if (value == HARLEYTG_CANONICAL_FRIEND_CODE) HARLEYTG_PUBLIC_FRIEND_CODE else value
+
+    fun resolveFriendCodeInput(value: String): String? {
+        val normalized = value.trim().uppercase(Locale.US)
+        return when {
+            normalized == HARLEYTG_PUBLIC_FRIEND_CODE -> HARLEYTG_CANONICAL_FRIEND_CODE
+            friendCodeRegex.matches(normalized) -> normalized
+            else -> null
+        }
+    }
+
+    fun isValidFriendCodeInput(value: String): Boolean = resolveFriendCodeInput(value) != null
 
     fun normalizeUsername(raw: String): String = raw
         .trim()
