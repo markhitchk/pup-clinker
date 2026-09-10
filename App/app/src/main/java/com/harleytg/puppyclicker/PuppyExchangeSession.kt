@@ -1,12 +1,20 @@
 package com.harleytg.puppyclicker
 
 import android.content.Context
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 internal data class ExchangeIdentityHello(
@@ -90,6 +98,13 @@ internal data class ExchangeSessionMessage(
     val payload: JSONObject
 )
 
+internal data class ExchangeRealtimeState(
+    val peerOnline: Boolean = false,
+    val latencyMs: Long? = null,
+    val lastPeerActivityMs: Long = 0L
+)
+
+
 /**
  * Coordinates manual Offer/Answer signaling with a WebRTC DataChannel.
  *
@@ -114,8 +129,15 @@ internal class PuppyExchangeSession(
     private val _state = MutableStateFlow<ExchangeConnectionState>(ExchangeConnectionState.Idle)
     val state: StateFlow<ExchangeConnectionState> = _state.asStateFlow()
 
-    private val _messages = MutableSharedFlow<ExchangeSessionMessage>(extraBufferCapacity = 32)
+    private val _messages = MutableSharedFlow<ExchangeSessionMessage>(extraBufferCapacity = 64)
     val messages: SharedFlow<ExchangeSessionMessage> = _messages.asSharedFlow()
+
+    private val _realtime = MutableStateFlow(ExchangeRealtimeState())
+    val realtime: StateFlow<ExchangeRealtimeState> = _realtime.asStateFlow()
+
+    private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val pendingPings = ConcurrentHashMap<String, Long>()
+    private var heartbeatJob: Job? = null
 
     @Volatile
     private var expectedRemoteFriendCode: String? = null
@@ -227,8 +249,12 @@ internal class PuppyExchangeSession(
     }
 
     fun disconnect() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        pendingPings.clear()
         verifiedPeer = null
         expectedRemoteFriendCode = null
+        _realtime.value = ExchangeRealtimeState()
         transport.close()
         _state.value = ExchangeConnectionState.Closed
     }
@@ -289,11 +315,45 @@ internal class PuppyExchangeSession(
                 return
             }
             verifiedPeer = hello
+            val now = System.currentTimeMillis()
+            _realtime.value = ExchangeRealtimeState(
+                peerOnline = true,
+                latencyMs = null,
+                lastPeerActivityMs = now
+            )
             _state.value = ExchangeConnectionState.Connected(hello)
+            startHeartbeat()
             return
         }
 
+        val now = System.currentTimeMillis()
+        _realtime.value = _realtime.value.copy(
+            peerOnline = true,
+            lastPeerActivityMs = now
+        )
+
         if (type == HELLO_TYPE) return
+        if (type == PING_TYPE) {
+            val nonce = payload.optString("nonce")
+            if (nonce.isNotBlank()) {
+                runCatching {
+                    sendMessage(PONG_TYPE, JSONObject().put("nonce", nonce))
+                }
+            }
+            return
+        }
+        if (type == PONG_TYPE) {
+            val nonce = payload.optString("nonce")
+            val sentAt = pendingPings.remove(nonce)
+            if (sentAt != null) {
+                _realtime.value = _realtime.value.copy(
+                    peerOnline = true,
+                    latencyMs = (now - sentAt).coerceAtLeast(0L),
+                    lastPeerActivityMs = now
+                )
+            }
+            return
+        }
         if (!type.matches(Regex("[a-z0-9_.-]{1,48}"))) {
             fail("Puppy Exchange peer sent an invalid message type.")
             return
@@ -308,19 +368,52 @@ internal class PuppyExchangeSession(
     }
 
     override fun onClosed() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        pendingPings.clear()
+        _realtime.value = _realtime.value.copy(peerOnline = false)
         if (_state.value !is ExchangeConnectionState.Failed) {
             _state.value = ExchangeConnectionState.Closed
         }
     }
 
+    private fun startHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = sessionScope.launch {
+            while (isActive && verifiedPeer != null) {
+                val nonce = PuppyExchangeProtocol.newNonce()
+                val sentAt = System.currentTimeMillis()
+                pendingPings[nonce] = sentAt
+                runCatching {
+                    sendMessage(PING_TYPE, JSONObject().put("nonce", nonce))
+                }
+                val cutoff = sentAt - PEER_STALE_MS
+                pendingPings.entries.removeIf { it.value < cutoff }
+                val current = _realtime.value
+                if (current.lastPeerActivityMs > 0L && sentAt - current.lastPeerActivityMs > PEER_STALE_MS) {
+                    _realtime.value = current.copy(peerOnline = false)
+                }
+                delay(HEARTBEAT_MS)
+            }
+        }
+    }
+
     private fun fail(message: String) {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+        pendingPings.clear()
         verifiedPeer = null
+        _realtime.value = _realtime.value.copy(peerOnline = false)
         _state.value = ExchangeConnectionState.Failed(message)
         transport.close()
     }
 
     companion object {
         private const val HELLO_TYPE = "hello"
+        private const val PING_TYPE = "ping"
+        private const val PONG_TYPE = "pong"
+        private const val HEARTBEAT_MS = 2_500L
+        private const val PEER_STALE_MS = 10_000L
         private const val MAX_WIRE_BYTES = 256 * 1024
     }
 }
