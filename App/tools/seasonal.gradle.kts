@@ -21,6 +21,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     val rosterNavigationPatch = rootProject.file("tools/patch_roster_navigation.py")
     val puppyExchangePatch = rootProject.file("tools/patch_puppy_exchange.py")
+    val puppyCodeV2Patch = rootProject.file("tools/patch_puppy_codes_v2.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -33,7 +34,8 @@ tasks.named("generateProtectedPuppySources").configure {
         dangerHoldPatch,
         developerConsolePatch,
         rosterNavigationPatch,
-        puppyExchangePatch
+        puppyExchangePatch,
+        puppyCodeV2Patch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -76,9 +78,14 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine("python3", rosterNavigationPatch.absolutePath, generatedSourceRoot)
         }
-        // Puppy Exchange intentionally runs last against the finished generated source tree.
+        // Puppy Exchange integrates against the finished navigation shell.
         project.exec {
             commandLine("python3", puppyExchangePatch.absolutePath, generatedSourceRoot)
+        }
+        // Schema-2 Puppy Code claims run last so no earlier compatibility patch can restore
+        // the deprecated local claim fallback.
+        project.exec {
+            commandLine("python3", puppyCodeV2Patch.absolutePath, generatedSourceRoot)
         }
     }
 }
