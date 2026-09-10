@@ -21,6 +21,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     val rosterNavigationPatch = rootProject.file("tools/patch_roster_navigation.py")
     val puppyExchangePatch = rootProject.file("tools/patch_puppy_exchange.py")
+    val compactRosterSettingsPatch = rootProject.file("tools/patch_compact_roster_settings.py")
     val puppyCodeV2Patch = rootProject.file("tools/patch_puppy_codes_v2.py")
     inputs.files(
         rosterRevampPatch,
@@ -35,6 +36,7 @@ tasks.named("generateProtectedPuppySources").configure {
         developerConsolePatch,
         rosterNavigationPatch,
         puppyExchangePatch,
+        compactRosterSettingsPatch,
         puppyCodeV2Patch
     )
     doLast {
@@ -81,6 +83,11 @@ tasks.named("generateProtectedPuppySources").configure {
         // Puppy Exchange integrates against the finished navigation shell.
         project.exec {
             commandLine("python3", puppyExchangePatch.absolutePath, generatedSourceRoot)
+        }
+        // Compact the approved roster controls and move the full Account & Profile experience
+        // into the expandable identity card at the top of Settings.
+        project.exec {
+            commandLine("python3", compactRosterSettingsPatch.absolutePath, generatedSourceRoot)
         }
         // Schema-2 Puppy Code claims run last so no earlier compatibility patch can restore
         // the deprecated local claim fallback.
