@@ -14,6 +14,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
     val dangerHoldPatch = rootProject.file("tools/patch_danger_hold_confirmation.py")
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
+    val rosterNavigationPatch = rootProject.file("tools/patch_roster_navigation.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -24,7 +25,8 @@ tasks.named("generateProtectedPuppySources").configure {
         settingsSetupCorePatch,
         settingsSetupPatch,
         dangerHoldPatch,
-        developerConsolePatch
+        developerConsolePatch,
+        rosterNavigationPatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -58,10 +60,14 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine("python3", dangerHoldPatch.absolutePath, generatedSourceRoot)
         }
-        // Developer Console integration is the final transform so it sees the finished Settings
-        // surface and can route the final generated Kotlin diagnostics through PuppyDebugLog.
+        // Developer Console sees the finished Settings surface and routes final diagnostics.
         project.exec {
             commandLine("python3", developerConsolePatch.absolutePath, generatedSourceRoot)
+        }
+        // Navigation is last so established patch anchors remain unchanged while the final app shell
+        // promotes Roster/Rewards and moves Settings/Prestige to internal destinations.
+        project.exec {
+            commandLine("python3", rosterNavigationPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
