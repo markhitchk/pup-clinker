@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Compatibility runner for the Settings/setup final patch.
 
-The PupEye streamer is actively maintained and its refresh method may receive implementation-only
-changes. Replace that function by signature rather than requiring one historical body string, then
-run the rest of the final integration unchanged.
+The final integration runs after the established generated-source transforms. Small compatibility
+adjustments live here so actively maintained source helpers do not need to be duplicated by the new
+Settings UI.
 """
 from pathlib import Path
 import sys
@@ -31,7 +31,21 @@ def robust_pupeye_stream(source: str) -> str:
     )
 
 
+_original_patch_activity = patch.patch_activity
+
+
+def compatible_activity(source: str) -> str:
+    source = _original_patch_activity(source)
+    return patch.replace_once(
+        source,
+        "private fun performV6Haptic(context: Context, strong: Boolean = false)",
+        "internal fun performV6Haptic(context: Context, strong: Boolean = false)",
+        "V6 haptic helper visibility",
+    )
+
+
 patch.patch_pupeye_stream = robust_pupeye_stream
+patch.patch_activity = compatible_activity
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
