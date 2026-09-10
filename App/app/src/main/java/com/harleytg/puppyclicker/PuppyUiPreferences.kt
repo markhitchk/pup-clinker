@@ -15,6 +15,16 @@ data class PuppyUiState(
     val customAccentHex: String = PuppyUiPreferences.DEFAULT_ACCENT,
     val animatedUi: Boolean = true,
     val buttonAnimations: Boolean = true,
+    val motionPreset: PuppyMotionPreset = PuppyMotionPreset.BALANCED,
+    val motionIntensity: PuppyMotionIntensity = PuppyMotionIntensity.MEDIUM,
+    val screenTransitions: Boolean = true,
+    val cardAnimations: Boolean = true,
+    val counterAnimations: Boolean = true,
+    val celebrationAnimations: Boolean = true,
+    val warningAnimations: Boolean = true,
+    val loadingAnimations: Boolean = true,
+    val shimmerEffects: Boolean = true,
+    val adaptivePerformance: Boolean = true,
     val reducedMotion: Boolean = false,
     val highContrast: Boolean = false,
     val uiScale: PuppyUiScale = PuppyUiScale.DEFAULT,
@@ -29,6 +39,22 @@ data class PuppyUiState(
 ) {
     val hasBirthday: Boolean
         get() = PuppyBirthday.isValid(birthdayMonth, birthdayDay)
+
+    fun motionConfig(): PuppyMotionConfig = PuppyMotionConfig(
+        preset = motionPreset,
+        intensity = motionIntensity,
+        animatedUi = animatedUi,
+        buttonAnimations = buttonAnimations,
+        screenTransitions = screenTransitions,
+        cardAnimations = cardAnimations,
+        counterAnimations = counterAnimations,
+        celebrations = celebrationAnimations,
+        warningAnimations = warningAnimations,
+        loadingAnimations = loadingAnimations,
+        shimmerEffects = shimmerEffects,
+        adaptivePerformance = adaptivePerformance,
+        reducedMotion = reducedMotion
+    )
 }
 
 /**
@@ -45,6 +71,16 @@ internal object PuppyUiPreferences {
     private const val KEY_CUSTOM_ACCENT = "custom_accent_hex"
     private const val KEY_ANIMATED_UI = "animated_ui"
     private const val KEY_BUTTON_ANIMATIONS = "button_animations"
+    private const val KEY_MOTION_PRESET = "motion_preset"
+    private const val KEY_MOTION_INTENSITY = "motion_intensity"
+    private const val KEY_SCREEN_TRANSITIONS = "screen_transitions"
+    private const val KEY_CARD_ANIMATIONS = "card_animations"
+    private const val KEY_COUNTER_ANIMATIONS = "counter_animations"
+    private const val KEY_CELEBRATION_ANIMATIONS = "celebration_animations"
+    private const val KEY_WARNING_ANIMATIONS = "warning_animations"
+    private const val KEY_LOADING_ANIMATIONS = "loading_animations"
+    private const val KEY_SHIMMER_EFFECTS = "shimmer_effects"
+    private const val KEY_ADAPTIVE_PERFORMANCE = "adaptive_performance"
     private const val KEY_REDUCED_MOTION = "reduced_motion"
     private const val KEY_HIGH_CONTRAST = "high_contrast"
     private const val KEY_UI_SCALE = "ui_scale"
@@ -246,6 +282,12 @@ internal object PuppyUiPreferences {
         val scale = runCatching {
             PuppyUiScale.valueOf(store.getString(KEY_UI_SCALE, PuppyUiScale.DEFAULT.name) ?: PuppyUiScale.DEFAULT.name)
         }.getOrDefault(PuppyUiScale.DEFAULT)
+        val preset = runCatching {
+            PuppyMotionPreset.valueOf(store.getString(KEY_MOTION_PRESET, PuppyMotionPreset.BALANCED.name) ?: PuppyMotionPreset.BALANCED.name)
+        }.getOrDefault(PuppyMotionPreset.BALANCED)
+        val intensity = runCatching {
+            PuppyMotionIntensity.valueOf(store.getString(KEY_MOTION_INTENSITY, PuppyMotionIntensity.MEDIUM.name) ?: PuppyMotionIntensity.MEDIUM.name)
+        }.getOrDefault(PuppyMotionIntensity.MEDIUM)
         val accent = normalizeHex(store.getString(KEY_ACCENT, DEFAULT_ACCENT) ?: DEFAULT_ACCENT) ?: DEFAULT_ACCENT
         val custom = normalizeHex(store.getString(KEY_CUSTOM_ACCENT, accent) ?: accent) ?: accent
 
@@ -255,6 +297,16 @@ internal object PuppyUiPreferences {
             customAccentHex = custom,
             animatedUi = store.getBoolean(KEY_ANIMATED_UI, true),
             buttonAnimations = store.getBoolean(KEY_BUTTON_ANIMATIONS, true),
+            motionPreset = preset,
+            motionIntensity = intensity,
+            screenTransitions = store.getBoolean(KEY_SCREEN_TRANSITIONS, true),
+            cardAnimations = store.getBoolean(KEY_CARD_ANIMATIONS, true),
+            counterAnimations = store.getBoolean(KEY_COUNTER_ANIMATIONS, true),
+            celebrationAnimations = store.getBoolean(KEY_CELEBRATION_ANIMATIONS, true),
+            warningAnimations = store.getBoolean(KEY_WARNING_ANIMATIONS, true),
+            loadingAnimations = store.getBoolean(KEY_LOADING_ANIMATIONS, true),
+            shimmerEffects = store.getBoolean(KEY_SHIMMER_EFFECTS, true),
+            adaptivePerformance = store.getBoolean(KEY_ADAPTIVE_PERFORMANCE, true),
             reducedMotion = store.getBoolean(KEY_REDUCED_MOTION, false),
             highContrast = store.getBoolean(KEY_HIGH_CONTRAST, false),
             uiScale = scale,
