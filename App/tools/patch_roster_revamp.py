@@ -90,8 +90,8 @@ def patch_view_model(source: str) -> str:
 
     source = replace_once(
         source,
-        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) + DEFAULT_V6_PUPPIES\n        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")''',
-        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) + DEFAULT_V6_PUPPIES\n        val favorites = prefs.getStringSet(KEY_FAVORITE_PUPPIES, emptySet())?.toSet().orEmpty()\n        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")''',
+        '''            ?: "classic"\n        val inventory = TicketRarity.entries.associateWith { rarity ->''',
+        '''            ?: "classic"\n        val favorites = prefs.getStringSet(KEY_FAVORITE_PUPPIES, emptySet())?.toSet().orEmpty()\n        val inventory = TicketRarity.entries.associateWith { rarity ->''',
         "favorite state load",
     )
 
