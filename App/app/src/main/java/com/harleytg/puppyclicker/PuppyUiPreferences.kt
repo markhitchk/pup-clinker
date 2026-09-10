@@ -2,7 +2,6 @@ package com.harleytg.puppyclicker
 
 import android.content.Context
 import android.content.SharedPreferences
-import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +20,6 @@ data class PuppyUiState(
     val uiScale: PuppyUiScale = PuppyUiScale.DEFAULT,
     val birthdayMonth: Int = 0,
     val birthdayDay: Int = 0,
-    val birthdayYear: Int = 0,
     val setupComplete: Boolean = false,
     val setupStep: Int = 0,
     val dailyRewardNotifications: Boolean = true,
@@ -31,11 +29,6 @@ data class PuppyUiState(
 ) {
     val hasBirthday: Boolean
         get() = PuppyBirthday.isValid(birthdayMonth, birthdayDay)
-
-    val birthdayDate: LocalDate?
-        get() = runCatching {
-            if (!hasBirthday) null else LocalDate.of(birthdayYear, birthdayMonth, birthdayDay)
-        }.getOrNull()
 }
 
 /**
@@ -79,6 +72,9 @@ internal object PuppyUiPreferences {
         val app = context.applicationContext
         val store = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         migrateOnce(app, store)
+        if (store.contains(KEY_BIRTHDAY_YEAR)) {
+            store.edit().remove(KEY_BIRTHDAY_YEAR).apply()
+        }
         prefs = store
         mutableState.value = read(store)
         store.registerOnSharedPreferenceChangeListener(listener)
@@ -138,19 +134,6 @@ internal object PuppyUiPreferences {
         return true
     }
 
-    @Deprecated("Use month/day birthday storage")
-    fun setBirthday(context: Context, month: Int, day: Int, year: Int): Boolean {
-        val today = LocalDate.now()
-        val date = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: return false
-        if (date.isAfter(today) || year < today.year - 120) return false
-        edit(context) {
-            putInt(KEY_BIRTHDAY_MONTH, month)
-            putInt(KEY_BIRTHDAY_DAY, day)
-            putInt(KEY_BIRTHDAY_YEAR, year)
-        }
-        return true
-    }
-
     fun clearBirthday(context: Context) = edit(context) {
         remove(KEY_BIRTHDAY_MONTH)
         remove(KEY_BIRTHDAY_DAY)
@@ -189,7 +172,6 @@ internal object PuppyUiPreferences {
             clear()
             if (keep.birthdayMonth > 0) putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
             if (keep.birthdayDay > 0) putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
-            if (keep.birthdayYear > 0) putInt(KEY_BIRTHDAY_YEAR, keep.birthdayYear)
             putBoolean(KEY_SETUP_COMPLETE, true)
             putInt(KEY_SETUP_STEP, 5)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
@@ -249,11 +231,11 @@ internal object PuppyUiPreferences {
                 putBoolean(KEY_SETUP_COMPLETE, true)
                 putInt(KEY_SETUP_STEP, 5)
             }
-            if (legacyMonth in 1..12 && legacyDay in 1..31) {
+            if (PuppyBirthday.isValid(legacyMonth, legacyDay)) {
                 putInt(KEY_BIRTHDAY_MONTH, legacyMonth)
                 putInt(KEY_BIRTHDAY_DAY, legacyDay)
-                putInt(KEY_BIRTHDAY_YEAR, 0)
             }
+            remove(KEY_BIRTHDAY_YEAR)
         }.apply()
     }
 
@@ -278,7 +260,6 @@ internal object PuppyUiPreferences {
             uiScale = scale,
             birthdayMonth = store.getInt(KEY_BIRTHDAY_MONTH, 0),
             birthdayDay = store.getInt(KEY_BIRTHDAY_DAY, 0),
-            birthdayYear = store.getInt(KEY_BIRTHDAY_YEAR, 0),
             setupComplete = store.getBoolean(KEY_SETUP_COMPLETE, false),
             setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 5),
             dailyRewardNotifications = store.getBoolean(KEY_NOTIFY_DAILY, true),
