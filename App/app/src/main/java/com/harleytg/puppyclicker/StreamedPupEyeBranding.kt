@@ -27,6 +27,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -37,6 +38,18 @@ internal data class PupEyeBrandingStatus(
     val lastAttemptedAtMs: Long,
     val source: String?
 )
+
+internal fun nextPupEyeBrandingRetryDelayMs(
+    hasBitmap: Boolean,
+    consecutiveFailures: Int
+): Long? {
+    if (hasBitmap) return null
+    return when (consecutiveFailures.coerceAtLeast(1)) {
+        1 -> 15_000L
+        2 -> 30_000L
+        else -> 60_000L
+    }
+}
 
 /**
  * Streamed-only PupEye branding.
@@ -59,12 +72,34 @@ internal fun StreamedPupEyeBranding(
         initialValue = PupEyeAssetStream.peek(),
         key1 = context
     ) {
-        try {
-            value = PupEyeAssetStream.load(context)
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
+        var consecutiveFailures = 0
+
+        while (true) {
+            val loaded = try {
+                PupEyeAssetStream.load(context)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
+                null
+            }
+
+            if (loaded != null) {
+                value = loaded
+                break
+            }
+
+            consecutiveFailures += 1
+            val retryDelay = nextPupEyeBrandingRetryDelayMs(
+                hasBitmap = false,
+                consecutiveFailures = consecutiveFailures
+            ) ?: break
+
+            Log.i(
+                "PupEyeBranding",
+                "PupEye branding unavailable; retrying stream in ${retryDelay / 1000L}s"
+            )
+            delay(retryDelay)
         }
     }
 
