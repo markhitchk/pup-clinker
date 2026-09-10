@@ -44,8 +44,17 @@ def compatible_activity(source: str) -> str:
     )
 
 
+def preserve_fresh_install_detection(source: str) -> str:
+    # The source migration already uses package install/update timestamps, the legacy intro flag,
+    # and a configured username. Do not add "main prefs is non-empty" as another migration signal:
+    # the V6 ViewModel periodically writes defaults, which could race a slow first composition and
+    # accidentally classify a genuinely fresh installation as an existing player.
+    return source
+
+
 patch.patch_pupeye_stream = robust_pupeye_stream
 patch.patch_activity = compatible_activity
+patch.patch_ui_preference_migration = preserve_fresh_install_detection
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
