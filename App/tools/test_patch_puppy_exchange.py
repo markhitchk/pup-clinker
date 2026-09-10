@@ -40,7 +40,7 @@ class CompactRosterPatchTest(unittest.TestCase):
         patched = final_roster_source()
 
         self.assertIn("modifier = Modifier.height(if (compactRoster) 34.dp else 48.dp)", patched)
-        self.assertIn("modifier = Modifier.fillMaxWidth().height(if (compactRoster) 48.dp else 56.dp)", patched)
+        self.assertIn("modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)", patched)
         self.assertIn("CompactRosterSortFavorites(", patched)
         self.assertIn("CompactRosterCategories(", patched)
         self.assertIn("height = if (compactRoster) 34.dp else 40.dp", patched)
@@ -70,8 +70,8 @@ class SettingsAccountCardTest(unittest.TestCase):
 
         self.assertIn("PuppyPlayerIdentity.playerId(context)", source)
         self.assertIn("PuppyPlayerIdentity.friendCode(context)", source)
-        self.assertIn('"Device Bound"', source)
-        self.assertIn('Text("Account & Profile"', source)
+        self.assertIn('"Local Profile · Device Bound"', source)
+        self.assertIn('"Account & Profile"', source)
         self.assertIn('Text("Copy"', source)
 
 
