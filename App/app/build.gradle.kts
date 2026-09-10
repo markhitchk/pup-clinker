@@ -20,6 +20,7 @@ val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
 val puppySvgSourceDir = layout.projectDirectory.dir("src/main/puppy-svg")
 val protectedPuppySourceDir = layout.buildDirectory.dir("generated/puppy-vectors").get()
 val legalSourceDir = rootProject.file("../assets/legal")
+val pupEyeSourceFile = rootProject.file("../assets/PupEye.png")
 
 val v1ProtectedPuppyIds = listOf(
     "classic",
@@ -175,11 +176,12 @@ val compilePuppySvg by tasks.registering(Exec::class) {
 
 val prepareProtectedPuppyAssets by tasks.registering {
     dependsOn(compilePuppySvg)
-    description = "Encrypts V1/V2 puppy artwork and packages repository-managed legal documents into APK assets."
+    description = "Encrypts V1/V2 puppy artwork and packages repository-managed legal/PupEye assets into the APK."
     group = "puppy clicker"
     inputs.files(v1ProtectedPuppyIds.map { protectedPuppySourceDir.file("v1_$it.xml") })
     inputs.files(v2ProtectedPuppyIds.map { protectedPuppySourceDir.file("$it.xml") })
     inputs.dir(legalSourceDir)
+    inputs.file(pupEyeSourceFile)
     outputs.dir(generatedProtectedAssets)
     outputs.dir(generatedSourceDrawables)
     outputs.dir(generatedSourceVectorDrawables)
@@ -188,6 +190,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
         val assetRoot = generatedProtectedAssets.get().asFile
         val puppyAssetDir = assetRoot.resolve("puppies")
         val legalAssetDir = assetRoot.resolve("legal")
+        val brandingAssetDir = assetRoot.resolve("branding")
         val drawableDir = generatedSourceDrawables.get().asFile
         val vectorDrawableDir = generatedSourceVectorDrawables.get().asFile
 
@@ -195,6 +198,8 @@ val prepareProtectedPuppyAssets by tasks.registering {
         puppyAssetDir.mkdirs()
         legalAssetDir.deleteRecursively()
         legalAssetDir.mkdirs()
+        brandingAssetDir.deleteRecursively()
+        brandingAssetDir.mkdirs()
         drawableDir.mkdirs()
         vectorDrawableDir.mkdirs()
 
@@ -204,6 +209,9 @@ val prepareProtectedPuppyAssets by tasks.registering {
             require(source.isFile) { "Missing repository legal document: ${source.path}" }
             source.copyTo(legalAssetDir.resolve(fileName), overwrite = true)
         }
+
+        require(pupEyeSourceFile.isFile) { "Missing repository PupEye logo: ${pupEyeSourceFile.path}" }
+        pupEyeSourceFile.copyTo(brandingAssetDir.resolve("PupEye.png"), overwrite = true)
 
         v1ProtectedPuppyIds.forEach { styleId ->
             val assetId = "v1_$styleId"
