@@ -7,6 +7,10 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -15,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -25,6 +30,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+
+internal data class PupEyeBrandingStatus(
+    val ready: Boolean,
+    val lastCheckedAtMs: Long,
+    val lastAttemptedAtMs: Long,
+    val source: String?
+)
 
 /**
  * Streamed-only PupEye branding.
@@ -56,18 +68,30 @@ internal fun StreamedPupEyeBranding(
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        bitmap?.let { loaded ->
+        if (bitmap != null) {
             Image(
-                bitmap = loaded.asImageBitmap(),
+                bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
             )
+        } else {
+            // A neutral, local placeholder keeps layout stable while the remote brand asset loads
+            // or when the repository is unavailable. It never claims that a security check passed.
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("👁")
+                }
+            }
         }
     }
 }
 
-private object PupEyeAssetStream {
+internal object PupEyeAssetStream {
     // Raw GitHub stays the source of truth. jsDelivr is only a GitHub-backed transport fallback
     // for devices/networks that fail to reach raw.githubusercontent.com reliably.
     private val URLS = listOf(
@@ -91,6 +115,31 @@ private object PupEyeAssetStream {
     private var memory: Bitmap? = null
 
     fun peek(): Bitmap? = memory
+
+    fun status(context: Context): PupEyeBrandingStatus {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val cached = memory != null || cacheFile(context).let { it.isFile && it.length() in 1..MAX_DOWNLOAD_BYTES.toLong() }
+        return PupEyeBrandingStatus(
+            ready = cached,
+            lastCheckedAtMs = prefs.getLong("checked", 0L).coerceAtLeast(0L),
+            lastAttemptedAtMs = prefs.getLong("attempted", 0L).coerceAtLeast(0L),
+            source = prefs.getString("source", null)
+        )
+    }
+
+    suspend fun refreshNow(context: Context): Boolean = withContext(Dispatchers.IO) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("checked")
+            .remove("attempted")
+            .apply()
+        load(context) != null
+    }
+
+    fun clearCache(context: Context) {
+        memory = null
+        cacheFile(context).delete()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
 
     suspend fun load(context: Context): Bitmap? = withContext(Dispatchers.IO) {
         mutex.withLock {
