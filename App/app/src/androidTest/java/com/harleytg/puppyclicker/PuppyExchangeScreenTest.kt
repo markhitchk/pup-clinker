@@ -35,10 +35,11 @@ class PuppyExchangeScreenTest {
 
         composeRule.onNodeWithText("Puppy Exchange").assertExists()
         composeRule.onNodeWithText("Friends").assertExists()
+        composeRule.onNodeWithText("Add Friend").assertExists()
         composeRule.onNodeWithText("Connect").assertExists().performClick()
         composeRule.onNodeWithText("Gifts").assertExists()
         composeRule.onNodeWithText("Trade").assertExists()
         composeRule.onNodeWithText("History").assertExists()
-        composeRule.onNodeWithText("Manual Offer / Answer").assertExists()
+        composeRule.onNodeWithText("Direct Connect").assertExists()
     }
 }
