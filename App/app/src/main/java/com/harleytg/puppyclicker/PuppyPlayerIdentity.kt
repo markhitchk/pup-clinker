@@ -161,6 +161,9 @@ internal object PuppyPlayerIdentity {
         put("username", username(context))
         put("playerId", playerId(context))
         put("friendCode", friendCode(context))
+        put("publicPlayerId", publicPlayerId(context))
+        put("publicFriendCode", publicFriendCode(context))
+        put("officialDeveloper", isHarleyTgDeveloper(context))
         put("deviceModel", deviceModel())
         put("platform", "android")
     }
