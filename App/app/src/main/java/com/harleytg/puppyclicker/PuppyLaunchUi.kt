@@ -2,6 +2,7 @@ package com.harleytg.puppyclicker
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,8 +80,10 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+            Spacer(Modifier.height(10.dp))
+            PuppyDevelopmentNotice()
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(18.dp))
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
@@ -107,7 +110,9 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
 
             Spacer(Modifier.height(12.dp))
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { PuppyLinks.openDiscord(LocalContext.current) },
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Row(
@@ -130,7 +135,7 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
                     Column(Modifier.weight(1f)) {
                         Text("Join Our Discord Server", fontWeight = FontWeight.Black)
                         Text(
-                            "Community invite link coming soon.",
+                            PuppyLinks.DISCORD_INVITE,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -219,8 +224,10 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
+                Spacer(Modifier.height(10.dp))
+                PuppyDevelopmentNotice()
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = PuppyPlayerIdentity.normalizeUsername(it) },
