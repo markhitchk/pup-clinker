@@ -146,9 +146,10 @@ internal class PuppyExchangeSession(
     private var verifiedPeer: ExchangeIdentityHello? = null
 
     suspend fun createOffer(expectedFriendCode: String): String {
-        require(PuppyPlayerIdentity.isValidFriendCode(expectedFriendCode)) { "Invalid Friend Code" }
-        require(expectedFriendCode != localHello.friendCode) { "You cannot connect Puppy Exchange to this device itself" }
-        expectedRemoteFriendCode = expectedFriendCode
+        val canonicalExpectedFriendCode = PuppyPlayerIdentity.resolveFriendCodeInput(expectedFriendCode)
+            ?: throw IllegalArgumentException("Invalid Friend Code")
+        require(canonicalExpectedFriendCode != localHello.friendCode) { "You cannot connect Puppy Exchange to this device itself" }
+        expectedRemoteFriendCode = canonicalExpectedFriendCode
         verifiedPeer = null
         _state.value = ExchangeConnectionState.CreatingOffer
 
@@ -163,7 +164,7 @@ internal class PuppyExchangeSession(
                 expiresAtMs = now + PuppyExchangeProtocol.CODE_TTL_MS,
                 senderPlayerId = localHello.playerId,
                 senderFriendCode = localHello.friendCode,
-                expectedFriendCode = expectedFriendCode,
+                expectedFriendCode = canonicalExpectedFriendCode,
                 sdp = description.sdp,
                 iceCandidates = description.iceCandidates
             )
