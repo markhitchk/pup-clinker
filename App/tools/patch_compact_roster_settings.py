@@ -476,9 +476,10 @@ private fun AccountProfileCard(
 ) {
     val context = LocalContext.current
     val username = PuppyPlayerIdentity.username(context)
-    val playerId = PuppyPlayerIdentity.playerId(context)
-    val friendCode = PuppyPlayerIdentity.friendCode(context)
-    val shortPlayerId = if (playerId.length > 14) "${playerId.take(8)}…${playerId.takeLast(5)}" else playerId
+    val playerId = PuppyPlayerIdentity.publicPlayerId(context)
+    val friendCode = PuppyPlayerIdentity.publicFriendCode(context)
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    val shortPlayerId = if (playerId.length > 20) "${playerId.take(12)}…${playerId.takeLast(5)}" else playerId
     val reduceMotion = LocalPuppyReducedMotion.current
     val duration = if (reduceMotion) 1 else 190
     val arrowRotation by animateFloatAsState(
@@ -523,7 +524,7 @@ private fun AccountProfileCard(
                         maxLines = 1
                     )
                     Text(
-                        "Local Profile · Device Bound",
+                        if (officialDeveloper) "HarleyTG Developer / Owner · Device Bound" else "Local Profile · Device Bound",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
