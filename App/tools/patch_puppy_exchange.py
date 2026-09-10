@@ -68,6 +68,22 @@ def patch_roster_screen(source: str) -> str:
     return source
 
 
+def patch_activity(source: str) -> str:
+    source = replace_once(
+        source,
+        '''                    PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)\n                    PuppyInternalDestination.PRESTIGE -> V6Prestige(state, vm)''',
+        '''                    PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)\n                    PuppyInternalDestination.PRESTIGE -> V6Prestige(state, vm)\n                    PuppyInternalDestination.EXCHANGE -> PuppyExchangeScreen(\n                        state = state,\n                        vm = vm,\n                        onBack = { internalDestination = null }\n                    )''',
+        "app shell exchange destination",
+    )
+    source = replace_once(
+        source,
+        '''                        onOpenSettings = { internalDestination = PuppyInternalDestination.SETTINGS }\n                    )''',
+        '''                        onOpenSettings = { internalDestination = PuppyInternalDestination.SETTINGS },\n                        onOpenExchange = { internalDestination = PuppyInternalDestination.EXCHANGE }\n                    )''',
+        "app shell roster exchange route",
+    )
+    return source
+
+
 def main(root: Path) -> None:
     dynamic_roster = root / PACKAGE / "DynamicPuppyRoster.kt"
     dynamic_roster.write_text(
@@ -78,6 +94,12 @@ def main(root: Path) -> None:
     roster_screen = root / PACKAGE / "PuppyRosterScreen.kt"
     roster_screen.write_text(
         patch_roster_screen(roster_screen.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    activity = root / PACKAGE / "PuppyClickerV6Activity.kt"
+    activity.write_text(
+        patch_activity(activity.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
     print("Puppy Exchange generated-source patches integrated")
