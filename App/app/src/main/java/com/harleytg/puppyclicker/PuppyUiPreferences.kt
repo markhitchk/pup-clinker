@@ -27,7 +27,7 @@ data class PuppyUiState(
     val adaptivePerformance: Boolean = true,
     val reducedMotion: Boolean = false,
     val highContrast: Boolean = false,
-    val uiScale: PuppyUiScale = PuppyUiScale.DEFAULT,
+    val uiScale: PuppyUiScale = PuppyUiScale.COMPACT,
     val birthdayMonth: Int = 0,
     val birthdayDay: Int = 0,
     val setupComplete: Boolean = false,
@@ -280,8 +280,8 @@ internal object PuppyUiPreferences {
             PuppyThemeMode.valueOf(store.getString(KEY_THEME_MODE, PuppyThemeMode.SYSTEM.name) ?: PuppyThemeMode.SYSTEM.name)
         }.getOrDefault(PuppyThemeMode.SYSTEM)
         val scale = runCatching {
-            PuppyUiScale.valueOf(store.getString(KEY_UI_SCALE, PuppyUiScale.DEFAULT.name) ?: PuppyUiScale.DEFAULT.name)
-        }.getOrDefault(PuppyUiScale.DEFAULT)
+            PuppyUiScale.valueOf(store.getString(KEY_UI_SCALE, PuppyUiScale.COMPACT.name) ?: PuppyUiScale.COMPACT.name)
+        }.getOrDefault(PuppyUiScale.COMPACT)
         val preset = runCatching {
             PuppyMotionPreset.valueOf(store.getString(KEY_MOTION_PRESET, PuppyMotionPreset.BALANCED.name) ?: PuppyMotionPreset.BALANCED.name)
         }.getOrDefault(PuppyMotionPreset.BALANCED)
