@@ -137,7 +137,7 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         if (state.ticketDropSerial > 0 && state.lastTicketDrop != null) {
             ticketVisible = true
             if (state.hapticsEnabled) performV6Haptic(context, true)
-            delay(2_000)
+            delay(2_750)
             ticketVisible = false
         }
     }
@@ -151,29 +151,15 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     )
     val cooldown = (state.cooldownUntilMs - now).coerceAtLeast(0)
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         V6Header("Puppy Clicker", "${state.puppyName} · ${state.mood}")
         Spacer(Modifier.height(10.dp))
         V6Wallet(state)
         Spacer(Modifier.height(10.dp))
-
-        AnimatedVisibility(ticketVisible, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
-            val rarity = state.lastTicketDrop ?: TicketRarity.COMMON
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = rarityContainerV6(rarity)) {
-                Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(rarity.emoji, fontSize = 30.sp)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("${rarity.displayName} Upgrade Ticket!", fontWeight = FontWeight.Black)
-                        Text("Added to Ticket Upgrades.", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
-        if (ticketVisible) Spacer(Modifier.height(8.dp))
 
         Row(
             Modifier.fillMaxWidth(),
@@ -233,7 +219,16 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             }
         }
 
-        Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(18.dp))
+        }
+
+        V6TicketDropOverlay(
+            visible = ticketVisible,
+            rarity = state.lastTicketDrop,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 142.dp, start = 24.dp, end = 24.dp)
+        )
     }
 }
 
