@@ -223,9 +223,7 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         Text("Connections", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { PuppyLinks.openDiscord(context) },
+            modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Row(
@@ -235,10 +233,10 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
                 Image(painterResource(R.drawable.ic_discord), "Discord", Modifier.size(28.dp))
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Discord Community", fontWeight = FontWeight.Bold)
-                    Text(PuppyLinks.DISCORD_INVITE, style = MaterialTheme.typography.labelSmall)
+                    Text("Discord account", fontWeight = FontWeight.Bold)
+                    Text("Account connection", style = MaterialTheme.typography.labelSmall)
                 }
-                Text("Open", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("Coming Soon", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(Modifier.height(8.dp))
