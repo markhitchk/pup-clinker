@@ -426,6 +426,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             bond = (s.bond + 1).coerceAtMost(100)
         )
         saveState()
+        PuppyNotificationCenter.cancelDailyReward(getApplication())
     }
 
     fun claimDailyTask(id: String) {
