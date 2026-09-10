@@ -138,14 +138,93 @@ def patch_streamed_art(source: str) -> str:
     )
 
 
+def patch_pupeye_stream(source: str) -> str:
+    return replace_once(
+        source,
+        '''    suspend fun refreshNow(context: Context): Boolean = withContext(Dispatchers.IO) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("checked")
+            .remove("attempted")
+            .apply()
+        load(context) != null
+    }''',
+        '''    suspend fun refreshNow(context: Context): Boolean = withContext(Dispatchers.IO) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("checked")
+            .remove("attempted")
+            .apply()
+        load(context)
+        // A cached bitmap alone does not prove current connectivity. Only a successful network
+        // validation writes the checked timestamp after the forced refresh above.
+        status(context).lastCheckedAtMs > 0L
+    }''',
+        "PupEye online verification semantics",
+    )
+
+
+def patch_ui_preference_migration(source: str) -> str:
+    return replace_once(
+        source,
+        '''        val hasConfiguredUsername = PuppyPlayerIdentity.username(context) != "localplayer"
+        val existingInstall = looksUpdated || legacyIntroSeen || hasConfiguredUsername''',
+        '''        val hasConfiguredUsername = PuppyPlayerIdentity.username(context) != "localplayer"
+        val hasExistingGame = context
+            .getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE)
+            .all
+            .isNotEmpty()
+        val existingInstall = looksUpdated || legacyIntroSeen || hasConfiguredUsername || hasExistingGame''',
+        "existing-player migration signal",
+    )
+
+
+def add_graphics_imports(source: str, needs_android_color: bool, label: str) -> str:
+    if needs_android_color and "import android.graphics.Color as AndroidColor\n" not in source:
+        source = replace_once(
+            source,
+            "import android.content.Context\n",
+            "import android.content.Context\nimport android.graphics.Color as AndroidColor\n",
+            f"{label} AndroidColor import",
+        )
+    if "import androidx.compose.ui.graphics.luminance\n" not in source:
+        source = replace_once(
+            source,
+            "import androidx.compose.ui.graphics.Color\n",
+            "import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.luminance\n",
+            f"{label} luminance import",
+        )
+    return source
+
+
 def main(root: Path) -> None:
     activity = root / PACKAGE / "PuppyClickerV6Activity.kt"
     roster = root / PACKAGE / "DynamicPuppyRoster.kt"
     art = root / PACKAGE / "StreamedPuppyArt.kt"
+    pupeye = root / PACKAGE / "StreamedPupEyeBranding.kt"
+    preferences = root / PACKAGE / "PuppyUiPreferences.kt"
+    settings = root / PACKAGE / "PuppySettingsUi.kt"
+    onboarding = root / PACKAGE / "PuppyOnboardingUi.kt"
+    theme = root / PACKAGE / "ui/theme/Theme.kt"
 
     activity.write_text(patch_activity(activity.read_text(encoding="utf-8")), encoding="utf-8")
     roster.write_text(patch_dynamic_roster(roster.read_text(encoding="utf-8")), encoding="utf-8")
     art.write_text(patch_streamed_art(art.read_text(encoding="utf-8")), encoding="utf-8")
+    pupeye.write_text(patch_pupeye_stream(pupeye.read_text(encoding="utf-8")), encoding="utf-8")
+    preferences.write_text(
+        patch_ui_preference_migration(preferences.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+    settings.write_text(
+        add_graphics_imports(settings.read_text(encoding="utf-8"), False, "Settings UI"),
+        encoding="utf-8",
+    )
+    onboarding.write_text(
+        add_graphics_imports(onboarding.read_text(encoding="utf-8"), True, "Onboarding UI"),
+        encoding="utf-8",
+    )
+    theme.write_text(
+        add_graphics_imports(theme.read_text(encoding="utf-8"), False, "theme"),
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
