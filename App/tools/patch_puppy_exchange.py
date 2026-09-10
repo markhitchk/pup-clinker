@@ -96,7 +96,7 @@ def patch_roster_screen(source: str) -> str:
     source = replace_once(
         source,
         '''            IconButton(\n                onClick = onOpenSettings,\n                modifier = Modifier.semantics { contentDescription = "Open settings" }\n            ) {\n                Text("⚙️", fontSize = 22.sp)\n            }''',
-        '''            IconButton(\n                onClick = onOpenExchange,\n                modifier = Modifier.semantics { contentDescription = "Open Puppy Exchange" }\n            ) {\n                Text("🎁", fontSize = 22.sp)\n            }\n            IconButton(\n                onClick = onOpenSettings,\n                modifier = Modifier.semantics { contentDescription = "Open settings" }\n            ) {\n                Text("⚙️", fontSize = 22.sp)\n            }''',
+        '''            IconButton(\n                onClick = onOpenExchange,\n                modifier = Modifier.semantics { contentDescription = "Open Puppy Exchange" }\n            ) {\n                Text("🎁", fontSize = 22.sp)\n            }''',
         "roster exchange action",
     )
     source = replace_once(
