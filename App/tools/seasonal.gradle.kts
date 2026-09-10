@@ -2,6 +2,13 @@
 apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
 apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
+// Release identity override. This is applied during Gradle configuration so the manifest is
+// compiled by Android's normal build pipeline instead of being edited after APK creation.
+(project.extensions.getByName("android") as com.android.build.api.dsl.ApplicationExtension).defaultConfig {
+    versionCode = 22
+    versionName = "1.7.9"
+}
+
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
     val seasonalPatch = rootProject.file("tools/patch_seasonal_events.py")
