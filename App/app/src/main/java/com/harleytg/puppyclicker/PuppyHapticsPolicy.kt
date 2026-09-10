@@ -30,6 +30,27 @@ data class PuppyHapticPlan(
     val strength: PuppyHapticStrength
 )
 
+enum class PuppyHapticResult {
+    DISABLED,
+    SEMANTIC,
+    DIRECT,
+    UNAVAILABLE,
+    ERROR
+}
+
+object PuppyHapticExecution {
+    fun resolve(
+        route: PuppyHapticRoute,
+        semanticSucceeded: Boolean,
+        directSucceeded: Boolean
+    ): PuppyHapticResult = when {
+        route == PuppyHapticRoute.NONE -> PuppyHapticResult.DISABLED
+        route == PuppyHapticRoute.SEMANTIC_THEN_DIRECT && semanticSucceeded -> PuppyHapticResult.SEMANTIC
+        directSucceeded -> PuppyHapticResult.DIRECT
+        else -> PuppyHapticResult.UNAVAILABLE
+    }
+}
+
 object PuppyHapticPolicy {
     fun plan(event: PuppyHapticEvent, enabled: Boolean): PuppyHapticPlan {
         if (!enabled) {
