@@ -1,0 +1,41 @@
+name: Apply Settings Repair
+
+on:
+  push:
+    branches:
+      - superpowers/puppy-repair-2026-09-09
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'chore: apply settings source repair'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: superpowers/puppy-repair-2026-09-09
+
+      - name: Apply targeted Settings source patch
+        working-directory: App
+        run: python3 tools/finalize_settings_birthday.py
+
+      - name: Verify forbidden Settings text is gone
+        working-directory: App
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n 'birthdayYear\|initialYear\|Puppy Coins: 15,250\|Text("BUY")' app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt
+
+      - name: Commit patched source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: finalize month day Settings UI'
+          git push origin HEAD:superpowers/puppy-repair-2026-09-09
