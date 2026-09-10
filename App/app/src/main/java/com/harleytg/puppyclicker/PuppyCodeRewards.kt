@@ -1,5 +1,8 @@
 package com.harleytg.puppyclicker
 
+import org.json.JSONArray
+import org.json.JSONObject
+
 data class PuppyCodeHistoryEntry(
     val redemptionId: String,
     val redeemedAtMs: Long,
@@ -8,6 +11,19 @@ data class PuppyCodeHistoryEntry(
     val claimed: Boolean = true,
     val artworkId: String? = null
 )
+
+data class PuppyCodeRedeemUiState(
+    val isChecking: Boolean = false,
+    val message: String? = null,
+    val success: Boolean = false,
+    val pendingDefinition: PuppyCodeDefinition? = null,
+    val lastReveal: PuppyCodeHistoryEntry? = null,
+    val history: List<PuppyCodeHistoryEntry> = emptyList(),
+    val promotions: List<PuppyCodeCampaign> = emptyList(),
+    val cooldownUntilMs: Long = 0L
+) {
+    val hasPendingClaim: Boolean get() = pendingDefinition != null
+}
 
 enum class PuppyRewardGrantFailure {
     UNSUPPORTED_REWARD,
@@ -104,6 +120,8 @@ object RewardGrantEngine {
 }
 
 object PuppyCodeHistory {
+    private const val MAX_HISTORY = 1_000
+
     fun createEntry(definition: PuppyCodeDefinition, redeemedAtMs: Long): PuppyCodeHistoryEntry {
         val puppyId = definition.rewards.filterIsInstance<PuppyCodeReward.Puppy>().firstOrNull()?.puppyId
         return PuppyCodeHistoryEntry(
@@ -113,6 +131,63 @@ object PuppyCodeHistory {
             typeSummary = summarizeTypes(definition.rewards),
             artworkId = puppyId
         )
+    }
+
+    /** Persisted history contains reward metadata only; plaintext Puppy Codes are never serialized. */
+    fun encode(entries: List<PuppyCodeHistoryEntry>): String {
+        val array = JSONArray()
+        entries.take(MAX_HISTORY).forEach { entry ->
+            array.put(JSONObject().apply {
+                put("id", entry.redemptionId)
+                put("redeemedAt", entry.redeemedAtMs)
+                put("summary", entry.summary)
+                put("types", entry.typeSummary)
+                put("claimed", entry.claimed)
+                entry.artworkId?.let { put("artworkId", it) }
+            })
+        }
+        return array.toString()
+    }
+
+    fun decode(raw: String?): List<PuppyCodeHistoryEntry> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            buildList {
+                for (index in 0 until minOf(array.length(), MAX_HISTORY)) {
+                    val item = array.getJSONObject(index)
+                    val id = item.optString("id", "").trim()
+                    val summary = item.optString("summary", "").trim()
+                    if (id.isBlank() || summary.isBlank()) continue
+                    add(
+                        PuppyCodeHistoryEntry(
+                            redemptionId = id,
+                            redeemedAtMs = item.optLong("redeemedAt", 0L).coerceAtLeast(0L),
+                            summary = summary,
+                            typeSummary = item.optString("types", "Reward").ifBlank { "Reward" },
+                            claimed = item.optBoolean("claimed", true),
+                            artworkId = item.optString("artworkId", "").trim().ifEmpty { null }
+                        )
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun mergeLegacyIds(history: List<PuppyCodeHistoryEntry>, redeemedIds: Set<String>): List<PuppyCodeHistoryEntry> {
+        val known = history.mapTo(HashSet()) { it.redemptionId }
+        val legacy = redeemedIds
+            .filterNot { it in known }
+            .sorted()
+            .map { id ->
+                PuppyCodeHistoryEntry(
+                    redemptionId = id,
+                    redeemedAtMs = 0L,
+                    summary = "Previously redeemed",
+                    typeSummary = "Legacy Puppy Code"
+                )
+            }
+        return (history + legacy).take(MAX_HISTORY)
     }
 
     fun summarizeRewards(rewards: List<PuppyCodeReward>): String = rewards.joinToString(" · ") { reward ->
