@@ -1,6 +1,7 @@
 package com.harleytg.puppyclicker
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,7 +32,40 @@ class DynamicPuppyRosterTest {
     }
 
     @Test
-    fun missingOptionalMetadataStaysNull() {
+    fun manifestParsesExchangeTransferPolicyAndHiddenState() {
+        val json = """
+            {
+              "roster": "v3",
+              "puppies": [
+                {
+                  "asset_id": "v3_frog_gift",
+                  "file": "v3_frog_gift.png",
+                  "name": "Frog Gift Puppy",
+                  "free": false,
+                  "redeem_only": true,
+                  "hidden_until_owned": true,
+                  "transfer_policy": {
+                    "giftable": true,
+                    "tradeable": false,
+                    "source_copy": true,
+                    "limited": true
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val parsed = DynamicPuppyRoster.parseManifest("v3", json).single()
+        assertTrue(parsed.hiddenUntilOwned)
+        assertTrue(parsed.transferPolicy.giftable)
+        assertFalse(parsed.transferPolicy.tradeable)
+        assertTrue(parsed.transferPolicy.sourceCopy)
+        assertTrue(parsed.transferPolicy.limited)
+        assertFalse(parsed.transferPolicy.bound)
+    }
+
+    @Test
+    fun missingExchangePolicyUsesNonTransferableVisibleDefaults() {
         val json = """
             {
               "roster": "v3",
@@ -42,8 +76,29 @@ class DynamicPuppyRosterTest {
         """.trimIndent()
 
         val parsed = DynamicPuppyRoster.parseManifest("v3", json).single()
+        assertFalse(parsed.hiddenUntilOwned)
+        assertEquals(PuppyTransferPolicy(), parsed.transferPolicy)
         assertNull(parsed.addedOrder)
         assertNull(parsed.unlockSource)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun boundManifestCannotAlsoBeTransferable() {
+        val json = """
+            {
+              "roster": "v3",
+              "puppies": [
+                {
+                  "asset_id":"v3_custom",
+                  "file":"v3_custom.png",
+                  "free":false,
+                  "transfer_policy":{"bound":true,"giftable":true}
+                }
+              ]
+            }
+        """.trimIndent()
+
+        DynamicPuppyRoster.parseManifest("v3", json)
     }
 
     @Test
