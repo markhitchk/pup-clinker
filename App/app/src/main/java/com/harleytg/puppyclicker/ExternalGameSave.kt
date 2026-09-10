@@ -30,6 +30,7 @@ object ExternalGameSave {
     private const val FORMAT = "puppy-clicker-device-save"
     private const val VERSION = 3
     private const val TAG = "PuppyExternalSave"
+    private val failureLogGate = RepeatedFailureLogGate()
 
     fun write(context: Context, prefs: SharedPreferences): File? {
         return runCatching {
@@ -53,9 +54,6 @@ object ExternalGameSave {
                 put("store", SecurePreferenceCodec.encode(prefs))
             }
 
-            // Android Keystore operations can fail on a small number of devices after an OS,
-            // lock-screen, restore, or app-data transition. Treat the mirror as optional rather
-            // than allowing a crypto provider exception to terminate Application.onCreate().
             val encrypted = PuppySaveCrypto.encryptDevice(
                 document.toString().toByteArray(Charsets.UTF_8)
             )
@@ -71,14 +69,18 @@ object ExternalGameSave {
                     temporary.delete()
                 }
 
-                // Remove the old readable JSON mirror after the encrypted replacement succeeds.
                 File(directory, LEGACY_FILE_NAME).takeIf { it.exists() }?.delete()
+                if (failureLogGate.markSuccess()) {
+                    Log.i(TAG, "Encrypted Android/data mirror recovered")
+                }
                 target
             } finally {
                 temporary.takeIf { it.exists() }?.delete()
             }
         }.getOrElse { error ->
-            Log.w(TAG, "Encrypted Android/data mirror unavailable; continuing with internal save", error)
+            if (failureLogGate.shouldLog(error)) {
+                Log.w(TAG, "Encrypted Android/data mirror unavailable; continuing with internal save", error)
+            }
             null
         }
     }
@@ -101,12 +103,16 @@ object ExternalGameSave {
                 require(identity.optString("deviceModel").isNotBlank()) { "Missing protected device model" }
             }
             true
-        }.getOrElse {
-            PupEyeSaveGuard.recordTamper(
-                context,
-                "Android/data save failed PupEye AES-GCM authentication"
-            )
-            quarantineTamperedFile(target)
+        }.getOrElse { error ->
+            if (classifySaveCryptoFailure(error) == SaveCryptoFailureKind.TAMPER) {
+                PupEyeSaveGuard.recordTamper(
+                    context,
+                    "Android/data save failed PupEye AES-GCM authentication"
+                )
+                quarantineTamperedFile(target)
+            } else if (failureLogGate.shouldLog(error)) {
+                Log.w(TAG, "Unable to verify encrypted Android/data mirror; leaving file intact", error)
+            }
             false
         }
     }

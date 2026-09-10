@@ -73,9 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion
 import java.io.File
 import java.text.DateFormat
-import java.time.LocalDate
 import java.time.Month
-import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Date
 import java.util.Locale
@@ -349,9 +347,9 @@ private fun AppearancePreview(ui: PuppyUiState) {
             Text("LIVE PREVIEW", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(7.dp))
             Text("Puppy Clicker", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-            Text("Puppy Coins: 15,250", style = MaterialTheme.typography.bodyMedium)
+            Text("Theme preview", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(9.dp))
-            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("BUY") }
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Accent Preview") }
             Text(
                 "${when (ui.themeMode) { PuppyThemeMode.LIGHT -> "Light"; PuppyThemeMode.DARK -> "Dark"; PuppyThemeMode.SYSTEM -> "System" }} · ${ui.accentHex}",
                 style = MaterialTheme.typography.labelSmall,
@@ -702,71 +700,65 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
 
     Spacer(Modifier.height(12.dp))
     SettingsLabel("BIRTHDAY")
-    val birthdayText = when {
-        ui.birthdayMonth !in 1..12 || ui.birthdayDay <= 0 -> "Not set"
-        ui.birthdayYear > 0 -> "${monthName(ui.birthdayMonth)} ${ui.birthdayDay}, ${ui.birthdayYear}"
-        else -> "${monthName(ui.birthdayMonth)} ${ui.birthdayDay} · year not set"
+    val birthdayText = if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
+        "${monthName(ui.birthdayMonth)} ${ui.birthdayDay}"
+    } else {
+        "Not set"
     }
     StatusLine("Birthday", birthdayText)
     Text(
-        "Your birthday is used for birthday features and account settings. It is not publicly shown to other players and is kept in the app's local preference storage.",
+        "Your birthday month and day are used for birthday features. They are not publicly shown to other players and stay in the app's local preference storage.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(Modifier.height(7.dp))
     OutlinedButton(onClick = { birthdayEditor = true }, modifier = Modifier.fillMaxWidth()) {
-        Text(if (ui.birthdayMonth in 1..12) "Edit Birthday" else "Add Birthday")
+        Text(if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) "Edit Birthday" else "Add Birthday")
     }
 
     if (birthdayEditor) {
         BirthdayEditorDialog(
             initialMonth = ui.birthdayMonth,
             initialDay = ui.birthdayDay,
-            initialYear = ui.birthdayYear,
             onDismiss = { birthdayEditor = false },
-            onSave = { month, day, year ->
-                if (PuppyUiPreferences.setBirthday(context, month, day, year)) {
+            onSave = { month, day ->
+                if (PuppyUiPreferences.setBirthday(context, month, day)) {
                     vm.setSeasonalBirthday(month, day)
                     birthdayEditor = false
                 }
             }
         )
     }
+
 }
 
 @Composable
 internal fun BirthdayEditorDialog(
     initialMonth: Int,
     initialDay: Int,
-    initialYear: Int,
     onDismiss: () -> Unit,
-    onSave: (Int, Int, Int) -> Unit
+    onSave: (Int, Int) -> Unit
 ) {
     var month by rememberSaveable { mutableIntStateOf(initialMonth.coerceIn(0, 12)) }
     var day by rememberSaveable { mutableIntStateOf(initialDay.coerceIn(0, 31)) }
-    var year by rememberSaveable { mutableIntStateOf(initialYear) }
-    val currentYear = LocalDate.now().year
-    val maxDay = when {
-        month !in 1..12 -> 31
-        year in (currentYear - 120)..currentYear -> YearMonth.of(year, month).lengthOfMonth()
-        else -> Month.of(month).maxLength()
-    }
-    if (day > maxDay) day = maxDay
-    val valid = runCatching {
-        LocalDate.of(year, month, day).let { !it.isAfter(LocalDate.now()) && year >= currentYear - 120 }
-    }.getOrDefault(false)
+    val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
+    if (day > maxDay) day = 0
+    val valid = PuppyBirthday.isValid(month, day)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Your Birthday 🎂", fontWeight = FontWeight.Black) },
         text = {
             Column {
-                Text("Choose Month / Day / Year. Available days update automatically for the selected month and leap year.")
+                Text("Choose your birthday month and day. No birth year is stored.")
                 Spacer(Modifier.height(10.dp))
                 BirthdayPicker(
                     label = if (month == 0) "Month" else monthName(month),
                     options = (1..12).map { it to monthName(it) },
-                    onSelect = { selected -> month = selected; if (day > Month.of(selected).maxLength()) day = 0 }
+                    onSelect = { selected ->
+                        month = selected
+                        if (day > PuppyBirthday.maxDay(selected)) day = 0
+                    }
                 )
                 Spacer(Modifier.height(7.dp))
                 BirthdayPicker(
@@ -774,21 +766,15 @@ internal fun BirthdayEditorDialog(
                     options = (1..maxDay).map { it to it.toString() },
                     onSelect = { day = it }
                 )
-                Spacer(Modifier.height(7.dp))
-                BirthdayPicker(
-                    label = if (year <= 0) "Year" else year.toString(),
-                    options = (currentYear downTo currentYear - 120).map { it to it.toString() },
-                    onSelect = { selected -> year = selected; if (month in 1..12 && day > YearMonth.of(selected, month).lengthOfMonth()) day = 0 }
-                )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Your birthday is not displayed publicly to other players.",
+                    "Your birthday month and day are not displayed publicly to other players.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
-        confirmButton = { Button(onClick = { onSave(month, day, year) }, enabled = valid) { Text("Save Birthday") } },
+        confirmButton = { Button(onClick = { onSave(month, day) }, enabled = valid) { Text("Save Birthday") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

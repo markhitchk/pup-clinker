@@ -2,14 +2,15 @@ package com.harleytg.puppyclicker
 
 import android.Manifest
 import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -18,12 +19,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,7 +44,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -62,9 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion
-import java.time.LocalDate
 import java.time.Month
-import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -82,33 +84,44 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            OnboardingProgress(step)
-            Spacer(Modifier.height(20.dp))
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 22.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                OnboardingProgress(step)
+                Spacer(Modifier.height(20.dp))
 
-            AnimatedContent(
-                targetState = step,
-                transitionSpec = {
-                    val duration = if (reducedMotion) 1 else 180
-                    fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
-                },
-                label = "onboarding-step"
-            ) { current ->
-                when (current) {
-                    0 -> WelcomeStep(onNext = { step = 1 })
-                    1 -> ProfileStep(onBack = { step = 0 }, onNext = { step = 2 })
-                    2 -> BirthdayStep(vm, ui, onBack = { step = 1 }, onNext = { step = 3 })
-                    3 -> SetupAppearanceStep(ui, onBack = { step = 2 }, onNext = { step = 4 })
-                    4 -> SetupNotificationsStep(onBack = { step = 3 }, onNext = { step = 5 })
-                    else -> FinishStep(vm, ui, onBack = { step = 4 })
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = {
+                        val duration = if (reducedMotion) 1 else 180
+                        fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
+                    },
+                    label = "onboarding-step"
+                ) { current ->
+                    when (current) {
+                        0 -> WelcomeStep(onNext = { step = 1 })
+                        1 -> ProfileStep(onBack = { step = 0 }, onNext = { step = 2 })
+                        2 -> BirthdayStep(vm, ui, onBack = { step = 1 }, onNext = { step = 3 })
+                        3 -> SetupAppearanceStep(ui, onBack = { step = 2 }, onNext = { step = 4 })
+                        4 -> SetupNotificationsStep(onBack = { step = 3 }, onNext = { step = 5 })
+                        else -> FinishStep(vm, ui, onBack = { step = 4 })
+                    }
                 }
             }
+
+            StreamedPupEyeBranding(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(top = 8.dp, end = 8.dp)
+                    .size(38.dp),
+                contentDescription = "PupEye fair-play protection"
+            )
         }
     }
 }
@@ -183,51 +196,59 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
     }
     val normalized = PuppyPlayerIdentity.normalizeUsername(username)
 
-    SetupCard("CREATE YOUR PROFILE", "👤") {
-        Text("Username", fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(7.dp))
+    SetupCard("YOUR PROFILE", "👤") {
+        Text("Local Profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Text(
+            "Your local profile is stored on this device and linked to your protected Puppy Clicker save.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             value = username,
             onValueChange = { username = it.take(24) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Player username") },
-            supportingText = { Text("Used with your Puppy Clicker save. Existing username rules remain unchanged.") },
+            supportingText = { Text("Stored on this device") },
             singleLine = true
         )
-        Spacer(Modifier.height(10.dp))
-        StatusSetupRow("Discord login", "Coming Soon")
-        StatusSetupRow("Website login", "Coming Soon")
+        Spacer(Modifier.height(16.dp))
+        Text("Connect an account", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        FutureAccountCard("Discord", "Coming Soon")
+        Spacer(Modifier.height(8.dp))
+        FutureAccountCard("Website", "Coming Soon")
         Spacer(Modifier.height(14.dp))
-        SetupNavigation(
-            onBack = onBack,
-            nextLabel = "Continue",
-            nextEnabled = normalized.isNotBlank(),
-            onNext = {
-                PuppyPlayerIdentity.setUsername(context, username)
-                onNext()
-            }
-        )
+        SetupNavigation(onBack, "Continue", normalized.isNotBlank()) {
+            PuppyPlayerIdentity.setUsername(context, username)
+            onNext()
+        }
+    }
+}
+
+@Composable
+private fun FutureAccountCard(provider: String, status: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(provider, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            Text(status, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
 @Composable
 private fun BirthdayStep(vm: PuppyClickerV6ViewModel, ui: PuppyUiState, onBack: () -> Unit, onNext: () -> Unit) {
     val context = LocalContext.current
-    val currentYear = LocalDate.now().year
     var month by rememberSaveable { mutableIntStateOf(ui.birthdayMonth.coerceIn(0, 12)) }
     var day by rememberSaveable { mutableIntStateOf(ui.birthdayDay.coerceIn(0, 31)) }
-    var year by rememberSaveable { mutableIntStateOf(ui.birthdayYear) }
-
-    val maxDay = when {
-        month !in 1..12 -> 31
-        year in (currentYear - 120)..currentYear -> YearMonth.of(year, month).lengthOfMonth()
-        else -> Month.of(month).maxLength()
-    }
+    val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
     if (day > maxDay) day = 0
-    val valid = runCatching {
-        val date = LocalDate.of(year, month, day)
-        !date.isAfter(LocalDate.now()) && year >= currentYear - 120
-    }.getOrDefault(false)
+    val valid = PuppyBirthday.isValid(month, day)
 
     SetupCard("YOUR BIRTHDAY", "🎂") {
         Text("When's your birthday?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
@@ -239,20 +260,18 @@ private fun BirthdayStep(vm: PuppyClickerV6ViewModel, ui: PuppyUiState, onBack: 
         SetupPicker(
             if (month == 0) "Month" else setupMonthName(month),
             (1..12).map { it to setupMonthName(it) }
-        ) { selected -> month = selected; if (day > Month.of(selected).maxLength()) day = 0 }
-        Spacer(Modifier.height(7.dp))
-        SetupPicker(if (day == 0) "Day" else day.toString(), (1..maxDay).map { it to it.toString() }) { day = it }
+        ) { selected ->
+            month = selected
+            if (day > PuppyBirthday.maxDay(selected)) day = 0
+        }
         Spacer(Modifier.height(7.dp))
         SetupPicker(
-            if (year <= 0) "Year" else year.toString(),
-            (currentYear downTo currentYear - 120).map { it to it.toString() }
-        ) { selected ->
-            year = selected
-            if (month in 1..12 && day > YearMonth.of(selected, month).lengthOfMonth()) day = 0
-        }
+            if (day == 0) "Day" else day.toString(),
+            (1..maxDay).map { it to it.toString() }
+        ) { day = it }
         Spacer(Modifier.height(10.dp))
         Text(
-            "Your birthday is not displayed publicly to other players. It stays in Puppy Clicker's local preference storage and is not transmitted just to render this screen.",
+            "Only your birthday month and day are stored locally. Your birthday is not displayed publicly to other players.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -262,7 +281,7 @@ private fun BirthdayStep(vm: PuppyClickerV6ViewModel, ui: PuppyUiState, onBack: 
             nextLabel = "Continue",
             nextEnabled = valid,
             onNext = {
-                if (PuppyUiPreferences.setBirthday(context, month, day, year)) {
+                if (PuppyUiPreferences.setBirthday(context, month, day)) {
                     vm.setSeasonalBirthday(month, day)
                     onNext()
                 }
@@ -306,9 +325,9 @@ private fun SetupAppearanceStep(ui: PuppyUiState, onBack: () -> Unit, onNext: ()
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Text("Puppy Clicker", fontWeight = FontWeight.Black)
-                Text("Puppy Coins: 15,250")
+                Text("Theme preview", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(7.dp))
-                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("BUY") }
+                Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Accent Preview") }
             }
         }
         Text("More colors and the full custom HEX/HSV picker are available in Settings.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

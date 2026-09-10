@@ -31,26 +31,6 @@ def patch_activity(source: str) -> str:
 
     source = replace_once(
         source,
-        '''        AnimatedVisibility(ticketVisible, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
-            val rarity = state.lastTicketDrop ?: TicketRarity.COMMON
-            Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = rarityContainerV6(rarity)) {
-                Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(rarity.emoji, fontSize = 30.sp)
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("${rarity.displayName} Upgrade Ticket!", fontWeight = FontWeight.Black)
-                        Text("Added to Ticket Upgrades.", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
-        if (ticketVisible) Spacer(Modifier.height(8.dp))''',
-        '''        V6TicketDropOverlay(ticketVisible, state.lastTicketDrop)''',
-        "ticket overlay",
-    )
-
-    source = replace_once(
-        source,
         '''        V6Header("Settings", "Game preferences, fair play and app information.")''',
         '''        V6Header("Settings", "Game preferences, notifications, saves, fair play and app information.")''',
         "settings subtitle",

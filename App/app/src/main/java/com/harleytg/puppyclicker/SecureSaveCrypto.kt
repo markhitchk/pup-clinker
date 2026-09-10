@@ -90,9 +90,10 @@ internal object PuppySaveCrypto {
     private val random = SecureRandom()
 
     fun encryptDevice(plain: ByteArray): ByteArray {
-        val iv = ByteArray(IV_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, deviceKey(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.init(Cipher.ENCRYPT_MODE, deviceKey())
+        val iv = cipher.iv
+        require(iv.size == IV_BYTES) { "Unexpected Android Keystore GCM IV length: ${iv.size}" }
         cipher.updateAAD(DEVICE_AAD.toByteArray(Charsets.UTF_8))
         val encrypted = cipher.doFinal(plain)
         return DEVICE_MAGIC.toByteArray(Charsets.US_ASCII) + iv + encrypted
@@ -216,8 +217,10 @@ internal object PupEyeSaveGuard {
                 recordTamper(context, "Runtime save integrity mismatch; restored last known good save")
                 false
             } else true
-        }.getOrElse {
-            recordTamper(context, "Protected save seal failed authentication")
+        }.getOrElse { error ->
+            if (classifySaveCryptoFailure(error) == SaveCryptoFailureKind.TAMPER) {
+                recordTamper(context, "Protected save seal failed authentication")
+            }
             false
         }
     }
