@@ -11,6 +11,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
     val settingsSetupCorePatch = rootProject.file("tools/patch_settings_setup_revamp.py")
     val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
+    val dangerHoldPatch = rootProject.file("tools/patch_danger_hold_confirmation.py")
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     inputs.files(
         seasonalPatch,
@@ -20,6 +21,7 @@ tasks.named("generateProtectedPuppySources").configure {
         importReloadPatch,
         settingsSetupCorePatch,
         settingsSetupPatch,
+        dangerHoldPatch,
         developerConsolePatch
     )
     doLast {
@@ -46,6 +48,10 @@ tasks.named("generateProtectedPuppySources").configure {
         // Run the Settings/onboarding integration after all established compatibility patches.
         project.exec {
             commandLine("python3", settingsSetupPatch.absolutePath, generatedSourceRoot)
+        }
+        // Replace the final Danger Zone with the tested 10-second hold-confirmation surface.
+        project.exec {
+            commandLine("python3", dangerHoldPatch.absolutePath, generatedSourceRoot)
         }
         // Developer Console integration is the final transform so it sees the finished Settings
         // surface and can route the final generated Kotlin diagnostics through PuppyDebugLog.
