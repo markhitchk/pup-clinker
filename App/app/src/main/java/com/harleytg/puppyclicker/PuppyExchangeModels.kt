@@ -12,9 +12,6 @@ data class PuppyTransferPolicy(
         require(!(bound && (giftable || tradeable))) {
             "Bound puppies cannot be giftable or tradeable"
         }
-        require(!(sourceCopy && tradeable)) {
-            "Source-copy puppies cannot be directly tradeable"
-        }
     }
 }
 
