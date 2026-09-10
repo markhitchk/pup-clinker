@@ -90,14 +90,6 @@ internal fun StreamedPuppyPortrait(
             Text("🐶", fontSize = (size.value * 0.42f).sp)
         }
 
-        Surface(
-            Modifier.align(Alignment.TopEnd).padding(size * 0.05f),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
-        ) {
-            Text(style.emoji, fontSize = (size.value * 0.13f).sp, modifier = Modifier.padding(size * 0.025f))
-        }
-
         if (!unlocked) {
             Surface(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(size * 0.06f),
