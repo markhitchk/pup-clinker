@@ -60,7 +60,7 @@ internal object PuppyDebugLog {
         null
     ) { Log.v(tag, message) }
 
-    fun v(tag: String, message: String, throwable: Throwable): Int = publish(
+    fun v(tag: String, message: String, throwable: Throwable?): Int = publish(
         PuppyLogLevel.DEBUG,
         tag,
         message,
@@ -74,7 +74,7 @@ internal object PuppyDebugLog {
         null
     ) { Log.d(tag, message) }
 
-    fun d(tag: String, message: String, throwable: Throwable): Int = publish(
+    fun d(tag: String, message: String, throwable: Throwable?): Int = publish(
         PuppyLogLevel.DEBUG,
         tag,
         message,
@@ -88,7 +88,7 @@ internal object PuppyDebugLog {
         null
     ) { Log.i(tag, message) }
 
-    fun i(tag: String, message: String, throwable: Throwable): Int = publish(
+    fun i(tag: String, message: String, throwable: Throwable?): Int = publish(
         PuppyLogLevel.INFO,
         tag,
         message,
@@ -102,7 +102,7 @@ internal object PuppyDebugLog {
         null
     ) { Log.w(tag, message) }
 
-    fun w(tag: String, message: String, throwable: Throwable): Int = publish(
+    fun w(tag: String, message: String, throwable: Throwable?): Int = publish(
         PuppyLogLevel.WARN,
         tag,
         message,
@@ -123,7 +123,7 @@ internal object PuppyDebugLog {
         null
     ) { Log.e(tag, message) }
 
-    fun e(tag: String, message: String, throwable: Throwable): Int = publish(
+    fun e(tag: String, message: String, throwable: Throwable?): Int = publish(
         PuppyLogLevel.ERROR,
         tag,
         message,
@@ -135,7 +135,7 @@ internal object PuppyDebugLog {
         tag,
         throwable.javaClass.simpleName,
         throwable
-    ) { Log.e(tag, throwable) }
+    ) { Log.e(tag, throwable.javaClass.simpleName, throwable) }
 
     internal fun recordForTest(
         level: PuppyLogLevel,
