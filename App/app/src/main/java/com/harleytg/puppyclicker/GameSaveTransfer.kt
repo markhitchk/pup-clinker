@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
@@ -226,6 +228,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     var password by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var popupSuccess by rememberSaveable { mutableStateOf(false) }
@@ -315,9 +318,19 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 onValueChange = { password = it.take(128) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Backup password") },
+                placeholder = { Text("Enter backup password") },
                 supportingText = { Text("8+ characters. The password is never stored in the save file.") },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
+                trailingIcon = {
+                    TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Text(if (passwordVisible) "Hide" else "View")
+                    }
+                },
+                visualTransformation = if (passwordVisible) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                }
             )
             Spacer(Modifier.size(9.dp))
             Row(Modifier.fillMaxWidth()) {
