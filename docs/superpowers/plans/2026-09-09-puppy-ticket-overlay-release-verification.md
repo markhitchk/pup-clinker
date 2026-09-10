@@ -4,7 +4,7 @@
 
 **Goal:** Make ticket-found feedback compact, correctly anchored over the Play screen without layout shifts, then perform end-to-end generated-source/build/signing verification for the full repair.
 
-**Architecture:** Stop using a window-level `Popup` with a fixed top offset. Render the ticket banner as an overlapping child of the Play screen's root `Box`, keep the normal scrolling `Column` untouched underneath it, and let repeated ticket drops restart the existing visibility timer rather than stacking banners.
+**Architecture:** Replace the window-level `Popup`/fixed top offset with an overlapping child of the Play screen root `Box`. Keep the scrolling Play `Column` unchanged underneath the overlay, key the visibility timer to `ticketDropSerial` so a new drop restarts one banner, and use the existing reduced-motion composition local for near-instant transitions when motion is reduced.
 
 **Tech Stack:** Kotlin, Jetpack Compose Material 3, Compose UI tests, JUnit 4, existing generated-source Python patch pipeline, Gradle/Android APK signing.
 
@@ -12,40 +12,38 @@
 
 ## Global Constraints
 
-- Ticket feedback must never change the measured position of the wallet, needs row, puppy card, or bottom navigation.
-- Banner copy is compact: `<Rarity> Ticket +1` with `Ticket Upgrades` as secondary text.
+- Ticket feedback must never change the measured position of wallet, needs row, puppy card, or bottom navigation.
+- Banner copy is compact: `<Rarity> Ticket +1` with `Ticket Upgrades` secondary text.
 - Visibility target is approximately 2.5-3 seconds.
 - Repeated drops restart/update one banner rather than stacking multiple banners.
 - Reduced-motion preferences remain respected.
-- No window-level fixed pixel/dp offset should determine ticket placement.
-- Canonical source and generated-source patch logic must agree.
-- Final verification must cover JVM tests, generated source, debug/release assembly, and v4 signing output when permanent signing secrets are configured.
+- No window-level fixed offset determines placement.
+- Canonical V6 source and `patch_puppy_ux.py` must agree.
+- Final verification covers JVM tests, generated source, debug/release assembly, and v4 signing output when permanent signing secrets are configured.
 
 ## File Structure
 
-- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyTicketOverlay.kt` — compact, parent-anchored overlay composable; remove `Popup`.
-- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt` — root `Box` host in `V6Play`, 2.75-second timer, overlay placement after normal content.
-- Modify `App/tools/patch_puppy_ux.py` — remove the obsolete transform that converts the old in-flow banner to `V6TicketDropOverlay`, because canonical V6 source will already contain the final host.
-- Modify `App/app/build.gradle.kts` — add Compose UI instrumentation test dependency if not already added by an earlier plan.
-- Create `App/app/src/androidTest/java/com/harleytg/puppyclicker/PuppyTicketOverlayTest.kt` — verify compact copy and sibling layout stability.
-- Verify `.github/workflows/android.yml` and release artifact signing behavior after all repair plans land.
+- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyTicketOverlay.kt` — compact parent-anchored overlay; no `Popup`.
+- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt` — root `Box` host in `V6Play` and 2.75-second timer.
+- Modify `App/tools/patch_puppy_ux.py` — remove the now-obsolete transform that replaces the old in-flow ticket block.
+- Modify `App/app/build.gradle.kts` — add Compose UI instrumentation dependency if absent.
+- Create `App/app/src/androidTest/java/com/harleytg/puppyclicker/PuppyTicketOverlayTest.kt` — compact copy and sibling-layout stability.
+- Verify `.github/workflows/android.yml` and release signing after all three repair plans land.
 
 ---
 
-### Task 1: Make the overlay composable parent-anchored and compact
+### Task 1: Make `V6TicketDropOverlay` compact, parent-anchored, and reduced-motion aware
 
 **Files:**
 - Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyTicketOverlay.kt`
-- Modify: `App/app/build.gradle.kts` dependency block if `ui-test-junit4` is absent
+- Modify: `App/app/build.gradle.kts` dependency block if needed
 - Create: `App/app/src/androidTest/java/com/harleytg/puppyclicker/PuppyTicketOverlayTest.kt`
 
 **Interfaces:**
 - Produces: `@Composable internal fun V6TicketDropOverlay(visible: Boolean, rarity: TicketRarity?, modifier: Modifier = Modifier)`.
-- Removes: window-level `Popup`, `PopupProperties`, `LocalDensity`, and `IntOffset` dependencies from the overlay.
+- Removes: `Popup`, `PopupProperties`, `LocalDensity`, and `IntOffset` from ticket rendering.
 
-- [ ] **Step 1: Add Compose UI test dependency if missing**
-
-In `App/app/build.gradle.kts`:
+- [ ] **Step 1: Add Compose UI test dependency if absent**
 
 ```kotlin
 androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -53,9 +51,7 @@ androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
 The existing Compose BOM supplies the version.
 
-- [ ] **Step 2: Write the Compose instrumentation test before changing the overlay**
-
-Create:
+- [ ] **Step 2: Write the Compose regression test before changing the overlay**
 
 ```kotlin
 package com.harleytg.puppyclicker
@@ -63,15 +59,15 @@ package com.harleytg.puppyclicker
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.testTag
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -81,7 +77,8 @@ class PuppyTicketOverlayTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun overlayDoesNotMoveUnderlyingContent() {
+    fun overlayDoesNotMoveUnderlyingContentAndUsesCompactCopy() {
+        val visible = mutableStateOf(false)
         compose.setContent {
             Box {
                 Column {
@@ -89,34 +86,35 @@ class PuppyTicketOverlayTest {
                     Box(Modifier.width(200.dp).height(100.dp).testTag("play-card"))
                 }
                 V6TicketDropOverlay(
-                    visible = true,
+                    visible = visible.value,
                     rarity = TicketRarity.COMMON,
                     modifier = Modifier.testTag("ticket-overlay")
                 )
             }
         }
 
-        val walletTop = compose.onNodeWithTag("wallet").getUnclippedBoundsInRoot().top
-        val playTop = compose.onNodeWithTag("play-card").getUnclippedBoundsInRoot().top
+        val before = compose.onNodeWithTag("play-card").getUnclippedBoundsInRoot()
+        compose.runOnIdle { visible.value = true }
+        compose.waitForIdle()
+        val after = compose.onNodeWithTag("play-card").getUnclippedBoundsInRoot()
+
+        assertEquals(before, after)
         compose.onNodeWithTag("ticket-overlay").assertIsDisplayed()
-        assertEquals(40.dp, playTop - walletTop)
+        compose.onNodeWithText("Common Ticket +1").assertIsDisplayed()
+        compose.onNodeWithText("Ticket Upgrades").assertIsDisplayed()
     }
 }
 ```
 
-Use `androidx.compose.ui.platform.testTag` only; remove any accidental `foundation.layout.testTag` import if the IDE adds it.
-
-- [ ] **Step 3: Compile the test against the current Popup implementation**
+- [ ] **Step 3: Compile the instrumentation test before implementation**
 
 ```bash
 gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 ```
 
-Expected: compilation succeeds after the correct `testTag` import is used. The test establishes the parent-overlay contract that the rewritten composable must satisfy.
+Expected before the overlay signature is changed: the new `modifier` argument is unresolved, proving the test is red for the intended interface change.
 
 - [ ] **Step 4: Rewrite `V6TicketDropOverlay` without `Popup`**
-
-Use this shape:
 
 ```kotlin
 @Composable
@@ -126,12 +124,16 @@ internal fun V6TicketDropOverlay(
     modifier: Modifier = Modifier
 ) {
     if (rarity == null) return
+    val reducedMotion = com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion.current
+    val duration = if (reducedMotion) 1 else 160
 
     AnimatedVisibility(
         visible = visible,
         modifier = modifier.widthIn(max = 286.dp),
-        enter = fadeIn() + scaleIn(initialScale = 0.92f),
-        exit = fadeOut() + scaleOut(targetScale = 0.96f)
+        enter = fadeIn(tween(duration)) +
+            scaleIn(initialScale = 0.92f, animationSpec = tween(duration)),
+        exit = fadeOut(tween(duration)) +
+            scaleOut(targetScale = 0.96f, animationSpec = tween(duration))
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
@@ -155,9 +157,9 @@ internal fun V6TicketDropOverlay(
 }
 ```
 
-Delete imports for `LocalDensity`, `IntOffset`, `Popup`, and `PopupProperties`.
+Import `androidx.compose.animation.core.tween`. Delete imports for `LocalDensity`, `IntOffset`, `Popup`, and `PopupProperties`.
 
-- [ ] **Step 5: Run instrumentation compilation**
+- [ ] **Step 5: Compile instrumentation source after implementation**
 
 ```bash
 gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
@@ -165,7 +167,15 @@ gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the overlay component and test**
+- [ ] **Step 6: Run the test on a connected emulator/device when available**
+
+```bash
+gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+```
+
+Expected: `PuppyTicketOverlayTest` PASS.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add App/app/build.gradle.kts \
@@ -176,19 +186,17 @@ git commit -m "test: anchor ticket feedback inside play screen"
 
 ---
 
-### Task 2: Host ticket feedback over the Play content without layout movement
+### Task 2: Host the banner over Play content and remove the obsolete generator transform
 
 **Files:**
 - Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt` in `V6Play`
 - Modify: `App/tools/patch_puppy_ux.py` in `patch_activity`
 
 **Interfaces:**
-- Consumes: `V6TicketDropOverlay(visible, rarity, modifier)` from Task 1.
-- Produces: Play root `Box` containing the scrolling game `Column` and independently aligned overlay.
+- Consumes: `V6TicketDropOverlay(visible, rarity, modifier)`.
+- Produces: one Play-root overlay whose appearance/disappearance cannot consume `Column` height.
 
-- [ ] **Step 1: Increase the existing display timer to 2.75 seconds**
-
-Inside `LaunchedEffect(state.ticketDropSerial)`:
+- [ ] **Step 1: Change the existing drop timer to 2.75 seconds**
 
 ```kotlin
 LaunchedEffect(state.ticketDropSerial) {
@@ -201,11 +209,11 @@ LaunchedEffect(state.ticketDropSerial) {
 }
 ```
 
-Because `LaunchedEffect` is keyed by `ticketDropSerial`, a new drop cancels/restarts the previous timer instead of stacking another banner.
+A new serial cancels/restarts this effect, so repeated drops update one banner rather than stack.
 
-- [ ] **Step 2: Replace the in-flow ticket block with a root overlay host**
+- [ ] **Step 2: Wrap the existing Play `Column` in a root `Box` and delete the old in-flow banner**
 
-Change the `V6Play` root from a single `Column` to:
+Use this structure while leaving the existing wallet, needs row, puppy card, click handling, cooldown text, and bottom spacing unchanged inside the `Column`:
 
 ```kotlin
 Box(Modifier.fillMaxSize()) {
@@ -231,7 +239,7 @@ Box(Modifier.fillMaxSize()) {
             V6NeedPill("🫧", state.cleanliness, Modifier.weight(1f))
         }
 
-        // Keep the remainder of the existing puppy card/content unchanged.
+        // Existing puppy Surface and remaining Play content follow unchanged.
     }
 
     V6TicketDropOverlay(
@@ -244,40 +252,40 @@ Box(Modifier.fillMaxSize()) {
 }
 ```
 
-The banner overlaps the area immediately below the wallet/header region; it does not occupy `Column` height.
+The only removed canonical block is the old `AnimatedVisibility(ticketVisible)` banner and its conditional spacer.
 
-- [ ] **Step 3: Remove the obsolete ticket replacement from `patch_puppy_ux.py`**
+- [ ] **Step 3: Delete only the obsolete `"ticket overlay"` replacement from `patch_puppy_ux.py`**
 
-Delete only the `replace_once(...)` call labeled `"ticket overlay"` that searches for the old in-flow `AnimatedVisibility` block and replaces it with `V6TicketDropOverlay(...)`.
+Remove the `replace_once(...)` call that searches for the old in-flow ticket `AnimatedVisibility` block and replaces it with `V6TicketDropOverlay(ticketVisible, state.lastTicketDrop)`.
 
-Do not remove the title/attention, Settings subtitle, notification/save Settings, or seasonal signup transforms.
+Keep all other transforms in `patch_activity` unchanged.
 
-- [ ] **Step 4: Force generated-source reconstruction to prove the patch pipeline accepts the new canonical V6Play**
+- [ ] **Step 4: Clean-build generated source and app**
 
 ```bash
 gradle --no-daemon clean :app:generateProtectedPuppySources :app:assembleDebug --stacktrace
 ```
 
-Expected: no `ticket overlay: expected one integration anchor` failure.
+Expected: PASS with no `ticket overlay: expected one integration anchor` error.
 
-- [ ] **Step 5: Verify generated V6 source contains one overlay call and no old in-flow ticket banner**
+- [ ] **Step 5: Verify generated V6 source has one host call and no old copy**
 
 ```bash
 grep -n "V6TicketDropOverlay" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt
 ! grep -n "Added to Ticket Upgrades" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt
 ```
 
-Expected: exactly one overlay host call; no old banner copy.
+Expected: one overlay host call; no old banner text.
 
-- [ ] **Step 6: Run Compose instrumentation tests on a connected device/emulator when available**
+- [ ] **Step 6: Run connected instrumentation tests**
 
 ```bash
 gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
 ```
 
-Expected: `PuppyTicketOverlayTest` PASS along with crypto instrumentation tests from the save-repair plan.
+Expected: ticket overlay and save-crypto instrumentation tests PASS on the device/emulator.
 
-- [ ] **Step 7: Commit Play host and patch-pipeline synchronization**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt \
@@ -287,18 +295,18 @@ git commit -m "fix: keep ticket drops from shifting play layout"
 
 ---
 
-### Task 3: End-to-end repair verification and signed release checks
+### Task 3: End-to-end repair and signing verification
 
 **Files:**
-- Verify: all files changed by the three repair plans
+- Verify: all source/tests changed by the three repair plans
 - Verify: `.github/workflows/android.yml`
-- No source change unless a failing verification identifies a specific regression.
+- Verify: `App/app/build.gradle.kts`
 
 **Interfaces:**
-- Consumes: save crypto plan, onboarding/profile/birthday/branding plan, and ticket overlay plan.
-- Produces: evidence that the repaired repository builds and the release signing configuration still requests v1/v2/v3/v4 signatures.
+- Consumes: save-crypto plan, onboarding/profile/birthday/branding plan, and ticket-overlay plan.
+- Produces: build/test/signing evidence; no empty verification commit.
 
-- [ ] **Step 1: Run all JVM regression tests**
+- [ ] **Step 1: Run all JVM tests**
 
 ```bash
 gradle --no-daemon :app:testDebugUnitTest --stacktrace
@@ -306,23 +314,22 @@ gradle --no-daemon :app:testDebugUnitTest --stacktrace
 
 Expected: PASS.
 
-- [ ] **Step 2: Rebuild generated sources from a clean tree**
+- [ ] **Step 2: Rebuild generated sources from clean state**
 
 ```bash
 gradle --no-daemon clean :app:generateProtectedPuppySources --stacktrace
 ```
 
-Expected: all Python transforms complete successfully.
+Expected: every Python transform completes successfully.
 
-- [ ] **Step 3: Verify removed UI does not return in generated source**
+- [ ] **Step 3: Verify removed UI does not reappear in generated source**
 
 ```bash
-! grep -R "Puppy Coins" app/build/generated/protected-puppies/source
-! grep -R "birthdayYear\|initialYear" app/build/generated/protected-puppies/source
+! grep -R "Puppy Coins\|15,250\|birthdayYear\|initialYear" app/build/generated/protected-puppies/source
 ! grep -n "StreamedPupEyeBranding" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker/ui/theme/Theme.kt
 ```
 
-Expected: all three commands succeed with no matches.
+Expected: no matches.
 
 - [ ] **Step 4: Compile debug, Android test, and release artifacts**
 
@@ -332,9 +339,9 @@ gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:assembl
 
 Expected: PASS.
 
-- [ ] **Step 5: Verify signing configuration remains v4-enabled**
+- [ ] **Step 5: Verify configured signing still requests all schemes including v4**
 
-Confirm `App/app/build.gradle.kts` still contains all four flags in the configured signing block:
+`App/app/build.gradle.kts` must retain:
 
 ```kotlin
 enableV1Signing = true
@@ -343,42 +350,42 @@ enableV3Signing = true
 enableV4Signing = true
 ```
 
-When permanent signing secrets are available, verify the produced APK and `.idsig` using the workflow's existing command:
+When permanent signing secrets are configured, verify:
 
 ```bash
 apksigner verify --verbose --print-certs app/build/outputs/apk/release/*.apk
+find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.idsig' -size +0c
 ```
 
-Expected: signature verification passes and a non-empty `.idsig` v4 sidecar exists.
+Expected: APK verification succeeds and a non-empty v4 `.idsig` sidecar is found.
 
-- [ ] **Step 6: Manual device acceptance pass**
-
-Verify in one fresh-setup run and one completed-setup run:
+- [ ] **Step 6: Perform the manual device acceptance pass**
 
 ```text
-Fresh setup:
-- Step 2 shows Local Profile + disabled Discord/Website account cards.
-- Step 3 shows Month + Day only.
-- Step 4 contains no Puppy Coins/BUY preview.
-- PupEye top-right badge is visible only during setup.
+Fresh setup
+- Step 2: Local Profile plus disabled Discord and Website cards.
+- Step 3: Month and Day only; February 29 can be selected.
+- Step 4: no Puppy Coins, 15,250, or BUY preview.
+- PupEye top-right badge exists during setup.
 
-Completed setup:
-- No floating top-right PupEye badge on Play/Care/Shop/Prestige/normal Settings.
-- Dedicated PupEye Settings section still shows streamed branding.
-- Ticket drops display one compact overlay without moving the needs row or puppy card.
-- Developer Console does not repeat Caller-provided IV not permitted warnings.
-- Android/data encrypted save mirror exists and survives relaunch.
+Completed setup
+- No floating PupEye badge on Play, Care, Shop, Prestige, or normal Settings.
+- Dedicated PupEye Settings/security branding still displays.
+- Ticket drop shows one compact <Rarity> Ticket +1 overlay for about 2.75 seconds.
+- Needs row and puppy card do not move when the ticket overlay appears/disappears.
+- Developer Console does not repeat Caller-provided IV not permitted.
+- Android/data encrypted `.pup` mirror exists and verifies after relaunch.
 ```
 
-- [ ] **Step 7: Record final verification commit only if verification itself required source fixes**
+- [ ] **Step 7: Do not claim completion until all evidence is green**
 
-For a specific failing regression, fix only that root cause, rerun Steps 1-6, then commit the exact affected files with a scoped message. If all verification passes without source changes, do not create an empty commit.
+If any verification fails, return to systematic debugging for that failure, implement one root-cause fix, and rerun Steps 1-6. Do not create an empty commit when all checks pass unchanged.
 
 ---
 
 ## Plan Self-Review
 
-- Spec coverage: ticket placement, compact copy, 2.5-3 second lifetime, repeat-drop behavior, layout stability, generated-source integrity, full build, and v4 release signing verification are covered.
-- Placeholder scan: every source change and verification command is explicit.
-- Type consistency: the overlay signature is defined once in Task 1 and used unchanged in Task 2.
-- Architecture check: no fixed window-level Popup offset remains; overlay positioning is relative to the Play root.
+- Spec coverage: compact ticket copy, parent-relative placement, no layout shift, 2.75-second lifetime, repeat-drop behavior, reduced motion, generated-source integrity, build coverage, and v4 signing verification are covered.
+- Placeholder scan: all intended source edits and commands are concrete; retained Play content is explicitly constrained to remain unchanged rather than being reimplemented.
+- Type consistency: the three-argument overlay signature introduced in Task 1 is used unchanged in Task 2.
+- Architecture check: no window-level `Popup` or fixed window offset remains.
