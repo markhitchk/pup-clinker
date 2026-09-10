@@ -2,6 +2,11 @@
 apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
 apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
+// Puppy Exchange uses WebRTC DataChannels only. Camera/microphone permissions are not requested.
+dependencies {
+    add("implementation", "io.github.webrtc-sdk:android:150.7871.01")
+}
+
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
     val rosterRevampPatch = rootProject.file("tools/patch_roster_revamp.py")
