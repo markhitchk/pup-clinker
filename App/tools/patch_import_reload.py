@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""Fix V6 save imports so the live ViewModel reloads restored preferences immediately."""
+from pathlib import Path
+import sys
+
+PACKAGE = Path("com/harleytg/puppyclicker")
+
+
+def replace_once(source: str, old: str, new: str, label: str) -> str:
+    count = source.count(old)
+    if count != 1:
+        raise RuntimeError(f"{label}: expected one integration anchor, found {count}")
+    return source.replace(old, new, 1)
+
+
+def patch_view_model(source: str) -> str:
+    return replace_once(
+        source,
+        '''    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+
+    /** Full non-prestige reset. Special code collection and settings stay protected. */''',
+        '''    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+
+    /** Reload state after an authenticated portable-save import without recreating the Activity. */
+    fun reloadImportedSave() {
+        recentTapTimes.clear()
+        automationDetector.reset()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+        _state.value = loadState()
+        syncDynamicFreePuppies()
+        refreshSeasonalEvents()
+    }
+
+    /** Full non-prestige reset. Special code collection and settings stay protected. */''',
+        "V6 imported-save reload method",
+    )
+
+
+def patch_activity(source: str) -> str:
+    return replace_once(
+        source,
+        "        SaveTransferSettings()\n",
+        "        SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)\n",
+        "V6 save import callback",
+    )
+
+
+def patch_transfer(source: str) -> str:
+    source = replace_once(
+        source,
+        "internal fun SaveTransferSettings() {",
+        "internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {",
+        "save-transfer callback parameter",
+    )
+    source = replace_once(
+        source,
+        "            if (result.success) activity?.recreate()",
+        '''            if (result.success) {
+                onImportSuccess?.invoke() ?: activity?.recreate()
+            }''',
+        "save-transfer successful import reload",
+    )
+    source = replace_once(
+        source,
+        '''SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Reloading Puppy Clicker…")''',
+        '''SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Progress reloaded.")''',
+        "save-transfer success message",
+    )
+    return source
+
+
+def main(root: Path) -> None:
+    view_model = root / PACKAGE / "PuppyClickerV6ViewModel.kt"
+    activity = root / PACKAGE / "PuppyClickerV6Activity.kt"
+    transfer = root / PACKAGE / "GameSaveTransfer.kt"
+
+    view_model.write_text(patch_view_model(view_model.read_text(encoding="utf-8")), encoding="utf-8")
+    activity.write_text(patch_activity(activity.read_text(encoding="utf-8")), encoding="utf-8")
+    transfer.write_text(patch_transfer(transfer.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        raise SystemExit("Usage: patch_import_reload.py GENERATED_SOURCE_ROOT")
+    main(Path(sys.argv[1]))
