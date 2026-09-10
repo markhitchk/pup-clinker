@@ -48,6 +48,8 @@ def patch_settings(source: str) -> str:
         "androidx.compose.runtime.LaunchedEffect",
         "androidx.compose.runtime.mutableLongStateOf",
         "androidx.compose.ui.geometry.Offset",
+        "androidx.compose.ui.geometry.Size",
+        "androidx.compose.ui.graphics.drawscope.clipRect",
         "androidx.compose.ui.input.pointer.pointerInput",
         "androidx.compose.ui.window.Dialog",
         "androidx.compose.ui.window.DialogProperties",
@@ -149,7 +151,7 @@ private fun DangerHoldConfirmationDialog(
     val borderAlpha = if (reducedMotion) 1f else (animatedBorderAlpha + progress * 0.35f).coerceIn(0.30f, 1f)
     val stripeShift by borderPulse.animateFloat(
         initialValue = 0f,
-        targetValue = 72f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 700, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -202,27 +204,69 @@ private fun DangerHoldConfirmationDialog(
         )
     ) {
         Box(Modifier.fillMaxSize()) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawRect(Color.Black)
-                val shift = if (reducedMotion) 0f else stripeShift
-                val gap = 72f
-                var x = -size.height + shift - gap
-                while (x < size.width + size.height + gap) {
-                    drawLine(
-                        color = Color(0xFFD00000).copy(alpha = borderAlpha),
-                        start = Offset(x, 0f),
-                        end = Offset(x + size.height, size.height),
-                        strokeWidth = 34f
-                    )
-                    x += gap
-                }
-            }
+            // Keep the live Puppy Clicker screen visible behind this modal.
+            // This translucent scrim darkens the app without replacing it.
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(10.dp)
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.76f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.52f))
             )
+
+            // Animated hazard tape is a perimeter frame only. The four edges use
+            // mirrored stripe directions so top/bottom read like the side rails
+            // instead of appearing reversed or detached.
+            Canvas(Modifier.fillMaxSize()) {
+                val frame = 16.dp.toPx()
+                val stripePeriod = 44.dp.toPx()
+                val stripeStroke = 20.dp.toPx()
+                val travel = if (reducedMotion) 0f else stripeShift * stripePeriod
+                val red = Color(0xFFD00000).copy(alpha = borderAlpha)
+
+                drawRect(Color.Black, topLeft = Offset.Zero, size = Size(size.width, frame))
+                drawRect(Color.Black, topLeft = Offset(0f, size.height - frame), size = Size(size.width, frame))
+                drawRect(Color.Black, topLeft = Offset.Zero, size = Size(frame, size.height))
+                drawRect(Color.Black, topLeft = Offset(size.width - frame, 0f), size = Size(frame, size.height))
+
+                fun drawHorizontalStripes(y: Float, mirrored: Boolean) {
+                    clipRect(0f, y, size.width, y + frame) {
+                        var x = -stripePeriod + travel
+                        while (x < size.width + stripePeriod) {
+                            val startY = if (mirrored) y + frame else y
+                            val endY = if (mirrored) y else y + frame
+                            val endX = if (mirrored) x - frame else x + frame
+                            drawLine(
+                                color = red,
+                                start = Offset(x, startY),
+                                end = Offset(endX, endY),
+                                strokeWidth = stripeStroke
+                            )
+                            x += stripePeriod
+                        }
+                    }
+                }
+
+                fun drawVerticalStripes(x: Float, mirrored: Boolean) {
+                    clipRect(x, 0f, x + frame, size.height) {
+                        var y = -stripePeriod + travel
+                        while (y < size.height + stripePeriod) {
+                            val startX = if (mirrored) x + frame else x
+                            val endX = if (mirrored) x else x + frame
+                            drawLine(
+                                color = red,
+                                start = Offset(startX, y),
+                                end = Offset(endX, y + frame),
+                                strokeWidth = stripeStroke
+                            )
+                            y += stripePeriod
+                        }
+                    }
+                }
+
+                drawHorizontalStripes(0f, mirrored = false)
+                drawHorizontalStripes(size.height - frame, mirrored = true)
+                drawVerticalStripes(0f, mirrored = true)
+                drawVerticalStripes(size.width - frame, mirrored = false)
+            }
             Box(
                 modifier = Modifier.fillMaxSize().padding(20.dp),
                 contentAlignment = Alignment.Center
