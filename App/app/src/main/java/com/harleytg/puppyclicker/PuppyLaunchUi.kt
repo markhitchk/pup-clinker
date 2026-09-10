@@ -220,7 +220,7 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Choose a local player username now. Discord and website account login are coming soon.",
+                    "Choose a local player username now. Website account login is coming soon; the official Discord community is available below.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -242,8 +242,7 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
 
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(
-                    onClick = {},
-                    enabled = false,
+                    onClick = { PuppyLinks.openDiscord(context) },
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
                     Icon(
@@ -252,8 +251,13 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                         modifier = Modifier.size(21.dp)
                     )
                     Spacer(Modifier.size(8.dp))
-                    Text("Login with Discord · Coming Soon")
+                    Text("Join Discord Community")
                 }
+                Text(
+                    PuppyLinks.DISCORD_INVITE,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(9.dp))
                 OutlinedButton(
                     onClick = {},
