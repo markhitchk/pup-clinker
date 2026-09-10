@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply the Puppy Roster revamp model changes to generated Android sources."""
+"""Apply the Puppy Roster revamp changes to generated Android sources."""
 from pathlib import Path
 import sys
 
@@ -66,11 +66,73 @@ def patch_dynamic_roster(source: str) -> str:
     return source
 
 
+def patch_view_model(source: str) -> str:
+    source = replace_once(
+        source,
+        '''    val puppyStyle: String = "classic",\n    val unlockedPuppies: Set<String> = DEFAULT_V6_PUPPIES,\n    val accessory: String = "None",''',
+        '''    val puppyStyle: String = "classic",\n    val unlockedPuppies: Set<String> = DEFAULT_V6_PUPPIES,\n    val favoritePuppies: Set<String> = emptySet(),\n    val accessory: String = "None",''',
+        "favorite state field",
+    )
+
+    source = replace_once(
+        source,
+        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun setAccessory(value: String) {''',
+        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun toggleFavoritePuppy(id: String) {\n        val knownIds = DynamicPuppyRoster.assets.value.mapTo(linkedSetOf()) { it.style.id }\n        val current = _state.value\n        val next = toggleRosterFavorite(knownIds, current.favoritePuppies, id)\n        if (next == current.favoritePuppies) return\n        _state.value = current.copy(favoritePuppies = next)\n        prefs.edit().putStringSet(KEY_FAVORITE_PUPPIES, next).apply()\n    }\n\n    fun setAccessory(value: String) {''',
+        "favorite toggle method",
+    )
+
+    source = replace_once(
+        source,
+        '''            puppyStyle = keep.puppyStyle,\n            unlockedPuppies = keep.unlockedPuppies,\n            accessory = keep.accessory,''',
+        '''            puppyStyle = keep.puppyStyle,\n            unlockedPuppies = keep.unlockedPuppies,\n            favoritePuppies = keep.favoritePuppies,\n            accessory = keep.accessory,''',
+        "reset favorites preservation",
+    )
+
+    source = replace_once(
+        source,
+        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) + DEFAULT_V6_PUPPIES\n        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")''',
+        '''        val unlocked = (prefs.getStringSet(KEY_UNLOCKED_PUPPIES, DEFAULT_V6_PUPPIES)?.toSet() ?: DEFAULT_V6_PUPPIES) + DEFAULT_V6_PUPPIES\n        val favorites = prefs.getStringSet(KEY_FAVORITE_PUPPIES, emptySet())?.toSet().orEmpty()\n        val style = prefs.getString(KEY_PUPPY_STYLE, "classic")''',
+        "favorite state load",
+    )
+
+    source = replace_once(
+        source,
+        '''            puppyStyle = style,\n            unlockedPuppies = unlocked,\n            accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",''',
+        '''            puppyStyle = style,\n            unlockedPuppies = unlocked,\n            favoritePuppies = favorites,\n            accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",''',
+        "favorite state construction",
+    )
+
+    source = replace_once(
+        source,
+        '''            putString(KEY_PUPPY_STYLE, s.puppyStyle)\n            putStringSet(KEY_UNLOCKED_PUPPIES, s.unlockedPuppies)\n            putString(KEY_ACCESSORY, s.accessory)''',
+        '''            putString(KEY_PUPPY_STYLE, s.puppyStyle)\n            putStringSet(KEY_UNLOCKED_PUPPIES, s.unlockedPuppies)\n            putStringSet(KEY_FAVORITE_PUPPIES, s.favoritePuppies)\n            putString(KEY_ACCESSORY, s.accessory)''',
+        "favorite state save",
+    )
+
+    source = replace_once(
+        source,
+        '''        private const val KEY_PUPPY_STYLE = "puppy_style"\n        private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"\n        private const val KEY_ACCESSORY = "accessory"''',
+        '''        private const val KEY_PUPPY_STYLE = "puppy_style"\n        private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"\n        private const val KEY_FAVORITE_PUPPIES = "favorite_puppies"\n        private const val KEY_ACCESSORY = "accessory"''',
+        "favorite preference key",
+    )
+
+    return source
+
+
 def main(root: Path) -> None:
-    target = root / PACKAGE / "DynamicPuppyRoster.kt"
-    source = target.read_text(encoding="utf-8")
-    target.write_text(patch_dynamic_roster(source), encoding="utf-8")
-    print("Puppy roster revamp model patch integrated")
+    dynamic_roster = root / PACKAGE / "DynamicPuppyRoster.kt"
+    dynamic_roster.write_text(
+        patch_dynamic_roster(dynamic_roster.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    view_model = root / PACKAGE / "PuppyClickerV6ViewModel.kt"
+    view_model.write_text(
+        patch_view_model(view_model.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    print("Puppy roster revamp generated-source patches integrated")
 
 
 if __name__ == "__main__":
