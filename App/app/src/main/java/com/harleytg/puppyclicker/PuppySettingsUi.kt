@@ -688,8 +688,17 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     var usernameStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var birthdayEditor by rememberSaveable { mutableStateOf(false) }
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
 
     SettingsLabel("PROFILE")
+    if (officialDeveloper) {
+        StatusLine("Account", "HarleyTG Developer / Owner")
+        StatusLine("Studio", "Harley's Studios")
+    }
+    StatusLine("Player ID", PuppyPlayerIdentity.publicPlayerId(context))
+    StatusLine("Friend Code", PuppyPlayerIdentity.publicFriendCode(context))
+    StatusLine("Identity", if (officialDeveloper) "Official Developer · Device Bound" else "Device Bound")
+    Spacer(Modifier.height(9.dp))
     OutlinedTextField(
         value = username,
         onValueChange = { username = it.take(24) },
