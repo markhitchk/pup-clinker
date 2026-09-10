@@ -221,10 +221,28 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
             singleLine = true
         )
         Spacer(Modifier.height(16.dp))
-        Text("Connect an account", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-        FutureAccountCard("Discord", "Coming Soon")
+        Text("Connections", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { PuppyLinks.openDiscord(context) },
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(painterResource(R.drawable.ic_discord), "Discord", Modifier.size(28.dp))
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Discord Community", fontWeight = FontWeight.Bold)
+                    Text(PuppyLinks.DISCORD_INVITE, style = MaterialTheme.typography.labelSmall)
+                }
+                Text("Open", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+        }
         Spacer(Modifier.height(8.dp))
-        FutureAccountCard("Website", "Coming Soon")
+        FutureAccountCard("Website account", "Coming Soon")
         Spacer(Modifier.height(14.dp))
         SetupNavigation(onBack, "Continue", normalized.isNotBlank()) {
             PuppyPlayerIdentity.setUsername(context, username)
