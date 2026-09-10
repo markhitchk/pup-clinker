@@ -11,6 +11,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
     val settingsSetupCorePatch = rootProject.file("tools/patch_settings_setup_revamp.py")
     val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
+    val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     inputs.files(
         seasonalPatch,
         transparencyPatch,
@@ -18,7 +19,8 @@ tasks.named("generateProtectedPuppySources").configure {
         pupEyeSecurityPatch,
         importReloadPatch,
         settingsSetupCorePatch,
-        settingsSetupPatch
+        settingsSetupPatch,
+        developerConsolePatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -41,15 +43,19 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine("python3", importReloadPatch.absolutePath, generatedSourceRoot)
         }
-        // Run the Settings/onboarding integration last so all established compatibility patches
-        // retain their exact anchors and the final generated V6 UI uses the redesigned surfaces.
+        // Run the Settings/onboarding integration after all established compatibility patches.
         project.exec {
             commandLine("python3", settingsSetupPatch.absolutePath, generatedSourceRoot)
+        }
+        // Developer Console integration is the final transform so it sees the finished Settings
+        // surface and can route the final generated Kotlin diagnostics through PuppyDebugLog.
+        project.exec {
+            commandLine("python3", developerConsolePatch.absolutePath, generatedSourceRoot)
         }
     }
 }
 
-// Release builds also run the pure JVM calendar regression tests.
+// Release builds also run the pure JVM calendar and developer-console regression tests.
 tasks.matching { it.name == "assembleRelease" }.configureEach {
     dependsOn("testDebugUnitTest")
 }
