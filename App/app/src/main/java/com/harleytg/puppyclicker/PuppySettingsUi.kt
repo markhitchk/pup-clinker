@@ -870,7 +870,7 @@ private fun AboutSettings() {
 private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val activity = context as? Activity
-    var confirmation by rememberSaveable { mutableStateOf<String?>(null) }
+    var confirmationKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -878,68 +878,61 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(Modifier.padding(15.dp)) {
-            Text("DANGER ZONE", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onErrorContainer)
             Text(
-                "Destructive actions always require confirmation.",
+                "DANGER ZONE",
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Text(
+                "Every destructive action requires an uninterrupted 10-second hold.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(Modifier.height(9.dp))
-            OutlinedButton(onClick = { confirmation = "settings" }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { confirmationKey = DangerZoneAction.RESET_SETTINGS.key },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Reset Settings")
             }
             Spacer(Modifier.height(7.dp))
-            OutlinedButton(onClick = { confirmation = "progress" }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { confirmationKey = DangerZoneAction.RESET_PROGRESS.key },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Reset Game Progress")
             }
             Spacer(Modifier.height(7.dp))
-            Button(onClick = { confirmation = "delete" }, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { confirmationKey = DangerZoneAction.ERASE_ALL_DATA.key },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Delete Local Save Data")
             }
         }
     }
 
-    confirmation?.let { action ->
-        val (title, description, button) = when (action) {
-            "settings" -> Triple(
-                "Reset settings?",
-                "Theme, accent, motion, UI scale and gameplay preference switches return to defaults. Your profile, birthday and game progress remain.",
-                "Reset Settings"
-            )
-            "progress" -> Triple(
-                "Reset game progress?",
-                "This resets the current run without awarding prestige points. Permanent prestige skills and existing special puppy unlocks remain, matching Puppy Clicker's current reset behavior.",
-                "Reset Progress"
-            )
-            else -> Triple(
-                "Delete local save data?",
-                "This deletes local game progress, player identity, birthday/setup state, PupEye local integrity history and the device save mirror. Puppy Clicker will restart into first-run setup. Streamed asset caches are not treated as game save data.",
-                "Delete Local Data"
-            )
-        }
-        AlertDialog(
-            onDismissRequest = { confirmation = null },
-            title = { Text(title, fontWeight = FontWeight.Black) },
-            text = { Text(description) },
-            confirmButton = {
-                Button(onClick = {
-                    when (action) {
-                        "settings" -> {
-                            PuppyUiPreferences.resetInterfaceSettings(context)
-                            vm.setHapticsEnabled(true)
-                            vm.setAnimationsEnabled(true)
-                            vm.setCompactNumbers(true)
-                        }
-                        "progress" -> vm.resetRunWithoutPrestige()
-                        else -> {
-                            deletePuppyClickerLocalSave(context)
-                            activity?.recreate()
-                        }
+    val action = confirmationKey?.let(DangerZoneAction::fromKey)
+    if (action != null) {
+        DangerHoldConfirmationDialog(
+            action = action,
+            onDismiss = { confirmationKey = null },
+            onConfirmed = {
+                when (action) {
+                    DangerZoneAction.RESET_SETTINGS -> {
+                        PuppyUiPreferences.resetInterfaceSettings(context)
+                        vm.setHapticsEnabled(true)
+                        vm.setAnimationsEnabled(true)
+                        vm.setCompactNumbers(true)
                     }
-                    confirmation = null
-                }) { Text(button) }
-            },
-            dismissButton = { TextButton(onClick = { confirmation = null }) { Text("Cancel") } }
+                    DangerZoneAction.RESET_PROGRESS -> vm.resetRunWithoutPrestige()
+                    DangerZoneAction.ERASE_ALL_DATA -> {
+                        deletePuppyClickerLocalSave(context)
+                        activity?.recreate()
+                    }
+                }
+                confirmationKey = null
+            }
         )
     }
 }
