@@ -30,7 +30,7 @@ data class PuppyUiState(
     val migrationComplete: Boolean = false
 ) {
     val hasBirthday: Boolean
-        get() = birthdayMonth in 1..12 && birthdayDay > 0 && birthdayYear > 0
+        get() = PuppyBirthday.isValid(birthdayMonth, birthdayDay)
 
     val birthdayDate: LocalDate?
         get() = runCatching {
@@ -128,6 +128,17 @@ internal object PuppyUiPreferences {
         putString(KEY_UI_SCALE, scale.name)
     }
 
+    fun setBirthday(context: Context, month: Int, day: Int): Boolean {
+        if (!PuppyBirthday.isValid(month, day)) return false
+        edit(context) {
+            putInt(KEY_BIRTHDAY_MONTH, month)
+            putInt(KEY_BIRTHDAY_DAY, day)
+            remove(KEY_BIRTHDAY_YEAR)
+        }
+        return true
+    }
+
+    @Deprecated("Use month/day birthday storage")
     fun setBirthday(context: Context, month: Int, day: Int, year: Int): Boolean {
         val today = LocalDate.now()
         val date = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: return false
@@ -241,7 +252,6 @@ internal object PuppyUiPreferences {
             if (legacyMonth in 1..12 && legacyDay in 1..31) {
                 putInt(KEY_BIRTHDAY_MONTH, legacyMonth)
                 putInt(KEY_BIRTHDAY_DAY, legacyDay)
-                // Older Puppy Clicker versions intentionally did not store a year.
                 putInt(KEY_BIRTHDAY_YEAR, 0)
             }
         }.apply()
