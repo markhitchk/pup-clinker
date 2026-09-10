@@ -7,8 +7,7 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -26,18 +25,20 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Streamed PupEye branding.
+ * Streamed-only PupEye branding.
  *
  * Source of truth:
  * https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png
  *
- * The APK does not contain PupEye.png. A successfully streamed PNG may be cached locally so
- * the last streamed version remains available between refreshes and temporary network outages.
+ * PupEye.png is never bundled into the APK. Only a PNG successfully downloaded from the
+ * repository may be cached on-device. If no valid stream/cache exists, the UI keeps retrying
+ * instead of replacing the logo with text.
  */
 @Composable
 internal fun StreamedPupEyeBranding(
@@ -49,12 +50,15 @@ internal fun StreamedPupEyeBranding(
         initialValue = PupEyeAssetStream.peek(),
         key1 = context
     ) {
-        try {
-            value = PupEyeAssetStream.load(context) ?: value
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
+        while (value == null) {
+            try {
+                value = PupEyeAssetStream.load(context)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
+            }
+            if (value == null) delay(NO_IMAGE_RETRY_MS)
         }
     }
 
@@ -67,20 +71,19 @@ internal fun StreamedPupEyeBranding(
                 contentScale = ContentScale.Fit
             )
         } else {
-            Text(
-                text = "PupEye",
-                style = MaterialTheme.typography.labelSmall
-            )
+            CircularProgressIndicator()
         }
     }
 }
+
+private const val NO_IMAGE_RETRY_MS = 5_000L
 
 private object PupEyeAssetStream {
     private const val URL_STRING =
         "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png"
     private const val CACHE_FILE = "PupEye.png"
     private const val PREFS = "pupeye_brand_stream_v1"
-    private const val MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024
+    private const val MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024
     private const val MAX_IMAGE_EDGE = 4096
     private const val REFRESH_INTERVAL_MS = 6L * 60L * 60L * 1000L
     private const val FAILURE_RETRY_MS = 5L * 60L * 1000L
@@ -103,17 +106,20 @@ private object PupEyeAssetStream {
             if (cached != null && now - checked in 0 until REFRESH_INTERVAL_MS) {
                 return@withLock cached
             }
-            if (now - attempted in 0 until FAILURE_RETRY_MS) {
+            // Back off only when we already have a valid streamed image to display. When no image
+            // exists, keep attempting so a repo that just became public starts working immediately.
+            if (cached != null && now - attempted in 0 until FAILURE_RETRY_MS) {
                 return@withLock cached
             }
 
             prefs.edit().putLong("attempted", now).apply()
             val connection = URL(URL_STRING).openConnection() as HttpURLConnection
             try {
-                connection.connectTimeout = 8_000
-                connection.readTimeout = 15_000
-                connection.instanceFollowRedirects = false
-                connection.setRequestProperty("Accept", "image/png")
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 25_000
+                connection.instanceFollowRedirects = true
+                connection.setRequestProperty("Accept", "image/png,image/*;q=0.9,*/*;q=0.1")
+                connection.setRequestProperty("Cache-Control", "no-cache")
                 connection.setRequestProperty("User-Agent", "PuppyClicker-Android-PupEye")
 
                 prefs.getString("etag", null)?.takeIf { cached != null }?.let {
@@ -130,12 +136,12 @@ private object PupEyeAssetStream {
                     HttpURLConnection.HTTP_OK -> {
                         val length = connection.contentLengthLong
                         if (length > MAX_DOWNLOAD_BYTES) {
-                            throw IOException("PupEye image exceeds size limit")
+                            throw IOException("PupEye image exceeds size limit: $length bytes")
                         }
 
                         val bytes = readBounded(connection)
                         val decoded = decode(bytes)
-                            ?: throw IOException("Invalid PupEye PNG")
+                            ?: throw IOException("Invalid or oversized PupEye PNG")
                         writeCached(context, bytes)
                         memory = decoded
                         prefs.edit()
@@ -152,7 +158,7 @@ private object PupEyeAssetStream {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                Log.w("PupEyeBranding", "Using cached PupEye branding", error)
+                Log.w("PupEyeBranding", "PupEye stream unavailable; retaining streamed cache", error)
                 cached
             } finally {
                 connection.disconnect()
@@ -161,7 +167,7 @@ private object PupEyeAssetStream {
     }
 
     private fun cacheFile(context: Context): File =
-        File(context.cacheDir, "branding/PupEye.png")
+        File(context.cacheDir, "branding/$CACHE_FILE")
 
     private fun readCached(context: Context): Bitmap? {
         val file = cacheFile(context)
