@@ -42,18 +42,6 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Prepare generated V6 integration
-        shell: bash
-        run: |
-          set -euo pipefail
-          gradle --no-daemon :app:generateProtectedPuppySources --stacktrace
-          GENERATED="app/build/generated/protected-puppies/source"
-          test -d "$GENERATED"
-          python3 tools/patch_seasonal_events.py "$GENERATED"
-          python3 tools/patch_pupeye_security.py "$GENERATED"
-          python3 tools/patch_puppy_ux.py "$GENERATED"
-          python3 tools/patch_import_reload.py "$GENERATED"
-
       - name: Stamp v1.7.8 import hotfix
         shell: bash
         run: |
@@ -131,7 +119,7 @@ jobs:
 
       - name: Build updateable release APK
         if: steps.signing.outputs.ready == 'true'
-        run: gradle --no-daemon :app:assembleRelease -x generateProtectedPuppySources --stacktrace
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
 
       - name: Verify permanent-signed APK and v4 sidecar
         if: steps.signing.outputs.ready == 'true'
@@ -164,7 +152,7 @@ jobs:
 
       - name: Build unsigned release when signing secrets are unavailable
         if: steps.signing.outputs.ready != 'true'
-        run: gradle --no-daemon :app:assembleRelease -x generateProtectedPuppySources --stacktrace
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
 
       - name: Upload unsigned release for external signing
         if: steps.signing.outputs.ready != 'true'
