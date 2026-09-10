@@ -6,38 +6,47 @@ Repository: `markhitchk/pup-clinker`
 
 ## Goal
 
-Add a dedicated, backend-free Puppy Exchange system to Puppy Clicker for live friend requests, gifting, trading, transaction history, and recovery. The system must integrate with the existing dynamic GitHub-backed puppy roster and encrypted device-bound save architecture without introducing a player inventory API or cloud database.
+Add a dedicated, backend-free **Puppy Exchange** system to Puppy Clicker for live friend requests, gifting, trading, local history, and trade recovery. It must integrate with the existing GitHub-backed dynamic puppy roster and encrypted device-bound save architecture without adding a central account, friend, inventory, or trade API.
 
 ## Core Constraints
 
-- GitHub remains the source for puppy assets, roster manifests, redeem definitions, and transfer policy metadata.
-- Puppy Clicker does not use a central account, inventory, friend, or trade database.
+- GitHub remains the source for puppy assets, roster manifests, redeem definitions, and transfer-policy metadata.
+- Puppy Clicker does not use a central player, inventory, friend, or trade database.
 - Social actions require both players to be online at the same time.
 - Peer communication uses WebRTC DataChannels.
-- WebRTC signaling uses manual copy/paste offer and answer codes rather than a signaling API.
-- No QR codes are used.
-- Player saves remain device-bound.
-- Username is not the authoritative identity for ownership or trading.
+- WebRTC signaling uses manual copy/paste Offer and Answer codes.
+- No QR-code workflow is used.
+- Player identity is device-bound.
+- Username is display metadata, not the authoritative ownership identity.
+- The system must preserve existing gameplay, dynamic roster, redeem, save-encryption, and PupEye behavior.
 
 ## Player Identity
 
-Each Puppy Clicker installation gets a locally generated identity containing:
+Each Puppy Clicker installation gets three identity fields:
 
 - Editable username.
 - Permanent Player ID.
 - Permanent Friend Code.
 
-The Player ID is a cryptographically random internal identifier created once for the device identity and persisted with the protected local game state.
+The **Player ID** is a cryptographically random internal identifier generated once for the device identity.
 
-The Friend Code is a separate randomly generated public identifier tied to the Player ID. It is permanent for the lifetime of that Player ID and cannot be regenerated from Settings.
+The **Friend Code** is a separate cryptographically random public identifier tied to that Player ID. It is permanent for the lifetime of the Player ID and cannot be regenerated from Settings.
 
-The username remains editable and is only presentation metadata. Existing username normalization rules continue to apply, so variants such as `HarleyTG`, `HARLEYTG`, and `harleytg` normalize consistently.
+The username remains editable and follows the app's existing normalization rules. Variants such as `HarleyTG`, `HARLEYTG`, and `harleytg` therefore normalize consistently, but username is not used as the long-term ownership key.
 
-Because there is no authoritative registry, Friend Code collisions cannot be proven impossible. The code space must therefore be large enough to make collisions negligible, and WebRTC peers must verify the full Player ID after connection.
+Because there is no central registry, Friend Code collisions cannot be proven impossible. The Friend Code space must be large enough to make collisions negligible, and a connected peer must verify the full Player ID before social actions are enabled.
+
+### Device-bound identity rule
+
+Player ID and Friend Code belong to the local device identity. They are not portable account credentials.
+
+If Puppy Clicker supports a gameplay save import/export path, importing gameplay data onto a different device must **not silently replace that device's Player ID or Friend Code**. The destination device retains its own identity unless a future, separately designed identity-migration feature is explicitly added.
+
+Bound/custom puppy ownership tied to a Player ID is therefore also device-identity-specific under this design. Trade Recovery does not act as device migration.
 
 ## Settings Account Card
 
-The top of Settings gains a dedicated Account card showing:
+The top of Settings gains a dedicated **Account** card showing:
 
 - Username.
 - Player ID.
@@ -47,35 +56,31 @@ The top of Settings gains a dedicated Account card showing:
 - Copy Player ID action.
 - Copy Friend Code action.
 
-The Friend Code is the primary shareable identity. No QR-code actions or camera permissions are introduced.
+Friend Code is the primary shareable identity. No QR-code actions or camera permissions are introduced.
 
 ## Puppy Exchange Entry Point
 
-Puppy Exchange is a dedicated UI, not a Settings subsection and not a bottom-navigation tab.
+Puppy Exchange is a dedicated screen, not a Settings subsection and not a bottom-navigation tab.
 
-Primary entry point:
-
-- Roster / Profile area.
-
-The Roster launches Puppy Exchange as a separate screen. The roster itself remains responsible for puppy browsing and selection; social transactions remain inside Puppy Exchange.
+The primary entry point is from the **Roster / Profile area**. Roster remains responsible for browsing/selecting puppies; transactions and social state remain inside Puppy Exchange.
 
 ## Puppy Exchange Navigation
 
-The dedicated Puppy Exchange UI contains:
+The Puppy Exchange screen contains:
 
-- Friends.
-- Connect.
-- Gifts.
-- Trade.
-- History.
+- **Friends**
+- **Connect**
+- **Gifts**
+- **Trade**
+- **History**
 
-Friends is the default landing tab. The last-used tab may be retained only for the current app session.
+Friends is the default landing tab. The last-used tab may be remembered only for the current app session.
 
-A compact identity/status header shows the local username, Friend Code, and connection state. Full Player ID details remain available in Settings.
+A compact header shows local username, Friend Code, and connection state. Full Player ID details remain in Settings.
 
 ## Friend Records
 
-Accepted friends are stored locally in the encrypted save and contain at least:
+Accepted friends are stored locally in the encrypted save. A record contains at least:
 
 - Friend Player ID.
 - Friend Code.
@@ -83,31 +88,33 @@ Accepted friends are stored locally in the encrypted save and contain at least:
 - Date added.
 - Blocked state where applicable.
 
-Player ID is authoritative. Username may update the next time the same Player ID reconnects.
+Player ID is authoritative. Username may refresh when the same Player ID reconnects.
 
-## Friend Request Flow
+## Friend Requests
 
-Friend requests are live only. There are no offline or pending server-side requests.
+Friend requests are **live only**. There are no offline/pending server-side requests.
 
 Flow:
 
 1. Both players are online.
-2. Player A enters Player B's permanent Friend Code.
-3. Player A starts a manual WebRTC connection.
+2. Player A enters Player B's permanent Friend Code as the expected remote identity.
+3. Player A starts the manual WebRTC connection flow.
 4. Player A creates an Offer Code.
 5. Player B pastes the Offer Code.
 6. Player B creates an Answer Code.
 7. Player A pastes the Answer Code.
-8. A WebRTC DataChannel is established.
-9. Both peers exchange identity and protocol metadata.
-10. The remote Player ID and Friend Code are verified.
-11. Player A sends a live friend request.
+8. The WebRTC DataChannel establishes.
+9. Both peers exchange Player ID, Friend Code, username, protocol version, and app version.
+10. Puppy Clicker verifies the connected peer against the expected identity.
+11. Player A sends a live Friend Request.
 12. Player B chooses Accept, Decline, or Block.
 13. On acceptance, both devices persist the friendship locally.
 
+A Friend Code does **not** resolve or locate another player by itself because no lookup API exists. It acts as the permanent human-shareable identity and expected-peer check; the manual WebRTC Offer/Answer exchange performs signaling.
+
 ## WebRTC Connection Codes
 
-Manual Offer and Answer codes are temporary connection envelopes containing enough data to establish and validate a direct session. They include at least:
+Offer and Answer codes are temporary signaling envelopes containing enough data to establish and validate the direct session. They contain at least:
 
 - Protocol version.
 - Session ID.
@@ -117,59 +124,65 @@ Manual Offer and Answer codes are temporary connection envelopes containing enou
 - Sender Player ID.
 - Sender Friend Code.
 - Expected Friend Code where applicable.
-- SDP data.
+- SDP.
 - ICE candidate data.
-- Integrity/authentication data supported by the local protocol.
+- Integrity/authentication metadata supported by the protocol.
 
 Connection codes expire at the earlier of:
 
-- First successful connection.
+- First successful use on the relevant local identity.
 - Ten minutes after creation.
 
-Expired or already-consumed codes must be rejected with a clear user-facing status.
+Expired, malformed, or already-consumed codes are rejected with a clear status.
+
+### Manual-signaling requirement
+
+Because signaling is copy/paste rather than trickle signaling through a service, the app must gather the required ICE candidates before producing the final Offer/Answer code. The encoded envelope should be compressed and text-safe so it can be copied between apps without changing its bytes.
+
+The implementation must enforce sane envelope-size limits and fail clearly rather than accepting truncated signaling data.
 
 ## WebRTC Network Limitation
 
 STUN may be used to improve direct connectivity.
 
-No TURN relay is required by this design. As a result, direct WebRTC connectivity may fail on restrictive NAT, carrier-grade NAT, or certain mobile networks. Puppy Clicker must report this as a direct connection failure and recommend trying another network or Wi-Fi rather than incorrectly claiming the remote player is offline or the Friend Code is invalid.
+No TURN relay is required by this design. Direct WebRTC may therefore fail on restrictive NAT, carrier-grade NAT, or some mobile networks. Puppy Clicker must report this as **Direct Connection Failed** and recommend another network/Wi-Fi and a fresh connection code rather than incorrectly claiming that the friend is offline or the Friend Code is invalid.
 
 ## Blocking
 
-Blocking is local to the device.
+Blocking is local.
 
-A blocked Player ID cannot be accepted as a friend and cannot perform gift or trade actions with the local player once the remote identity is known.
+A blocked Player ID cannot be accepted as a friend and cannot perform gift/trade actions with the local player once remote identity is known.
 
-Blocked players are manageable from Puppy Exchange -> Friends -> Blocked.
+Blocked players are managed from **Puppy Exchange -> Friends -> Blocked**.
 
-Without a central server, blocking cannot stop another device from creating a WebRTC offer; it prevents Puppy Clicker from accepting social actions after peer identity verification.
+With no server, blocking cannot prevent another device from constructing an Offer Code. It prevents Puppy Clicker from accepting social actions after identity verification.
 
-## Ownership Model
+## Ownership Ledger
 
 Puppy Exchange adds a protected local ownership ledger for special, gifted, traded, bound, source-copy, and transferred puppies.
 
-Normal roster discovery remains driven by the existing dynamic roster. The ownership ledger provides transaction provenance and policy enforcement for Exchange features.
+Normal roster discovery remains driven by the dynamic roster. The ledger provides transaction provenance and transfer-policy enforcement.
 
-Each active special ownership record should include enough information to identify:
+An ownership record contains at least:
 
 - Ownership record ID.
 - Puppy asset/style ID.
 - Current owner Player ID.
 - Acquisition type.
 - Original/source owner where applicable.
-- Previous ownership record where applicable.
-- Source transaction ID.
+- Previous ownership record ID where applicable.
+- Source transaction ID where applicable.
 - Acquisition timestamp.
-- Current ownership status.
+- Ownership status.
 - Transfer-policy snapshot or manifest revision reference.
 
-The encrypted save remains the local persistence layer.
+The encrypted device-bound save remains the local persistence layer.
 
 ## Per-Puppy Transfer Policy
 
-Each puppy can declare transfer behavior in its streamed manifest. The UI must not hard-code individual puppy names as policy exceptions.
+Each streamed puppy may declare its own transfer behavior. The UI and transaction engine must not hard-code puppy names as policy exceptions.
 
-Supported policy behavior includes:
+Supported behavior includes:
 
 - Giftable.
 - Tradeable.
@@ -179,114 +192,107 @@ Supported policy behavior includes:
 - Limited plus configurable transfer rules.
 - Neither giftable nor tradeable.
 
-The same policy checks must be enforced by Roster, Gift, and Trade logic rather than only by hiding UI controls.
+The same policy rules are enforced in Roster selection, Gift, Trade, commit validation, and recovery.
 
 ## Bound / Custom Puppies
 
-A custom puppy made for one person is bound to a specific Player ID.
+A custom puppy made specifically for one person is bound to that person's **Player ID**.
 
 Bound/custom puppies:
 
 - Cannot be gifted.
 - Cannot be traded.
 - Cannot be copied through Puppy Exchange.
-- Are excluded from selectable gift/trade inventory.
-- Remain normally visible and usable by their designated owner.
+- Are excluded or disabled in gift/trade selectors with a visible reason.
+- Remain normally visible and usable by the designated owner.
 
-Username may be retained for provenance/display but is not the ownership key.
+Username may be stored as provenance/display metadata, but Player ID is the ownership key.
 
 ## Source Copies
 
-A Source Copy is a protected original entitlement capable of generating legitimate gift copies while remaining permanently owned by its designated source owner.
+A **Source Copy** is a protected original entitlement capable of creating legitimate gift copies while remaining permanently owned by its designated source owner.
 
 Source Copies:
 
-- Cannot be consumed by a trade unless a future manifest policy explicitly changes this behavior.
-- Remain in the source owner's inventory.
-- May create legitimate recipient ownership records when gift policy allows.
+- Stay in the source owner's inventory.
+- Can create recipient copies only when the puppy policy allows gifting.
 - Preserve source provenance.
+- Cannot be consumed by a normal trade unless a future manifest policy explicitly changes that rule.
 
 ## Initial HarleyTG Special Puppy
 
-The special frog puppy is the first Owner Gift / Source Copy use case.
+The frog puppy is the first Owner Gift / Source Copy use case.
 
 Initial redemption requirements:
 
 - Normalized username must equal `harleytg`.
 - Redemption is one-time for the local entitlement.
-- On successful claim, the Source Copy becomes bound to that installation's generated Player ID.
+- On successful redemption, the Source Copy is bound to that installation's generated Player ID.
 
 After claim:
 
-- The source copy remains permanently owned by that Player ID.
-- It cannot be accidentally removed by a trade.
-- It may create legitimate gift copies according to its configured manifest policy.
-- The source entitlement remains valid if the visible username later changes because ownership is bound to Player ID after redemption.
+- The Source Copy remains permanently owned by that Player ID.
+- It cannot be accidentally consumed by a trade.
+- It may create legitimate gift copies according to manifest policy.
+- Changing the visible username later does not change Source Copy ownership.
 
-Recipients receive normal legitimate ownership records, not additional Source Copies. Their ability to gift or trade is controlled by the puppy's manifest policy.
+Recipients receive normal legitimate ownership records, not additional Source Copies. Their ability to gift or trade the puppy is controlled by that puppy's configured policy.
 
 ## Limited Puppies
 
-`Limited` is an attribute, not a universal transfer rule.
+`Limited` is an attribute rather than a universal transfer rule.
 
-A limited puppy may also be:
+A limited puppy may also be giftable, tradeable, both, bound, or non-transferable.
 
-- Tradeable.
-- Giftable.
-- Giftable + tradeable.
-- Bound.
-
-Without an authoritative server, Puppy Clicker must not claim to enforce a trustworthy worldwide supply such as exactly 50 copies globally. It can enforce local ownership, transaction rules, and provenance, but global scarcity requires an authoritative online service outside this design.
+Without an authoritative backend, Puppy Clicker must not claim to enforce a trustworthy worldwide quantity such as exactly 50 copies globally. It can enforce local ownership, transaction rules, and provenance, but authoritative global scarcity is outside this design.
 
 ## Gifts
 
-Gift transactions occur only during an active verified WebRTC session.
+Gift transactions require an active verified WebRTC session.
 
 Flow:
 
 1. Sender opens Send Gift.
-2. The app shows only eligible puppies or clearly disables ineligible puppies with a reason.
-3. Sender selects the puppy and recipient.
+2. The app shows eligible puppies and clearly explains why ineligible puppies cannot be selected.
+3. Sender selects the puppy and reviews the recipient.
 4. Recipient receives a live gift review.
-5. Recipient chooses Accept or Decline.
-6. Only acceptance creates the new recipient ownership record.
+5. Recipient chooses **Accept Gift** or **Decline**.
+6. Only acceptance creates the recipient ownership record.
 
-For copy-style gifting, the sender retains the existing ownership record and the recipient receives a new provenance-linked active ownership record.
+For copy-style gifting, the sender retains their active ownership record and the recipient receives a new provenance-linked active ownership record.
 
-For Source Copies, the source ownership record never leaves the owner's save.
+A Source Copy never leaves the source owner's save.
 
-If the recipient declines, disconnects, or validation fails before acceptance, no inventory changes occur.
+Decline, validation failure, or disconnect before acceptance leaves both inventories unchanged.
 
 ## Trade UI
 
 Trades support:
 
-- One-to-one trades.
+- One puppy for one puppy.
 - Bundle trades.
 - Maximum five puppies per side.
 
-Each side builds its offer independently.
+Each player builds an offer independently. Any offer edit resets both Ready states.
 
-When either player changes their offer, both Ready states reset.
+When both players are Ready, offers lock and both devices display the same final review.
 
-Once both players are Ready, offers lock and both users see the same final review.
-
-Final commitment uses a deliberate hold-to-confirm interaction rather than a single accidental tap.
+Final commitment uses a deliberate **hold-to-confirm** interaction rather than a single accidental tap.
 
 ## Hybrid Trade Architecture
 
-The user experience is a simple live swap, while the underlying transaction engine uses a journaled two-phase model and provenance-linked ownership transfer.
+The player experience is a simple live swap, while the transaction engine uses a journaled two-phase model plus provenance-linked ownership transfer.
 
-Transaction lifecycle:
+Transaction states:
 
-- PENDING.
-- READY.
-- COMMITTING.
-- COMPLETED.
-- RECOVERY_REQUIRED when necessary.
-- CANCELLED where appropriate.
+- `PENDING`
+- `READY`
+- `COMMITTING`
+- `COMPLETED`
+- `RECOVERY_REQUIRED`
+- `CANCELLED`
 
-Before ownership changes, both devices persist a matching transaction journal containing at least:
+Before any ownership mutation, both devices persist a transaction journal containing at least:
 
 - Transaction ID.
 - Transaction type.
@@ -297,76 +303,79 @@ Before ownership changes, both devices persist a matching transaction journal co
 - Ownership record IDs involved.
 - Protocol version.
 - Creation timestamp.
-- Current transaction state.
+- Current state.
+- Enough pre-commit ownership information to validate or safely restore local state during an agreed cancellation/recovery.
 
-Both sides exchange and validate matching transaction data before commit.
+Both peers exchange and validate matching transaction data before commit.
 
 ## Ownership Transfer Semantics
 
-A traded ownership record is not simply deleted.
+A traded ownership record is not deleted.
 
-The sender's previous active ownership record becomes transferred/retired and records:
+The sender's previous active ownership record becomes transferred/retired and records at least:
 
 - Destination Player ID.
 - Transaction ID.
 - Transfer timestamp.
 
-The recipient receives a new active ownership record linked to the previous ownership record.
+The recipient receives a new active ownership record linked to the previous record.
 
-This creates a local provenance chain such as:
+This produces a local provenance chain such as:
 
-Claim -> Gift -> Trade -> Trade -> Current Owner
+`Claim -> Gift -> Trade -> Trade -> Current Owner`
 
-Roster logic only treats the current active ownership record as usable ownership.
+Roster logic treats only the current active ownership record as transferable ownership.
 
 ## Interrupted Transactions
 
-If a WebRTC session disconnects before the transaction reaches the commit window, the trade can be cancelled safely.
+If WebRTC disconnects before entering the commit window, the trade can be cancelled without ownership changes.
 
-If the session fails during or after commit negotiation, the transaction becomes RECOVERY_REQUIRED.
+If the session fails during or after commit negotiation, the transaction becomes `RECOVERY_REQUIRED`.
 
-Puppies involved in a recovery-required transaction become transaction-locked. They remain visible and usable for normal gameplay but cannot be gifted or traded again until the transaction is resolved.
+Affected puppies become **transaction locked**. They remain visible and usable for normal gameplay but cannot be gifted or traded again until recovery resolves the transaction.
 
-## Trade Recovery System
+## Trade Recovery
 
-Puppy Exchange includes a dedicated recovery flow under History.
+Puppy Exchange -> History contains a dedicated **Recover Trade** flow.
 
-A player can generate a temporary Recovery Code for an existing locally recorded pending/recovery transaction. The other player pastes it and generates a response.
+A player can generate a Recovery Code only for an unresolved transaction already present in that local save. The other player pastes the Recovery Code and generates a response.
 
 Recovery envelopes contain at least:
 
 - Existing transaction ID.
 - Both Player IDs.
 - Offer hashes.
-- Recorded transaction states.
-- Protocol version.
-- Recovery nonce.
+- Each recorded transaction state.
+- Recovery protocol version.
+- Random recovery nonce.
 - Creation timestamp.
 - Expiry timestamp.
 
-Recovery codes are one-use and short-lived.
+Recovery codes are one-use and expire after ten minutes, matching the connection-code safety window.
 
-A recovery code cannot create a new transaction or mint ownership from scratch. The local save must already contain the referenced unresolved transaction.
+A Recovery Code can never create a new transaction or mint puppy ownership from scratch. The referenced unresolved transaction must already exist in the local journal.
 
 ## Manual Recovery Review
 
-If both transaction journals agree, Puppy Clicker may proceed with the valid deterministic recovery action.
+If both transaction journals agree, Puppy Clicker may perform the valid deterministic recovery action.
 
-If the journals disagree, the app opens a manual recovery screen showing:
+If journals disagree, the app opens a manual review showing:
 
 - Both players.
 - Both recorded offers.
-- Each device's transaction state.
-- What fields do not match.
+- Each device's recorded transaction state.
+- The detected mismatch.
 
-Both players must independently choose the same resolution:
+Both players independently choose the same outcome:
 
-- Complete Trade.
-- Cancel Trade.
+- **Complete Trade**
+- **Cancel Trade**
 
 No resolution is applied until both devices agree.
 
-If one chooses Complete and the other chooses Cancel, the trade remains RECOVERY_REQUIRED and affected puppies remain transaction-locked.
+If one selects Complete and the other selects Cancel, the transaction remains `RECOVERY_REQUIRED` and the affected puppies stay transaction-locked.
+
+For an agreed cancellation after one side has locally entered a later commit stage, that device uses the pre-commit journal state to restore its own local ownership consistently before clearing the lock.
 
 Without an authoritative backend, neither device may unilaterally declare itself the winner.
 
@@ -381,144 +390,142 @@ Puppy Exchange -> History stores local records of social transactions including:
 - Recovery-required transactions.
 - Recovered transactions.
 
-Detailed ownership provenance is available from Puppy Details / ownership information rather than cluttering the normal Roster cards.
+Detailed puppy provenance belongs in Puppy Details / ownership information rather than cluttering normal roster cards.
 
 ## Policy Validation
 
-Before a puppy can enter a gift or trade transaction, the app validates both the streamed manifest policy and current local ownership record.
+Before a puppy enters a Gift or Trade transaction, Puppy Clicker validates both the current streamed manifest policy and local ownership record.
 
-Reject or disable a puppy when it is:
+Reject or disable transfer when the puppy is:
 
-- Bound/custom for another purpose.
+- Bound/custom.
 - Source-protected from trading.
 - Already transferred.
 - Transaction-locked.
 - Unknown to the current roster.
 - Not giftable for a gift.
 - Not tradeable for a trade.
-- Otherwise inconsistent with local ownership state.
+- Otherwise inconsistent with the local ownership ledger.
 
-The UI should state why an item is unavailable rather than silently hiding every invalid option.
+The UI must explain the reason instead of silently hiding every unavailable item.
 
 ## Global Subject-to-Change Notice
 
-Puppy Clicker gains a reusable global disclaimer component so wording is managed from one place.
+Puppy Clicker gains one reusable global disclaimer component so wording is controlled from one place.
 
-Full wording for title/setup surfaces:
+Full wording on title/setup surfaces:
 
 > Items, rewards, values, availability, and features are subject to change.
 
-Compact wording for normal in-app surfaces:
+Compact wording on standard in-app surfaces:
 
 > Items and features are subject to change.
 
-The compact notice appears in relevant locations across:
+The compact notice is shown on every normal full-screen Puppy Clicker surface where the global app shell can render it, including Play, Roster, Shop, Rewards/Redeem, Settings, Puppy Exchange, gift/trade confirmations, Trade Recovery, Puppy Details, and future inventory/event screens. Modal or constrained transaction views may render the same compact notice within the panel/footer instead of duplicating a second global footer.
 
-- Play.
-- Roster.
-- Shop.
-- Rewards / Redeem.
-- Settings.
-- Puppy Exchange.
-- Gift confirmation.
-- Trade confirmation.
-- Trade Recovery.
-- Puppy details.
-- Future inventory/event screens where the statement applies.
-
-The notice is visible but non-blocking and must not require dismissal.
+The notice is visible but non-blocking and never requires dismissal.
 
 ## Security Boundaries
 
 This design improves consistency and abuse resistance but does not pretend to provide server-grade authority.
 
-The system should:
+The implementation should:
 
-- Use cryptographically strong random Player IDs, Friend Codes, session IDs, transaction IDs, and nonces.
+- Use cryptographically strong randomness for Player IDs, Friend Codes, session IDs, transaction IDs, and nonces.
 - Protect local state with the existing encrypted device-bound save architecture.
-- Validate peer Player ID and Friend Code after WebRTC connection.
+- Validate peer Player ID and Friend Code after connection.
 - Validate transaction hashes before commit.
-- Reject replayed, expired, or already-consumed connection/recovery envelopes.
+- Reject replayed, expired, malformed, truncated, or consumed connection/recovery envelopes.
 - Keep transaction-locked puppies unavailable for additional transfers.
-- Keep source and bound ownership rules enforced in transaction logic, not only UI.
+- Enforce bound/source/transfer policy in transaction logic, not only UI.
+- Keep sufficient local journal data to recover from interrupted commits.
 
-Because there is no authoritative backend, a sufficiently modified application or compromised local device cannot be made equivalent to a centrally validated economy. The UI and documentation must not imply otherwise.
+Because there is no authoritative backend, a sufficiently modified client or compromised local device cannot be made equivalent to a centrally validated economy. UI/documentation must not claim otherwise.
 
 ## Failure Handling
 
-Expected failures must produce explicit, recoverable states rather than corrupt inventory.
+Expected failures produce explicit recoverable states instead of corrupting inventory.
 
 Examples:
 
 - Invalid Friend Code format -> reject before connection flow.
-- Invalid/expired Offer or Answer Code -> require a new connection code.
+- Invalid/expired Offer or Answer Code -> require a fresh connection code.
+- Truncated signaling envelope -> reject before WebRTC setup.
 - Direct WebRTC failure -> report direct connection failure and recommend another network.
-- Peer identity mismatch -> terminate the session before social actions.
+- Peer identity mismatch -> terminate session before social actions.
 - Gift disconnect before acceptance -> no inventory change.
 - Trade disconnect before commit -> cancel safely.
-- Trade disconnect during commit -> mark RECOVERY_REQUIRED.
+- Trade disconnect during commit -> mark `RECOVERY_REQUIRED`.
 - Mismatched recovery journals -> manual recovery review.
-- Manifest policy changes while an item is selected -> revalidate before Ready/Confirm.
+- Manifest policy changes while selected -> revalidate before Ready and again before final commit.
 
 ## Testing Requirements
 
-Implementation must include tests for the isolated subsystems.
-
-Identity tests:
+### Identity tests
 
 - Player ID is generated once and remains stable on the same device identity.
 - Friend Code is generated once and remains stable.
 - Username changes do not alter Player ID or Friend Code.
-- Friend Code and Player ID validation reject malformed values.
+- Gameplay save import does not silently replace the destination device's Player ID/Friend Code.
+- Malformed Player IDs and Friend Codes are rejected.
 
-Connection tests:
+### Connection tests
 
 - Offer/Answer envelope encode/decode round trip.
+- ICE gathering is complete before manual signaling code generation.
+- Text-safe compression/encoding round trip.
 - Ten-minute expiry.
-- One-use consumption.
+- One-use local consumption.
 - Replay rejection.
-- Peer Friend Code and Player ID mismatch rejection.
+- Truncated/oversized envelope rejection.
+- Expected Friend Code mismatch rejection.
+- Remote Player ID mismatch rejection where an established friend identity is expected.
 
-Ownership tests:
+### Ownership tests
 
 - Bound puppies cannot be gifted or traded.
-- Source copies cannot be consumed by normal trades.
-- Giftable/tradeable flags are enforced independently.
+- Source Copies cannot be consumed by normal trades.
+- Giftable and tradeable flags are enforced independently.
 - Transferred ownership is no longer active for the sender.
 - Recipient ownership links to prior provenance.
 - Transaction-locked puppies cannot enter another transfer.
 
-Gift tests:
+### Gift tests
 
 - Decline leaves both inventories unchanged.
 - Disconnect before acceptance leaves both inventories unchanged.
 - Accepted copy-style gift retains sender ownership and creates recipient ownership.
+- Source Copy remains with the source owner after gifting.
 
-Trade tests:
+### Trade tests
 
-- 1:1 trade.
-- Bundle trade up to five items per side.
-- Sixth item is rejected.
+- One-to-one trade.
+- Bundle trade up to five puppies per side.
+- Sixth puppy is rejected.
 - Editing an offer resets both Ready states.
 - Commit requires matching transaction data on both peers.
 - Interrupted commit enters recovery state.
 
-Recovery tests:
+### Recovery tests
 
-- Recovery only references an existing unresolved local transaction.
-- Fabricated recovery transaction IDs are rejected.
+- Recovery references only an existing unresolved local transaction.
+- Fabricated transaction IDs are rejected.
+- Recovery code expires after ten minutes and is one-use locally.
 - Matching journals resolve safely.
 - Mismatched journals require manual review.
-- Conflicting Complete/Cancel decisions leave the transaction unresolved.
+- Conflicting Complete/Cancel choices remain unresolved.
+- Agreed cancellation restores valid local pre-commit state before unlocking puppies.
 
-UI tests:
+### UI tests
 
 - Puppy Exchange launches from Roster/Profile.
 - Friends is the default tab.
 - Settings Account card shows Player ID and Friend Code.
 - No QR-code UI exists.
 - Ineligible puppies show policy reasons.
-- Subject-to-change notices render on required surfaces.
+- Gift acceptance is explicit.
+- Final trade uses deliberate confirmation.
+- Global subject-to-change notice appears on required surfaces.
 
 ## Non-Goals
 
@@ -528,13 +535,15 @@ This design does not add:
 - Cloud inventory storage.
 - Offline friend requests.
 - Server-hosted pending trades.
+- Friend Code lookup/discovery API.
 - Global authoritative item scarcity.
-- QR-code friend or signaling workflows.
+- QR-code friend/signaling workflows.
 - TURN relay infrastructure.
-- A backend API for Puppy Exchange.
+- Puppy Exchange backend API.
+- Cross-device Player ID migration/recovery.
 
 ## Implementation Boundary
 
-The implementation should preserve existing Puppy Clicker gameplay, dynamic roster behavior, redeem-code behavior, save encryption, and PupEye integrity protections while extending them with narrowly scoped Player Identity, Puppy Exchange, ownership-ledger, WebRTC-session, transaction, and recovery components.
+Implementation should introduce focused components for Player Identity, Puppy Exchange UI, local friend storage, WebRTC session/signaling envelopes, ownership ledger, gift/trade transaction engine, history, recovery, and the global disclaimer while preserving existing Puppy Clicker behavior.
 
-No implementation should begin until this design is reviewed and approved as the committed specification.
+No implementation begins until this committed specification is reviewed and approved.
