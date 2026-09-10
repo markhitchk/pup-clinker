@@ -625,7 +625,7 @@ private fun copyAccountValue(context: Context, label: String, value: String) {
     clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
 }
 
-
+'''
     source = replace_once(source, marker, account_card + marker, "account profile card helper")
     return source
 
