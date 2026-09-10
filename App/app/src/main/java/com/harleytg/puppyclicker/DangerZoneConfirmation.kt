@@ -36,9 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -198,72 +200,50 @@ internal fun DangerHoldConfirmationDialog(
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.52f))
             )
 
-            // Animated red/black construction tape around the perimeter only.
+            // One-piece animated red/black construction-tape frame.
             //
-            // Each red band is drawn as a clipped parallelogram over a solid black
-            // tape base. This keeps the top/bottom texture identical in weight to
-            // the left/right sides instead of producing large diamond-shaped blocks.
+            // The border is a single even-odd perimeter mask. One diagonal stripe
+            // field is clipped through that mask, so the pattern continues through
+            // every corner without four independently drawn strips overlapping.
             Canvas(Modifier.fillMaxSize()) {
                 val frame = 18.dp.toPx()
-                val redBand = 18.dp.toPx()
-                val blackBand = 14.dp.toPx()
-                val stripePeriod = redBand + blackBand
-                val slant = frame * 0.72f
+                val stripePeriod = 38.dp.toPx()
+                val redStripeWidth = 20.dp.toPx()
                 val travel = if (reducedMotion) 0f else stripeShift * stripePeriod
                 val red = Color(0xFFE01818).copy(alpha = borderAlpha)
 
-                // Solid black tape base.
-                drawRect(Color.Black, topLeft = Offset.Zero, size = Size(size.width, frame))
-                drawRect(
-                    Color.Black,
-                    topLeft = Offset(0f, size.height - frame),
-                    size = Size(size.width, frame)
-                )
-                drawRect(Color.Black, topLeft = Offset.Zero, size = Size(frame, size.height))
-                drawRect(
-                    Color.Black,
-                    topLeft = Offset(size.width - frame, 0f),
-                    size = Size(frame, size.height)
-                )
-
-                fun drawHorizontalTape(y: Float) {
-                    clipRect(0f, y, size.width, y + frame) {
-                        var x = -stripePeriod - slant + travel
-                        while (x < size.width + stripePeriod + slant) {
-                            val path = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(x - slant, y)
-                                lineTo(x + redBand - slant, y)
-                                lineTo(x + redBand + slant, y + frame)
-                                lineTo(x + slant, y + frame)
-                                close()
-                            }
-                            drawPath(path = path, color = red)
-                            x += stripePeriod
-                        }
-                    }
+                val perimeter = Path().apply {
+                    fillType = PathFillType.EvenOdd
+                    addRect(Rect(0f, 0f, size.width, size.height))
+                    addRect(
+                        Rect(
+                            frame,
+                            frame,
+                            (size.width - frame).coerceAtLeast(frame),
+                            (size.height - frame).coerceAtLeast(frame)
+                        )
+                    )
                 }
 
-                fun drawVerticalTape(x: Float) {
-                    clipRect(x, 0f, x + frame, size.height) {
-                        var y = -stripePeriod - slant + travel
-                        while (y < size.height + stripePeriod + slant) {
-                            val path = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(x, y + slant)
-                                lineTo(x, y + redBand + slant)
-                                lineTo(x + frame, y + redBand - slant)
-                                lineTo(x + frame, y - slant)
-                                close()
-                            }
-                            drawPath(path = path, color = red)
-                            y += stripePeriod
-                        }
+                clipPath(perimeter) {
+                    // Black is the continuous tape backing.
+                    drawRect(Color.Black)
+
+                    // Draw one global 45-degree stripe field. Because the same lines
+                    // pass through the full perimeter mask, all four corners join
+                    // cleanly and animate as one piece.
+                    var diagonal = -size.height - stripePeriod + travel
+                    val end = size.width + size.height + stripePeriod
+                    while (diagonal < end) {
+                        drawLine(
+                            color = red,
+                            start = Offset(diagonal - size.height, size.height),
+                            end = Offset(diagonal, 0f),
+                            strokeWidth = redStripeWidth
+                        )
+                        diagonal += stripePeriod
                     }
                 }
-
-                drawHorizontalTape(0f)
-                drawHorizontalTape(size.height - frame)
-                drawVerticalTape(0f)
-                drawVerticalTape(size.width - frame)
             }
 
             Box(
