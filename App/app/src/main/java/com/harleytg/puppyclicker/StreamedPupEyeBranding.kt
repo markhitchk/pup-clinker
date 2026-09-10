@@ -36,7 +36,9 @@ import kotlinx.coroutines.withContext
  * Source of truth:
  * https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png
  *
- * The last valid PNG is cached locally so branding remains available offline.
+ * Every APK also contains the repository PupEye PNG as an offline fallback. This keeps the
+ * branding visible when the repository is private or GitHub is unavailable, while still allowing
+ * a newer anonymously-readable repository copy to refresh the local cache later.
  */
 @Composable
 internal fun StreamedPupEyeBranding(
@@ -53,7 +55,7 @@ internal fun StreamedPupEyeBranding(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
+            Log.w("PupEyeBranding", "Unable to load PupEye branding", error)
         }
     }
 
@@ -77,6 +79,7 @@ internal fun StreamedPupEyeBranding(
 private object PupEyeAssetStream {
     private const val URL_STRING =
         "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png"
+    private const val BUNDLED_ASSET = "branding/PupEye.png"
     private const val CACHE_FILE = "PupEye.png"
     private const val PREFS = "pupeye_brand_stream_v1"
     private const val MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024
@@ -93,17 +96,19 @@ private object PupEyeAssetStream {
 
     suspend fun load(context: Context): Bitmap? = withContext(Dispatchers.IO) {
         mutex.withLock {
-            val cached = memory ?: readCached(context)?.also { memory = it }
+            val fallback = memory
+                ?: readCached(context)?.also { memory = it }
+                ?: readBundled(context)?.also { memory = it }
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val now = System.currentTimeMillis()
             val checked = prefs.getLong("checked", 0L)
             val attempted = prefs.getLong("attempted", 0L)
 
-            if (cached != null && now - checked in 0 until REFRESH_INTERVAL_MS) {
-                return@withLock cached
+            if (fallback != null && now - checked in 0 until REFRESH_INTERVAL_MS) {
+                return@withLock fallback
             }
             if (now - attempted in 0 until FAILURE_RETRY_MS) {
-                return@withLock cached
+                return@withLock fallback
             }
 
             prefs.edit().putLong("attempted", now).apply()
@@ -115,15 +120,15 @@ private object PupEyeAssetStream {
                 connection.setRequestProperty("Accept", "image/png")
                 connection.setRequestProperty("User-Agent", "PuppyClicker-Android-PupEye")
 
-                prefs.getString("etag", null)?.takeIf { cached != null }?.let {
+                prefs.getString("etag", null)?.takeIf { fallback != null }?.let {
                     connection.setRequestProperty("If-None-Match", it)
                 }
 
                 when (connection.responseCode) {
                     HttpURLConnection.HTTP_NOT_MODIFIED -> {
-                        if (cached == null) throw IOException("304 without cached PupEye image")
+                        if (fallback == null) throw IOException("304 without a PupEye fallback")
                         prefs.edit().putLong("checked", now).apply()
-                        cached
+                        fallback
                     }
 
                     HttpURLConnection.HTTP_OK -> {
@@ -151,8 +156,8 @@ private object PupEyeAssetStream {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                Log.w("PupEyeBranding", "Using cached PupEye branding", error)
-                cached
+                Log.w("PupEyeBranding", "Using packaged/cached PupEye branding", error)
+                fallback
             } finally {
                 connection.disconnect()
             }
@@ -160,7 +165,17 @@ private object PupEyeAssetStream {
     }
 
     private fun cacheFile(context: Context): File =
-        File(context.cacheDir, "branding/PupEye.png")
+        File(context.cacheDir, "branding/$CACHE_FILE")
+
+    private fun readBundled(context: Context): Bitmap? = try {
+        context.assets.open(BUNDLED_ASSET).use { input ->
+            val bytes = input.readBytes()
+            if (bytes.size > MAX_DOWNLOAD_BYTES) null else decode(bytes)
+        }
+    } catch (error: Exception) {
+        Log.w("PupEyeBranding", "Packaged PupEye logo unavailable", error)
+        null
+    }
 
     private fun readCached(context: Context): Bitmap? {
         val file = cacheFile(context)
