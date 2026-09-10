@@ -11,7 +11,7 @@ permissions:
 jobs:
   apply:
     if: >-
-      github.event.head_commit.message == 'fix: apply ticket source repair'
+      github.event.head_commit.message == 'fix: retry ticket source repair'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repair branch
