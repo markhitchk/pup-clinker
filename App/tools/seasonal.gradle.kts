@@ -1,4 +1,4 @@
-// Add canonical roster artwork, dynamic manifest rosters, and seasonal features.
+// Add canonical roster artwork, dynamic manifest rosters, seasonal features and final UI integration.
 apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
 apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
@@ -9,7 +9,15 @@ tasks.named("generateProtectedPuppySources").configure {
     val uxPatch = rootProject.file("tools/patch_puppy_ux.py")
     val pupEyeSecurityPatch = rootProject.file("tools/patch_pupeye_security.py")
     val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
-    inputs.files(seasonalPatch, transparencyPatch, uxPatch, pupEyeSecurityPatch, importReloadPatch)
+    val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp.py")
+    inputs.files(
+        seasonalPatch,
+        transparencyPatch,
+        uxPatch,
+        pupEyeSecurityPatch,
+        importReloadPatch,
+        settingsSetupPatch
+    )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
             .dir("generated/protected-puppies/source")
@@ -30,6 +38,11 @@ tasks.named("generateProtectedPuppySources").configure {
         }
         project.exec {
             commandLine("python3", importReloadPatch.absolutePath, generatedSourceRoot)
+        }
+        // Run the Settings/onboarding integration last so all established compatibility patches
+        // retain their exact anchors and the final generated V6 UI uses the redesigned surfaces.
+        project.exec {
+            commandLine("python3", settingsSetupPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
