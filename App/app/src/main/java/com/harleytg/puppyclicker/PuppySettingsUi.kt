@@ -725,7 +725,6 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
 
     Spacer(Modifier.height(12.dp))
     SettingsLabel("ACCOUNT CONNECTIONS")
-    StatusLine("Discord login", "Coming Soon")
     StatusLine("Website account", "Coming Soon")
     Spacer(Modifier.height(7.dp))
     OutlinedButton(
