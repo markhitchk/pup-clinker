@@ -119,6 +119,38 @@ def patch_view_model(source: str) -> str:
     return source
 
 
+def patch_streamed_art(source: str) -> str:
+    source = replace_once(
+        source,
+        '''/** V6 portrait renderer backed by the dynamic roster's exact manifest asset path. */''',
+        '''internal fun streamedPuppyRequestKey(assetId: String, retryToken: Int): String =\n    "$assetId#retry=$retryToken"\n\n/** V6 portrait renderer backed by the dynamic roster's exact manifest asset path. */''',
+        "streamed retry helper",
+    )
+    source = replace_once(
+        source,
+        '''    background: Color,\n    @Suppress("UNUSED_PARAMETER") furFilter: ColorFilter? = null\n) {''',
+        '''    background: Color,\n    @Suppress("UNUSED_PARAMETER") furFilter: ColorFilter? = null,\n    retryToken: Int = 0\n) {''',
+        "streamed retry parameter",
+    )
+    source = replace_once(
+        source,
+        '''    val assetId = RemotePuppyAssets.assetIdFor(style.id)\n    val portrait = produceState<Bitmap?>(\n        initialValue = RemotePuppyAssets.peek(assetId),\n        key1 = context,\n        key2 = assetId''',
+        '''    val assetId = RemotePuppyAssets.assetIdFor(style.id)\n    val requestKey = streamedPuppyRequestKey(assetId, retryToken)\n    val portrait = produceState<Bitmap?>(\n        initialValue = RemotePuppyAssets.peek(assetId),\n        key1 = context,\n        key2 = requestKey''',
+        "streamed retry request key",
+    )
+    return source
+
+
+def patch_activity(source: str) -> str:
+    source = replace_once(
+        source,
+        '''private fun V6PuppyPortrait(styleId: String, size: Dp, accessory: String = "None", unlocked: Boolean = true) {\n    StreamedPuppyPortrait(\n        styleId = styleId,\n        size = size,\n        accessory = accessory,\n        unlocked = unlocked,\n        background = v6PuppyBackground(styleId),\n        furFilter = null\n    )''',
+        '''private fun V6PuppyPortrait(\n    styleId: String,\n    size: Dp,\n    accessory: String = "None",\n    unlocked: Boolean = true,\n    retryToken: Int = 0\n) {\n    StreamedPuppyPortrait(\n        styleId = styleId,\n        size = size,\n        accessory = accessory,\n        unlocked = unlocked,\n        background = v6PuppyBackground(styleId),\n        furFilter = null,\n        retryToken = retryToken\n    )''',
+        "V6 portrait retry forwarding",
+    )
+    return source
+
+
 def main(root: Path) -> None:
     dynamic_roster = root / PACKAGE / "DynamicPuppyRoster.kt"
     dynamic_roster.write_text(
@@ -129,6 +161,18 @@ def main(root: Path) -> None:
     view_model = root / PACKAGE / "PuppyClickerV6ViewModel.kt"
     view_model.write_text(
         patch_view_model(view_model.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    streamed_art = root / PACKAGE / "StreamedPuppyArt.kt"
+    streamed_art.write_text(
+        patch_streamed_art(streamed_art.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    activity = root / PACKAGE / "PuppyClickerV6Activity.kt"
+    activity.write_text(
+        patch_activity(activity.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
 
