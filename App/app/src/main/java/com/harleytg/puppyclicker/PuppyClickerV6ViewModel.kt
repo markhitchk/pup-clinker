@@ -381,12 +381,14 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun startParkAdventure() {
         val s = _state.value
         if (s.parkActive || s.energy < 20) return
+        val readyAt = System.currentTimeMillis() + PARK_ADVENTURE_MS
         _state.value = s.copy(
             parkActive = true,
-            parkReadyAtMs = System.currentTimeMillis() + PARK_ADVENTURE_MS,
+            parkReadyAtMs = readyAt,
             energy = (s.energy - 20).coerceAtLeast(0)
         )
         saveState()
+        PuppyNotificationCenter.scheduleParkReady(getApplication(), readyAt)
     }
 
     fun claimParkAdventure() {
@@ -405,6 +407,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
+        PuppyNotificationCenter.cancelParkReady(getApplication())
     }
 
     fun claimDailyReward() {
@@ -533,6 +536,37 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return
         _state.value = s.copy(puppyStyle = id)
         saveState()
+    }
+
+    fun receiveExchangePuppy(puppyId: String): Boolean {
+        val asset = DynamicPuppyRoster.asset(puppyId) ?: return false
+        val current = _state.value
+        if (asset.style.id in current.unlockedPuppies) return true
+        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
+        saveState()
+        return true
+    }
+
+    fun applyExchangeTrade(sentPuppyIds: Set<String>, receivedPuppyIds: Set<String>): Boolean {
+        if (sentPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS ||
+            receivedPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS
+        ) return false
+        val current = _state.value
+        if (!current.unlockedPuppies.containsAll(sentPuppyIds)) return false
+        if (receivedPuppyIds.any { DynamicPuppyRoster.asset(it) == null }) return false
+
+        val nextUnlocked = (current.unlockedPuppies - sentPuppyIds) + receivedPuppyIds
+        if (nextUnlocked.isEmpty()) return false
+        val nextStyle = if (current.puppyStyle in sentPuppyIds) {
+            nextUnlocked.firstOrNull { it in V6_PUPPY_IDS } ?: nextUnlocked.first()
+        } else current.puppyStyle
+
+        _state.value = current.copy(
+            unlockedPuppies = nextUnlocked,
+            puppyStyle = nextStyle
+        )
+        saveState()
+        return true
     }
 
     fun setAccessory(value: String) {
