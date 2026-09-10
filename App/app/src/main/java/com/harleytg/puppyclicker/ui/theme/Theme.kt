@@ -2,13 +2,6 @@ package com.harleytg.puppyclicker.ui.theme
 
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -18,18 +11,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 import com.harleytg.puppyclicker.PuppyThemeMode
 import com.harleytg.puppyclicker.PuppyUiPreferences
 import com.harleytg.puppyclicker.PuppyUiScale
-import com.harleytg.puppyclicker.StreamedPupEyeBranding
 
 val LocalPuppyReducedMotion = staticCompositionLocalOf { false }
 val LocalPuppyAnimatedUi = staticCompositionLocalOf { true }
@@ -121,27 +109,8 @@ fun PuppyClickerTheme(content: @Composable () -> Unit) {
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography = Typography()
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                content()
-
-                // PupEye remains a streamed repository asset and never gates app rendering.
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing)
-                ) {
-                    StreamedPupEyeBranding(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .size(38.dp)
-                            .alpha(0.94f),
-                        contentDescription = "PupEye fair-play protection"
-                    )
-                }
-            }
-        }
+            typography = Typography(),
+            content = content
+        )
     }
 }
