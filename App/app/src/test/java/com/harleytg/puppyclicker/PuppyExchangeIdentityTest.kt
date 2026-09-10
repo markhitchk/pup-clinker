@@ -58,4 +58,26 @@ class PuppyExchangeIdentityTest {
         assertFalse(PuppyPlayerIdentity.isValidPlayerId("PC-HARLEYTG-DEV-0001"))
     }
 
+    @Test
+    fun developerRecognitionRequiresBothReservedCanonicalValues() {
+        assertTrue(
+            PuppyPlayerIdentity.isHarleyTgDeveloperIdentity(
+                "PC-5AD7F57F80FBE69809F96AEA963E2426",
+                "PUP-5XUV-SGZB-S9CX"
+            )
+        )
+        assertFalse(
+            PuppyPlayerIdentity.isHarleyTgDeveloperIdentity(
+                "PC-0123456789ABCDEF0123456789ABCDEF",
+                "PUP-5XUV-SGZB-S9CX"
+            )
+        )
+        assertFalse(
+            PuppyPlayerIdentity.isHarleyTgDeveloperIdentity(
+                "PC-5AD7F57F80FBE69809F96AEA963E2426",
+                "PUP-ABCD-EFGH-JKLM"
+            )
+        )
+    }
+
 }
