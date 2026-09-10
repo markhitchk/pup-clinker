@@ -39,6 +39,17 @@ data class RosterCardModel(
     val sourceIndex: Int
 )
 
+internal fun toggleRosterFavorite(
+    knownIds: Set<String>,
+    favoriteIds: Set<String>,
+    id: String
+): Set<String> {
+    if (id !in knownIds) return favoriteIds
+    return favoriteIds.toMutableSet().apply {
+        if (!add(id)) remove(id)
+    }.toSet()
+}
+
 internal fun buildRosterCards(
     assets: List<PuppyRosterAsset>,
     unlockedIds: Set<String>,
