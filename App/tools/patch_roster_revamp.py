@@ -76,8 +76,8 @@ def patch_view_model(source: str) -> str:
 
     source = replace_once(
         source,
-        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun setAccessory(value: String) {''',
-        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun toggleFavoritePuppy(id: String) {\n        val knownIds = DynamicPuppyRoster.assets.value.mapTo(linkedSetOf()) { it.style.id }\n        val current = _state.value\n        val next = toggleRosterFavorite(knownIds, current.favoritePuppies, id)\n        if (next == current.favoritePuppies) return\n        _state.value = current.copy(favoritePuppies = next)\n        prefs.edit().putStringSet(KEY_FAVORITE_PUPPIES, next).apply()\n    }\n\n    fun setAccessory(value: String) {''',
+        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun receiveExchangePuppy(puppyId: String): Boolean {''',
+        '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun toggleFavoritePuppy(id: String) {\n        val knownIds = DynamicPuppyRoster.assets.value.mapTo(linkedSetOf()) { it.style.id }\n        val current = _state.value\n        val next = toggleRosterFavorite(knownIds, current.favoritePuppies, id)\n        if (next == current.favoritePuppies) return\n        _state.value = current.copy(favoritePuppies = next)\n        prefs.edit().putStringSet(KEY_FAVORITE_PUPPIES, next).apply()\n    }\n\n    fun receiveExchangePuppy(puppyId: String): Boolean {''',
         "favorite toggle method",
     )
 
