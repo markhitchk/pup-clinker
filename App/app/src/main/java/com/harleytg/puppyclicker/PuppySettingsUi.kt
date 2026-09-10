@@ -550,6 +550,7 @@ private fun PupEyeSettings(state: V6GameState) {
     var externalStatus by rememberSaveable { mutableStateOf("Not checked") }
     val security = PupEyeSaveGuard.state(context)
     val branding = PupEyeAssetStream.status(context)
+    val fairPlayEnforced = PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(context)
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         StreamedPupEyeBranding(Modifier.size(54.dp), "PupEye Protection")
@@ -572,7 +573,15 @@ private fun PupEyeSettings(state: V6GameState) {
     StatusLine("Save file integrity", integrityStatus)
     StatusLine("Android/data save integrity", externalStatus)
     StatusLine("Device-bound encryption", "Configured")
-    StatusLine("External click detection", "Enabled")
+    StatusLine("Save integrity protection", "Always Active")
+    StatusLine(
+        "Fair-play enforcement",
+        if (fairPlayEnforced) "Active · Player" else "Developer Exempt"
+    )
+    StatusLine(
+        "External click detection",
+        if (fairPlayEnforced) "Enabled" else "Developer Exempt"
+    )
     StatusLine("PupEye branding", if (branding.ready) "Ready (cached/streamed)" else "Unavailable")
     StatusLine("Confirmed clicker cooldowns", state.pupEyeStrikes.toString())
     StatusLine("Save integrity events", security.tamperEvents.toString())
