@@ -81,9 +81,6 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(10.dp))
-            PuppyDevelopmentNotice()
-
             Spacer(Modifier.height(18.dp))
             Surface(
                 shape = RoundedCornerShape(18.dp),
@@ -156,7 +153,9 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 acknowledgementText = "By continuing, you agree to the Terms of Use and acknowledge the Privacy Policy."
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
+            PuppyDevelopmentNotice()
+            Spacer(Modifier.height(8.dp))
             Text(
                 "Harley's Studios",
                 style = MaterialTheme.typography.labelMedium,
@@ -225,9 +224,6 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(10.dp))
-                PuppyDevelopmentNotice()
-
                 Spacer(Modifier.height(14.dp))
                 OutlinedTextField(
                     value = username,
@@ -283,7 +279,9 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     acknowledgementText = "Creating a local player means you agree to the Terms of Use and acknowledge the Privacy Policy."
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(8.dp))
+                PuppyDevelopmentNotice()
+                Spacer(Modifier.height(8.dp))
                 Text(
                     "PupEye does not store IMEI, serial number, Android ID, phone number, or account tokens in save metadata.",
                     style = MaterialTheme.typography.labelSmall,
