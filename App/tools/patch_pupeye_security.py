@@ -20,12 +20,20 @@ def patch_view_model(source: str) -> str:
         "    private val recentTapTimes = ArrayDeque<Long>()\n    private val automationDetector = PupEyeAutomationDetector()\n",
         "automation detector field",
     )
-    source = replace_once(
-        source,
-        "        val suspiciousThisTap = looksAutomated(now)\n",
-        "        val suspiciousThisTap = automationDetector.recordTapAndCheck() || looksAutomated(now)\n",
-        "automation detector tap hook",
-    )
+    if "        val suspiciousThisTap = enforcePupEyeFairPlay && looksAutomated(now)\n" in source:
+        source = replace_once(
+            source,
+            "        val suspiciousThisTap = enforcePupEyeFairPlay && looksAutomated(now)\n",
+            "        val suspiciousThisTap = enforcePupEyeFairPlay && (automationDetector.recordTapAndCheck() || looksAutomated(now))\n",
+            "identity-aware automation detector tap hook",
+        )
+    else:
+        source = replace_once(
+            source,
+            "        val suspiciousThisTap = looksAutomated(now)\n",
+            "        val suspiciousThisTap = automationDetector.recordTapAndCheck() || looksAutomated(now)\n",
+            "automation detector tap hook",
+        )
     source = replace_once(
         source,
         "                recentTapTimes.clear()\n                suspicionHits = 0\n",
