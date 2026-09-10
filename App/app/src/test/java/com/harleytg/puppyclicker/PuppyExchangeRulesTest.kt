@@ -33,12 +33,21 @@ class PuppyExchangeRulesTest {
     }
 
     @Test
-    fun sourceCopyCanGiftButCannotTrade() {
-        val source = PuppyTransferPolicy(giftable = true, sourceCopy = true)
-        val owned = record(policy = source)
+    fun sourceCopyCanGiftButCannotTradeEvenWhenRecipientsMayTrade() {
+        val rosterPolicy = PuppyTransferPolicy(giftable = true, tradeable = true)
+        val sourceOwnershipPolicy = rosterPolicy.copy(sourceCopy = true)
+        val sourceRecord = record(policy = sourceOwnershipPolicy)
 
-        assertTrue(evaluateTransferEligibility(owned, source, ExchangeTransactionType.GIFT, owner).allowed)
-        assertFalse(evaluateTransferEligibility(owned, source, ExchangeTransactionType.TRADE, owner).allowed)
+        assertTrue(evaluateTransferEligibility(sourceRecord, rosterPolicy, ExchangeTransactionType.GIFT, owner).allowed)
+        assertFalse(evaluateTransferEligibility(sourceRecord, rosterPolicy, ExchangeTransactionType.TRADE, owner).allowed)
+
+        val recipientRecord = sourceRecord.copy(
+            recordId = "XO-recipient",
+            ownerPlayerId = peer,
+            acquisitionType = AcquisitionType.GIFT,
+            policySnapshot = rosterPolicy.copy(sourceCopy = false)
+        )
+        assertTrue(evaluateTransferEligibility(recipientRecord, rosterPolicy, ExchangeTransactionType.TRADE, peer).allowed)
     }
 
     @Test
