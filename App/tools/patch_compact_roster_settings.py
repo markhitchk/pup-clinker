@@ -478,7 +478,7 @@ private fun AccountProfileCard(
     val username = PuppyPlayerIdentity.username(context)
     val playerId = PuppyPlayerIdentity.playerId(context)
     val friendCode = PuppyPlayerIdentity.friendCode(context)
-    val shortPlayerId = if (playerId.length > 13) "${playerId.take(7)}…${playerId.takeLast(4)}" else playerId
+    val shortPlayerId = if (playerId.length > 14) "${playerId.take(8)}…${playerId.takeLast(5)}" else playerId
     val reduceMotion = LocalPuppyReducedMotion.current
     val duration = if (reduceMotion) 1 else 190
     val arrowRotation by animateFloatAsState(
@@ -489,68 +489,121 @@ private fun AccountProfileCard(
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+        )
     ) {
-        Column {
+        Column(Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StreamedPuppyPortrait(
-                    styleId = state.puppyStyle,
-                    size = 48.dp,
-                    accessory = state.accessory,
-                    unlocked = true,
-                    background = MaterialTheme.colorScheme.surfaceVariant
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    StreamedPuppyPortrait(
+                        styleId = state.puppyStyle,
+                        size = 54.dp,
+                        accessory = state.accessory,
+                        unlocked = true,
+                        background = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Account & Profile", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-                    Text(username, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, maxLines = 1)
-                    Text(friendCode, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                    Text("Player ID: $shortPlayerId", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
                     Text(
-                        "Device Bound",
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        username,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
+                    Text(
+                        "Local Profile · Device Bound",
                         style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Account & Profile",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Spacer(Modifier.width(4.dp))
                 Text(
                     "›",
                     modifier = Modifier.rotate(arrowRotation),
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                TextButton(
-                    onClick = { copyAccountValue(context, "Puppy Clicker Friend Code", friendCode) },
-                    modifier = Modifier.height(30.dp)
-                ) { Text("Copy", style = MaterialTheme.typography.labelSmall) }
-                Text("Friend Code", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.weight(1f))
-                TextButton(
-                    onClick = { copyAccountValue(context, "Puppy Clicker Player ID", playerId) },
-                    modifier = Modifier.height(30.dp)
-                ) { Text("Copy", style = MaterialTheme.typography.labelSmall) }
-                Text("Player ID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+                ) {
+                    Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
+                        Text(
+                            "FRIEND CODE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            friendCode,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1
+                        )
+                        TextButton(
+                            onClick = { copyAccountValue(context, "Puppy Clicker Friend Code", friendCode) },
+                            modifier = Modifier.height(28.dp),
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                        ) { Text("Copy", style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
+                ) {
+                    Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
+                        Text(
+                            "PLAYER ID",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            shortPlayerId,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1
+                        )
+                        TextButton(
+                            onClick = { copyAccountValue(context, "Puppy Clicker Player ID", playerId) },
+                            modifier = Modifier.height(28.dp),
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                        ) { Text("Copy", style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
             }
+
+            Text(
+                if (expanded) "Hide profile settings" else "Tap to edit profile, birthday, and account connections",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             AnimatedVisibility(
                 visible = expanded,
@@ -572,7 +625,7 @@ private fun copyAccountValue(context: Context, label: String, value: String) {
     clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
 }
 
-'''
+
     source = replace_once(source, marker, account_card + marker, "account profile card helper")
     return source
 
