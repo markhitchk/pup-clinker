@@ -12,7 +12,7 @@ import android.util.Log
 /** Shared foreground state used to stop live production while the app is away. */
 object PuppyAppRuntime {
     @Volatile
-    var isForeground: Boolean = true
+    var isForeground: Boolean = false
 }
 
 class PuppyClickerApplication : Application(), Application.ActivityLifecycleCallbacks {
@@ -57,6 +57,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("dynamic puppy roster") { DynamicPuppyRoster.initialize(this) }
         startupSafely("redeem code stream") { StreamedRedeemCodes.initialize(this) }
         startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
+        startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
 
         // If Android killed the process while it was in the background, the timestamp survives
         // and is converted into a pending reward here. A malformed legacy value is ignored here;
