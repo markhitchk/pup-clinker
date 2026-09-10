@@ -195,14 +195,26 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun tapPuppy() {
         val now = System.currentTimeMillis()
         val current = _state.value
-        if (now < current.cooldownUntilMs) return
+        val enforcePupEyeFairPlay =
+            PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(getApplication<Application>())
 
-        recentTapTimes.addLast(now)
-        while (recentTapTimes.isNotEmpty() && recentTapTimes.first < now - FAIR_PLAY_HISTORY_MS) {
-            recentTapTimes.removeFirst()
+        if (enforcePupEyeFairPlay && now < current.cooldownUntilMs) return
+
+        if (enforcePupEyeFairPlay) {
+            recentTapTimes.addLast(now)
+            while (recentTapTimes.isNotEmpty() && recentTapTimes.first < now - FAIR_PLAY_HISTORY_MS) {
+                recentTapTimes.removeFirst()
+            }
+        } else if (recentTapTimes.isNotEmpty() || suspicionHits != 0 || suspicionWindowStartedMs != 0L) {
+            // Developer exemption applies only to behavioral fair-play detection.
+            // Reset transient detector state so an old player-mode sample cannot leak
+            // into a verified developer session.
+            recentTapTimes.clear()
+            suspicionHits = 0
+            suspicionWindowStartedMs = 0L
         }
 
-        val suspiciousThisTap = looksAutomated(now)
+        val suspiciousThisTap = enforcePupEyeFairPlay && looksAutomated(now)
         if (suspiciousThisTap) {
             if (suspicionWindowStartedMs == 0L || now - suspicionWindowStartedMs > SUSPICION_CONFIRM_WINDOW_MS) {
                 suspicionWindowStartedMs = now
