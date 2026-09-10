@@ -193,7 +193,6 @@ private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
                 }
             }
         }
-        PuppyDevelopmentNotice()
     }
 }''',
         "main app shell",
