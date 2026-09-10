@@ -39,6 +39,13 @@ def patch_roster_screen(source: str) -> str:
 
     source = replace_once(
         source,
+        "import androidx.compose.ui.text.style.TextOverflow\n",
+        "import androidx.compose.ui.text.style.TextAlign\nimport androidx.compose.ui.text.style.TextOverflow\n",
+        "roster TextAlign import",
+    )
+
+    source = replace_once(
+        source,
         '''                    modifier = Modifier.weight(1f)\n                )\n            }\n        }\n\n        Spacer(Modifier.height(8.dp))\n        OutlinedTextField(''',
         '''                    modifier = Modifier.height(if (compactRoster) 34.dp else 48.dp).weight(1f)\n                )\n            }\n        }\n\n        Spacer(Modifier.height(if (compactRoster) 5.dp else 8.dp))\n        OutlinedTextField(''',
         "shorter status filters",
@@ -47,7 +54,7 @@ def patch_roster_screen(source: str) -> str:
     source = replace_once(
         source,
         '''        OutlinedTextField(\n            value = search,\n            onValueChange = { search = it.take(64) },\n            modifier = Modifier.fillMaxWidth(),\n            singleLine = true,\n            label = { Text("Search puppies or ID") },\n            leadingIcon = { Text("🔍") }\n        )''',
-        '''        OutlinedTextField(\n            value = search,\n            onValueChange = { search = it.take(64) },\n            modifier = Modifier.fillMaxWidth().height(if (compactRoster) 48.dp else 56.dp),\n            singleLine = true,\n            placeholder = { Text("Search puppies or ID", maxLines = 1) },\n            leadingIcon = { Text("🔍", fontSize = if (compactRoster) 14.sp else 16.sp) }\n        )''',
+        '''        OutlinedTextField(\n            value = search,\n            onValueChange = { search = it.take(64) },\n            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),\n            singleLine = true,\n            placeholder = { Text("Search puppies or ID", maxLines = 1) },\n            leadingIcon = { Text("🔍", fontSize = if (compactRoster) 14.sp else 16.sp) }\n        )''',
         "shorter search field",
     )
 
@@ -349,6 +356,88 @@ private fun CompactSelectedPuppyActions(
     }
 }''',
         "slim selected puppy strip",
+    )
+
+    source = replace_once(
+        source,
+        '''    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Use Puppy?") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                StreamedPuppyPortrait(
+                    styleId = asset.style.id,
+                    size = 112.dp,
+                    unlocked = true,
+                    background = MaterialTheme.colorScheme.surfaceVariant,
+                    retryToken = retryToken
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(asset.style.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(5.dp))
+                Text("Make ${asset.style.name} your active puppy?")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) { Text("Use Puppy") }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text("Cancel") }
+        }
+    )''',
+        '''    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                "Use Puppy?",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Black
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                StreamedPuppyPortrait(
+                    styleId = asset.style.id,
+                    size = 108.dp,
+                    unlocked = true,
+                    background = MaterialTheme.colorScheme.surfaceVariant,
+                    retryToken = retryToken
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    asset.style.name,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Make ${asset.style.name} your active puppy?",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+                Spacer(Modifier.width(10.dp))
+                Button(onClick = onConfirm) { Text("Use Puppy") }
+            }
+        },
+        dismissButton = {}
+    )''',
+        "centered use puppy confirmation",
     )
 
     return source
