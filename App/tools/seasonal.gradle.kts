@@ -2,12 +2,19 @@
 apply(from = rootProject.file("tools/canonical-puppy-assets.gradle.kts"))
 apply(from = rootProject.file("tools/dynamic-puppy-roster.gradle.kts"))
 
-// Release identity override. This is applied during Gradle configuration so the manifest is
-// compiled by Android's normal build pipeline instead of being edited after APK creation.
-(project.extensions.getByName("android") as com.android.build.api.dsl.ApplicationExtension).defaultConfig {
-    versionCode = 22
-    versionName = "1.7.9"
-}
+// Release identity override. Script plugins do not receive the Android plugin's Kotlin DSL
+// type-safe accessors, so use the already-created Android extension reflectively. This still runs
+// during Gradle configuration, before the manifest/resources are compiled.
+val androidExtension = project.extensions.getByName("android")
+val releaseDefaultConfig = androidExtension.javaClass.methods
+    .first { it.name == "getDefaultConfig" && it.parameterCount == 0 }
+    .invoke(androidExtension)
+releaseDefaultConfig.javaClass.methods
+    .first { it.name == "setVersionCode" && it.parameterCount == 1 }
+    .invoke(releaseDefaultConfig, 22)
+releaseDefaultConfig.javaClass.methods
+    .first { it.name == "setVersionName" && it.parameterCount == 1 }
+    .invoke(releaseDefaultConfig, "1.7.9")
 
 // Original game sources, shared artwork and other platform projects are untouched.
 tasks.named("generateProtectedPuppySources").configure {
