@@ -29,6 +29,7 @@ class PuppyCodeGeneratedIntegrationTest {
     @Test
     fun liveCatalogueIsSchema2AndParsableByTheInstalledClient() {
         val catalogue = listOf(
+            File("../../assets/redeem-codes.json"),
             File("../assets/redeem-codes.json"),
             File("assets/redeem-codes.json")
         ).firstOrNull(File::isFile)
