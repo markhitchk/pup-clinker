@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -25,7 +24,6 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -37,8 +35,8 @@ import kotlinx.coroutines.withContext
  * https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png
  *
  * PupEye.png is never bundled into the APK. Only a PNG successfully downloaded from the
- * repository may be cached on-device. If no valid stream/cache exists, the UI keeps retrying
- * instead of replacing the logo with text.
+ * repository may be cached on-device. A failed or unavailable stream never blocks the app and
+ * never leaves a permanent loading indicator on screen.
  */
 @Composable
 internal fun StreamedPupEyeBranding(
@@ -50,33 +48,30 @@ internal fun StreamedPupEyeBranding(
         initialValue = PupEyeAssetStream.peek(),
         key1 = context
     ) {
-        while (value == null) {
-            try {
-                value = PupEyeAssetStream.load(context)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
-            }
-            if (value == null) delay(NO_IMAGE_RETRY_MS)
+        // One asynchronous attempt per composition. PupEyeAssetStream applies its own refresh and
+        // failure backoff, so a missing/broken remote asset cannot create an infinite retry loop.
+        try {
+            value = PupEyeAssetStream.load(context)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w("PupEyeBranding", "Unable to load streamed PupEye branding", error)
         }
     }
 
+    // The logo is optional branding, never an app-loading gate. If the stream and cache are both
+    // unavailable, keep this space transparent and allow the rest of the UI to remain usable.
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
+        bitmap?.let { loaded ->
             Image(
-                bitmap = bitmap!!.asImageBitmap(),
+                bitmap = loaded.asImageBitmap(),
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
             )
-        } else {
-            CircularProgressIndicator()
         }
     }
 }
-
-private const val NO_IMAGE_RETRY_MS = 5_000L
 
 private object PupEyeAssetStream {
     private const val URL_STRING =
@@ -106,17 +101,18 @@ private object PupEyeAssetStream {
             if (cached != null && now - checked in 0 until REFRESH_INTERVAL_MS) {
                 return@withLock cached
             }
-            // Back off only when we already have a valid streamed image to display. When no image
-            // exists, keep attempting so a repo that just became public starts working immediately.
-            if (cached != null && now - attempted in 0 until FAILURE_RETRY_MS) {
+
+            // Always back off after a failed/recent attempt, even if no cache exists. This stops a
+            // missing remote logo from being hammered every time the composable is recreated.
+            if (now - attempted in 0 until FAILURE_RETRY_MS) {
                 return@withLock cached
             }
 
             prefs.edit().putLong("attempted", now).apply()
             val connection = URL(URL_STRING).openConnection() as HttpURLConnection
             try {
-                connection.connectTimeout = 10_000
-                connection.readTimeout = 25_000
+                connection.connectTimeout = 5_000
+                connection.readTimeout = 10_000
                 connection.instanceFollowRedirects = true
                 connection.setRequestProperty("Accept", "image/png,image/*;q=0.9,*/*;q=0.1")
                 connection.setRequestProperty("Cache-Control", "no-cache")
