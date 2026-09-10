@@ -20,8 +20,6 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -32,11 +30,11 @@ import kotlinx.coroutines.withContext
  * Streamed-only PupEye branding.
  *
  * Source of truth:
- * https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png
+ * https://github.com/markhitchk/pup-clinker/blob/main/assets/PupEye.png
  *
- * PupEye.png is never bundled into the APK. Only a PNG successfully downloaded from the
- * repository may be cached on-device. A failed or unavailable stream never blocks the app and
- * never leaves a permanent loading indicator on screen.
+ * PupEye.png is never bundled into the APK. The app downloads the repository asset at runtime,
+ * validates it as PNG data, downsamples oversized source images safely, and keeps the last valid
+ * streamed copy in the app cache. A stream failure never blocks the rest of the UI.
  */
 @Composable
 internal fun StreamedPupEyeBranding(
@@ -48,8 +46,6 @@ internal fun StreamedPupEyeBranding(
         initialValue = PupEyeAssetStream.peek(),
         key1 = context
     ) {
-        // One asynchronous attempt per composition. PupEyeAssetStream applies its own refresh and
-        // failure backoff, so a missing/broken remote asset cannot create an infinite retry loop.
         try {
             value = PupEyeAssetStream.load(context)
         } catch (cancelled: CancellationException) {
@@ -59,8 +55,6 @@ internal fun StreamedPupEyeBranding(
         }
     }
 
-    // The logo is optional branding, never an app-loading gate. If the stream and cache are both
-    // unavailable, keep this space transparent and allow the rest of the UI to remain usable.
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         bitmap?.let { loaded ->
             Image(
@@ -74,14 +68,22 @@ internal fun StreamedPupEyeBranding(
 }
 
 private object PupEyeAssetStream {
-    private const val URL_STRING =
-        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png"
+    // Raw GitHub stays the source of truth. jsDelivr is only a GitHub-backed transport fallback
+    // for devices/networks that fail to reach raw.githubusercontent.com reliably.
+    private val URLS = listOf(
+        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png",
+        "https://cdn.jsdelivr.net/gh/markhitchk/pup-clinker@main/assets/PupEye.png"
+    )
+
     private const val CACHE_FILE = "PupEye.png"
-    private const val PREFS = "pupeye_brand_stream_v1"
+    private const val PREFS = "pupeye_brand_stream_v2"
     private const val MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024
-    private const val MAX_IMAGE_EDGE = 4096
-    private const val REFRESH_INTERVAL_MS = 6L * 60L * 60L * 1000L
-    private const val FAILURE_RETRY_MS = 5L * 60L * 1000L
+    private const val MAX_SOURCE_EDGE = 16_384
+    private const val MAX_SOURCE_PIXELS = 64L * 1024L * 1024L
+    private const val MAX_DECODE_EDGE = 2_048
+    private const val REFRESH_INTERVAL_MS = 60L * 60L * 1000L
+    private const val FAILURE_RETRY_MS = 20L * 1000L
+
     private val pngSignature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
     private val mutex = Mutex()
 
@@ -102,63 +104,69 @@ private object PupEyeAssetStream {
                 return@withLock cached
             }
 
-            // Always back off after a failed/recent attempt, even if no cache exists. This stops a
-            // missing remote logo from being hammered every time the composable is recreated.
             if (now - attempted in 0 until FAILURE_RETRY_MS) {
                 return@withLock cached
             }
 
             prefs.edit().putLong("attempted", now).apply()
-            val connection = URL(URL_STRING).openConnection() as HttpURLConnection
-            try {
-                connection.connectTimeout = 5_000
-                connection.readTimeout = 10_000
-                connection.instanceFollowRedirects = true
-                connection.setRequestProperty("Accept", "image/png,image/*;q=0.9,*/*;q=0.1")
-                connection.setRequestProperty("Cache-Control", "no-cache")
-                connection.setRequestProperty("User-Agent", "PuppyClicker-Android-PupEye")
 
-                prefs.getString("etag", null)?.takeIf { cached != null }?.let {
-                    connection.setRequestProperty("If-None-Match", it)
+            var lastError: Exception? = null
+            for (url in URLS) {
+                try {
+                    val bytes = download(url)
+                    val decoded = decode(bytes)
+                        ?: throw IOException("Invalid or unsafe PupEye PNG returned by $url")
+
+                    writeCached(context, bytes)
+                    memory = decoded
+                    prefs.edit()
+                        .putLong("checked", now)
+                        .putString("source", url)
+                        .apply()
+
+                    Log.i("PupEyeBranding", "Loaded streamed PupEye branding from $url")
+                    return@withLock decoded
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    lastError = error
+                    Log.w("PupEyeBranding", "PupEye stream endpoint failed: $url", error)
                 }
-
-                when (connection.responseCode) {
-                    HttpURLConnection.HTTP_NOT_MODIFIED -> {
-                        if (cached == null) throw IOException("304 without cached PupEye image")
-                        prefs.edit().putLong("checked", now).apply()
-                        cached
-                    }
-
-                    HttpURLConnection.HTTP_OK -> {
-                        val length = connection.contentLengthLong
-                        if (length > MAX_DOWNLOAD_BYTES) {
-                            throw IOException("PupEye image exceeds size limit: $length bytes")
-                        }
-
-                        val bytes = readBounded(connection)
-                        val decoded = decode(bytes)
-                            ?: throw IOException("Invalid or oversized PupEye PNG")
-                        writeCached(context, bytes)
-                        memory = decoded
-                        prefs.edit()
-                            .putString("etag", connection.getHeaderField("ETag"))
-                            .putLong("checked", now)
-                            .apply()
-                        decoded
-                    }
-
-                    else -> throw IOException(
-                        "PupEye asset server returned HTTP ${connection.responseCode}"
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Log.w("PupEyeBranding", "PupEye stream unavailable; retaining streamed cache", error)
-                cached
-            } finally {
-                connection.disconnect()
             }
+
+            Log.w(
+                "PupEyeBranding",
+                "All PupEye stream endpoints failed; retaining last valid streamed cache",
+                lastError
+            )
+            cached
+        }
+    }
+
+    private fun download(urlString: String): ByteArray {
+        val connection = URL(urlString).openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = 6_000
+            connection.readTimeout = 12_000
+            connection.instanceFollowRedirects = true
+            connection.useCaches = false
+            connection.setRequestProperty("Accept", "image/png,image/*;q=0.9,*/*;q=0.1")
+            connection.setRequestProperty("Cache-Control", "no-cache")
+            connection.setRequestProperty("User-Agent", "PuppyClicker-Android-PupEye/2")
+
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw IOException("PupEye asset server returned HTTP $responseCode")
+            }
+
+            val length = connection.contentLengthLong
+            if (length > MAX_DOWNLOAD_BYTES) {
+                throw IOException("PupEye image exceeds size limit: $length bytes")
+            }
+
+            return readBounded(connection)
+        } finally {
+            connection.disconnect()
         }
     }
 
@@ -168,21 +176,31 @@ private object PupEyeAssetStream {
     private fun readCached(context: Context): Bitmap? {
         val file = cacheFile(context)
         if (!file.isFile || file.length() !in 1..MAX_DOWNLOAD_BYTES.toLong()) return null
+
         return try {
-            decode(file.readBytes())
+            decode(file.readBytes()) ?: run {
+                file.delete()
+                null
+            }
         } catch (error: Exception) {
             Log.w("PupEyeBranding", "Ignoring invalid cached PupEye image", error)
+            file.delete()
             null
         }
     }
 
     private fun writeCached(context: Context, bytes: ByteArray) {
         val target = cacheFile(context)
-        target.parentFile?.mkdirs()
-        val temp = File.createTempFile("PupEye", ".tmp", target.parentFile)
+        val parent = target.parentFile ?: return
+        if (!parent.exists() && !parent.mkdirs()) {
+            Log.w("PupEyeBranding", "Unable to create PupEye cache directory")
+            return
+        }
+
+        val temp = File.createTempFile("PupEye", ".tmp", parent)
         try {
             temp.writeBytes(bytes)
-            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            temp.copyTo(target, overwrite = true)
         } finally {
             temp.delete()
         }
@@ -211,15 +229,24 @@ private object PupEyeAssetStream {
 
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0 ||
-            bounds.outWidth > MAX_IMAGE_EDGE || bounds.outHeight > MAX_IMAGE_EDGE
-        ) return null
+
+        val width = bounds.outWidth
+        val height = bounds.outHeight
+        if (width <= 0 || height <= 0) return null
+        if (width > MAX_SOURCE_EDGE || height > MAX_SOURCE_EDGE) return null
+        if (width.toLong() * height.toLong() > MAX_SOURCE_PIXELS) return null
+
+        var sampleSize = 1
+        while (width / sampleSize > MAX_DECODE_EDGE || height / sampleSize > MAX_DECODE_EDGE) {
+            sampleSize *= 2
+        }
 
         return BitmapFactory.decodeByteArray(
             bytes,
             0,
             bytes.size,
             BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
         )
