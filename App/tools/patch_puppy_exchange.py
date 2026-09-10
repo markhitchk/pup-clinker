@@ -52,10 +52,32 @@ def patch_dynamic_roster(source: str) -> str:
     return source
 
 
+def patch_roster_screen(source: str) -> str:
+    source = replace_once(
+        source,
+        '''    onUseConfirmed: (String) -> Unit,\n    onOpenSettings: () -> Unit\n) {''',
+        '''    onUseConfirmed: (String) -> Unit,\n    onOpenSettings: () -> Unit,\n    onOpenExchange: () -> Unit = {}\n) {''',
+        "roster exchange callback",
+    )
+    source = replace_once(
+        source,
+        '''            IconButton(\n                onClick = onOpenSettings,\n                modifier = Modifier.semantics { contentDescription = "Open settings" }\n            ) {\n                Text("⚙️", fontSize = 22.sp)\n            }''',
+        '''            IconButton(\n                onClick = onOpenExchange,\n                modifier = Modifier.semantics { contentDescription = "Open Puppy Exchange" }\n            ) {\n                Text("🎁", fontSize = 22.sp)\n            }\n            IconButton(\n                onClick = onOpenSettings,\n                modifier = Modifier.semantics { contentDescription = "Open settings" }\n            ) {\n                Text("⚙️", fontSize = 22.sp)\n            }''',
+        "roster exchange action",
+    )
+    return source
+
+
 def main(root: Path) -> None:
     dynamic_roster = root / PACKAGE / "DynamicPuppyRoster.kt"
     dynamic_roster.write_text(
         patch_dynamic_roster(dynamic_roster.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
+    roster_screen = root / PACKAGE / "PuppyRosterScreen.kt"
+    roster_screen.write_text(
+        patch_roster_screen(roster_screen.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
     print("Puppy Exchange generated-source patches integrated")
