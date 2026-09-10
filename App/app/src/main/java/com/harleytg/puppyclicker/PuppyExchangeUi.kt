@@ -395,7 +395,9 @@ private fun ExchangeIdentityHeader(
 ) {
     val context = LocalContext.current
     val username = remember { PuppyPlayerIdentity.username(context) }
-    val friendCode = remember { PuppyPlayerIdentity.friendCode(context) }
+    val playerId = remember { PuppyPlayerIdentity.publicPlayerId(context) }
+    val friendCode = remember { PuppyPlayerIdentity.publicFriendCode(context) }
+    val officialDeveloper = remember { PuppyPlayerIdentity.isHarleyTgDeveloper(context) }
     val connectionText = when (connection) {
         ExchangeConnectionState.Idle -> "Not connected"
         ExchangeConnectionState.CreatingOffer -> "Creating offer"
@@ -417,8 +419,15 @@ private fun ExchangeIdentityHeader(
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
     ) {
         Column(Modifier.padding(11.dp)) {
-            Text(username, fontWeight = FontWeight.Black)
+            Text(
+                if (officialDeveloper) "$username · DEV / OWNER" else username,
+                fontWeight = FontWeight.Black
+            )
+            Text(playerId, style = MaterialTheme.typography.labelMedium)
             Text(friendCode, style = MaterialTheme.typography.labelLarge)
+            if (officialDeveloper) {
+                Text("Official Harley's Studios Account", style = MaterialTheme.typography.bodySmall)
+            }
             Text(connectionText, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -460,7 +469,7 @@ private fun ExchangeFriendsPanel(
         ) {
             Column(Modifier.padding(12.dp)) {
                 Text("Friend request from ${peer.username}", fontWeight = FontWeight.Black)
-                Text(peer.friendCode, style = MaterialTheme.typography.labelMedium)
+                Text(PuppyPlayerIdentity.displayFriendCode(peer.friendCode), style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(7.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     Button(onClick = {
@@ -508,7 +517,7 @@ private fun ExchangeFriendsPanel(
             ) {
                 Column(Modifier.padding(11.dp)) {
                     Text(friend.lastKnownUsername, fontWeight = FontWeight.Bold)
-                    Text(friend.friendCode, style = MaterialTheme.typography.labelMedium)
+                    Text(PuppyPlayerIdentity.displayFriendCode(friend.friendCode), style = MaterialTheme.typography.labelMedium)
                     Text(if (friend.blocked) "Blocked" else "Friend", style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -559,7 +568,7 @@ private fun ExchangeConnectPanel(
                     .onFailure { result = it.message ?: "Unable to create offer." }
             }
         },
-        enabled = PuppyPlayerIdentity.isValidFriendCode(friendCode),
+        enabled = PuppyPlayerIdentity.isValidFriendCodeInput(friendCode),
         modifier = Modifier.fillMaxWidth()
     ) { Text("Create Offer Code") }
 
@@ -659,7 +668,7 @@ private fun ExchangeGiftsPanel(
         Text("Connect to a verified friend before sending or accepting a gift.")
         return
     }
-    Text("Live recipient: ${peer.username} · ${peer.friendCode}", style = MaterialTheme.typography.bodySmall)
+    Text("Live recipient: ${peer.username} · ${PuppyPlayerIdentity.displayFriendCode(peer.friendCode)}", style = MaterialTheme.typography.bodySmall)
     Spacer(Modifier.height(8.dp))
 
     incomingGift?.let { gift ->
