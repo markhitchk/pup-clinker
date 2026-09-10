@@ -68,8 +68,8 @@ class SettingsAccountCardTest(unittest.TestCase):
     def test_top_account_card_shows_identity_summary(self) -> None:
         source = final_settings_source()
 
-        self.assertIn("PuppyPlayerIdentity.playerId(context)", source)
-        self.assertIn("PuppyPlayerIdentity.friendCode(context)", source)
+        self.assertIn("PuppyPlayerIdentity.publicPlayerId(context)", source)
+        self.assertIn("PuppyPlayerIdentity.publicFriendCode(context)", source)
         self.assertIn('"Local Profile · Device Bound"', source)
         self.assertIn('"Account & Profile"', source)
         self.assertIn('Text("Copy"', source)
