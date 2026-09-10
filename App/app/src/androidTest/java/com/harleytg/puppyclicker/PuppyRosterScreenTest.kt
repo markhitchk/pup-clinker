@@ -5,7 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -43,5 +45,24 @@ class PuppyRosterScreenTest {
         composeRule.onNodeWithContentDescription("Sort puppies").assertExists()
         composeRule.onNodeWithContentDescription("Show favorites only").assertExists()
         composeRule.onNodeWithContentDescription("Open settings").assertExists()
+    }
+
+    @Test
+    fun rosterOpensDedicatedPuppyExchange() {
+        var opened = false
+        composeRule.setContent {
+            MaterialTheme {
+                PuppyRosterScreen(
+                    state = vm.state.value,
+                    vm = vm,
+                    onUseConfirmed = {},
+                    onOpenSettings = {},
+                    onOpenExchange = { opened = true }
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Open Puppy Exchange").assertExists().performClick()
+        composeRule.runOnIdle { assertTrue(opened) }
     }
 }
