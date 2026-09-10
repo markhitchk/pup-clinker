@@ -4,7 +4,7 @@
 
 **Goal:** Redesign setup Step 2, make birthdays month/day-only, remove fake Puppy Coins UI, and limit the floating top-right PupEye badge to setup while keeping dedicated PupEye security branding.
 
-**Architecture:** Introduce one pure month/day birthday validator shared by onboarding, Settings, and preference persistence. Keep onboarding as six steps, keep local username as the active profile path, model Discord/Website as disabled future connection cards, remove economic placeholder previews, and move the floating PupEye overlay out of the global theme into the onboarding root.
+**Architecture:** Add one pure recurring-birthday validator shared by preferences, onboarding, and Settings. Migrate the preference API in a build-safe sequence, keep onboarding at six steps, keep the local username path active while Discord/Website remain disabled future connections, remove economic placeholder previews, and move the floating PupEye overlay from the global theme into the onboarding root.
 
 **Tech Stack:** Kotlin, Jetpack Compose Material 3, SharedPreferences/StateFlow, JUnit 4, existing generated-source Python patch pipeline.
 
@@ -14,28 +14,28 @@
 
 - Onboarding remains six steps.
 - Step 2 must work with a local username; Discord and Website authentication remain Coming Soon.
-- Birthday stores and validates only month/day; no year is required for local or future Discord accounts.
-- February 29 is valid as a recurring birthday.
+- Birthday stores and validates only month/day in the finished implementation.
+- February 29 is a valid recurring birthday without a year.
 - Existing month/day data must survive upgrades even when an old birthday year exists.
 - Setup and Settings must use identical birthday validity rules.
-- Puppy Clicker has no Puppy Coins economy; no setup/Settings preview may imply one.
-- The top-right PupEye badge may appear during setup but must not float over normal Play/Care/Shop/Prestige/Settings screens after setup.
+- Puppy Clicker has no Puppy Coins economy; setup and Settings previews must not imply one.
+- The top-right PupEye badge may appear during setup but must not float over Play/Care/Shop/Prestige/normal Settings after setup.
 - Dedicated PupEye protection surfaces and streamed PupEye branding remain available.
-- Source edits must survive `generateProtectedPuppySources` and the Python compatibility patches.
+- Canonical source changes must survive `generateProtectedPuppySources` and the current Python patch chain.
 
 ## File Structure
 
-- Create `App/app/src/main/java/com/harleytg/puppyclicker/PuppyBirthday.kt` — pure month/day validation.
-- Create `App/app/src/test/java/com/harleytg/puppyclicker/PuppyBirthdayTest.kt` — calendar edge-case tests.
-- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt` — remove active year state/validation and clean legacy year data.
-- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt` — Step 2 layout, Step 3 month/day UI, setup-only top-right PupEye, non-economic appearance preview.
+- Create `App/app/src/main/java/com/harleytg/puppyclicker/PuppyBirthday.kt` — pure recurring month/day validation.
+- Create `App/app/src/test/java/com/harleytg/puppyclicker/PuppyBirthdayTest.kt` — calendar edge cases.
+- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt` — month/day preference contract and legacy-year cleanup.
+- Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt` — profile layout, month/day birthday UI, setup-only PupEye badge, non-economic theme preview.
 - Modify `App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt` — month/day birthday editor and non-economic live preview.
-- Modify `App/app/src/main/java/com/harleytg/puppyclicker/ui/theme/Theme.kt` — remove global PupEye overlay while preserving theme/density/motion providers.
-- Verify `App/tools/patch_settings_setup_revamp.py`, `App/tools/patch_settings_setup_revamp_runner.py`, and `App/tools/patch_puppy_ux.py` against generated-source anchors; modify only if generation fails after canonical source changes.
+- Modify `App/app/src/main/java/com/harleytg/puppyclicker/ui/theme/Theme.kt` — remove global PupEye overlay.
+- Verify `App/tools/patch_settings_setup_revamp.py`, `App/tools/patch_settings_setup_revamp_runner.py`, and `App/tools/patch_puppy_ux.py`; current anchors touched by this plan are expected to remain valid, so no patch-script edit is planned unless verification disproves that assumption.
 
 ---
 
-### Task 1: Create one recurring birthday validator
+### Task 1: Add recurring month/day birthday validation
 
 **Files:**
 - Create: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyBirthday.kt`
@@ -43,10 +43,10 @@
 
 **Interfaces:**
 - Produces: `internal object PuppyBirthday`.
-- Produces: `fun maxDay(month: Int): Int` returning `0` for invalid months and the maximum recurring day otherwise.
+- Produces: `fun maxDay(month: Int): Int`.
 - Produces: `fun isValid(month: Int, day: Int): Boolean`.
 
-- [ ] **Step 1: Write the failing calendar tests**
+- [ ] **Step 1: Write the failing JVM test**
 
 ```kotlin
 package com.harleytg.puppyclicker
@@ -64,15 +64,15 @@ class PuppyBirthdayTest {
 }
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails because `PuppyBirthday` does not exist**
+- [ ] **Step 2: Run the focused test and confirm unresolved `PuppyBirthday`**
 
 ```bash
 gradle --no-daemon :app:testDebugUnitTest --tests com.harleytg.puppyclicker.PuppyBirthdayTest --stacktrace
 ```
 
-Expected: compilation failure for unresolved `PuppyBirthday`.
+Expected: compile failure because `PuppyBirthday` does not exist.
 
-- [ ] **Step 3: Implement the pure validator**
+- [ ] **Step 3: Implement the validator**
 
 ```kotlin
 package com.harleytg.puppyclicker
@@ -92,7 +92,7 @@ internal object PuppyBirthday {
 }
 ```
 
-- [ ] **Step 4: Run the focused test and verify it passes**
+- [ ] **Step 4: Run the focused test**
 
 ```bash
 gradle --no-daemon :app:testDebugUnitTest --tests com.harleytg.puppyclicker.PuppyBirthdayTest --stacktrace
@@ -100,7 +100,7 @@ gradle --no-daemon :app:testDebugUnitTest --tests com.harleytg.puppyclicker.Pupp
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the birthday validator**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyBirthday.kt \
@@ -110,31 +110,27 @@ git commit -m "test: define recurring birthday validation"
 
 ---
 
-### Task 2: Remove birthday year from active preference state
+### Task 2: Add a build-safe month/day preference API
 
 **Files:**
-- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt` in `PuppyUiState`, birthday keys, `ensure`, `setBirthday`, reset/migration/read paths
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt`
 - Test: `App/app/src/test/java/com/harleytg/puppyclicker/PuppyBirthdayTest.kt`
 
 **Interfaces:**
 - Consumes: `PuppyBirthday.isValid(month, day)`.
-- Produces: `PuppyUiState(birthdayMonth: Int, birthdayDay: Int, ...)` with no active `birthdayYear` property.
-- Produces: `PuppyUiPreferences.setBirthday(context: Context, month: Int, day: Int): Boolean`.
+- Produces now: `PuppyUiPreferences.setBirthday(context: Context, month: Int, day: Int): Boolean`.
+- Temporarily retains: existing four-argument `setBirthday(context, month, day, year)` so the current onboarding/Settings callers still compile until Task 3.
 
-- [ ] **Step 1: Change birthday validity in `PuppyUiState`**
-
-Replace the existing year-dependent properties with:
+- [ ] **Step 1: Change `PuppyUiState.hasBirthday` to recurring month/day validity**
 
 ```kotlin
 val hasBirthday: Boolean
     get() = PuppyBirthday.isValid(birthdayMonth, birthdayDay)
 ```
 
-Remove `birthdayYear` and `birthdayDate`; recurring birthday behavior does not need a concrete `LocalDate`.
+Keep the current `birthdayYear` field temporarily in this task only so all existing UI callers remain source-compatible.
 
-- [ ] **Step 2: Change persistence API to month/day only**
-
-Replace `setBirthday(context, month, day, year)` with:
+- [ ] **Step 2: Add the new month/day persistence method**
 
 ```kotlin
 fun setBirthday(context: Context, month: Int, day: Int): Boolean {
@@ -148,23 +144,152 @@ fun setBirthday(context: Context, month: Int, day: Int): Boolean {
 }
 ```
 
-Keep `KEY_BIRTHDAY_YEAR` temporarily as a private legacy-key constant so upgrades can remove old values safely.
+- [ ] **Step 3: Keep the old four-argument method only as a transitional compatibility path**
 
-- [ ] **Step 3: Clean legacy year data without replaying onboarding**
-
-Inside `ensure(context)` after `migrateOnce(app, store)` and before publishing state, add:
+Keep its current validation/write behavior until Task 3 rather than delegating to the new method. Mark it deprecated so no new caller is added:
 
 ```kotlin
+@Deprecated("Use month/day birthday storage")
+fun setBirthday(context: Context, month: Int, day: Int, year: Int): Boolean {
+    val today = LocalDate.now()
+    val date = runCatching { LocalDate.of(year, month, day) }.getOrNull() ?: return false
+    if (date.isAfter(today) || year < today.year - 120) return false
+    edit(context) {
+        putInt(KEY_BIRTHDAY_MONTH, month)
+        putInt(KEY_BIRTHDAY_DAY, day)
+        putInt(KEY_BIRTHDAY_YEAR, year)
+    }
+    return true
+}
+```
+
+- [ ] **Step 4: Run unit tests and compile the app**
+
+```bash
+gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug --stacktrace
+```
+
+Expected: PASS. This task is intentionally build-safe before any UI caller migration.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt
+git commit -m "feat: add month day birthday preference API"
+```
+
+---
+
+### Task 3: Migrate onboarding and Settings to month/day, then remove active year state
+
+**Files:**
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt` in `BirthdayStep`
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt` in `AccountProfileSettings` and `BirthdayEditorDialog`
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt` in state/read/reset/migration/cleanup
+
+**Interfaces:**
+- Consumes: `PuppyBirthday.maxDay/isValid` and `setBirthday(context, month, day)`.
+- Produces: no active `birthdayYear` property and no four-argument `setBirthday` method.
+- Produces: `BirthdayEditorDialog(initialMonth: Int, initialDay: Int, onDismiss: () -> Unit, onSave: (Int, Int) -> Unit)`.
+
+- [ ] **Step 1: Convert onboarding Step 3 to Month + Day only**
+
+Use:
+
+```kotlin
+var month by rememberSaveable { mutableIntStateOf(ui.birthdayMonth.coerceIn(0, 12)) }
+var day by rememberSaveable { mutableIntStateOf(ui.birthdayDay.coerceIn(0, 31)) }
+val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
+if (day > maxDay) day = 0
+val valid = PuppyBirthday.isValid(month, day)
+```
+
+Render only Month and Day pickers. Save with:
+
+```kotlin
+if (PuppyUiPreferences.setBirthday(context, month, day)) {
+    vm.setSeasonalBirthday(month, day)
+    onNext()
+}
+```
+
+Replace the existing year-oriented privacy copy with text that says the birthday month/day is local and not publicly displayed.
+
+- [ ] **Step 2: Convert Settings birthday editor call and callback**
+
+```kotlin
+BirthdayEditorDialog(
+    initialMonth = ui.birthdayMonth,
+    initialDay = ui.birthdayDay,
+    onDismiss = { birthdayEditor = false },
+    onSave = { month, day ->
+        if (PuppyUiPreferences.setBirthday(context, month, day)) {
+            vm.setSeasonalBirthday(month, day)
+            birthdayEditor = false
+        }
+    }
+)
+```
+
+- [ ] **Step 3: Convert `BirthdayEditorDialog` to month/day only**
+
+```kotlin
+@Composable
+internal fun BirthdayEditorDialog(
+    initialMonth: Int,
+    initialDay: Int,
+    onDismiss: () -> Unit,
+    onSave: (Int, Int) -> Unit
+) {
+    var month by rememberSaveable { mutableIntStateOf(initialMonth.coerceIn(0, 12)) }
+    var day by rememberSaveable { mutableIntStateOf(initialDay.coerceIn(0, 31)) }
+    val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
+    if (day > maxDay) day = 0
+    val valid = PuppyBirthday.isValid(month, day)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Birthday", fontWeight = FontWeight.Black) },
+        text = {
+            Column {
+                SetupPicker(
+                    if (month == 0) "Month" else setupMonthName(month),
+                    (1..12).map { it to setupMonthName(it) }
+                ) { selected ->
+                    month = selected
+                    if (day > PuppyBirthday.maxDay(selected)) day = 0
+                }
+                Spacer(Modifier.height(8.dp))
+                SetupPicker(
+                    if (day == 0) "Day" else day.toString(),
+                    (1..maxDay).map { it to it.toString() }
+                ) { selected -> day = selected }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(month, day) }, enabled = valid) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+```
+
+If `SetupPicker` is private to onboarding and unavailable from Settings, retain the Settings file's existing picker helper and apply the same month/day values and validity rules; do not duplicate year logic.
+
+- [ ] **Step 4: Remove active year state and clean legacy storage in `PuppyUiPreferences`**
+
+Remove `birthdayYear` and `birthdayDate` from `PuppyUiState`. Remove the transitional four-argument `setBirthday` method.
+
+Keep `KEY_BIRTHDAY_YEAR` only as a legacy cleanup constant and remove it after migration in `ensure`:
+
+```kotlin
+migrateOnce(app, store)
 if (store.contains(KEY_BIRTHDAY_YEAR)) {
     store.edit().remove(KEY_BIRTHDAY_YEAR).apply()
 }
 ```
 
-This retains stored month/day while dropping the obsolete year.
-
-- [ ] **Step 4: Update clear/reset/migration/read paths**
-
-Use exactly these rules:
+Update `clearBirthday`:
 
 ```kotlin
 fun clearBirthday(context: Context) = edit(context) {
@@ -174,90 +299,47 @@ fun clearBirthday(context: Context) = edit(context) {
 }
 ```
 
-In `resetInterfaceSettings`, preserve only month/day:
+In `resetInterfaceSettings`, preserve only month/day. In `migrateOnce`, copy legacy month/day but do not write year `0`. In `read`, populate only month/day.
 
-```kotlin
-if (keep.birthdayMonth > 0) putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
-if (keep.birthdayDay > 0) putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
-```
+- [ ] **Step 5: Remove unused date/year imports**
 
-In `migrateOnce`, retain existing legacy month/day and do not write year `0`.
+Remove `LocalDate` from `PuppyUiPreferences.kt` after the transitional overload is gone. Remove `YearMonth`/year-specific imports from onboarding and Settings when unused.
 
-In `read`, populate only `birthdayMonth` and `birthdayDay`.
-
-- [ ] **Step 5: Remove now-unused `LocalDate` import from `PuppyUiPreferences.kt`**
-
-The file must compile without year/date-based validation.
-
-- [ ] **Step 6: Run JVM tests and generated-source compilation**
+- [ ] **Step 6: Run unit tests, generated-source build, and grep for active year usage**
 
 ```bash
-gradle --no-daemon :app:testDebugUnitTest :app:generateProtectedPuppySources --stacktrace
+gradle --no-daemon :app:testDebugUnitTest :app:generateProtectedPuppySources :app:assembleDebug --stacktrace
+! grep -R "birthdayYear\|initialYear" app/src/main/java app/build/generated/protected-puppies/source
 ```
 
-Expected at this intermediate point: if onboarding/Settings still call the old three-argument API, generation succeeds but app compilation may fail; do not commit a release build until Tasks 3-4 update all callers.
+Expected: PASS and no active birthday-year references.
 
-- [ ] **Step 7: Commit preference-model changes together with caller updates in Task 3 if compilation cannot remain green independently**
+- [ ] **Step 7: Commit**
 
-Do not leave `main` with unresolved `birthdayYear` references. If the repository policy requires every commit to compile, perform Task 3 before this commit and combine both file sets in the same commit.
+```bash
+git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt \
+  App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt \
+  App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt
+git commit -m "feat: use month day birthdays everywhere"
+```
 
 ---
 
-### Task 3: Redesign onboarding Steps 2-4 and keep PupEye badge setup-only
+### Task 4: Redesign Step 2, remove fake currency previews, and scope PupEye to onboarding
 
 **Files:**
-- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt` in root flow, `ProfileStep`, `BirthdayStep`, `SetupAppearanceStep`
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt` in root flow, `ProfileStep`, `SetupAppearanceStep`
+- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt` in `AppearancePreview`
 - Modify: `App/app/src/main/java/com/harleytg/puppyclicker/ui/theme/Theme.kt` in `PuppyClickerTheme`
-- Modify with Task 2 if needed: `App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt`
 
 **Interfaces:**
-- Consumes: `PuppyUiPreferences.setBirthday(context, month, day)` and `PuppyBirthday.maxDay/isValid`.
-- Produces: six-step onboarding with a local-profile path, disabled future account cards, Month/Day birthday only, no fake currency preview, and an onboarding-owned PupEye top-right badge.
+- Produces: local-profile Step 2 plus disabled Discord/Website cards.
+- Produces: theme previews without currency/purchase language.
+- Produces: setup-owned top-right `StreamedPupEyeBranding`; global theme no longer draws it.
 
-- [ ] **Step 1: Move the floating PupEye badge from global theme to onboarding**
+- [ ] **Step 1: Replace Step 2 with Local Profile + Connect an account sections**
 
-In `Theme.kt`, replace the `Box { content(); StreamedPupEyeBranding(...) }` wrapper with direct themed content:
-
-```kotlin
-MaterialTheme(
-    colorScheme = colors,
-    typography = Typography(),
-    content = content
-)
-```
-
-Remove no-longer-used global-overlay imports such as `Box`, `WindowInsets`, `safeDrawing`, `windowInsetsPadding`, `Alignment`, `alpha`, `dp`, and `StreamedPupEyeBranding` when the compiler confirms they are unused.
-
-In `PuppyOnboardingFlow`, make the `Surface` contain a `Box` and put the existing scrolling setup `Column` plus this badge inside it:
-
-```kotlin
-Box(Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // existing progress + AnimatedContent
-    }
-
-    StreamedPupEyeBranding(
-        modifier = Modifier
-            .align(Alignment.TopEnd)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .padding(top = 8.dp, end = 8.dp)
-            .size(38.dp),
-        contentDescription = "PupEye fair-play protection"
-    )
-}
-```
-
-This keeps the badge during setup only. Do not remove the `Protected by PupEye` welcome card or the dedicated Settings security logo.
-
-- [ ] **Step 2: Replace flat Step 2 status rows with Local Profile and Connect an account sections**
-
-Keep the existing username normalization. The Step 2 body should use this structure:
+Keep the current username normalization/24-character limit and use this body:
 
 ```kotlin
 SetupCard("YOUR PROFILE", "👤") {
@@ -276,13 +358,11 @@ SetupCard("YOUR PROFILE", "👤") {
         supportingText = { Text("Stored on this device") },
         singleLine = true
     )
-
     Spacer(Modifier.height(16.dp))
     Text("Connect an account", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
     FutureAccountCard("Discord", "Coming Soon")
     Spacer(Modifier.height(8.dp))
     FutureAccountCard("Website", "Coming Soon")
-
     Spacer(Modifier.height(14.dp))
     SetupNavigation(
         onBack = onBack,
@@ -296,7 +376,7 @@ SetupCard("YOUR PROFILE", "👤") {
 }
 ```
 
-Add this helper in the same file:
+Add:
 
 ```kotlin
 @Composable
@@ -316,195 +396,112 @@ private fun FutureAccountCard(provider: String, status: String) {
 }
 ```
 
-- [ ] **Step 3: Convert Step 3 to Month + Day only**
+- [ ] **Step 2: Replace both fake Puppy Coins previews**
 
-Replace year state/validation with:
-
-```kotlin
-var month by rememberSaveable { mutableIntStateOf(ui.birthdayMonth.coerceIn(0, 12)) }
-var day by rememberSaveable { mutableIntStateOf(ui.birthdayDay.coerceIn(0, 31)) }
-val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
-if (day > maxDay) day = 0
-val valid = PuppyBirthday.isValid(month, day)
-```
-
-Render only Month and Day pickers. Remove the Year picker and age/year copy.
-
-Use this save call:
+In onboarding `SetupAppearanceStep` and Settings `AppearancePreview`, use non-economic preview content:
 
 ```kotlin
-if (PuppyUiPreferences.setBirthday(context, month, day)) {
-    vm.setSeasonalBirthday(month, day)
-    onNext()
+Text("Puppy Clicker", fontWeight = FontWeight.Black)
+Text("Theme preview", color = MaterialTheme.colorScheme.onSurfaceVariant)
+Spacer(Modifier.height(7.dp))
+Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+    Text("Accent Preview")
 }
 ```
 
-Update privacy copy to state that month/day remains local and is not displayed publicly.
+Keep existing theme/accent metadata where useful. Remove `Puppy Coins`, `15,250`, and `BUY`.
 
-- [ ] **Step 4: Replace the fake setup economy preview**
+- [ ] **Step 3: Remove the global PupEye overlay from `Theme.kt`**
 
-Replace the hard-coded `Puppy Coins: 15,250` and `BUY` card with:
-
-```kotlin
-Card(
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    modifier = Modifier.fillMaxWidth()
-) {
-    Column(Modifier.padding(12.dp)) {
-        Text("Puppy Clicker", fontWeight = FontWeight.Black)
-        Text("Theme preview", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(7.dp))
-        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-            Text("Accent Preview")
-        }
-    }
-}
-```
-
-No currency, store balance, or purchase copy may appear in this preview.
-
-- [ ] **Step 5: Build canonical and generated source**
-
-```bash
-gradle --no-daemon :app:generateProtectedPuppySources :app:assembleDebug --stacktrace
-```
-
-Expected: no patch-anchor error and no unresolved `birthdayYear`/three-argument `setBirthday` call.
-
-- [ ] **Step 6: Verify generated source does not reintroduce removed UI**
-
-From `App/`:
-
-```bash
-! grep -R "Puppy Coins" app/build/generated/protected-puppies/source
-! grep -R "PuppyUiState.*birthdayYear\|initialYear = ui.birthdayYear" app/build/generated/protected-puppies/source
-```
-
-Expected: both commands succeed by finding no matches.
-
-- [ ] **Step 7: Commit onboarding/theme changes**
-
-```bash
-git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt \
-  App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt \
-  App/app/src/main/java/com/harleytg/puppyclicker/ui/theme/Theme.kt
-git commit -m "feat: simplify Puppy Clicker setup profile"
-```
-
----
-
-### Task 4: Convert Settings birthday editor and live preview
-
-**Files:**
-- Modify: `App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt` in `AppearancePreview`, `AccountProfileSettings`, `BirthdayEditorDialog`
-
-**Interfaces:**
-- Consumes: `PuppyBirthday.maxDay/isValid` and `PuppyUiPreferences.setBirthday(context, month, day)`.
-- Produces: Settings birthday editor with `(month, day)` callbacks only and a non-economic appearance preview.
-
-- [ ] **Step 1: Remove Puppy Coins from `AppearancePreview`**
-
-Use:
+Replace the themed `Box { content(); StreamedPupEyeBranding(...) }` with:
 
 ```kotlin
-Text("Puppy Clicker", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-Text("Theme preview", style = MaterialTheme.typography.bodyMedium)
-Spacer(Modifier.height(9.dp))
-Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Accent Preview") }
-```
-
-Keep the existing theme/accent label below it.
-
-- [ ] **Step 2: Change the Settings birthday editor call**
-
-Replace the three-value call with:
-
-```kotlin
-BirthdayEditorDialog(
-    initialMonth = ui.birthdayMonth,
-    initialDay = ui.birthdayDay,
-    onDismiss = { birthdayEditor = false },
-    onSave = { month, day ->
-        if (PuppyUiPreferences.setBirthday(context, month, day)) {
-            vm.setSeasonalBirthday(month, day)
-            birthdayEditor = false
-        }
-    }
+MaterialTheme(
+    colorScheme = colors,
+    typography = Typography(),
+    content = content
 )
 ```
 
-- [ ] **Step 3: Change `BirthdayEditorDialog` signature and body**
+Remove imports used only by the global overlay.
 
-Use:
+- [ ] **Step 4: Add the top-right streamed badge to the onboarding root only**
+
+Inside the onboarding `Surface`, host the scrolling setup content and badge in one `Box`:
 
 ```kotlin
-@Composable
-internal fun BirthdayEditorDialog(
-    initialMonth: Int,
-    initialDay: Int,
-    onDismiss: () -> Unit,
-    onSave: (Int, Int) -> Unit
-) {
-    var month by rememberSaveable { mutableIntStateOf(initialMonth.coerceIn(0, 12)) }
-    var day by rememberSaveable { mutableIntStateOf(initialDay.coerceIn(0, 31)) }
-    val maxDay = PuppyBirthday.maxDay(month).takeIf { it > 0 } ?: 31
-    if (day > maxDay) day = 0
-    val valid = PuppyBirthday.isValid(month, day)
+Box(Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 22.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // existing OnboardingProgress + AnimatedContent block
+    }
 
-    // Existing AlertDialog shell stays; render Month and Day selectors only.
-    // Confirm action calls onSave(month, day) and is enabled only when valid.
+    StreamedPupEyeBranding(
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(top = 8.dp, end = 8.dp)
+            .size(38.dp),
+        contentDescription = "PupEye fair-play protection"
+    )
 }
 ```
 
-Delete the Year selector and remove unused `LocalDate`/`YearMonth` imports if no other Settings code uses them. Keep `Month` only if still used for month labels.
+Keep the Step 1 `Protected by PupEye` card and the dedicated Settings PupEye logo.
 
-- [ ] **Step 4: Compile and search both canonical and generated source**
+- [ ] **Step 5: Clean-build generated source and verify removed UI stays removed**
 
 ```bash
-gradle --no-daemon :app:testDebugUnitTest :app:generateProtectedPuppySources :app:assembleDebug --stacktrace
-! grep -R "Puppy Coins" app/src/main/java app/build/generated/protected-puppies/source
-! grep -R "birthdayYear\|initialYear" app/src/main/java app/build/generated/protected-puppies/source
+gradle --no-daemon clean :app:testDebugUnitTest :app:generateProtectedPuppySources :app:assembleDebug --stacktrace
+! grep -R "Puppy Coins\|15,250\|Text(\"BUY\")" app/src/main/java app/build/generated/protected-puppies/source
+! grep -n "StreamedPupEyeBranding" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker/ui/theme/Theme.kt
 ```
 
-Expected: build PASS; no fake currency; no active birthday-year references.
+Expected: build PASS; no fake currency/purchase copy; no PupEye branding call in generated `Theme.kt`.
 
-- [ ] **Step 5: Commit Settings cleanup**
+- [ ] **Step 6: Verify intended PupEye surfaces remain**
 
 ```bash
-git add App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt
-git commit -m "feat: use month day birthdays in settings"
+grep -R "StreamedPupEyeBranding" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker | grep -v "/ui/theme/Theme.kt"
+```
+
+Expected: onboarding and dedicated PupEye protection/settings surfaces still contain streamed branding calls.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add App/app/src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt \
+  App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt \
+  App/app/src/main/java/com/harleytg/puppyclicker/ui/theme/Theme.kt
+git commit -m "feat: refine onboarding and PupEye branding"
 ```
 
 ---
 
-### Task 5: Verify generated-source patch compatibility and branding boundaries
+### Task 5: Verify the existing generated-source patch chain
 
 **Files:**
-- Verify: `App/tools/patch_settings_setup_revamp.py`
-- Verify: `App/tools/patch_settings_setup_revamp_runner.py`
-- Verify: `App/tools/patch_puppy_ux.py`
-- Modify only the exact broken anchor if `generateProtectedPuppySources` proves one is stale.
+- Verify only: `App/tools/patch_settings_setup_revamp.py`
+- Verify only: `App/tools/patch_settings_setup_revamp_runner.py`
+- Verify only: `App/tools/patch_puppy_ux.py`
 
 **Interfaces:**
-- Produces: generated Kotlin that matches canonical setup/birthday/theme behavior.
+- Produces: proof that canonical onboarding/preferences/theme edits survive the current generation chain unchanged.
 
-- [ ] **Step 1: Force a clean generated-source rebuild**
+- [ ] **Step 1: Rebuild generated sources from clean state**
 
 ```bash
 gradle --no-daemon clean :app:generateProtectedPuppySources --stacktrace
 ```
 
-Expected: every Python patch exits successfully.
+Expected: all current Python transforms exit successfully. The planned canonical edits do not alter the known motion, first-run gate, migration-signal, or Settings-routing anchors used by these scripts.
 
-- [ ] **Step 2: Verify PupEye appears only in intended generated surfaces**
-
-```bash
-grep -R "StreamedPupEyeBranding" app/build/generated/protected-puppies/source/com/harleytg/puppyclicker
-```
-
-Expected: matches include onboarding/welcome and dedicated PupEye security/settings components; `ui/theme/Theme.kt` must not contain `StreamedPupEyeBranding`.
-
-- [ ] **Step 3: Verify final app compilation**
+- [ ] **Step 2: Compile the generated app**
 
 ```bash
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease --stacktrace
@@ -512,35 +509,17 @@ gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug :app:assembleReleas
 
 Expected: PASS.
 
-- [ ] **Step 4: If a patch anchor fails, change only that anchor and re-run Step 1**
+- [ ] **Step 3: Stop instead of guessing if a patch anchor unexpectedly fails**
 
-For example, if the onboarding motion patch still expects the old local variable name, update its exact source anchor while preserving the behavior:
+If Step 1 reports an anchor-count/signature error, return to systematic debugging: identify the exact failed transform and compare the generated pre-patch source to that transform before making any patch-script change. Do not bundle speculative patch-script rewrites into this plan.
 
-```python
-source = replace_once(
-    source,
-    "    val reducedMotion = LocalPuppyReducedMotion.current",
-    "    val animateUi = com.harleytg.puppyclicker.ui.theme.LocalPuppyAnimatedUi.current and not LocalPuppyReducedMotion.current",
-    "onboarding motion state",
-)
-```
-
-Use valid Kotlin text in the actual replacement (`&&`, not Python `and not`); the point of this step is to update only a proven stale anchor, not rewrite unrelated patch logic.
-
-- [ ] **Step 5: Commit a patch-script change only if Step 1 required it**
-
-```bash
-git add App/tools/patch_settings_setup_revamp.py App/tools/patch_settings_setup_revamp_runner.py App/tools/patch_puppy_ux.py
-git commit -m "fix: keep setup generator aligned with source"
-```
-
-Skip this commit if no patch script changed.
+No commit is created for this task when verification passes unchanged.
 
 ---
 
 ## Plan Self-Review
 
-- Spec coverage: local profile redesign, future account cards, month/day-only birthday, February 29, migration, removal of Puppy Coins, setup-only top-right PupEye, and dedicated PupEye branding preservation are covered.
-- Placeholder scan: implementation behavior is specified; no future authentication or new economy work is introduced.
-- Type consistency: every caller uses `setBirthday(context, month, day)` and `BirthdayEditorDialog(..., onSave: (Int, Int) -> Unit)` after the migration.
-- Generated-source check: every canonical UI edit is explicitly verified after the existing patch pipeline runs.
+- Spec coverage: local profile redesign, future account cards, recurring month/day birthday, February 29, old-year cleanup, removal of Puppy Coins, setup-only top-right PupEye, and dedicated PupEye preservation are covered.
+- Placeholder scan: no implementation field is left undefined; the one conditional failure path explicitly stops for root-cause investigation rather than prescribing an unknown edit.
+- Type consistency: the new two-argument birthday payload `(month, day)` is introduced before callers migrate, then the old year API/state is removed after all callers change.
+- Task independence: Tasks 1, 2, 3, and 4 each end in a compilable/testable state; Task 5 is verification-only.
