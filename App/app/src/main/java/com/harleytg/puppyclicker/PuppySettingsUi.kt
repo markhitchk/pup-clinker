@@ -485,17 +485,17 @@ private fun NotificationSettings() {
     InlineSwitch("Daily reward notifications", "One reminder when the current day's reward is available.", ui.dailyRewardNotifications) {
         PuppyUiPreferences.setDailyRewardNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelDailyReward(context)
     }
     InlineSwitch("Game event notifications", "Alerts when timed game events such as Dog Park adventures are ready.", ui.gameEventNotifications) {
         PuppyUiPreferences.setGameEventNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelParkReady(context)
     }
     InlineSwitch("App update notifications", "Checks the official Puppy Clicker repository for a newer Android build.", ui.updateNotifications) {
         PuppyUiPreferences.setUpdateNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelAppUpdate(context)
     }
 
     Spacer(Modifier.height(8.dp))
