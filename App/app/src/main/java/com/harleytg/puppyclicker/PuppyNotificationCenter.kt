@@ -121,10 +121,22 @@ internal object PuppyNotificationCenter {
         )
     }
 
+    fun cancelDailyReward(context: Context) {
+        context.applicationContext
+            .getSystemService(NotificationManager::class.java)
+            .cancel(NOTIFY_DAILY)
+    }
+
     fun cancelParkReady(context: Context) {
         val app = context.applicationContext
         WorkManager.getInstance(app).cancelUniqueWork(WORK_PARK)
         app.getSystemService(NotificationManager::class.java).cancel(NOTIFY_EVENT)
+    }
+
+    fun cancelAppUpdate(context: Context) {
+        context.applicationContext
+            .getSystemService(NotificationManager::class.java)
+            .cancel(NOTIFY_UPDATE)
     }
 
     internal suspend fun runSweep(context: Context) {
@@ -133,9 +145,9 @@ internal object PuppyNotificationCenter {
         if (PuppyAppRuntime.isForeground || !canNotify(app)) return
 
         val ui = PuppyUiPreferences.current(app)
-        if (ui.dailyRewardNotifications) postDailyRewardIfAvailable(app)
-        if (ui.gameEventNotifications) postParkEventIfReady(app)
-        if (ui.updateNotifications) checkForAppUpdate(app)
+        if (ui.dailyRewardNotifications) postDailyRewardIfAvailable(app) else cancelDailyReward(app)
+        if (ui.gameEventNotifications) postParkEventIfReady(app) else cancelParkReady(app)
+        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
     }
 
     internal fun postParkEventIfReady(context: Context) {
