@@ -13,12 +13,13 @@ class PuppyNavigationModelTest {
         )
         assertFalse(PuppyMainDestination.entries.any { it.label == "Settings" })
         assertFalse(PuppyMainDestination.entries.any { it.label == "Prestige" })
+        assertFalse(PuppyMainDestination.entries.any { it.label == "Puppy Exchange" })
     }
 
     @Test
-    fun settingsAndPrestigeRemainInternalDestinations() {
+    fun settingsPrestigeAndExchangeRemainInternalDestinations() {
         assertEquals(
-            listOf("Settings", "Prestige"),
+            listOf("Settings", "Prestige", "Puppy Exchange"),
             PuppyInternalDestination.entries.map { it.label }
         )
     }
