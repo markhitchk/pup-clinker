@@ -217,8 +217,10 @@ internal object PupEyeSaveGuard {
                 recordTamper(context, "Runtime save integrity mismatch; restored last known good save")
                 false
             } else true
-        }.getOrElse {
-            recordTamper(context, "Protected save seal failed authentication")
+        }.getOrElse { error ->
+            if (classifySaveCryptoFailure(error) == SaveCryptoFailureKind.TAMPER) {
+                recordTamper(context, "Protected save seal failed authentication")
+            }
             false
         }
     }
