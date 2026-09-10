@@ -7,12 +7,12 @@ play_start = activity.index("@Composable\nprivate fun V6Play")
 play_end = activity.index("\n@Composable\nprivate fun V6CareAndDaily", play_start)
 play = activity[play_start:play_end]
 
-old_timer = '''        delay(2_000)
-        ticketVisible = false'''
+old_timer = '''            delay(2_000)
+            ticketVisible = false'''
 if play.count(old_timer) != 1:
     raise SystemExit(f"ticket timer anchor count={play.count(old_timer)}")
-play = play.replace(old_timer, '''        delay(2_750)
-        ticketVisible = false''', 1)
+play = play.replace(old_timer, '''            delay(2_750)
+            ticketVisible = false''', 1)
 
 old_banner = '''        AnimatedVisibility(ticketVisible, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
             val rarity = state.lastTicketDrop ?: TicketRarity.COMMON
