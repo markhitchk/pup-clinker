@@ -912,7 +912,7 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
         }
     }
 
-    val action = confirmationKey?.let(DangerZoneAction::fromKey)
+    val action = confirmationKey?.let { DangerZoneAction.fromKey(it) }
     if (action != null) {
         DangerHoldConfirmationDialog(
             action = action,
