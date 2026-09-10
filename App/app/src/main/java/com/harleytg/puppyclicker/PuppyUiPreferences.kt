@@ -146,8 +146,11 @@ internal object PuppyUiPreferences {
         remove(KEY_BIRTHDAY_YEAR)
     }
 
-    fun setSetupStep(context: Context, step: Int) = edit(context) {
-        if (!current(context).setupComplete) putInt(KEY_SETUP_STEP, step.coerceIn(0, 5))
+    fun setSetupStep(context: Context, step: Int) {
+        ensure(context)
+        if (!mutableState.value.setupComplete) edit(context) {
+            putInt(KEY_SETUP_STEP, step.coerceIn(0, 5))
+        }
     }
 
     fun finishSetup(context: Context) = edit(context) {
@@ -173,12 +176,26 @@ internal object PuppyUiPreferences {
         val keep = current(context)
         edit(context) {
             clear()
-            putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
-            putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
-            putInt(KEY_BIRTHDAY_YEAR, keep.birthdayYear)
+            if (keep.birthdayMonth > 0) putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
+            if (keep.birthdayDay > 0) putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
+            if (keep.birthdayYear > 0) putInt(KEY_BIRTHDAY_YEAR, keep.birthdayYear)
             putBoolean(KEY_SETUP_COMPLETE, true)
             putInt(KEY_SETUP_STEP, 5)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
+        }
+    }
+
+    /**
+     * Explicit destructive reset path. Mark migration handled while leaving setup incomplete so
+     * an updated installation cannot immediately migrate itself past onboarding after deletion.
+     */
+    fun prepareFreshSetupAfterDelete(context: Context) {
+        ensure(context)
+        edit(context) {
+            clear()
+            putBoolean(KEY_MIGRATION_COMPLETE, true)
+            putBoolean(KEY_SETUP_COMPLETE, false)
+            putInt(KEY_SETUP_STEP, 0)
         }
     }
 
