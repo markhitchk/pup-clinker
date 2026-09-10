@@ -47,6 +47,12 @@ def patch_activity(source: str) -> str:
 
 
 def patch_transfer(source: str) -> str:
+    # Current source already owns the modal save-transfer UX and callback. Keep this
+    # patch backward-compatible for older generated bases without re-patching the
+    # modern implementation.
+    if "internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {" in source:
+        return source
+
     source = replace_once(
         source,
         "internal fun SaveTransferSettings() {",
