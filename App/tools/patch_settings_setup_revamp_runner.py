@@ -36,11 +36,19 @@ _original_patch_activity = patch.patch_activity
 
 def compatible_activity(source: str) -> str:
     source = _original_patch_activity(source)
-    return patch.replace_once(
+    return patch.replace_function(
         source,
         "private fun performV6Haptic(context: Context, strong: Boolean = false)",
-        "internal fun performV6Haptic(context: Context, strong: Boolean = false)",
-        "V6 haptic helper visibility",
+        "\nprivate fun formatV6",
+        '''internal fun performV6Haptic(context: Context, strong: Boolean = false) {
+    PuppyHaptics.perform(
+        view = null,
+        context = context,
+        event = if (strong) PuppyHapticEvent.TEST else PuppyHapticEvent.TAP,
+        enabled = true
+    )
+}''',
+        "V6 central haptic delegation",
     )
 
 
