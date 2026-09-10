@@ -47,11 +47,17 @@ def patch_settings(source: str) -> str:
         source,
         '''@Composable
 private fun AboutSettings() {
+    val context = LocalContext.current
     SettingsLabel("PUPPY CLICKER")
     StatusLine("Version", BuildConfig.VERSION_NAME)
     StatusLine("Build", BuildConfig.VERSION_CODE.toString())
     StatusLine("Developer", "Harley's Studios")
-    StatusLine("Discord community", "Coming Soon")
+    StatusLine("Discord community", PuppyLinks.DISCORD_INVITE)
+    Spacer(Modifier.height(7.dp))
+    OutlinedButton(
+        onClick = { PuppyLinks.openDiscord(context) },
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Join Puppy Clicker Discord") }
     Spacer(Modifier.height(8.dp))
     PuppyLegalLinks(
         modifier = Modifier.fillMaxWidth(),
@@ -93,7 +99,12 @@ private fun AboutSettings(developerUnlocked: Boolean) {
         )
     }
     StatusLine("Developer", "Harley's Studios")
-    StatusLine("Discord community", "Coming Soon")
+    StatusLine("Discord community", PuppyLinks.DISCORD_INVITE)
+    Spacer(Modifier.height(7.dp))
+    OutlinedButton(
+        onClick = { PuppyLinks.openDiscord(context) },
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Join Puppy Clicker Discord") }
     Spacer(Modifier.height(8.dp))
     PuppyLegalLinks(
         modifier = Modifier.fillMaxWidth(),
