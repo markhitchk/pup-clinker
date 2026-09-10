@@ -38,6 +38,19 @@ def patch_view_model(source: str) -> str:
 def patch_activity(source: str) -> str:
     source = replace_once(
         source,
+        '''                Text("🐶👁️ Pup Eye Fair Play", fontWeight = FontWeight.Black)''',
+        '''                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StreamedPupEyeBranding(
+                        modifier = Modifier.size(58.dp),
+                        contentDescription = "PupEye Anti-Cheat"
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text("PupEye Fair Play", fontWeight = FontWeight.Black)
+                }''',
+        "streamed PupEye Settings branding",
+    )
+    source = replace_once(
+        source,
         '''                Text("Fast human tapping is allowed. Repeated machine-like timing and extreme sustained rates trigger a short cooldown.", style = MaterialTheme.typography.bodySmall)
                 Text("Suspicious taps do not count toward ticket awards. No permanent bans or uploads.", style = MaterialTheme.typography.bodySmall)
                 Text("Confirmed cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)''',
