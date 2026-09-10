@@ -92,8 +92,10 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                     .padding(horizontal = 22.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                PuppyDevelopmentNotice()
+                Spacer(Modifier.height(12.dp))
                 OnboardingProgress(step)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
 
                 AnimatedContent(
                     targetState = step,
@@ -145,6 +147,7 @@ private fun OnboardingProgress(step: Int) {
 
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
+    val context = LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
             painter = painterResource(R.drawable.source_logo),
@@ -171,13 +174,18 @@ private fun WelcomeStep(onNext: () -> Unit) {
             }
         }
         Spacer(Modifier.height(9.dp))
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { PuppyLinks.openDiscord(context) },
+            shape = RoundedCornerShape(18.dp)
+        ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(R.drawable.ic_discord), "Discord", Modifier.size(34.dp))
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text("Join Our Discord Server", fontWeight = FontWeight.Black)
-                    Text("Community connection is coming soon.", style = MaterialTheme.typography.bodySmall)
+                    Text(PuppyLinks.DISCORD_INVITE, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -339,39 +347,84 @@ private fun SetupAppearanceStep(ui: PuppyUiState, onBack: () -> Unit, onNext: ()
 @Composable
 private fun SetupNotificationsStep(onBack: () -> Unit, onNext: () -> Unit) {
     val context = LocalContext.current
+    val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     var afkEnabled by remember { mutableStateOf(PuppyAttentionNotifier.isEnabled(context)) }
-    var permissionGranted by remember { mutableStateOf(PuppyAttentionNotifier.canNotify(context)) }
+    var permissionGranted by remember { mutableStateOf(PuppyNotificationCenter.canNotify(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionGranted = granted
+        if (granted) {
+            PuppyNotificationCenter.schedule(context)
+            PuppyNotificationCenter.requestImmediate(context)
+        }
     }
 
     SetupCard("STAY UPDATED", "🔔") {
-        Text("Notifications are optional. Puppy Clicker asks Android for permission only after you choose to allow them.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Choose which alerts Puppy Clicker may send. Android permission is requested only when needed.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("AFK Rewards & Puppy Attention", fontWeight = FontWeight.Bold)
-                Text("Available now", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            }
-            Switch(checked = afkEnabled, onCheckedChange = {
-                afkEnabled = it
-                PuppyAttentionNotifier.setEnabled(context, it)
-            })
-        }
-        StatusSetupRow("Daily Rewards", "Coming Soon")
-        StatusSetupRow("Game Events", "Coming Soon")
-        StatusSetupRow("App Updates", "Coming Soon")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && afkEnabled && !permissionGranted) {
+        NotificationSetupSwitch("AFK Rewards & Puppy Attention", afkEnabled) {
+            afkEnabled = it
+            PuppyAttentionNotifier.setEnabled(context, it)
+        }
+        NotificationSetupSwitch("Daily Rewards", ui.dailyRewardNotifications) {
+            PuppyUiPreferences.setDailyRewardNotifications(context, it)
+            PuppyNotificationCenter.schedule(context)
+        }
+        NotificationSetupSwitch("Game Events", ui.gameEventNotifications) {
+            PuppyUiPreferences.setGameEventNotifications(context, it)
+            PuppyNotificationCenter.schedule(context)
+        }
+        NotificationSetupSwitch("App Updates", ui.updateNotifications) {
+            PuppyUiPreferences.setUpdateNotifications(context, it)
+            PuppyNotificationCenter.schedule(context)
+        }
+
+        val anyEnabled = afkEnabled ||
+            ui.dailyRewardNotifications ||
+            ui.gameEventNotifications ||
+            ui.updateNotifications
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && anyEnabled && !permissionGranted) {
             Spacer(Modifier.height(9.dp))
-            OutlinedButton(onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Allow Android Notifications")
             }
         } else if (permissionGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            Text("Android notification permission is available.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Android notification permission is available.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
         Spacer(Modifier.height(14.dp))
-        SetupNavigation(onBack, "Continue", true, onNext)
+        SetupNavigation(onBack, "Continue", true) {
+            PuppyNotificationCenter.schedule(context)
+            if (permissionGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                PuppyNotificationCenter.requestImmediate(context)
+            }
+            onNext()
+        }
+    }
+}
+
+@Composable
+private fun NotificationSetupSwitch(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
