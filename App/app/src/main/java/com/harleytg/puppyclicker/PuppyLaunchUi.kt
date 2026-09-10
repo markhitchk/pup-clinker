@@ -41,6 +41,7 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
+    val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -112,7 +113,7 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { PuppyLinks.openDiscord(LocalContext.current) },
+                    .clickable { PuppyLinks.openDiscord(context) },
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Row(
