@@ -55,7 +55,7 @@ Examples:
 - `BUDDY-HELLO-2026` is distinct from `BUDDYHELLO2026`.
 - `BUDDY-HELLO-2026` is distinct from `BUDDY-HELLO-2026 `.
 
-Paste inserts clipboard text exactly as copied. The UI must not silently rewrite the pasted value. The implementation may reject leading/trailing clipboard newlines as invalid rather than silently trimming them.
+Paste inserts clipboard text exactly as copied. The UI must not silently rewrite the pasted value. Leading or trailing clipboard newlines are treated as part of the entered value and therefore make the code invalid unless the canonical code itself contains those characters.
 
 ## 5. GitHub-only validation model
 
@@ -103,7 +103,7 @@ Each code definition supports:
 
 Code rarity describes the promotion/code, not the puppy. Puppy unlock rewards may have their own rating or may have no rating at all. If a puppy has no rating, the reward UI omits a puppy-rating field rather than inventing one.
 
-## 7. Status behavior
+## 7. Status and time-window behavior
 
 Status is separate from flags.
 
@@ -113,11 +113,17 @@ Status is separate from flags.
 - `revoked`: behave as a generic invalid code and do not expose revocation details.
 - Unknown/missing code: show `Invalid Puppy Code.`
 
-A code outside `startsAt` / `expiresAt` is treated as unavailable according to its time window even if its static status remains `active`.
+For an otherwise-active code with a time window:
+
+- Before `startsAt`: show `This Puppy Code is not active yet.`
+- At or after `expiresAt`: show `This Puppy Code has expired.`
+- Between the two bounds: continue normal validation.
+
+Static `revoked` always takes precedence over time-window messaging so intentionally revoked codes remain indistinguishable from unknown codes.
 
 ## 8. Authoritative time for limited-time codes
 
-Because device time can be changed, limited-time validation must use a timestamp obtained from the successful live GitHub HTTP response when available, such as the HTTP `Date` header.
+Because device time can be changed, limited-time validation must use a timestamp obtained from the successful live GitHub HTTP response, such as the HTTP `Date` header.
 
 If a code uses `startsAt` or `expiresAt` and the live response does not provide a usable authoritative timestamp, redemption fails closed for that limited-time code instead of trusting the device clock.
 
@@ -127,31 +133,30 @@ Permanent codes do not depend on authoritative server time beyond the required l
 
 A code may contain multiple flags simultaneously. Flags are additive and primarily internal.
 
-The initial implementation supports a registry of known flags. Candidate supported flags include:
+The initial recognized flag registry is:
 
 - `LIMITED_TIME`
 - `HIDDEN_PROMO`
 - `SPECIAL_REVEAL`
 - `REQUIRES_ONLINE`
-- `REQUIRES_NEWER_VERSION`
 - `DEV_ONLY`
 - `STABLE_ONLY`
 - `EVENT_CODE`
 - `PATREON_CODE`
 - `BUG_BOUNTY`
 - `STAFF_CODE`
-- `NO_REWARD_PREVIEW`
-- `NO_HISTORY_DETAILS`
 
-However, this design explicitly requires full reward preview before claiming major/special bundles, so `NO_REWARD_PREVIEW` must not be enabled in the initial schema-2 catalogue. It is reserved for future design work and should be rejected if encountered until explicitly supported.
+`REQUIRES_ONLINE` is redundant under the current all-codes-online policy but remains recognized for forward compatibility.
 
-`REQUIRES_ONLINE` is redundant under the current all-codes-online policy but may remain a known reserved flag for future compatibility.
+`DEV_ONLY` and `STABLE_ONLY` are recognized but do not need to appear on any initial migrated code. If either is used, the app must know its own build channel and enforce the flag before preview or claim.
 
-Contradictory combinations, such as `DEV_ONLY` plus `STABLE_ONLY`, are catalogue validation errors unless a future approved design defines their meaning.
+`DEV_ONLY` plus `STABLE_ONLY` is a catalogue validation error.
 
-Unknown flags are not ignored. The code fails before any reward is granted and shows a version/incompatibility message such as:
+Any flag outside the recognized registry is not ignored. The code fails before any reward is granted and shows a version/incompatibility message such as:
 
 `This Puppy Code requires a different or newer version of Puppy Clicker. Update the app and try again.`
+
+Adding a new functional flag therefore requires an app update that registers its behavior first.
 
 Raw internal flag names are not shown to players. The UI may show clean consequences such as `Limited Time`, `Special Reward`, or `Update Required`.
 
@@ -166,6 +171,7 @@ Failure cases include:
 - Reward schema newer than the app understands.
 - Unknown reward type.
 - Unknown flag.
+- Build channel incompatible with an active `DEV_ONLY` or `STABLE_ONLY` flag.
 
 Suggested messages:
 
@@ -175,13 +181,11 @@ Suggested messages:
 
 No reward and no redemption marker may be written in these cases.
 
-Release-channel restrictions such as Stable-only or Dev-only remain supported by the flag model but are not required to be used until a later product decision is made.
-
 ## 11. Reward model
 
-Puppy Codes support configurable reward bundles composed from reward types the installed app explicitly knows how to process.
+Puppy Codes support configurable reward bundles composed only from reward types the installed app explicitly knows how to process.
 
-Initial registered reward types should include:
+Initial registered reward types:
 
 - `treats`
 - `puppy`
@@ -189,9 +193,8 @@ Initial registered reward types should include:
 - `cosmetic`
 - `badge`
 - `boost`
-- future registered game reward types as the app evolves
 
-The catalogue configures data only. Adding a completely new reward behavior still requires a new app version that registers and safely implements that reward type.
+The catalogue configures data only. Adding a new reward behavior requires a new app version that registers and safely implements that reward type before the catalogue may use it.
 
 ### 11.1 Upgrade Tickets
 
@@ -199,7 +202,7 @@ Upgrade Tickets may be granted by selected codes. They are no longer globally fo
 
 Ticket rewards must be explicitly represented in the reward bundle and validated against hard app-side limits. Catalogue data must not be able to overflow inventory or grant unreasonable amounts because of an accidental JSON edit.
 
-The initial hard limit is **100 Upgrade Tickets per rarity per code claim**, with inventory still capped by the app's existing inventory limits. A future app version may revise this bound deliberately.
+The initial hard limit is **100 Upgrade Tickets per rarity per code claim**, with inventory still capped by the app's existing inventory limits.
 
 ### 11.2 No progression eligibility gates
 
@@ -219,7 +222,12 @@ Puppy Clicker uses two claim presentations.
 
 A simple reward may redeem immediately after validation and show a compact confirmation.
 
-Initial rule: a bundle containing only a standard Treats reward, with no special-presentation flag and no additional reward objects, qualifies for immediate compact claim.
+A bundle qualifies only when all of the following are true:
+
+- It contains exactly one reward object.
+- That reward is `treats`.
+- Code rarity is absent or `standard`.
+- `SPECIAL_REVEAL` is absent.
 
 Example:
 
@@ -227,7 +235,7 @@ Example:
 
 ### 12.2 Preview then claim
 
-All other bundles use:
+Every other bundle uses:
 
 `Enter code → Redeem → live GitHub validation → full reward preview → Claim Reward → atomic grant → reward reveal`
 
@@ -249,7 +257,7 @@ Required sequence:
 6. Verify every grant can be represented safely.
 7. Add the redemption-history record to that same next state.
 8. Persist the encrypted save.
-9. Publish the new in-memory state only after persistence succeeds, or restore the previous state if persistence reports failure.
+9. Publish the new in-memory state only after persistence succeeds. If persistence fails, retain/restore the previous in-memory state.
 10. Show compact success or full reward reveal.
 
 If any step fails, no partial rewards are retained and the code is not marked redeemed.
@@ -271,7 +279,7 @@ When an already-redeemed code is entered, the UI shows `Already redeemed` plus t
 
 History UI displays reward, redemption date, and claimed status. It must never reconstruct or expose the original plaintext code.
 
-Legacy saves that contain only `redeemedCodeIds` remain valid. During migration, those IDs are treated as previously claimed even when a timestamp is unavailable; history may display `Previously redeemed` without a date for those legacy entries.
+Legacy saves that contain only `redeemedCodeIds` remain valid. During migration, those IDs are treated as previously claimed even when a timestamp is unavailable; history displays `Previously redeemed` without a fabricated date for those legacy entries.
 
 ## 15. Reset semantics
 
@@ -289,34 +297,40 @@ A deliberately destructive full reset clears:
 - settings covered by full app erasure
 - redemption history/IDs
 - cached catalogue and promotion metadata
-- related Puppy Code cooldown state
+- Puppy Code invalid-attempt counters and cooldown state
 
 This behaves like a true fresh local installation from the app's data perspective.
 
 ## 16. Invalid-attempt protection and PupEye
 
-Normal users may make several invalid attempts without penalty.
+Only submissions that resolve to an unknown or revoked code count as invalid attempts. Network failures, disabled/expired/not-yet-active codes, version incompatibility, already-redeemed codes, reward-schema failures, and save failures do not increment the invalid-attempt counter.
 
-Initial local policy:
+Normal local policy:
 
-- First 4 invalid submissions in a rolling 2-minute window: no cooldown.
-- 5th invalid submission in that window: 30-second cooldown.
-- Additional repeated invalid bursts within the next 10 minutes may increase the normal cooldown to 60 seconds.
-- A successful redemption clears the normal invalid-attempt counter.
+1. Keep invalid-attempt timestamps in a rolling 120-second window.
+2. Attempts 1–4 in that window produce no cooldown.
+3. The 5th invalid attempt triggers a 30-second cooldown and clears the rolling invalid-attempt timestamps.
+4. Record the time of that cooldown trigger.
+5. If another 5-invalid-attempt burst triggers within 10 minutes of the previous normal cooldown trigger, use a 60-second cooldown instead of 30 seconds.
+6. Additional normal bursts within 10 minutes of the most recent normal cooldown trigger remain 60 seconds.
+7. If more than 10 minutes pass without another normal cooldown trigger, the next trigger returns to 30 seconds.
+8. A successful redemption clears invalid-attempt timestamps and normal cooldown-escalation history.
 
-PupEye may escalate when submission cadence looks automated. Initial escalation trigger: 5 or more redeem submissions within 10 seconds, or equivalent existing PupEye automation heuristics. Escalated redeem cooldown is capped at 5 minutes.
+PupEye escalation is separate from the invalid-code counter. If the app observes **5 or more redeem submissions within any rolling 10-second window**, it applies a **5-minute redeem cooldown**, clears the rapid-submission window, and records the escalation through the existing PupEye integration. The escalation never becomes a permanent local ban.
 
-Cooldown state is persisted locally so closing/reopening the screen does not immediately bypass it.
+If a normal cooldown and PupEye cooldown overlap, the later expiration time wins.
 
-User-facing text should be simple, for example:
+Cooldown state and the timestamps required to enforce it are persisted locally so closing/reopening the screen does not bypass it.
+
+User-facing text is simple, for example:
 
 `Too many invalid attempts. Try again in 42 seconds.`
 
-Raw PupEye telemetry or heuristic details are not exposed in normal UI. No permanent local redemption ban is created by this feature.
+Raw PupEye telemetry or heuristic details are not exposed in normal UI.
 
 ## 17. Active Promotions
 
-The Puppy Codes screen may show Active Promotions only when the catalogue contains campaign metadata.
+The Puppy Codes screen shows Active Promotions only when the catalogue contains campaign metadata that is currently displayable.
 
 Campaign metadata may include:
 
@@ -334,9 +348,9 @@ Cached promotion metadata may remain visible if temporarily offline, but the UI 
 
 ## 18. Public plaintext-code cleanup
 
-The current public `App/admin/PUPPY-CODES.md` plaintext code list is removed or rewritten so unpublished/secret Puppy Codes are not stored in plaintext in the public repository.
+The current public `App/admin/PUPPY-CODES.md` plaintext code list is rewritten so unpublished/secret Puppy Codes are not stored in plaintext in the public repository.
 
-The replacement documentation may describe:
+The replacement documentation describes:
 
 - how hashing works
 - schema 2 fields
@@ -348,7 +362,7 @@ It must not list secret/unpublished plaintext Puppy Codes.
 
 The schema-2 catalogue retains only hashes. Existing live catalogue entries are migrated using the canonical plaintext spellings currently documented, then the public plaintext list is sanitized.
 
-Only codes present in the current live `assets/redeem-codes.json` are considered active migration inputs. Stale documentation-only seasonal codes are not automatically reintroduced into the redeem catalogue.
+Only codes present in the current live `assets/redeem-codes.json` are active migration inputs. Stale documentation-only seasonal codes are not automatically reintroduced into the redeem catalogue.
 
 ## 19. Existing-code migration
 
@@ -362,7 +376,7 @@ Existing seasonal/event restrictions remain intact unless separately approved.
 
 ## 20. Component boundaries
 
-The implementation should isolate responsibilities rather than leave the feature embedded inside the large V6 activity/view model.
+The implementation isolates responsibilities rather than leaving the feature embedded inside the large V6 activity/view model.
 
 ### `PuppyCodeCatalog`
 
@@ -435,6 +449,7 @@ Required user-facing states include:
 - invalid
 - already redeemed
 - expired
+- not yet active
 - disabled/unavailable
 - wrong/newer app version required
 - unsupported flag
@@ -448,7 +463,7 @@ A failed claim never consumes the code.
 
 ## 22. Testing requirements
 
-At minimum, implementation tests must cover:
+At minimum, implementation tests cover:
 
 - exact-case matching
 - exact whitespace/hyphen matching
@@ -461,8 +476,10 @@ At minimum, implementation tests must cover:
 - unknown flag rejection
 - contradictory flag rejection
 - min/max version rejection
+- build-channel flag rejection when used
 - unknown reward type rejection
 - expired/disabled/revoked behavior
+- not-yet-active behavior
 - server-time handling for limited-time codes
 - already-redeemed behavior
 - legacy `redeemedCodeIds` migration
@@ -473,8 +490,10 @@ At minimum, implementation tests must cover:
 - simple reward immediate confirmation
 - major reward preview then claim
 - backing out of preview leaves code unused
-- invalid-attempt cooldown
-- PupEye escalation cap
+- invalid-attempt cooldown at the exact 5-attempt threshold
+- 30-second to 60-second normal escalation rule
+- invalid-attempt exclusions for non-invalid failures
+- PupEye 5-in-10-seconds escalation and 5-minute cap
 - Reset Progress preserves redemption history
 - Erase All Data clears redemption history and catalogue cache
 - Rewards navigation replaces Prestige tab and Prestige remains reachable through Shop
