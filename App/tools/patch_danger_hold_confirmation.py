@@ -33,10 +33,13 @@ def replace_function(source: str, signature: str, next_signature: str, replaceme
 def patch_settings(source: str) -> str:
     imports = (
         "android.os.SystemClock",
+        "androidx.compose.animation.core.LinearEasing",
         "androidx.compose.animation.core.RepeatMode",
         "androidx.compose.animation.core.animateFloat",
         "androidx.compose.animation.core.infiniteRepeatable",
         "androidx.compose.animation.core.rememberInfiniteTransition",
+        "androidx.compose.foundation.Canvas",
+        "androidx.compose.foundation.background",
         "androidx.compose.foundation.border",
         "androidx.compose.foundation.gestures.awaitEachGesture",
         "androidx.compose.foundation.gestures.awaitFirstDown",
@@ -44,6 +47,7 @@ def patch_settings(source: str) -> str:
         "androidx.compose.runtime.DisposableEffect",
         "androidx.compose.runtime.LaunchedEffect",
         "androidx.compose.runtime.mutableLongStateOf",
+        "androidx.compose.ui.geometry.Offset",
         "androidx.compose.ui.input.pointer.pointerInput",
         "androidx.compose.ui.window.Dialog",
         "androidx.compose.ui.window.DialogProperties",
@@ -143,6 +147,15 @@ private fun DangerHoldConfirmationDialog(
         label = "danger-border-alpha"
     )
     val borderAlpha = if (reducedMotion) 1f else (animatedBorderAlpha + progress * 0.35f).coerceIn(0.30f, 1f)
+    val stripeShift by borderPulse.animateFloat(
+        initialValue = 0f,
+        targetValue = 72f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "danger-stripe-shift"
+    )
 
     fun cancelHold() {
         holdStartedAtMs = null
@@ -188,12 +201,28 @@ private fun DangerHoldConfirmationDialog(
             usePlatformDefaultWidth = false
         )
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .border(6.dp, MaterialTheme.colorScheme.error.copy(alpha = borderAlpha)),
-            color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.58f)
-        ) {
+        Box(Modifier.fillMaxSize()) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(Color.Black)
+                val shift = if (reducedMotion) 0f else stripeShift
+                val gap = 72f
+                var x = -size.height + shift - gap
+                while (x < size.width + size.height + gap) {
+                    drawLine(
+                        color = Color(0xFFD00000).copy(alpha = borderAlpha),
+                        start = Offset(x, 0f),
+                        end = Offset(x + size.height, size.height),
+                        strokeWidth = 34f
+                    )
+                    x += gap
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.76f))
+            )
             Box(
                 modifier = Modifier.fillMaxSize().padding(20.dp),
                 contentAlignment = Alignment.Center
