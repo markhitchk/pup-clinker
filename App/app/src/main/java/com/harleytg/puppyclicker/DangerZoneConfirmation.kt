@@ -121,25 +121,21 @@ internal fun DangerHoldConfirmationDialog(
 
     val borderAnimation = rememberInfiniteTransition(label = "danger-border")
     val animatedBorderAlpha by borderAnimation.animateFloat(
-        initialValue = 0.30f,
-        targetValue = 0.65f,
+        initialValue = 0.88f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 650),
+            animation = tween(durationMillis = 700),
             repeatMode = RepeatMode.Reverse
         ),
         label = "danger-border-alpha"
     )
-    val borderAlpha = if (reducedMotion) {
-        1f
-    } else {
-        (animatedBorderAlpha + progress * 0.35f).coerceIn(0.30f, 1f)
-    }
+    val borderAlpha = if (reducedMotion) 1f else animatedBorderAlpha
 
     val stripeShift by borderAnimation.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 700, easing = LinearEasing),
+            animation = tween(durationMillis = 900, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "danger-stripe-shift"
@@ -202,14 +198,21 @@ internal fun DangerHoldConfirmationDialog(
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.52f))
             )
 
-            // Animated warning tape is a perimeter frame only.
+            // Animated red/black construction tape around the perimeter only.
+            //
+            // Each red band is drawn as a clipped parallelogram over a solid black
+            // tape base. This keeps the top/bottom texture identical in weight to
+            // the left/right sides instead of producing large diamond-shaped blocks.
             Canvas(Modifier.fillMaxSize()) {
-                val frame = 16.dp.toPx()
-                val stripePeriod = 44.dp.toPx()
-                val stripeStroke = 20.dp.toPx()
+                val frame = 18.dp.toPx()
+                val redBand = 18.dp.toPx()
+                val blackBand = 14.dp.toPx()
+                val stripePeriod = redBand + blackBand
+                val slant = frame * 0.72f
                 val travel = if (reducedMotion) 0f else stripeShift * stripePeriod
-                val red = Color(0xFFD00000).copy(alpha = borderAlpha)
+                val red = Color(0xFFE01818).copy(alpha = borderAlpha)
 
+                // Solid black tape base.
                 drawRect(Color.Black, topLeft = Offset.Zero, size = Size(size.width, frame))
                 drawRect(
                     Color.Black,
@@ -223,45 +226,44 @@ internal fun DangerHoldConfirmationDialog(
                     size = Size(frame, size.height)
                 )
 
-                fun drawHorizontalStripes(y: Float, mirrored: Boolean) {
+                fun drawHorizontalTape(y: Float) {
                     clipRect(0f, y, size.width, y + frame) {
-                        var x = -stripePeriod + travel
-                        while (x < size.width + stripePeriod) {
-                            val startY = if (mirrored) y + frame else y
-                            val endY = if (mirrored) y else y + frame
-                            val endX = if (mirrored) x - frame else x + frame
-                            drawLine(
-                                color = red,
-                                start = Offset(x, startY),
-                                end = Offset(endX, endY),
-                                strokeWidth = stripeStroke
-                            )
+                        var x = -stripePeriod - slant + travel
+                        while (x < size.width + stripePeriod + slant) {
+                            val path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(x - slant, y)
+                                lineTo(x + redBand - slant, y)
+                                lineTo(x + redBand + slant, y + frame)
+                                lineTo(x + slant, y + frame)
+                                close()
+                            }
+                            drawPath(path = path, color = red)
                             x += stripePeriod
                         }
                     }
                 }
 
-                fun drawVerticalStripes(x: Float, mirrored: Boolean) {
+                fun drawVerticalTape(x: Float) {
                     clipRect(x, 0f, x + frame, size.height) {
-                        var y = -stripePeriod + travel
-                        while (y < size.height + stripePeriod) {
-                            val startX = if (mirrored) x + frame else x
-                            val endX = if (mirrored) x else x + frame
-                            drawLine(
-                                color = red,
-                                start = Offset(startX, y),
-                                end = Offset(endX, y + frame),
-                                strokeWidth = stripeStroke
-                            )
+                        var y = -stripePeriod - slant + travel
+                        while (y < size.height + stripePeriod + slant) {
+                            val path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(x, y + slant)
+                                lineTo(x, y + redBand + slant)
+                                lineTo(x + frame, y + redBand - slant)
+                                lineTo(x + frame, y - slant)
+                                close()
+                            }
+                            drawPath(path = path, color = red)
                             y += stripePeriod
                         }
                     }
                 }
 
-                drawHorizontalStripes(0f, mirrored = false)
-                drawHorizontalStripes(size.height - frame, mirrored = true)
-                drawVerticalStripes(0f, mirrored = true)
-                drawVerticalStripes(size.width - frame, mirrored = false)
+                drawHorizontalTape(0f)
+                drawHorizontalTape(size.height - frame)
+                drawVerticalTape(0f)
+                drawVerticalTape(size.width - frame)
             }
 
             Box(
