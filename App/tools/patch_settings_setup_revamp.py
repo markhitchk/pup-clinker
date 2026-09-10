@@ -69,7 +69,7 @@ private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         play,
         '''    val tapScale = remember { Animatable(1f) }''',
         '''    val tapScale = remember { Animatable(1f) }
-    val motionEnabled = state.animationsEnabled && !com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion.current''',
+    val motionEnabled = state.animationsEnabled && com.harleytg.puppyclicker.ui.theme.LocalPuppyAnimatedUi.current''',
         "V6 reduced motion state",
     )
     play = play.replace("if (state.animationsEnabled) -3f else 0f", "if (motionEnabled) -3f else 0f")
@@ -177,6 +177,53 @@ def patch_ui_preference_migration(source: str) -> str:
     )
 
 
+def patch_save_transfer(source: str) -> str:
+    source = replace_once(
+        source,
+        '''    private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
+    private const val SEASONAL_PREFS = "puppy_seasonal_v1"''',
+        '''    private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
+    private const val SEASONAL_PREFS = "puppy_seasonal_v1"
+    private const val UI_PREFS = PuppyUiPreferences.PREFS_NAME''',
+        "UI preferences backup constant",
+    )
+    source = replace_once(
+        source,
+        '''            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+            put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))''',
+        '''            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+            put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
+            put(UI_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE)))''',
+        "UI preferences encrypted export",
+    )
+    source = replace_once(
+        source,
+        '''        stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
+            SecurePreferenceCodec.restore(
+                context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
+                seasonalStore
+            )
+        }
+    }''',
+        '''        stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
+            SecurePreferenceCodec.restore(
+                context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
+                seasonalStore
+            )
+        }
+        // Optional for backward compatibility with encrypted v3 saves created before the UI revamp.
+        stores.optJSONObject(UI_PREFS)?.let { uiStore ->
+            SecurePreferenceCodec.restore(
+                context.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE),
+                uiStore
+            )
+        }
+    }''',
+        "UI preferences encrypted import",
+    )
+    return source
+
+
 def add_graphics_imports(source: str, needs_android_color: bool, label: str) -> str:
     if needs_android_color and "import android.graphics.Color as AndroidColor\n" not in source:
         source = replace_once(
@@ -195,6 +242,74 @@ def add_graphics_imports(source: str, needs_android_color: bool, label: str) -> 
     return source
 
 
+def patch_settings_motion(source: str) -> str:
+    source = replace_once(
+        source,
+        "import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion\n",
+        "import com.harleytg.puppyclicker.ui.theme.LocalPuppyAnimatedUi\nimport com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion\n",
+        "Settings UI animation local import",
+    )
+    source = replace_once(
+        source,
+        '''    val reduceMotion = LocalPuppyReducedMotion.current
+    val duration = if (reduceMotion) 1 else 190''',
+        '''    val animateUi = LocalPuppyAnimatedUi.current && !LocalPuppyReducedMotion.current
+    val duration = if (animateUi) 190 else 1''',
+        "Settings expansion motion preference",
+    )
+    return source
+
+
+def patch_onboarding_motion(source: str) -> str:
+    return replace_once(
+        source,
+        '''    val reducedMotion = LocalPuppyReducedMotion.current''',
+        '''    val animateUi = com.harleytg.puppyclicker.ui.theme.LocalPuppyAnimatedUi.current &&
+        !LocalPuppyReducedMotion.current''',
+        "onboarding motion state",
+    ).replace(
+        "val duration = if (reducedMotion) 1 else 180",
+        "val duration = if (animateUi) 180 else 1",
+        1,
+    )
+
+
+def patch_theme_accessibility(source: str) -> str:
+    if "import android.animation.ValueAnimator\n" not in source:
+        source = replace_once(
+            source,
+            "import android.graphics.Color as AndroidColor\n",
+            "import android.animation.ValueAnimator\nimport android.graphics.Color as AndroidColor\n",
+            "theme system animation import",
+        )
+    source = replace_once(
+        source,
+        '''    val scaledDensity = Density(
+        density = baseDensity.density * densityScale,
+        fontScale = baseDensity.fontScale
+    )
+
+    CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalPuppyReducedMotion provides ui.reducedMotion,
+        LocalPuppyAnimatedUi provides (ui.animatedUi && !ui.reducedMotion),
+        LocalPuppyButtonAnimations provides (ui.buttonAnimations && !ui.reducedMotion),''',
+        '''    val scaledDensity = Density(
+        density = baseDensity.density * densityScale,
+        fontScale = baseDensity.fontScale
+    )
+    val effectiveReducedMotion = ui.reducedMotion || !ValueAnimator.areAnimatorsEnabled()
+
+    CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        LocalPuppyReducedMotion provides effectiveReducedMotion,
+        LocalPuppyAnimatedUi provides (ui.animatedUi && !effectiveReducedMotion),
+        LocalPuppyButtonAnimations provides (ui.buttonAnimations && !effectiveReducedMotion),''',
+        "system reduced-motion behavior",
+    )
+    return source
+
+
 def main(root: Path) -> None:
     activity = root / PACKAGE / "PuppyClickerV6Activity.kt"
     roster = root / PACKAGE / "DynamicPuppyRoster.kt"
@@ -203,6 +318,7 @@ def main(root: Path) -> None:
     preferences = root / PACKAGE / "PuppyUiPreferences.kt"
     settings = root / PACKAGE / "PuppySettingsUi.kt"
     onboarding = root / PACKAGE / "PuppyOnboardingUi.kt"
+    transfer = root / PACKAGE / "GameSaveTransfer.kt"
     theme = root / PACKAGE / "ui/theme/Theme.kt"
 
     activity.write_text(patch_activity(activity.read_text(encoding="utf-8")), encoding="utf-8")
@@ -213,18 +329,16 @@ def main(root: Path) -> None:
         patch_ui_preference_migration(preferences.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
-    settings.write_text(
-        add_graphics_imports(settings.read_text(encoding="utf-8"), False, "Settings UI"),
-        encoding="utf-8",
-    )
-    onboarding.write_text(
-        add_graphics_imports(onboarding.read_text(encoding="utf-8"), True, "Onboarding UI"),
-        encoding="utf-8",
-    )
-    theme.write_text(
-        add_graphics_imports(theme.read_text(encoding="utf-8"), False, "theme"),
-        encoding="utf-8",
-    )
+    transfer.write_text(patch_save_transfer(transfer.read_text(encoding="utf-8")), encoding="utf-8")
+
+    settings_source = add_graphics_imports(settings.read_text(encoding="utf-8"), False, "Settings UI")
+    settings.write_text(patch_settings_motion(settings_source), encoding="utf-8")
+
+    onboarding_source = add_graphics_imports(onboarding.read_text(encoding="utf-8"), True, "Onboarding UI")
+    onboarding.write_text(patch_onboarding_motion(onboarding_source), encoding="utf-8")
+
+    theme_source = add_graphics_imports(theme.read_text(encoding="utf-8"), False, "theme")
+    theme.write_text(patch_theme_accessibility(theme_source), encoding="utf-8")
 
 
 if __name__ == "__main__":
