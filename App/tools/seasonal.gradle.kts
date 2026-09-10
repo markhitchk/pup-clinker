@@ -15,6 +15,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val dangerHoldPatch = rootProject.file("tools/patch_danger_hold_confirmation.py")
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     val rosterNavigationPatch = rootProject.file("tools/patch_roster_navigation.py")
+    val puppyExchangePatch = rootProject.file("tools/patch_puppy_exchange.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -26,7 +27,8 @@ tasks.named("generateProtectedPuppySources").configure {
         settingsSetupPatch,
         dangerHoldPatch,
         developerConsolePatch,
-        rosterNavigationPatch
+        rosterNavigationPatch,
+        puppyExchangePatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -64,10 +66,14 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine("python3", developerConsolePatch.absolutePath, generatedSourceRoot)
         }
-        // Navigation is last so established patch anchors remain unchanged while the final app shell
-        // promotes Roster/Rewards and moves Settings/Prestige to internal destinations.
+        // Navigation is last among the legacy patches so established anchors remain unchanged while
+        // the app shell promotes Roster/Rewards and moves Settings/Prestige internally.
         project.exec {
             commandLine("python3", rosterNavigationPatch.absolutePath, generatedSourceRoot)
+        }
+        // Puppy Exchange intentionally runs last against the finished generated source tree.
+        project.exec {
+            commandLine("python3", puppyExchangePatch.absolutePath, generatedSourceRoot)
         }
     }
 }
