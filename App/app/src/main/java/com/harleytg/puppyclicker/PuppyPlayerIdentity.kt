@@ -82,9 +82,20 @@ internal object PuppyPlayerIdentity {
      * Keeping the canonical values underneath preserves ownership ledgers, WebRTC
      * protocol validation and PupEye's authenticated save state.
      */
+    internal fun isHarleyTgDeveloperIdentity(playerId: String, friendCode: String): Boolean =
+        playerId == HARLEYTG_CANONICAL_PLAYER_ID &&
+            friendCode == HARLEYTG_CANONICAL_FRIEND_CODE
+
     fun isHarleyTgDeveloper(context: Context): Boolean =
-        playerId(context) == HARLEYTG_CANONICAL_PLAYER_ID &&
-            friendCode(context) == HARLEYTG_CANONICAL_FRIEND_CODE
+        isHarleyTgDeveloperIdentity(playerId(context), friendCode(context))
+
+    /**
+     * PupEye fair-play enforcement is mandatory for ordinary players.
+     * The reserved HarleyTG developer identity is exempt from behavioral anti-cheat
+     * cooldowns only; save encryption, authentication, recovery and integrity checks
+     * remain active for every identity.
+     */
+    fun shouldEnforcePupEyeFairPlay(context: Context): Boolean = !isHarleyTgDeveloper(context)
 
     fun publicPlayerId(context: Context): String =
         if (isHarleyTgDeveloper(context)) HARLEYTG_PUBLIC_PLAYER_ID else playerId(context)
