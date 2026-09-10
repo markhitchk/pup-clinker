@@ -17,7 +17,6 @@ tasks.named("generateProtectedPuppySources").configure {
     val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
     val settingsSetupCorePatch = rootProject.file("tools/patch_settings_setup_revamp.py")
     val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
-    val dangerHoldPatch = rootProject.file("tools/patch_danger_hold_confirmation.py")
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
     val rosterNavigationPatch = rootProject.file("tools/patch_roster_navigation.py")
     val puppyExchangePatch = rootProject.file("tools/patch_puppy_exchange.py")
@@ -32,7 +31,6 @@ tasks.named("generateProtectedPuppySources").configure {
         importReloadPatch,
         settingsSetupCorePatch,
         settingsSetupPatch,
-        dangerHoldPatch,
         developerConsolePatch,
         rosterNavigationPatch,
         puppyExchangePatch,
@@ -66,10 +64,6 @@ tasks.named("generateProtectedPuppySources").configure {
         // Run the Settings/onboarding integration after all established compatibility patches.
         project.exec {
             commandLine("python3", settingsSetupPatch.absolutePath, generatedSourceRoot)
-        }
-        // Replace the final Danger Zone with the tested 10-second hold-confirmation surface.
-        project.exec {
-            commandLine("python3", dangerHoldPatch.absolutePath, generatedSourceRoot)
         }
         // Developer Console sees the finished Settings surface and routes final diagnostics.
         project.exec {
