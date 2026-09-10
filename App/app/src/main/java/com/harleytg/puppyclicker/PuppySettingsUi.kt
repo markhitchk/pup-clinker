@@ -447,10 +447,15 @@ private fun GameplaySettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 @Composable
 private fun NotificationSettings() {
     val context = LocalContext.current
+    val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     var afkEnabled by remember { mutableStateOf(PuppyAttentionNotifier.isEnabled(context)) }
-    var permissionGranted by remember { mutableStateOf(PuppyAttentionNotifier.canNotify(context)) }
+    var permissionGranted by remember { mutableStateOf(PuppyNotificationCenter.canNotify(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionGranted = granted
+        if (granted) {
+            PuppyNotificationCenter.schedule(context)
+            PuppyNotificationCenter.requestImmediate(context)
+        }
     }
 
     Text("ANDROID PERMISSION", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
@@ -460,7 +465,7 @@ private fun NotificationSettings() {
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionGranted) {
         Text(
-            "Puppy Clicker will only open Android's permission prompt when you tap the button below.",
+            "Allow Android notifications to receive AFK, daily reward, game event, and app update alerts.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -472,17 +477,33 @@ private fun NotificationSettings() {
     }
 
     Spacer(Modifier.height(12.dp))
-    SettingsLabel("AVAILABLE")
-    InlineSwitch("AFK reward / puppy attention", "Optional reminder while Puppy Clicker is away.", afkEnabled) { enabled ->
+    SettingsLabel("NOTIFICATION TYPES")
+    InlineSwitch("AFK reward / puppy attention", "Reminder while Puppy Clicker is away.", afkEnabled) { enabled ->
         afkEnabled = enabled
         PuppyAttentionNotifier.setEnabled(context, enabled)
     }
+    InlineSwitch("Daily reward notifications", "One reminder when the current day's reward is available.", ui.dailyRewardNotifications) {
+        PuppyUiPreferences.setDailyRewardNotifications(context, it)
+        PuppyNotificationCenter.schedule(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context)
+    }
+    InlineSwitch("Game event notifications", "Alerts when timed game events such as Dog Park adventures are ready.", ui.gameEventNotifications) {
+        PuppyUiPreferences.setGameEventNotifications(context, it)
+        PuppyNotificationCenter.schedule(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context)
+    }
+    InlineSwitch("App update notifications", "Checks the official Puppy Clicker repository for a newer Android build.", ui.updateNotifications) {
+        PuppyUiPreferences.setUpdateNotifications(context, it)
+        PuppyNotificationCenter.schedule(context)
+        if (it) PuppyNotificationCenter.requestImmediate(context)
+    }
 
-    Spacer(Modifier.height(10.dp))
-    SettingsLabel("COMING SOON")
-    ComingSoonRow("Daily reward notifications")
-    ComingSoonRow("Game event notifications")
-    ComingSoonRow("App update notifications")
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = { PuppyNotificationCenter.requestImmediate(context) },
+        enabled = permissionGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU,
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Check Notifications Now") }
 }
 
 @Composable
@@ -695,8 +716,20 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
 
     Spacer(Modifier.height(12.dp))
     SettingsLabel("ACCOUNT CONNECTIONS")
-    StatusLine("Discord", "Coming Soon")
+    StatusLine("Discord login", "Coming Soon")
     StatusLine("Website account", "Coming Soon")
+    Spacer(Modifier.height(7.dp))
+    OutlinedButton(
+        onClick = { PuppyLinks.openDiscord(context) },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Open Discord Community")
+    }
+    Text(
+        PuppyLinks.DISCORD_INVITE,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
     Spacer(Modifier.height(12.dp))
     SettingsLabel("BIRTHDAY")
@@ -797,11 +830,17 @@ private fun BirthdayPicker(label: String, options: List<Pair<Int, String>>, onSe
 
 @Composable
 private fun AboutSettings() {
+    val context = LocalContext.current
     SettingsLabel("PUPPY CLICKER")
     StatusLine("Version", BuildConfig.VERSION_NAME)
     StatusLine("Build", BuildConfig.VERSION_CODE.toString())
     StatusLine("Developer", "Harley's Studios")
-    StatusLine("Discord community", "Coming Soon")
+    StatusLine("Discord community", PuppyLinks.DISCORD_INVITE)
+    Spacer(Modifier.height(7.dp))
+    OutlinedButton(
+        onClick = { PuppyLinks.openDiscord(context) },
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Join Puppy Clicker Discord") }
     Spacer(Modifier.height(8.dp))
     PuppyLegalLinks(
         modifier = Modifier.fillMaxWidth(),
