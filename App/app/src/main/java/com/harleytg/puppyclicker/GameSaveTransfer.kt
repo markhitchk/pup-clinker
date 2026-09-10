@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -97,7 +99,7 @@ internal object GameSaveTransfer {
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         PupEyeSaveGuard.seal(context, mainPrefs)
         ExternalGameSave.write(context, mainPrefs)
-        SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Reloading Puppy Clicker…")
+        SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Your protected progress is ready to reload.")
     }.getOrElse { error ->
         SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
     }
@@ -218,25 +220,57 @@ internal object GameSaveTransfer {
 }
 
 @Composable
-internal fun SaveTransferSettings() {
+internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     var password by rememberSaveable { mutableStateOf("") }
-    var status by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupSuccess by rememberSaveable { mutableStateOf(false) }
+    var reloadAfterPopup by rememberSaveable { mutableStateOf(false) }
+
+    fun showPopup(title: String, result: SaveTransferResult, reloadOnSuccess: Boolean = false) {
+        focusManager.clearFocus(force = true)
+        popupTitle = title
+        popupMessage = result.message
+        popupSuccess = result.success
+        reloadAfterPopup = result.success && reloadOnSuccess
+    }
+
+    fun closePopup() {
+        val shouldReload = reloadAfterPopup
+        popupTitle = null
+        popupMessage = null
+        popupSuccess = false
+        reloadAfterPopup = false
+        if (shouldReload) {
+            onImportSuccess?.invoke() ?: activity?.recreate()
+        }
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
-        if (uri != null) status = GameSaveTransfer.export(context, uri, password).message
+        if (uri != null) {
+            val result = GameSaveTransfer.export(context, uri, password)
+            showPopup(
+                title = if (result.success) "Export Complete" else "Export Failed",
+                result = result
+            )
+        }
     }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
             val result = GameSaveTransfer.import(context, uri, password)
-            status = result.message
-            if (result.success) activity?.recreate()
+            showPopup(
+                title = if (result.success) "Save Imported" else "Import Failed",
+                result = result,
+                reloadOnSuccess = true
+            )
         }
     }
 
@@ -264,7 +298,10 @@ internal fun SaveTransferSettings() {
                         context,
                         context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE)
                     )
-                    status = "Player username saved as $username."
+                    showPopup(
+                        title = "Username Updated",
+                        result = SaveTransferResult(true, "Player username saved as $username.")
+                    )
                 },
                 enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
@@ -308,10 +345,46 @@ internal fun SaveTransferSettings() {
                 "No IMEI, serial number, Android ID, phone number, or account token is stored.",
                 style = MaterialTheme.typography.labelSmall
             )
-            status?.let {
-                Spacer(Modifier.size(6.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            }
         }
+    }
+
+    val dialogTitle = popupTitle
+    val dialogMessage = popupMessage
+    if (dialogTitle != null && dialogMessage != null) {
+        AlertDialog(
+            onDismissRequest = ::closePopup,
+            title = {
+                Text(
+                    dialogTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        dialogMessage,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (popupSuccess) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    )
+                    if (!popupSuccess && dialogTitle == "Import Failed") {
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            "Check the backup password and make sure the selected file is an unmodified Puppy Clicker save.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = ::closePopup) {
+                    Text(if (reloadAfterPopup) "Reload Puppy Clicker" else "OK")
+                }
+            }
+        )
     }
 }
