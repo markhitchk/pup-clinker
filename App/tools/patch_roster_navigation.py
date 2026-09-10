@@ -154,43 +154,46 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
 
 @Composable
 private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        tonalElevation = 3.dp,
-        shadowElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .height(56.dp)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Column(Modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            tonalElevation = 3.dp,
+            shadowElevation = 3.dp
         ) {
-            Image(
-                painter = painterResource(R.drawable.source_logo),
-                contentDescription = "Puppy Clicker logo",
-                modifier = Modifier.size(36.dp),
-                contentScale = ContentScale.Fit
-            )
-            Spacer(Modifier.width(9.dp))
-            Text(
-                "Puppy Clicker",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                maxLines = 1
-            )
-            IconButton(
-                onClick = onOpenSettings,
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .semantics { contentDescription = "Open settings" }
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .height(56.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("⚙️", fontSize = 22.sp)
+                Image(
+                    painter = painterResource(R.drawable.source_logo),
+                    contentDescription = "Puppy Clicker logo",
+                    modifier = Modifier.size(36.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(Modifier.width(9.dp))
+                Text(
+                    "Puppy Clicker",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Open settings" }
+                ) {
+                    Text("⚙️", fontSize = 22.sp)
+                }
             }
         }
+        PuppyDevelopmentNotice()
     }
 }''',
         "main app shell",
