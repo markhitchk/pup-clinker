@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Run Python patch regression tests
+        run: python3 -m unittest tools.test_patch_puppy_exchange
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
