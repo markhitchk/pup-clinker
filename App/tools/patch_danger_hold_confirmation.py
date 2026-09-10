@@ -50,6 +50,7 @@ def patch_settings(source: str) -> str:
         "androidx.lifecycle.Lifecycle",
         "androidx.lifecycle.LifecycleEventObserver",
         "androidx.lifecycle.compose.LocalLifecycleOwner",
+        "kotlinx.coroutines.delay",
     )
     for item in imports:
         source = ensure_import(source, item)
