@@ -9,13 +9,15 @@ tasks.named("generateProtectedPuppySources").configure {
     val uxPatch = rootProject.file("tools/patch_puppy_ux.py")
     val pupEyeSecurityPatch = rootProject.file("tools/patch_pupeye_security.py")
     val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
-    val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp.py")
+    val settingsSetupCorePatch = rootProject.file("tools/patch_settings_setup_revamp.py")
+    val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
     inputs.files(
         seasonalPatch,
         transparencyPatch,
         uxPatch,
         pupEyeSecurityPatch,
         importReloadPatch,
+        settingsSetupCorePatch,
         settingsSetupPatch
     )
     doLast {
