@@ -1129,10 +1129,10 @@ private fun shareFriendCode(context: Context, username: String, friendCode: Stri
 }
 
 
-private fun isValidLiveTradeTransactionId(value: String): Boolean =
+internal fun isValidLiveTradeTransactionId(value: String): Boolean =
     value.startsWith("XT-") && value.length in 12..80
 
-private fun liveTradeFingerprintPayload(
+internal fun liveTradeFingerprintPayload(
     transactionId: String,
     localTradeIds: List<String>,
     remoteTradeIds: List<String>
@@ -1141,7 +1141,7 @@ private fun liveTradeFingerprintPayload(
     .put("senderOfferHash", PuppyExchangeProtocol.canonicalOfferHash(localTradeIds))
     .put("receiverOfferHash", PuppyExchangeProtocol.canonicalOfferHash(remoteTradeIds))
 
-private fun matchesLiveTradeFingerprint(
+internal fun matchesLiveTradeFingerprint(
     payload: JSONObject,
     transactionId: String?,
     localTradeIds: List<String>,
