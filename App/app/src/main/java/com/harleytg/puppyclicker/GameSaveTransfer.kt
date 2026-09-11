@@ -222,6 +222,100 @@ internal object GameSaveTransfer {
 }
 
 @Composable
+internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    var password by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var importedSuccessfully by rememberSaveable { mutableStateOf(false) }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            focusManager.clearFocus(force = true)
+            val result = GameSaveTransfer.import(context, uri, password)
+            popupTitle = if (result.success) "Save Imported" else "Import Failed"
+            popupMessage = result.message
+            importedSuccessfully = result.success
+        }
+    }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(13.dp)) {
+            Text("Import Existing Save", fontWeight = FontWeight.Black)
+            Text(
+                "Already play Puppy Clicker? Restore a .pupsave and continue setup with that player's username and progress.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.size(8.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it.take(128) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Backup password") },
+                placeholder = { Text("Only required for encrypted v3 saves") },
+                supportingText = { Text("Legacy saves can be selected without a password.") },
+                singleLine = true,
+                trailingIcon = {
+                    TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Text(if (passwordVisible) "Hide" else "View")
+                    }
+                },
+                visualTransformation = if (passwordVisible) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                }
+            )
+            Spacer(Modifier.size(8.dp))
+            OutlinedButton(
+                onClick = {
+                    importLauncher.launch(
+                        arrayOf("application/octet-stream", "application/json", "*/*")
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Choose .pupsave")
+            }
+            Text(
+                "Import keeps this device's Player ID and Friend Code. The save's display username and game progress are restored.",
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+    }
+
+    if (popupTitle != null && popupMessage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!importedSuccessfully) {
+                    popupTitle = null
+                    popupMessage = null
+                }
+            },
+            title = { Text(popupTitle ?: "Save Import", fontWeight = FontWeight.Black) },
+            text = { Text(popupMessage ?: "") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val success = importedSuccessfully
+                        popupTitle = null
+                        popupMessage = null
+                        importedSuccessfully = false
+                        if (success) onImportSuccess()
+                    }
+                ) {
+                    Text(if (importedSuccessfully) "Continue Setup" else "OK")
+                }
+            }
+        )
+    }
+}
+
+@Composable
 internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
