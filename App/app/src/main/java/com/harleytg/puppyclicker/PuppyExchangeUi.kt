@@ -1160,16 +1160,23 @@ private fun recordGiftHistory(
     remotePlayerId: String,
     puppyId: String
 ) {
+    val localIsPlayerA = localPlayerId < remotePlayerId
+    val playerAId = if (localIsPlayerA) localPlayerId else remotePlayerId
+    val playerBId = if (localIsPlayerA) remotePlayerId else localPlayerId
+    val localOffer = listOf(puppyId)
+    val emptyOffer = emptyList<String>()
+    val offerA = if (localIsPlayerA) localOffer else emptyOffer
+    val offerB = if (localIsPlayerA) emptyOffer else localOffer
     ledger.putTransaction(
         ExchangeTransactionRecord(
             transactionId = transactionId,
             type = ExchangeTransactionType.GIFT,
-            playerAId = localPlayerId,
-            playerBId = remotePlayerId,
-            offerARecordIds = listOf(puppyId),
-            offerBRecordIds = emptyList(),
-            offerAHash = PuppyExchangeProtocol.canonicalOfferHash(listOf(puppyId)),
-            offerBHash = PuppyExchangeProtocol.canonicalOfferHash(emptyList()),
+            playerAId = playerAId,
+            playerBId = playerBId,
+            offerARecordIds = offerA,
+            offerBRecordIds = offerB,
+            offerAHash = PuppyExchangeProtocol.canonicalOfferHash(offerA),
+            offerBHash = PuppyExchangeProtocol.canonicalOfferHash(offerB),
             createdAtMs = System.currentTimeMillis(),
             state = ExchangeTransactionState.COMPLETED
         )
@@ -1184,16 +1191,21 @@ private fun recordTradeHistory(
     localPuppyIds: List<String>,
     remotePuppyIds: List<String>
 ) {
+    val localIsPlayerA = localPlayerId < remotePlayerId
+    val playerAId = if (localIsPlayerA) localPlayerId else remotePlayerId
+    val playerBId = if (localIsPlayerA) remotePlayerId else localPlayerId
+    val offerA = if (localIsPlayerA) localPuppyIds else remotePuppyIds
+    val offerB = if (localIsPlayerA) remotePuppyIds else localPuppyIds
     ledger.putTransaction(
         ExchangeTransactionRecord(
             transactionId = transactionId,
             type = ExchangeTransactionType.TRADE,
-            playerAId = localPlayerId,
-            playerBId = remotePlayerId,
-            offerARecordIds = localPuppyIds,
-            offerBRecordIds = remotePuppyIds,
-            offerAHash = PuppyExchangeProtocol.canonicalOfferHash(localPuppyIds),
-            offerBHash = PuppyExchangeProtocol.canonicalOfferHash(remotePuppyIds),
+            playerAId = playerAId,
+            playerBId = playerBId,
+            offerARecordIds = offerA,
+            offerBRecordIds = offerB,
+            offerAHash = PuppyExchangeProtocol.canonicalOfferHash(offerA),
+            offerBHash = PuppyExchangeProtocol.canonicalOfferHash(offerB),
             createdAtMs = System.currentTimeMillis(),
             state = ExchangeTransactionState.COMPLETED
         )
