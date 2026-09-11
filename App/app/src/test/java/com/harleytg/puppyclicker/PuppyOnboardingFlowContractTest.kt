@@ -22,6 +22,19 @@ class PuppyOnboardingFlowContractTest {
     }
 
     @Test
+    fun birthdaySkipStartsAsExplicitFalseChoice() {
+        val source = File(
+            "src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt"
+        ).readText()
+
+        assertTrue(
+            source.contains(
+                "var birthdaySkipped by rememberSaveable { mutableStateOf(false) }"
+            )
+        )
+    }
+
+    @Test
     fun flowCompletesSetupOnlyFromReadyCallback() {
         val source = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt"
