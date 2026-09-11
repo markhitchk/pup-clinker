@@ -40,6 +40,9 @@ class PuppyExchangeScreenTest {
         composeRule.onNodeWithText("Gifts").assertExists()
         composeRule.onNodeWithText("Trade").assertExists()
         composeRule.onNodeWithText("History").assertExists()
-        composeRule.onNodeWithText("Direct Connect").assertExists()
+        composeRule.onNodeWithText("Connection Setup").assertExists()
+        composeRule.onNodeWithText("Your Friend Code").assertExists()
+        composeRule.onNodeWithText("Start Connection").assertExists()
+        composeRule.onNodeWithText("Advanced Direct Connection").assertExists()
     }
 }
