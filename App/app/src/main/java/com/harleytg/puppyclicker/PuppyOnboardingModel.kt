@@ -44,6 +44,9 @@ fun localUsernameEligible(raw: String): Boolean {
         PuppyPlayerIdentity.usernameModerationIssue(normalized) == null
 }
 
+fun localUsernameSubmissionEnabled(raw: String): Boolean =
+    PuppyPlayerIdentity.normalizeUsername(raw).isNotBlank()
+
 fun notificationPermissionDecision(
     sdkInt: Int,
     notificationsEnabled: Boolean,
