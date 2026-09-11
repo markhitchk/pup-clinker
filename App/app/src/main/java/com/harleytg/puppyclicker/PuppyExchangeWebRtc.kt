@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import org.webrtc.DataChannel
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
@@ -257,7 +258,9 @@ internal class PuppyExchangeWebRtc(
     private suspend fun awaitIceGathering(peer: PeerConnection) {
         if (peer.iceGatheringState() == PeerConnection.IceGatheringState.COMPLETE) return
         val waiter = gatheringDone ?: CompletableDeferred<Unit>().also { gatheringDone = it }
-        waiter.await()
+        withTimeout(ICE_GATHERING_TIMEOUT_MS) {
+            waiter.await()
+        }
     }
 
     private fun addRemoteCandidates(peer: PeerConnection, candidates: List<IceCandidateSnapshot>) {
@@ -302,6 +305,7 @@ internal class PuppyExchangeWebRtc(
         private const val STUN_SECONDARY = "stun:stun1.l.google.com:19302"
         private const val MAX_ICE_CANDIDATES = 128
         private const val MAX_ICE_CANDIDATE_CHARS = 8_192
+        private const val ICE_GATHERING_TIMEOUT_MS = 15_000L
         private val initialized = AtomicBoolean(false)
 
         private fun initializeWebRtc(context: Context) {
