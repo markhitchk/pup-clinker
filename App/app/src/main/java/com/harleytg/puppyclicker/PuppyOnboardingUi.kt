@@ -33,13 +33,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.harleytg.puppyclicker.ui.theme.LocalPuppyAnimatedUi
 import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion
 
 @Composable
 internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
-    val reducedMotion = LocalPuppyReducedMotion.current
+    val animateUi = LocalPuppyAnimatedUi.current && !LocalPuppyReducedMotion.current
 
     var step by rememberSaveable {
         mutableIntStateOf(ui.setupStep.coerceIn(0, 4))
@@ -75,7 +76,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     AnimatedContent(
         targetState = step,
         transitionSpec = {
-            val duration = if (reducedMotion) 1 else 160
+            val duration = if (animateUi) 160 else 1
             fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
         },
         label = "onboarding-step"
