@@ -1,6 +1,7 @@
 package com.harleytg.puppyclicker
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.harleytg.puppyclicker.ui.theme.PuppyClickerTheme
 import java.time.LocalDate
@@ -61,12 +63,27 @@ import kotlinx.coroutines.launch
 class PuppyClickerV6Activity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleDiscordCallback(intent)
         enableEdgeToEdge()
         setContent {
             PuppyClickerTheme {
                 val vm: PuppyClickerV6ViewModel = viewModel()
                 PuppyClickerV6App(vm)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDiscordCallback(intent)
+    }
+
+    private fun handleDiscordCallback(intent: Intent?) {
+        val callback = intent?.data ?: return
+        if (!DiscordSignupAuth.isCallback(callback)) return
+        lifecycleScope.launch {
+            DiscordSignupAuth.handleRedirect(applicationContext, callback)
         }
     }
 }
@@ -78,7 +95,13 @@ private enum class V6Tab(val label: String, val emoji: String) {
 @Composable
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+
+    if (!uiPreferences.setupComplete) {
+        PuppyOnboardingFlow(vm)
+        return
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
