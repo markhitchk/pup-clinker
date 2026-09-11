@@ -174,7 +174,23 @@ internal object PuppyPlayerIdentity {
                     '1', '!', '|' -> 'i'
                     '3' -> 'e'
                     '4', '@' -> 'a'
-                    '5', '    fun isValidPlayerId(value: String): Boolean = playerIdRegex.matches(value)
+                    '5' -> 's'
+                    '7', '+' -> 't'
+                    else -> char
+                }
+            }
+            .filter { it in 'a'..'z' || it in '0'..'9' }
+            .joinToString("")
+
+        if (blockedUsernameFragments.any { compact.contains(it) }) {
+            return "That username contains a word or phrase that isn't allowed."
+        }
+
+        return null
+    }
+
+    fun isUsernameAllowed(raw: String): Boolean = usernameModerationIssue(raw) == null
+    fun isValidPlayerId(value: String): Boolean = playerIdRegex.matches(value)
 
     fun isValidFriendCode(value: String): Boolean = friendCodeRegex.matches(value)
 
