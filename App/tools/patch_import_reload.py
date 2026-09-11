@@ -14,13 +14,12 @@ def replace_once(source: str, old: str, new: str, label: str) -> str:
 
 
 def patch_view_model(source: str) -> str:
-    return replace_once(
-        source,
-        '''    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+    if "fun reloadImportedSave()" in source:
+        return source
 
-    /** Full non-prestige reset. Special code collection and settings stay protected. */''',
-        '''    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
-
+    anchor = '''    fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+'''
+    replacement = anchor + '''
     /** Reload state after an authenticated portable-save import without recreating the Activity. */
     fun reloadImportedSave() {
         recentTapTimes.clear()
@@ -31,8 +30,11 @@ def patch_view_model(source: str) -> str:
         syncDynamicFreePuppies()
         refreshSeasonalEvents()
     }
-
-    /** Full non-prestige reset. Special code collection and settings stay protected. */''',
+'''
+    return replace_once(
+        source,
+        anchor,
+        replacement,
         "V6 imported-save reload method",
     )
 
