@@ -45,4 +45,51 @@ class PuppyExchangeScreenTest {
         composeRule.onNodeWithText("Start Connection").assertExists()
         composeRule.onNodeWithText("Advanced Direct Connection").assertExists()
     }
+    @Test
+    fun recoveryRequiredTradeExposesRecoveryWorkflow() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val ledger = PuppyExchangeLedger(app)
+        val localPlayerId = PuppyPlayerIdentity.playerId(app)
+        val remotePlayerId = if (localPlayerId == "PC-11111111111111111111111111111111") {
+            "PC-22222222222222222222222222222222"
+        } else {
+            "PC-11111111111111111111111111111111"
+        }
+        val localOffer = listOf("classic")
+        val remoteOffer = listOf("v2_frog")
+
+        ledger.putTransaction(
+            ExchangeTransactionRecord(
+                transactionId = "XT-recovery-ui-test",
+                type = ExchangeTransactionType.TRADE,
+                playerAId = localPlayerId,
+                playerBId = remotePlayerId,
+                offerARecordIds = localOffer,
+                offerBRecordIds = remoteOffer,
+                offerAHash = PuppyExchangeProtocol.canonicalOfferHash(localOffer),
+                offerBHash = PuppyExchangeProtocol.canonicalOfferHash(remoteOffer),
+                createdAtMs = System.currentTimeMillis(),
+                state = ExchangeTransactionState.RECOVERY_REQUIRED
+            )
+        )
+
+        composeRule.setContent {
+            MaterialTheme {
+                PuppyExchangeScreen(
+                    state = vm.state.value,
+                    vm = vm,
+                    onBack = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("History").assertExists().performClick()
+        composeRule.onNodeWithText("Recover Trade").assertExists().performClick()
+        composeRule.onNodeWithText("Complete Trade").assertExists()
+        composeRule.onNodeWithText("Cancel Trade").assertExists()
+        composeRule.onNodeWithText("Generate My Recovery Code").assertExists()
+        composeRule.onNodeWithText("Other Player's Recovery Code").assertExists()
+        composeRule.onNodeWithText("Apply Other Player Code").assertExists()
+    }
+
 }
