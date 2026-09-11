@@ -122,8 +122,9 @@ internal object GameSaveTransfer {
     fun passwordRequirement(
         context: Context,
         uri: Uri
-    ): PuppySavePasswordRequirement =
+    ): PuppySavePasswordRequirement = runCatching {
         passwordRequirementFromBytes(readBounded(context, uri))
+    }.getOrDefault(PuppySavePasswordRequirement.UNKNOWN)
 
     fun passwordRequirementFromBytes(bytes: ByteArray): PuppySavePasswordRequirement = runCatching {
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
