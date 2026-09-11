@@ -3,7 +3,7 @@ package com.harleytg.puppyclicker
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Base64
+import java.util.Base64
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -239,7 +239,7 @@ internal object DiscordSignupAuth {
     internal fun codeChallenge(verifier: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(verifier.toByteArray(StandardCharsets.US_ASCII))
-        return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
     }
 
     private fun ensure(context: Context) {
@@ -300,7 +300,7 @@ internal object DiscordSignupAuth {
 
     private fun randomUrlSafe(byteCount: Int): String {
         val bytes = ByteArray(byteCount).also(random::nextBytes)
-        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 
     private fun exchangeAuthorizationCode(code: String, verifier: String): String {
