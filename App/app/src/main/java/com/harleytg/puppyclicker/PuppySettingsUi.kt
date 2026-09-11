@@ -3,6 +3,7 @@ package com.harleytg.puppyclicker
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Build
@@ -927,8 +928,14 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
                     }
                     DangerZoneAction.RESET_PROGRESS -> vm.resetRunWithoutPrestige()
                     DangerZoneAction.ERASE_ALL_DATA -> {
+                        vm.prepareForFullLocalDataErase()
                         deletePuppyClickerLocalSave(context)
-                        activity?.recreate()
+
+                        val restartIntent = Intent(context, PuppyClickerV6Activity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        }
+                        context.startActivity(restartIntent)
+                        activity?.finish()
                     }
                 }
                 confirmationKey = null
