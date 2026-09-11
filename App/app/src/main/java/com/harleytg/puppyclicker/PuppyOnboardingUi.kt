@@ -209,67 +209,135 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val account = discord.account
-    val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
+    val discordBusy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
 
-    SetupCard("DISCORD SIGNUP", "👤") {
-        Text("Sign up with Discord", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+    var username by rememberSaveable {
+        mutableStateOf(
+            PuppyPlayerIdentity.username(context)
+                .takeUnless { it == "localplayer" }
+                .orEmpty()
+        )
+    }
+    var usernameModerationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    SetupCard("YOUR PROFILE", "👤") {
+        Text("Choose how to continue", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Text(
-            "Discord verifies the player account used by Puppy Clicker. The app requests only the identify permission.",
+            "Use a local Puppy Clicker username, connect Discord, or import an existing save.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(12.dp))
+
+        Spacer(Modifier.height(14.dp))
+        Text("Local Profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Text(
+            "No online account required. Your username is stored on this device and linked to your protected Puppy Clicker save.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it.take(24) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Player username") },
+            supportingText = { Text("Letters, numbers, _, - and . · stored locally") },
+            singleLine = true
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = {
+                val moderationIssue = PuppyPlayerIdentity.usernameModerationIssue(username)
+                if (moderationIssue != null) {
+                    usernameModerationMessage = moderationIssue
+                } else {
+                    username = PuppyPlayerIdentity.setUsername(context, username)
+                    onNext()
+                }
+            },
+            enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Continue with Local Profile", fontWeight = FontWeight.Black)
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Text("Discord", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+        Text(
+            "Optional account verification using Discord's identify permission. Your Puppy Clicker Player ID and Friend Code remain device-bound.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(13.dp),
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = painterResource(R.drawable.ic_discord),
                     contentDescription = "Discord",
-                    modifier = Modifier.size(34.dp),
+                    modifier = Modifier.size(30.dp),
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(account?.displayName ?: "Discord account", fontWeight = FontWeight.Black)
+                    Text(account?.displayName ?: "Discord account", fontWeight = FontWeight.Bold)
                     Text(
                         when {
                             account != null -> "@${account.username}"
                             discord.phase == DiscordSignupPhase.EXCHANGING -> "Verifying account…"
                             discord.phase == DiscordSignupPhase.AUTHORIZING -> "Authorization opened"
-                            else -> "Required for new player signup"
+                            else -> "Not connected"
                         },
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Text(
-                    if (account != null) "Connected" else "Not Connected",
-                    color = if (account != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
+                    if (account != null) "Connected" else "Optional",
+                    fontWeight = FontWeight.Bold,
+                    color = if (account != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         if (account == null) {
-            Button(
-                onClick = { DiscordSignupAuth.startSignup(context) },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                Text(if (busy) "Waiting for Discord…" else "Continue with Discord", fontWeight = FontWeight.Black)
-            }
-        } else {
             OutlinedButton(
                 onClick = { DiscordSignupAuth.startSignup(context) },
-                enabled = !busy,
+                enabled = !discordBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (discordBusy) "Waiting for Discord…" else "Connect Discord")
+            }
+        } else {
+            Button(
+                onClick = {
+                    val preferred = account.username
+                    val localUsername = if (PuppyPlayerIdentity.isUsernameAllowed(preferred)) {
+                        preferred
+                    } else {
+                        "player_" + account.id.takeLast(8)
+                    }
+                    PuppyPlayerIdentity.setUsername(context, localUsername)
+                    onNext()
+                },
+                enabled = !discordBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Continue with Discord", fontWeight = FontWeight.Black)
+            }
+            Spacer(Modifier.height(6.dp))
+            TextButton(
+                onClick = { DiscordSignupAuth.startSignup(context) },
+                enabled = !discordBusy,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Use a Different Discord Account")
@@ -277,35 +345,55 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
         }
 
         discord.message?.let { message ->
-            Spacer(Modifier.height(8.dp))
             Text(
                 message,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (discord.phase == DiscordSignupPhase.ERROR) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (discord.phase == DiscordSignupPhase.ERROR) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Your Puppy Clicker Player ID and Friend Code stay device-bound for trading and gifting. Discord does not replace those IDs.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(14.dp))
-        SetupNavigation(onBack, "Continue", account != null && !busy) {
-            account?.let { connected ->
-                val preferred = connected.username
-                val localUsername = if (PuppyPlayerIdentity.isUsernameAllowed(preferred)) {
-                    preferred
-                } else {
-                    "player_" + connected.id.takeLast(8)
-                }
-                PuppyPlayerIdentity.setUsername(context, localUsername)
-                onNext()
+        Spacer(Modifier.height(18.dp))
+        OnboardingSaveImport(
+            onImportSuccess = {
+                vmReloadImportedSaveForOnboarding(context, onNext)
             }
+        )
+
+        Spacer(Modifier.height(14.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+            Text("Back")
         }
     }
+
+    if (usernameModerationMessage != null) {
+        AlertDialog(
+            onDismissRequest = { usernameModerationMessage = null },
+            title = { Text("Username Not Allowed", fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    usernameModerationMessage
+                        ?: "That username contains a word or phrase that isn't allowed. Choose another username."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { usernameModerationMessage = null }) {
+                    Text("Choose Another")
+                }
+            }
+        )
+    }
+}
+
+private fun vmReloadImportedSaveForOnboarding(context: Context, onNext: () -> Unit) {
+    // The save transfer already authenticates, seals, and mirrors the imported save.
+    // The active ViewModel reload happens when the next onboarding step composes through the
+    // caller's ViewModel callback path; keeping this helper side-effect-free avoids recreating
+    // the Activity during setup.
+    onNext()
 }
 
 @Composable
