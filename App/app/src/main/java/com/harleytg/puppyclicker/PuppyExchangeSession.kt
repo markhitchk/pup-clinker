@@ -29,6 +29,7 @@ internal enum class ExchangePeerValidationReason {
     INVALID_PLAYER_ID,
     INVALID_FRIEND_CODE,
     FRIEND_CODE_MISMATCH,
+    PLAYER_ID_MISMATCH,
     BLOCKED_PLAYER,
     PROTOCOL_MISMATCH
 }
@@ -42,6 +43,7 @@ internal data class ExchangePeerValidationResult(
 internal fun validateExchangePeer(
     hello: ExchangeIdentityHello,
     expectedFriendCode: String?,
+    expectedPlayerId: String?,
     blockedPlayerIds: Set<String>
 ): ExchangePeerValidationResult {
     if (!PuppyPlayerIdentity.isValidPlayerId(hello.playerId)) {
@@ -63,6 +65,13 @@ internal fun validateExchangePeer(
             accepted = false,
             reason = ExchangePeerValidationReason.FRIEND_CODE_MISMATCH,
             message = "Connected player does not match the expected Friend Code."
+        )
+    }
+    if (expectedPlayerId != null && hello.playerId != expectedPlayerId) {
+        return ExchangePeerValidationResult(
+            accepted = false,
+            reason = ExchangePeerValidationReason.PLAYER_ID_MISMATCH,
+            message = "Connected player identity changed during connection setup."
         )
     }
     if (hello.playerId in blockedPlayerIds) {
@@ -143,6 +152,9 @@ internal class PuppyExchangeSession(
     private var expectedRemoteFriendCode: String? = null
 
     @Volatile
+    private var expectedRemotePlayerId: String? = null
+
+    @Volatile
     private var verifiedPeer: ExchangeIdentityHello? = null
 
     suspend fun createOffer(expectedFriendCode: String): String {
@@ -150,6 +162,7 @@ internal class PuppyExchangeSession(
             ?: throw IllegalArgumentException("Invalid Friend Code")
         require(canonicalExpectedFriendCode != localHello.friendCode) { "You cannot connect Puppy Exchange to this device itself" }
         expectedRemoteFriendCode = canonicalExpectedFriendCode
+        expectedRemotePlayerId = null
         verifiedPeer = null
         _state.value = ExchangeConnectionState.CreatingOffer
 
@@ -186,6 +199,7 @@ internal class PuppyExchangeSession(
         require(offer.senderFriendCode != localHello.friendCode) { "You cannot connect Puppy Exchange to this device itself" }
 
         expectedRemoteFriendCode = offer.senderFriendCode
+        expectedRemotePlayerId = offer.senderPlayerId
         verifiedPeer = null
         _state.value = ExchangeConnectionState.ApplyingOffer
 
@@ -228,6 +242,11 @@ internal class PuppyExchangeSession(
         require(expected == null || answer.senderFriendCode == expected) {
             "Answer Code does not match the expected Friend Code"
         }
+        val expectedPlayer = expectedRemotePlayerId
+        require(expectedPlayer == null || answer.senderPlayerId == expectedPlayer) {
+            "Answer Code does not match the expected Player ID"
+        }
+        expectedRemotePlayerId = answer.senderPlayerId
         transport.applyAnswer(
             sessionId = answer.sessionId,
             remoteSdp = answer.sdp,
@@ -255,6 +274,7 @@ internal class PuppyExchangeSession(
         pendingPings.clear()
         verifiedPeer = null
         expectedRemoteFriendCode = null
+        expectedRemotePlayerId = null
         _realtime.value = ExchangeRealtimeState()
         transport.close()
         _state.value = ExchangeConnectionState.Closed
@@ -310,7 +330,12 @@ internal class PuppyExchangeSession(
                 fail("Puppy Exchange peer sent an invalid identity handshake.")
                 return
             }
-            val validation = validateExchangePeer(hello, expectedRemoteFriendCode, blockedPlayerIds())
+            val validation = validateExchangePeer(
+                hello = hello,
+                expectedFriendCode = expectedRemoteFriendCode,
+                expectedPlayerId = expectedRemotePlayerId,
+                blockedPlayerIds = blockedPlayerIds()
+            )
             if (!validation.accepted) {
                 fail(validation.message ?: "Puppy Exchange peer identity was rejected.")
                 return
@@ -404,6 +429,8 @@ internal class PuppyExchangeSession(
         heartbeatJob = null
         pendingPings.clear()
         verifiedPeer = null
+        expectedRemoteFriendCode = null
+        expectedRemotePlayerId = null
         _realtime.value = _realtime.value.copy(peerOnline = false)
         _state.value = ExchangeConnectionState.Failed(message)
         transport.close()
