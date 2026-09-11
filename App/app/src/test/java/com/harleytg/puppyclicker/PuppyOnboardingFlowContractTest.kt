@@ -18,7 +18,7 @@ class PuppyOnboardingFlowContractTest {
         assertTrue(source.contains("PuppyOnboardingNotifications("))
         assertTrue(source.contains("PuppyOnboardingReady("))
         assertFalse(source.contains("repeat(6)"))
-        assertFalse(source.contains("Step ${step + 1} of 6"))
+        assertFalse(source.contains("Step " + "$" + "{step + 1} of 6"))
     }
 
     @Test
