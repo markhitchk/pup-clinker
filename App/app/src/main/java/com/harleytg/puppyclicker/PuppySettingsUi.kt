@@ -696,12 +696,62 @@ private fun OnlineAssetSettings() {
 @Composable
 private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState) {
     val context = LocalContext.current
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val account = discord.account
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     var usernameStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var birthdayEditor by rememberSaveable { mutableStateOf(false) }
     val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
+        discord.phase == DiscordSignupPhase.EXCHANGING
 
-    SettingsLabel("PROFILE")
+    SettingsLabel("DISCORD ACCOUNT")
+    StatusLine("Status", if (account != null) "Connected" else "Not Connected")
+    account?.let {
+        StatusLine("Discord name", it.displayName)
+        StatusLine("Discord username", "@${it.username}")
+        StatusLine("Discord user ID", it.id)
+    }
+    Spacer(Modifier.height(7.dp))
+    Button(
+        onClick = { DiscordSignupAuth.startSignup(context) },
+        enabled = !busy,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            when {
+                busy -> "Waiting for Discord…"
+                account != null -> "Reconnect Discord"
+                else -> "Connect Discord"
+            }
+        )
+    }
+    if (account != null) {
+        Spacer(Modifier.height(7.dp))
+        OutlinedButton(
+            onClick = { DiscordSignupAuth.disconnect(context) },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Disconnect Discord")
+        }
+    }
+    discord.message?.let {
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (discord.phase == DiscordSignupPhase.ERROR) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    Text(
+        "Discord is used for player signup. Only the identify permission is requested; Puppy Clicker does not persist the OAuth access token.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    Spacer(Modifier.height(14.dp))
+    SettingsLabel("PUPPY CLICKER IDENTITY")
     if (officialDeveloper) {
         StatusLine("Account", "HarleyTG Developer / Owner")
         StatusLine("Studio", "Harley's Studios")
@@ -714,41 +764,32 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
         value = username,
         onValueChange = { username = it.take(24) },
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Username") },
-        supportingText = { Text("Saved using Puppy Clicker's existing lowercase username format.") },
+        label = { Text("Puppy Clicker display name") },
+        supportingText = { Text("Defaults to your verified Discord username and may be changed locally.") },
         singleLine = true
     )
     Spacer(Modifier.height(7.dp))
     OutlinedButton(
         onClick = {
-            val normalized = PuppyPlayerIdentity.normalizeUsername(username)
-            if (normalized.isBlank()) {
-                usernameStatus = "Enter a valid username."
+            val issue = PuppyPlayerIdentity.usernameModerationIssue(username)
+            if (issue != null) {
+                usernameStatus = issue
             } else {
                 username = PuppyPlayerIdentity.setUsername(context, username)
-                usernameStatus = "Username saved as $username."
+                usernameStatus = "Display name saved as $username."
             }
         },
         enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
         modifier = Modifier.fillMaxWidth()
-    ) { Text("Save Username") }
-    usernameStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-
-    Spacer(Modifier.height(12.dp))
-    SettingsLabel("ACCOUNT CONNECTIONS")
-    StatusLine("Website account", "Coming Soon")
-    Spacer(Modifier.height(7.dp))
-    OutlinedButton(
-        onClick = { PuppyLinks.openDiscord(context) },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Open Discord Community")
+    ) { Text("Save Display Name") }
+    usernameStatus?.let {
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (PuppyPlayerIdentity.usernameModerationIssue(username) != null) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
-    Text(
-        PuppyLinks.DISCORD_INVITE,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
 
     Spacer(Modifier.height(12.dp))
     SettingsLabel("BIRTHDAY")
@@ -781,7 +822,6 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
             }
         )
     }
-
 }
 
 @Composable
@@ -948,6 +988,7 @@ private fun deletePuppyClickerLocalSave(context: Context) {
     context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().commit()
     context.getSharedPreferences("puppy_seasonal_v1", Context.MODE_PRIVATE).edit().clear().commit()
     context.getSharedPreferences("puppy_player_identity_v1", Context.MODE_PRIVATE).edit().clear().commit()
+    DiscordSignupAuth.disconnect(context)
     context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
     File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
     ExternalGameSave.path(context)?.let { File(it).delete() }
