@@ -554,6 +554,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
     fun receiveExchangePuppy(puppyId: String): Boolean {
         val asset = DynamicPuppyRoster.asset(puppyId) ?: return false
+        val policy = asset.transferPolicy
+        if (!policy.giftable || policy.bound) return false
         val current = _state.value
         if (asset.style.id in current.unlockedPuppies) return true
         _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
@@ -562,12 +564,20 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun applyExchangeTrade(sentPuppyIds: Set<String>, receivedPuppyIds: Set<String>): Boolean {
+        if (sentPuppyIds.isEmpty() || receivedPuppyIds.isEmpty()) return false
         if (sentPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS ||
             receivedPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS
         ) return false
         val current = _state.value
         if (!current.unlockedPuppies.containsAll(sentPuppyIds)) return false
-        if (receivedPuppyIds.any { DynamicPuppyRoster.asset(it) == null }) return false
+
+        val sentAssets = sentPuppyIds.map { DynamicPuppyRoster.asset(it) ?: return false }
+        val receivedAssets = receivedPuppyIds.map { DynamicPuppyRoster.asset(it) ?: return false }
+        if ((sentAssets + receivedAssets).any { asset ->
+                val policy = asset.transferPolicy
+                !policy.tradeable || policy.bound || policy.sourceCopy
+            }
+        ) return false
 
         val nextUnlocked = (current.unlockedPuppies - sentPuppyIds) + receivedPuppyIds
         if (nextUnlocked.isEmpty()) return false
