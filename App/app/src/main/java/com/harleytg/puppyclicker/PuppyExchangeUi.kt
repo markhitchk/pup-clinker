@@ -92,6 +92,8 @@ internal fun PuppyExchangeScreen(
     var remoteCommit by remember { mutableStateOf(false) }
     var tradeCompleted by remember { mutableStateOf(false) }
     var tradeStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    val localPlayerId = remember { PuppyPlayerIdentity.playerId(context) }
+    var tradeTransactionId by remember { mutableStateOf<String?>(null) }
 
     val peer = (connection as? ExchangeConnectionState.Connected)?.peer
 
@@ -110,6 +112,12 @@ internal fun PuppyExchangeScreen(
             localCommit = false
             remoteCommit = false
             tradeCompleted = false
+            tradeTransactionId = null
+        } else {
+            val connectedPeer = connection.peer
+            if (localPlayerId < connectedPeer.playerId && tradeTransactionId == null) {
+                tradeTransactionId = PuppyExchangeProtocol.newTransactionId()
+            }
         }
     }
 
@@ -162,6 +170,18 @@ internal fun PuppyExchangeScreen(
                     }
                 }
                 "trade.offer" -> {
+                    val incomingTransactionId = message.payload.optString("transactionId")
+                        .takeIf(::isValidLiveTradeTransactionId)
+                    val connectedPeer = peer
+                    if (connectedPeer != null) {
+                        if (localPlayerId < connectedPeer.playerId) {
+                            if (tradeTransactionId == null || tradeCompleted) {
+                                tradeTransactionId = PuppyExchangeProtocol.newTransactionId()
+                            }
+                        } else if (incomingTransactionId != null) {
+                            tradeTransactionId = incomingTransactionId
+                        }
+                    }
                     remoteTradeIds = message.payload.optJSONArray("puppyIds").stringList()
                         .filter { DynamicPuppyRoster.asset(it) != null }
                         .distinct()
@@ -175,17 +195,44 @@ internal fun PuppyExchangeScreen(
                     tab = PuppyExchangeTab.TRADE
                 }
                 "trade.ready" -> {
+                    if (!matchesLiveTradeFingerprint(
+                            payload = message.payload,
+                            transactionId = tradeTransactionId,
+                            localTradeIds = localTradeIds,
+                            remoteTradeIds = remoteTradeIds
+                        )
+                    ) {
+                        remoteReady = false
+                        remoteCommit = false
+                        localCommit = false
+                        tradeStatus = "Trade changed or did not match. Review both offers again."
+                        return@collect
+                    }
                     remoteReady = message.payload.optBoolean("ready", false)
                     remoteCommit = false
                     localCommit = false
                     tradeStatus = if (remoteReady) "Other player is ready." else "Other player changed their readiness."
                 }
                 "trade.commit" -> {
+                    if (!matchesLiveTradeFingerprint(
+                            payload = message.payload,
+                            transactionId = tradeTransactionId,
+                            localTradeIds = localTradeIds,
+                            remoteTradeIds = remoteTradeIds
+                        )
+                    ) {
+                        remoteCommit = false
+                        tradeStatus = "Trade confirmation did not match the reviewed offers."
+                        return@collect
+                    }
                     remoteCommit = true
                     tradeStatus = "Other player confirmed the trade."
                 }
                 "trade.complete" -> {
-                    if (message.payload.optBoolean("success", false)) {
+                    val completedTransactionId = message.payload.optString("transactionId")
+                    if (completedTransactionId == tradeTransactionId &&
+                        message.payload.optBoolean("success", false)
+                    ) {
                         tradeStatus = "Trade completed on both devices."
                     }
                 }
@@ -201,6 +248,7 @@ internal fun PuppyExchangeScreen(
         localTradeIds,
         remoteTradeIds,
         tradeCompleted,
+        tradeTransactionId,
         peer?.playerId
     ) {
         if (
@@ -211,11 +259,12 @@ internal fun PuppyExchangeScreen(
             remoteReady &&
             localTradeIds.isNotEmpty() &&
             remoteTradeIds.isNotEmpty() &&
-            peer != null
+            peer != null &&
+            tradeTransactionId != null
         ) {
+            val transactionId = tradeTransactionId ?: return@LaunchedEffect
             val success = vm.applyExchangeTrade(localTradeIds.toSet(), remoteTradeIds.toSet())
             if (success) {
-                val transactionId = PuppyExchangeProtocol.newTransactionId()
                 recordTradeHistory(
                     ledger = ledger,
                     transactionId = transactionId,
@@ -229,7 +278,9 @@ internal fun PuppyExchangeScreen(
                 runCatching {
                     session.sendMessage(
                         "trade.complete",
-                        JSONObject().put("success", true)
+                        JSONObject()
+                            .put("transactionId", transactionId)
+                            .put("success", true)
                     )
                 }
             } else {
@@ -239,7 +290,9 @@ internal fun PuppyExchangeScreen(
                 runCatching {
                     session.sendMessage(
                         "trade.complete",
-                        JSONObject().put("success", false)
+                        JSONObject()
+                            .put("transactionId", transactionId)
+                            .put("success", false)
                     )
                 }
             }
@@ -358,8 +411,21 @@ internal fun PuppyExchangeScreen(
                 localCommit = localCommit,
                 remoteCommit = remoteCommit,
                 completed = tradeCompleted,
+                transactionId = tradeTransactionId,
                 status = tradeStatus,
                 onLocalOffer = { next ->
+                    val connectedPeer = peer
+                    val nextTransactionId = when {
+                        connectedPeer == null -> null
+                        tradeCompleted && localPlayerId < connectedPeer.playerId ->
+                            PuppyExchangeProtocol.newTransactionId()
+                        tradeCompleted -> null
+                        tradeTransactionId != null -> tradeTransactionId
+                        localPlayerId < connectedPeer.playerId ->
+                            PuppyExchangeProtocol.newTransactionId()
+                        else -> null
+                    }
+                    tradeTransactionId = nextTransactionId
                     localTradeIds = next
                     localReady = false
                     remoteReady = false
@@ -368,28 +434,50 @@ internal fun PuppyExchangeScreen(
                     tradeCompleted = false
                     tradeStatus = "Your trade offer updated."
                     runCatching {
-                        session.sendMessage(
-                            "trade.offer",
-                            JSONObject().put("puppyIds", JSONArray(next))
-                        )
+                        val payload = JSONObject().put("puppyIds", JSONArray(next))
+                        nextTransactionId?.let { payload.put("transactionId", it) }
+                        session.sendMessage("trade.offer", payload)
                     }
                 },
                 onReady = { ready ->
-                    localReady = ready
-                    localCommit = false
-                    remoteCommit = false
-                    runCatching {
-                        session.sendMessage(
-                            "trade.ready",
-                            JSONObject().put("ready", ready)
-                        )
+                    val transactionId = tradeTransactionId
+                    if (transactionId == null) {
+                        tradeStatus = "Waiting for the shared trade session. Exchange an offer again."
+                    } else {
+                        localReady = ready
+                        localCommit = false
+                        remoteCommit = false
+                        runCatching {
+                            session.sendMessage(
+                                "trade.ready",
+                                liveTradeFingerprintPayload(
+                                    transactionId = transactionId,
+                                    localTradeIds = localTradeIds,
+                                    remoteTradeIds = remoteTradeIds
+                                ).put("ready", ready)
+                            )
+                        }
+                        tradeStatus = if (ready) "Ready sent. Waiting for the other player." else "You are no longer ready."
                     }
-                    tradeStatus = if (ready) "Ready sent. Waiting for the other player." else "You are no longer ready."
                 },
                 onCommit = {
-                    localCommit = true
-                    runCatching { session.sendMessage("trade.commit") }
-                    tradeStatus = "Trade confirmation sent."
+                    val transactionId = tradeTransactionId
+                    if (transactionId == null) {
+                        tradeStatus = "Trade session is not synchronized yet."
+                    } else {
+                        localCommit = true
+                        runCatching {
+                            session.sendMessage(
+                                "trade.commit",
+                                liveTradeFingerprintPayload(
+                                    transactionId = transactionId,
+                                    localTradeIds = localTradeIds,
+                                    remoteTradeIds = remoteTradeIds
+                                )
+                            )
+                        }
+                        tradeStatus = "Trade confirmation sent."
+                    }
                 }
             )
             PuppyExchangeTab.HISTORY -> ExchangeHistoryPanel(ledger)
@@ -896,6 +984,7 @@ private fun ExchangeTradePanel(
     localCommit: Boolean,
     remoteCommit: Boolean,
     completed: Boolean,
+    transactionId: String?,
     status: String?,
     onLocalOffer: (List<String>) -> Unit,
     onReady: (Boolean) -> Unit,
@@ -973,7 +1062,10 @@ private fun ExchangeTradePanel(
 
     Button(
         onClick = { onReady(!localReady) },
-        enabled = !completed && localTradeIds.isNotEmpty() && remoteTradeIds.isNotEmpty(),
+        enabled = !completed &&
+            transactionId != null &&
+            localTradeIds.isNotEmpty() &&
+            remoteTradeIds.isNotEmpty(),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(if (localReady) "Cancel Ready" else "Ready Trade")
@@ -1032,6 +1124,33 @@ private fun shareFriendCode(context: Context, username: String, friendCode: Stri
     }
     context.startActivity(Intent.createChooser(intent, "Share Puppy Clicker Friend Code"))
 }
+
+
+private fun isValidLiveTradeTransactionId(value: String): Boolean =
+    value.startsWith("XT-") && value.length in 12..80
+
+private fun liveTradeFingerprintPayload(
+    transactionId: String,
+    localTradeIds: List<String>,
+    remoteTradeIds: List<String>
+): JSONObject = JSONObject()
+    .put("transactionId", transactionId)
+    .put("senderOfferHash", PuppyExchangeProtocol.canonicalOfferHash(localTradeIds))
+    .put("receiverOfferHash", PuppyExchangeProtocol.canonicalOfferHash(remoteTradeIds))
+
+private fun matchesLiveTradeFingerprint(
+    payload: JSONObject,
+    transactionId: String?,
+    localTradeIds: List<String>,
+    remoteTradeIds: List<String>
+): Boolean {
+    if (transactionId == null || payload.optString("transactionId") != transactionId) return false
+    val expectedSenderHash = PuppyExchangeProtocol.canonicalOfferHash(remoteTradeIds)
+    val expectedReceiverHash = PuppyExchangeProtocol.canonicalOfferHash(localTradeIds)
+    return payload.optString("senderOfferHash") == expectedSenderHash &&
+        payload.optString("receiverOfferHash") == expectedReceiverHash
+}
+
 
 private fun recordGiftHistory(
     ledger: PuppyExchangeLedger,
