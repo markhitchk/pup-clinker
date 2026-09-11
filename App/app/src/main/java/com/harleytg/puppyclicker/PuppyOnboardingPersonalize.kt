@@ -115,15 +115,19 @@ internal fun PuppyOnboardingPersonalize(
 
         TextButton(
             onClick = {
-                month = 0
-                day = 0
-                PuppyUiPreferences.clearBirthday(context)
-                vm.clearSeasonalBirthday()
-                onSessionChange(session.copy(birthdaySkipped = true))
+                if (session.birthdaySkipped) {
+                    onSessionChange(session.copy(birthdaySkipped = false))
+                } else {
+                    month = 0
+                    day = 0
+                    PuppyUiPreferences.clearBirthday(context)
+                    vm.clearSeasonalBirthday()
+                    onSessionChange(session.copy(birthdaySkipped = true))
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (session.birthdaySkipped) "Birthday skipped ✓" else "Skip birthday")
+            Text(if (session.birthdaySkipped) "Add birthday instead" else "Skip birthday")
         }
 
         Spacer(Modifier.height(18.dp))
