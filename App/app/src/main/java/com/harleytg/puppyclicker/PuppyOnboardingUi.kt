@@ -108,7 +108,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                 ) { current ->
                     when (current) {
                         0 -> WelcomeStep(onNext = { step = 1 })
-                        1 -> ProfileStep(onBack = { step = 0 }, onNext = { step = 2 })
+                        1 -> ProfileStep(vm, onBack = { step = 0 }, onNext = { step = 2 })
                         2 -> BirthdayStep(vm, ui, onBack = { step = 1 }, onNext = { step = 3 })
                         3 -> SetupAppearanceStep(ui, onBack = { step = 2 }, onNext = { step = 4 })
                         4 -> SetupNotificationsStep(onBack = { step = 3 }, onNext = { step = 5 })
@@ -205,7 +205,7 @@ private fun WelcomeStep(onNext: () -> Unit) {
 }
 
 @Composable
-private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
+private fun ProfileStep(vm: PuppyClickerV6ViewModel, onBack: () -> Unit, onNext: () -> Unit) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val account = discord.account
@@ -359,7 +359,9 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
         Spacer(Modifier.height(18.dp))
         OnboardingSaveImport(
             onImportSuccess = {
-                vmReloadImportedSaveForOnboarding(context, onNext)
+                vm.reloadImportedSave()
+                username = PuppyPlayerIdentity.username(context)
+                onNext()
             }
         )
 
@@ -386,14 +388,6 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
             }
         )
     }
-}
-
-private fun vmReloadImportedSaveForOnboarding(context: Context, onNext: () -> Unit) {
-    // The save transfer already authenticates, seals, and mirrors the imported save.
-    // The active ViewModel reload happens when the next onboarding step composes through the
-    // caller's ViewModel callback path; keeping this helper side-effect-free avoids recreating
-    // the Activity during setup.
-    onNext()
 }
 
 @Composable
