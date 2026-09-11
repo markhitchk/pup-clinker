@@ -169,7 +169,7 @@ internal fun PuppyOnboardingPlayerSetup(
                             onComplete()
                         }
                     },
-                    enabled = localUsernameEligible(username),
+                    enabled = localUsernameSubmissionEnabled(username),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Create Local Profile", fontWeight = FontWeight.Bold)
