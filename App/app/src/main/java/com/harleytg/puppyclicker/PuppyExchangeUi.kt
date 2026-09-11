@@ -519,7 +519,7 @@ private fun ExchangeFriendsPanel(
             Column(Modifier.padding(12.dp)) {
                 Text("Connected player", fontWeight = FontWeight.Black)
                 Text(peer.username)
-                Text(peer.friendCode, style = MaterialTheme.typography.labelMedium)
+                Text(PuppyPlayerIdentity.displayFriendCode(peer.friendCode), style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(7.dp))
                 OutlinedButton(onClick = {
                     ledger.upsertFriend(
