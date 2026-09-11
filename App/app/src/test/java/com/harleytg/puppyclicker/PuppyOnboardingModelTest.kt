@@ -56,6 +56,12 @@ class PuppyOnboardingModelTest {
     }
 
     @Test
+    fun blockedUsernameCanStillReachModerationPopup() {
+        assertTrue(localUsernameSubmissionEnabled("fuck"))
+        assertFalse(localUsernameSubmissionEnabled("   "))
+    }
+
+    @Test
     fun notificationPermissionRequestedOnlyWhenNeeded() {
         assertEquals(
             PuppyNotificationPermissionDecision.REQUEST,
