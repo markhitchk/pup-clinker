@@ -53,6 +53,10 @@ class PuppyExchangeIdentityTest {
             PuppyPlayerIdentity.resolveFriendCodeInput("PUP-HTG-DEV-0001")
         )
         assertTrue(PuppyPlayerIdentity.isValidFriendCodeInput("PUP-HTG-DEV-0001"))
+        assertEquals(
+            "PUP-5XUV-SGZB-S9CX",
+            PuppyPlayerIdentity.resolveFriendCodeInput("  pup-htg-dev-0001  ")
+        )
         assertTrue(PuppyPlayerIdentity.isValidPlayerId("PC-5AD7F57F80FBE69809F96AEA963E2426"))
         assertTrue(PuppyPlayerIdentity.isValidFriendCode("PUP-5XUV-SGZB-S9CX"))
         assertFalse(PuppyPlayerIdentity.isValidPlayerId("PC-HARLEYTG-DEV-0001"))
