@@ -44,6 +44,12 @@ class PuppyOnboardingModelTest {
     }
 
     @Test
+    fun birthdaySkipIsExplicitSessionState() {
+        val state = PuppyOnboardingSessionState().copy(birthdaySkipped = true)
+        assertTrue(state.birthdaySkipped)
+    }
+
+    @Test
     fun validLocalUsernameCanContinue() {
         assertTrue(localUsernameEligible("puppy_player"))
         assertFalse(localUsernameEligible("   "))
