@@ -192,6 +192,13 @@ internal object PuppyUiPreferences {
         putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
     }
 
+    fun keepSetupIncompleteAfterImport(context: Context) = edit(context) {
+        putBoolean(KEY_SETUP_COMPLETE, false)
+        putInt(KEY_SETUP_STEP, PuppyOnboardingStep.PLAYER_SETUP.persistedIndex)
+        putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
+        putBoolean(KEY_MIGRATION_COMPLETE, true)
+    }
+
     fun setDailyRewardNotifications(context: Context, enabled: Boolean) = edit(context) {
         putBoolean(KEY_NOTIFY_DAILY, enabled)
     }
