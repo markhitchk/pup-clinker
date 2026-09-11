@@ -90,8 +90,16 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         if (startedActivities == 0) {
             PuppyAppRuntime.isForeground = false
             runCatching {
+                val setupComplete = getSharedPreferences(
+                    PuppyUiPreferences.PREFS_NAME,
+                    MODE_PRIVATE
+                ).getBoolean("setup_complete", false)
+
                 prefs.edit()
-                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, System.currentTimeMillis())
+                    .putLong(
+                        PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT,
+                        if (setupComplete) System.currentTimeMillis() else 0L
+                    )
                     .apply()
             }.onFailure { Log.w(TAG, "Unable to store AFK background timestamp", it) }
 
@@ -106,6 +114,17 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     }
 
     private fun prepareAfkReward(now: Long) {
+        val setupComplete = getSharedPreferences(
+            PuppyUiPreferences.PREFS_NAME,
+            MODE_PRIVATE
+        ).getBoolean("setup_complete", false)
+        if (!setupComplete) {
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .apply()
+            return
+        }
+
         val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
         if (backgroundAt <= 0L || now <= backgroundAt) return
 
