@@ -37,11 +37,18 @@ import org.json.JSONObject
 
 internal data class SaveTransferResult(val success: Boolean, val message: String)
 
+internal enum class PuppySavePasswordRequirement {
+    REQUIRED,
+    NOT_REQUIRED,
+    UNKNOWN
+}
+
 /** Password-protected AES-256-GCM save transfer format. */
 internal object GameSaveTransfer {
     private const val PAYLOAD_FORMAT = "puppy-clicker-transfer-payload"
     private const val PAYLOAD_VERSION = 3
     private const val LEGACY_FORMAT = "puppy-clicker-save"
+    private const val ENCRYPTED_TRANSFER_FORMAT = "puppy-clicker-encrypted-save"
     private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
     private const val SEASONAL_PREFS = "puppy_seasonal_v1"
     private const val MAX_IMPORT_BYTES = 4 * 1024 * 1024
@@ -74,6 +81,7 @@ internal object GameSaveTransfer {
     }
 
     fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
+        val preserveIncompleteSetup = !PuppyUiPreferences.current(context).setupComplete
         val bytes = readBounded(context, uri)
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
 
@@ -98,6 +106,10 @@ internal object GameSaveTransfer {
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
         }
 
+        if (preserveIncompleteSetup) {
+            PuppyUiPreferences.keepSetupIncompleteAfterImport(context)
+        }
+
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         PupEyeSaveGuard.seal(context, mainPrefs)
         ExternalGameSave.write(context, mainPrefs)
@@ -110,6 +122,23 @@ internal object GameSaveTransfer {
         val username = PuppyPlayerIdentity.username(context)
         return "puppy_clicker_${username}_v3.pupsave"
     }
+
+
+    fun passwordRequirement(
+        context: Context,
+        uri: Uri
+    ): PuppySavePasswordRequirement = runCatching {
+        passwordRequirementFromBytes(readBounded(context, uri))
+    }.getOrDefault(PuppySavePasswordRequirement.UNKNOWN)
+
+    fun passwordRequirementFromBytes(bytes: ByteArray): PuppySavePasswordRequirement = runCatching {
+        val root = JSONObject(bytes.toString(Charsets.UTF_8))
+        when (root.optString("format")) {
+            LEGACY_FORMAT -> PuppySavePasswordRequirement.NOT_REQUIRED
+            ENCRYPTED_TRANSFER_FORMAT -> PuppySavePasswordRequirement.REQUIRED
+            else -> PuppySavePasswordRequirement.UNKNOWN
+        }
+    }.getOrDefault(PuppySavePasswordRequirement.UNKNOWN)
 
     private fun validateImportedIdentity(context: Context, identity: JSONObject) {
         val importedUsername = PuppyPlayerIdentity.normalizeUsername(identity.optString("username"))

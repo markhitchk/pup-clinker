@@ -334,8 +334,14 @@ def main(root: Path) -> None:
     settings_source = add_graphics_imports(settings.read_text(encoding="utf-8"), False, "Settings UI")
     settings.write_text(patch_settings_motion(settings_source), encoding="utf-8")
 
-    onboarding_source = add_graphics_imports(onboarding.read_text(encoding="utf-8"), True, "Onboarding UI")
-    onboarding.write_text(patch_onboarding_motion(onboarding_source), encoding="utf-8")
+    onboarding_source = onboarding.read_text(encoding="utf-8")
+    if "PuppyOnboardingPlayerSetup(" in onboarding_source and "PuppyOnboardingShell(" in onboarding_source:
+        # The minimal five-step onboarding is already split into focused source files and carries
+        # its own graphics/motion dependencies. Legacy monolithic transforms must not be injected.
+        onboarding.write_text(onboarding_source, encoding="utf-8")
+    else:
+        onboarding_source = add_graphics_imports(onboarding_source, True, "Onboarding UI")
+        onboarding.write_text(patch_onboarding_motion(onboarding_source), encoding="utf-8")
 
     theme_source = add_graphics_imports(theme.read_text(encoding="utf-8"), False, "theme")
     theme.write_text(patch_theme_accessibility(theme_source), encoding="utf-8")
