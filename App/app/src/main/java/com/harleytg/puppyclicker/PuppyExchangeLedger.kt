@@ -53,6 +53,44 @@ internal class PuppyExchangeLedger(context: Context) {
         )
     }
 
+    fun markLocalCommitApplied(transactionId: String) = mutate { current ->
+        val existing = current.transactions.firstOrNull { it.transactionId == transactionId }
+            ?: error("Unknown Puppy Exchange transaction")
+        current.copy(
+            transactions = current.transactions.map {
+                if (it.transactionId == transactionId) existing.copy(localCommitApplied = true) else it
+            }
+        )
+    }
+
+    fun markInterruptedCommitsForRecovery() = mutate { current ->
+        current.copy(
+            transactions = current.transactions.map { transaction ->
+                if (transaction.state == ExchangeTransactionState.COMMITTING) {
+                    transaction.copy(state = ExchangeTransactionState.RECOVERY_REQUIRED)
+                } else transaction
+            }
+        )
+    }
+
+    fun lockedPuppyIdsFor(playerId: String): Set<String> = snapshot().transactions
+        .asSequence()
+        .filter {
+            it.type == ExchangeTransactionType.TRADE &&
+                it.state in setOf(
+                    ExchangeTransactionState.COMMITTING,
+                    ExchangeTransactionState.RECOVERY_REQUIRED
+                )
+        }
+        .flatMap { transaction ->
+            when (playerId) {
+                transaction.playerAId -> transaction.offerARecordIds.asSequence()
+                transaction.playerBId -> transaction.offerBRecordIds.asSequence()
+                else -> emptySequence()
+            }
+        }
+        .toSet()
+
     fun setRecoveryChoice(
         transactionId: String,
         localChoice: RecoveryChoice?,
@@ -259,6 +297,9 @@ internal class PuppyExchangeLedger(context: Context) {
         put("protocol", record.protocolVersion)
         record.localRecoveryChoice?.let { put("localChoice", it.name) }
         record.remoteRecoveryChoice?.let { put("remoteChoice", it.name) }
+        put("localCommitApplied", record.localCommitApplied)
+        put("localReceivedAlreadyOwnedIds", JSONArray(record.localReceivedAlreadyOwnedIds))
+        record.localSelectedPuppyBeforeCommit?.let { put("localSelectedPuppyBeforeCommit", it) }
     }
 
     private fun transactionFromJson(item: JSONObject) = ExchangeTransactionRecord(
@@ -274,7 +315,10 @@ internal class PuppyExchangeLedger(context: Context) {
         state = ExchangeTransactionState.valueOf(item.getString("state")),
         protocolVersion = item.getInt("protocol"),
         localRecoveryChoice = item.optString("localChoice").takeIf { it.isNotBlank() }?.let(RecoveryChoice::valueOf),
-        remoteRecoveryChoice = item.optString("remoteChoice").takeIf { it.isNotBlank() }?.let(RecoveryChoice::valueOf)
+        remoteRecoveryChoice = item.optString("remoteChoice").takeIf { it.isNotBlank() }?.let(RecoveryChoice::valueOf),
+        localCommitApplied = item.optBoolean("localCommitApplied", false),
+        localReceivedAlreadyOwnedIds = item.optJSONArray("localReceivedAlreadyOwnedIds")?.stringList().orEmpty(),
+        localSelectedPuppyBeforeCommit = item.optString("localSelectedPuppyBeforeCommit").takeIf { it.isNotBlank() }
     )
 
     private fun friendJson(record: PuppyFriendRecord) = JSONObject().apply {
