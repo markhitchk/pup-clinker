@@ -37,6 +37,23 @@ internal object PuppyPlayerIdentity {
     private val random = SecureRandom()
     private val identityLock = Any()
 
+    private val blockedUsernameTerms = setOf(
+        "ass", "bastard", "bitch", "bullshit", "cock", "cunt", "dick",
+        "fag", "faggot", "fuck", "fucker", "fucking", "motherfucker",
+        "nigga", "nigger", "pedo", "pedophile", "porn", "porno", "pussy",
+        "rape", "rapist", "sex", "sexy", "shit", "slut", "spic", "tranny",
+        "wetback", "whore", "chink", "kike"
+    )
+
+    // These are distinctive enough to reject when embedded/obfuscated in a username.
+    // Shorter or more ambiguous terms above are matched as complete username tokens only.
+    private val blockedUsernameFragments = setOf(
+        "bitch", "bullshit", "cunt", "faggot", "fuck", "fucker", "fucking",
+        "motherfucker", "nigga", "nigger", "pedophile", "porno", "pussy",
+        "rapist", "shit", "slut", "spic", "tranny", "wetback", "whore",
+        "chink", "kike"
+    )
+
     fun username(context: Context): String =
         normalizeUsername(
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -135,6 +152,104 @@ internal object PuppyPlayerIdentity {
         .replace(Regex("_+"), "_")
         .trim('_', '.', '-')
         .take(MAX_USERNAME_LENGTH)
+
+    fun usernameModerationIssue(raw: String): String? {
+        val normalized = normalizeUsername(raw)
+        if (normalized.isBlank()) return "Enter a valid username."
+
+        val tokens = normalized
+            .split(Regex("[._-]+"))
+            .filter { it.isNotBlank() }
+
+        if (tokens.any { it in blockedUsernameTerms }) {
+            return "That username contains a word or phrase that isn't allowed."
+        }
+
+        val compact = raw
+            .trim()
+            .lowercase(Locale.US)
+            .map { char ->
+                when (char) {
+                    '0' -> 'o'
+                    '1', '!', '|' -> 'i'
+                    '3' -> 'e'
+                    '4', '@' -> 'a'
+                    '5', '    fun isValidPlayerId(value: String): Boolean = playerIdRegex.matches(value)
+
+    fun isValidFriendCode(value: String): Boolean = friendCodeRegex.matches(value)
+
+    internal fun generatePlayerId(): String {
+        val bytes = ByteArray(PLAYER_ID_BYTES).also(random::nextBytes)
+        return buildString(3 + PLAYER_ID_BYTES * 2) {
+            append("PC-")
+            bytes.forEach { byte -> append("%02X".format(Locale.US, byte.toInt() and 0xFF)) }
+        }
+    }
+
+    internal fun generateFriendCode(): String {
+        val raw = buildString(FRIEND_CODE_CHARS) {
+            repeat(FRIEND_CODE_CHARS) {
+                append(FRIEND_ALPHABET[random.nextInt(FRIEND_ALPHABET.length)])
+            }
+        }
+        return "PUP-${raw.substring(0, 4)}-${raw.substring(4, 8)}-${raw.substring(8, 12)}"
+    }
+
+    fun deviceModel(): String {
+        val manufacturer = sanitizeDevicePart(Build.MANUFACTURER)
+        val model = sanitizeDevicePart(Build.MODEL)
+        return listOf(manufacturer, model)
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString("-")
+            .ifBlank { "android-device" }
+            .take(48)
+    }
+
+    fun metadata(context: Context): JSONObject = JSONObject().apply {
+        put("username", username(context))
+        put("playerId", playerId(context))
+        put("friendCode", friendCode(context))
+        put("publicPlayerId", publicPlayerId(context))
+        put("publicFriendCode", publicFriendCode(context))
+        put("officialDeveloper", isHarleyTgDeveloper(context))
+        put("deviceModel", deviceModel())
+        put("platform", "android")
+    }
+
+    /**
+     * Save imports may update the display username but must never replace the destination
+     * device's Player ID or Friend Code. Identity migration is intentionally a separate concern.
+     */
+    fun applyImportedUsername(context: Context, metadata: JSONObject?) {
+        val imported = metadata?.optString("username")?.takeIf { it.isNotBlank() } ?: return
+        setUsername(context, imported)
+    }
+
+    private fun sanitizeDevicePart(raw: String): String = raw
+        .trim()
+        .lowercase(Locale.US)
+        .map { char -> if (char in 'a'..'z' || char in '0'..'9') char else '-' }
+        .joinToString("")
+        .replace(Regex("-+"), "-")
+        .trim('-')
+}
+ -> 's'
+                    '7', '+' -> 't'
+                    else -> char
+                }
+            }
+            .filter { it in 'a'..'z' || it in '0'..'9' }
+            .joinToString("")
+
+        if (blockedUsernameFragments.any { compact.contains(it) }) {
+            return "That username contains a word or phrase that isn't allowed."
+        }
+
+        return null
+    }
+
+    fun isUsernameAllowed(raw: String): Boolean = usernameModerationIssue(raw) == null
 
     fun isValidPlayerId(value: String): Boolean = playerIdRegex.matches(value)
 
