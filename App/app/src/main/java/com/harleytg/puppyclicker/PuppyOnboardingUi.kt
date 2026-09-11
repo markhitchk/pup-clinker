@@ -49,9 +49,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
         mutableStateOf(PuppyPlayerSetupMethod.LOCAL.name)
     }
     var importedSave by rememberSaveable { mutableStateOf(false) }
-    var birthdaySkipped by rememberSaveable {
-        mutableStateOf(!ui.hasBirthday && step >= PuppyOnboardingStep.PERSONALIZE.persistedIndex)
-    }
+    var birthdaySkipped by rememberSaveable { mutableStateOf(false) }
 
     val selectedMethod = runCatching {
         PuppyPlayerSetupMethod.valueOf(selectedMethodName)
