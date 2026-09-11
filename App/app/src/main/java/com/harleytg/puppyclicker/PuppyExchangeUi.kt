@@ -327,6 +327,10 @@ internal fun PuppyExchangeScreen(
                     }
                     incomingFriendRequest = false
                     friendStatus = "Friend request declined."
+                },
+                onDisconnectBlockedPeer = {
+                    session.disconnect()
+                    friendStatus = "Player blocked and disconnected."
                 }
             )
             PuppyExchangeTab.CONNECT -> ExchangeConnectPanel(session, connection)
@@ -472,7 +476,8 @@ private fun ExchangeFriendsPanel(
     status: String?,
     onAddFriend: () -> Unit,
     onAcceptRequest: () -> Unit,
-    onDeclineRequest: () -> Unit
+    onDeclineRequest: () -> Unit,
+    onDisconnectBlockedPeer: () -> Unit
 ) {
     var refresh by remember { mutableStateOf(0) }
     val friends = remember(refresh, status) { ledger.snapshot().friends.sortedBy { it.lastKnownUsername } }
@@ -532,6 +537,7 @@ private fun ExchangeFriendsPanel(
                         )
                     )
                     refresh++
+                    onDisconnectBlockedPeer()
                 }) { Text("Block Player") }
             }
         }
@@ -550,6 +556,15 @@ private fun ExchangeFriendsPanel(
                     Text(friend.lastKnownUsername, fontWeight = FontWeight.Bold)
                     Text(PuppyPlayerIdentity.displayFriendCode(friend.friendCode), style = MaterialTheme.typography.labelMedium)
                     Text(if (friend.blocked) "Blocked" else "Friend", style = MaterialTheme.typography.bodySmall)
+                    if (friend.blocked) {
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedButton(
+                            onClick = {
+                                ledger.setBlocked(friend.playerId, false)
+                                refresh++
+                            }
+                        ) { Text("Unblock") }
+                    }
                 }
             }
         }
