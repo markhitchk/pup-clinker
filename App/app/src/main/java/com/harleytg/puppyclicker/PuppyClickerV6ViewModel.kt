@@ -162,6 +162,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private val recentTapTimes = ArrayDeque<Long>()
     private var suspicionHits = 0
     private var suspicionWindowStartedMs = 0L
+    private var suppressPersistence = false
 
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<V6GameState> = _state.asStateFlow()
@@ -592,6 +593,18 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
 
+    /**
+     * Stops this ViewModel from writing its old in-memory state after "Delete Local Save Data".
+     * Activity/task teardown normally calls onCleared(), which otherwise saves the state again.
+     */
+    fun prepareForFullLocalDataErase() {
+        suppressPersistence = true
+        recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+        _state.value = V6GameState()
+    }
+
     /** Full non-prestige reset. Special code collection and settings stay protected. */
     fun resetRunWithoutPrestige() {
         val keep = _state.value
@@ -770,6 +783,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     private fun saveState(clearUpgradeKeys: Boolean = false) {
+        if (suppressPersistence) return
         val s = _state.value
         prefs.edit().apply {
             putString(KEY_NAME, s.puppyName)
