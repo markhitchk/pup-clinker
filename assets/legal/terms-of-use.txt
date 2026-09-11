@@ -4,7 +4,7 @@ Effective: September 9, 2026
 These Terms of Use apply to Puppy Clicker, provided by Harley's Studios. By using Puppy Clicker, you agree to these terms.
 
 1. GAME ACCESS
-Puppy Clicker is provided for personal entertainment. Local play is currently available without a Harley's Studios online account. Discord and website account features may be added later.
+Puppy Clicker is provided for personal entertainment. New player setup uses Discord OAuth to verify a Discord account with the identify permission. Existing local saves may continue to use their existing device-bound Puppy Clicker identity. Discord signup does not replace the local Player ID, Friend Code, save file, or PupEye integrity protections.
 
 2. FAIR PLAY AND PUPEYE
 Puppy Clicker uses PupEye fair-play protections. PupEye may detect automated clicking patterns, external clicker scripts, modified or unauthenticated save data, and other behavior that attempts to manipulate normal gameplay. The app may reject suspicious input, apply temporary cooldowns, restore a last-known-good save, quarantine a modified save, or record local fair-play strikes.
@@ -22,7 +22,7 @@ You may not intentionally bypass PupEye protections, distribute cheats designed 
 Puppy Clicker software, branding, original artwork, game content, and PupEye branding are owned by Harley's Studios or used with appropriate rights. These terms do not transfer ownership of those materials to you.
 
 7. THIRD-PARTY SERVICES
-Puppy Clicker may connect to services such as GitHub to retrieve streamed assets, legal documents, or configuration data. Future Discord or website sign-in features may be governed by additional terms from those providers.
+Puppy Clicker may connect to services such as GitHub to retrieve streamed assets, legal documents, or configuration data. Discord OAuth is used for player signup and is also subject to Discord's terms and privacy practices. Puppy Clicker requests the Discord identify permission for this signup flow.
 
 8. AVAILABILITY AND CHANGES
 Features, balancing, characters, online services, save formats, and PupEye protections may change over time. Harley's Studios may update these terms when the app or its services change.
