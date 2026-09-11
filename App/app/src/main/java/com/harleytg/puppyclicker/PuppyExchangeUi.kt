@@ -102,7 +102,8 @@ internal fun PuppyExchangeScreen(
     }
 
     LaunchedEffect(connection) {
-        if (connection !is ExchangeConnectionState.Connected) {
+        val connected = connection as? ExchangeConnectionState.Connected
+        if (connected == null) {
             incomingFriendRequest = false
             incomingGift = null
             localTradeIds = emptyList()
@@ -114,7 +115,7 @@ internal fun PuppyExchangeScreen(
             tradeCompleted = false
             tradeTransactionId = null
         } else {
-            val connectedPeer = connection.peer
+            val connectedPeer = connected.peer
             if (localPlayerId < connectedPeer.playerId && tradeTransactionId == null) {
                 tradeTransactionId = PuppyExchangeProtocol.newTransactionId()
             }
