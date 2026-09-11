@@ -19,6 +19,7 @@ class PuppyExchangeSessionValidationTest {
         val result = validateExchangePeer(
             hello = remote,
             expectedFriendCode = remote.friendCode,
+            expectedPlayerId = remote.playerId,
             blockedPlayerIds = emptySet()
         )
 
@@ -31,6 +32,7 @@ class PuppyExchangeSessionValidationTest {
         val result = validateExchangePeer(
             hello = remote,
             expectedFriendCode = "PUP-NPQR-STUV-WXYZ",
+            expectedPlayerId = remote.playerId,
             blockedPlayerIds = emptySet()
         )
 
@@ -38,11 +40,26 @@ class PuppyExchangeSessionValidationTest {
         assertEquals(ExchangePeerValidationReason.FRIEND_CODE_MISMATCH, result.reason)
     }
 
+
+    @Test
+    fun signalingPlayerIdMismatchIsRejected() {
+        val result = validateExchangePeer(
+            hello = remote,
+            expectedFriendCode = remote.friendCode,
+            expectedPlayerId = "PC-FEDCBA9876543210FEDCBA9876543210",
+            blockedPlayerIds = emptySet()
+        )
+
+        assertFalse(result.accepted)
+        assertEquals(ExchangePeerValidationReason.PLAYER_ID_MISMATCH, result.reason)
+    }
+
     @Test
     fun blockedPlayerIsRejected() {
         val result = validateExchangePeer(
             hello = remote,
             expectedFriendCode = remote.friendCode,
+            expectedPlayerId = remote.playerId,
             blockedPlayerIds = setOf(remote.playerId)
         )
 
@@ -55,6 +72,7 @@ class PuppyExchangeSessionValidationTest {
         val result = validateExchangePeer(
             hello = remote.copy(protocolVersion = 99),
             expectedFriendCode = remote.friendCode,
+            expectedPlayerId = remote.playerId,
             blockedPlayerIds = emptySet()
         )
 
