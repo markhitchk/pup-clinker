@@ -73,10 +73,14 @@ internal class PuppyExchangeLedger(context: Context) {
         )
     }
 
-    fun lockedPuppyIdsFor(playerId: String): Set<String> = snapshot().transactions
+    fun lockedPuppyIdsFor(
+        playerId: String,
+        excludingTransactionId: String? = null
+    ): Set<String> = snapshot().transactions
         .asSequence()
         .filter {
-            it.type == ExchangeTransactionType.TRADE &&
+            it.transactionId != excludingTransactionId &&
+                it.type == ExchangeTransactionType.TRADE &&
                 it.state in setOf(
                     ExchangeTransactionState.COMMITTING,
                     ExchangeTransactionState.RECOVERY_REQUIRED
