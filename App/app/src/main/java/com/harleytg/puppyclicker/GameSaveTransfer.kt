@@ -81,6 +81,7 @@ internal object GameSaveTransfer {
     }
 
     fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
+        val preserveIncompleteSetup = !PuppyUiPreferences.current(context).setupComplete
         val bytes = readBounded(context, uri)
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
 
@@ -103,6 +104,10 @@ internal object GameSaveTransfer {
             validateImportedIdentity(context, identity)
             restoreStores(context, payload.getJSONObject("stores"))
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
+        }
+
+        if (preserveIncompleteSetup) {
+            PuppyUiPreferences.keepSetupIncompleteAfterImport(context)
         }
 
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
