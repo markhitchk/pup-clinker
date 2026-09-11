@@ -70,7 +70,10 @@ data class ExchangeTransactionRecord(
     val state: ExchangeTransactionState,
     val protocolVersion: Int = PuppyExchangeProtocol.PROTOCOL_VERSION,
     val localRecoveryChoice: RecoveryChoice? = null,
-    val remoteRecoveryChoice: RecoveryChoice? = null
+    val remoteRecoveryChoice: RecoveryChoice? = null,
+    val localCommitApplied: Boolean = false,
+    val localReceivedAlreadyOwnedIds: List<String> = emptyList(),
+    val localSelectedPuppyBeforeCommit: String? = null
 )
 
 enum class RecoveryChoice {
