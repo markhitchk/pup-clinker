@@ -563,13 +563,24 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         return true
     }
 
-    fun applyExchangeTrade(sentPuppyIds: Set<String>, receivedPuppyIds: Set<String>): Boolean {
+    fun applyExchangeTrade(
+        sentPuppyIds: Set<String>,
+        receivedPuppyIds: Set<String>,
+        recoveryTransactionId: String? = null
+    ): Boolean {
         if (sentPuppyIds.isEmpty() || receivedPuppyIds.isEmpty()) return false
         if (sentPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS ||
             receivedPuppyIds.size > PuppyExchangeLedger.MAX_TRADE_ITEMS
         ) return false
         val current = _state.value
         if (!current.unlockedPuppies.containsAll(sentPuppyIds)) return false
+
+        val localPlayerId = PuppyPlayerIdentity.playerId(getApplication())
+        val lockedPuppies = PuppyExchangeLedger(getApplication()).lockedPuppyIdsFor(
+            playerId = localPlayerId,
+            excludingTransactionId = recoveryTransactionId
+        )
+        if (sentPuppyIds.any { it in lockedPuppies }) return false
 
         val sentAssets = sentPuppyIds.map { DynamicPuppyRoster.asset(it) ?: return false }
         val receivedAssets = receivedPuppyIds.map { DynamicPuppyRoster.asset(it) ?: return false }
@@ -584,6 +595,33 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val nextStyle = if (current.puppyStyle in sentPuppyIds) {
             nextUnlocked.firstOrNull { it in V6_PUPPY_IDS } ?: nextUnlocked.first()
         } else current.puppyStyle
+
+        _state.value = current.copy(
+            unlockedPuppies = nextUnlocked,
+            puppyStyle = nextStyle
+        )
+        saveState()
+        return true
+    }
+
+    fun cancelRecoveredExchangeTrade(
+        sentPuppyIds: Set<String>,
+        receivedPuppyIds: Set<String>,
+        receivedAlreadyOwnedIds: Set<String>,
+        selectedPuppyBeforeCommit: String?
+    ): Boolean {
+        if (sentPuppyIds.isEmpty() || receivedPuppyIds.isEmpty()) return false
+        val current = _state.value
+        val newlyReceived = receivedPuppyIds - receivedAlreadyOwnedIds
+        val nextUnlocked = (current.unlockedPuppies - newlyReceived) + sentPuppyIds
+        if (nextUnlocked.isEmpty()) return false
+
+        val nextStyle = when {
+            current.puppyStyle in nextUnlocked -> current.puppyStyle
+            selectedPuppyBeforeCommit != null && selectedPuppyBeforeCommit in nextUnlocked ->
+                selectedPuppyBeforeCommit
+            else -> nextUnlocked.firstOrNull { it in V6_PUPPY_IDS } ?: nextUnlocked.first()
+        }
 
         _state.value = current.copy(
             unlockedPuppies = nextUnlocked,
