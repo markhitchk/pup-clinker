@@ -31,6 +31,19 @@ class PuppyOnboardingModelTest {
     }
 
     @Test
+    fun changingPlayerSetupMethodPreservesSessionFlags() {
+        val imported = PuppyOnboardingSessionState(
+            playerSetupMethod = PuppyPlayerSetupMethod.IMPORT_SAVE,
+            importedSave = true
+        )
+
+        val switched = imported.copy(playerSetupMethod = PuppyPlayerSetupMethod.LOCAL)
+
+        assertTrue(switched.importedSave)
+        assertEquals(PuppyPlayerSetupMethod.LOCAL, switched.playerSetupMethod)
+    }
+
+    @Test
     fun validLocalUsernameCanContinue() {
         assertTrue(localUsernameEligible("puppy_player"))
         assertFalse(localUsernameEligible("   "))
