@@ -32,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -179,7 +182,12 @@ private fun WelcomeStep(onNext: () -> Unit) {
             shape = RoundedCornerShape(18.dp)
         ) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.ic_discord), "Discord", Modifier.size(34.dp))
+                Image(
+                    painter = painterResource(R.drawable.ic_discord),
+                    contentDescription = "Discord",
+                    modifier = Modifier.size(34.dp),
+                    colorFilter = ColorFilter.tint(Color(0xFF171A1F))
+                )
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text("Join Our Discord Server", fontWeight = FontWeight.Black)
@@ -203,6 +211,7 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
         mutableStateOf(PuppyPlayerIdentity.username(context).takeUnless { it == "localplayer" }.orEmpty())
     }
     val normalized = PuppyPlayerIdentity.normalizeUsername(username)
+    var usernameModerationMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     SetupCard("YOUR PROFILE", "👤") {
         Text("Local Profile", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
@@ -243,9 +252,32 @@ private fun ProfileStep(onBack: () -> Unit, onNext: () -> Unit) {
         FutureAccountCard("Website account", "Coming Soon")
         Spacer(Modifier.height(14.dp))
         SetupNavigation(onBack, "Continue", normalized.isNotBlank()) {
-            PuppyPlayerIdentity.setUsername(context, username)
-            onNext()
+            val moderationIssue = PuppyPlayerIdentity.usernameModerationIssue(username)
+            if (moderationIssue != null) {
+                usernameModerationMessage = moderationIssue
+            } else {
+                PuppyPlayerIdentity.setUsername(context, username)
+                onNext()
+            }
         }
+    }
+
+    if (usernameModerationMessage != null) {
+        AlertDialog(
+            onDismissRequest = { usernameModerationMessage = null },
+            title = { Text("Username Not Allowed", fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    usernameModerationMessage
+                        ?: "That username contains a word or phrase that isn't allowed. Choose another username."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { usernameModerationMessage = null }) {
+                    Text("Choose Another")
+                }
+            }
+        )
     }
 }
 
