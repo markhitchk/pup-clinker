@@ -89,6 +89,8 @@ internal object PuppyUiPreferences {
     private const val KEY_BIRTHDAY_YEAR = "birthday_year"
     private const val KEY_SETUP_COMPLETE = "setup_complete"
     private const val KEY_SETUP_STEP = "setup_step"
+    private const val KEY_SETUP_FLOW_VERSION = "setup_flow_version"
+    private const val SETUP_FLOW_VERSION = 2
     private const val KEY_NOTIFY_DAILY = "notify_daily_rewards"
     private const val KEY_NOTIFY_EVENTS = "notify_game_events"
     private const val KEY_NOTIFY_UPDATES = "notify_app_updates"
@@ -108,6 +110,7 @@ internal object PuppyUiPreferences {
         val app = context.applicationContext
         val store = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         migrateOnce(app, store)
+        migrateSetupFlowIfNeeded(store)
         if (store.contains(KEY_BIRTHDAY_YEAR)) {
             store.edit().remove(KEY_BIRTHDAY_YEAR).apply()
         }
@@ -179,13 +182,14 @@ internal object PuppyUiPreferences {
     fun setSetupStep(context: Context, step: Int) {
         ensure(context)
         if (!mutableState.value.setupComplete) edit(context) {
-            putInt(KEY_SETUP_STEP, step.coerceIn(0, 5))
+            putInt(KEY_SETUP_STEP, step.coerceIn(0, 4))
         }
     }
 
     fun finishSetup(context: Context) = edit(context) {
         putBoolean(KEY_SETUP_COMPLETE, true)
-        putInt(KEY_SETUP_STEP, 5)
+        putInt(KEY_SETUP_STEP, 4)
+        putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
     }
 
     fun setDailyRewardNotifications(context: Context, enabled: Boolean) = edit(context) {
@@ -209,7 +213,8 @@ internal object PuppyUiPreferences {
             if (keep.birthdayMonth > 0) putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
             if (keep.birthdayDay > 0) putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
             putBoolean(KEY_SETUP_COMPLETE, true)
-            putInt(KEY_SETUP_STEP, 5)
+            putInt(KEY_SETUP_STEP, 4)
+            putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
         }
     }
@@ -225,6 +230,7 @@ internal object PuppyUiPreferences {
             putBoolean(KEY_MIGRATION_COMPLETE, true)
             putBoolean(KEY_SETUP_COMPLETE, false)
             putInt(KEY_SETUP_STEP, 0)
+            putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
         }
     }
 
@@ -275,6 +281,22 @@ internal object PuppyUiPreferences {
         }.apply()
     }
 
+    private fun migrateSetupFlowIfNeeded(store: SharedPreferences) {
+        if (store.getInt(KEY_SETUP_FLOW_VERSION, 1) >= SETUP_FLOW_VERSION) return
+
+        val complete = store.getBoolean(KEY_SETUP_COMPLETE, false)
+        val migrated = if (complete) {
+            4
+        } else {
+            migrateLegacyOnboardingStep(store.getInt(KEY_SETUP_STEP, 0))
+        }
+
+        store.edit()
+            .putInt(KEY_SETUP_STEP, migrated)
+            .putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
+            .apply()
+    }
+
     private fun read(store: SharedPreferences): PuppyUiState {
         val theme = runCatching {
             PuppyThemeMode.valueOf(store.getString(KEY_THEME_MODE, PuppyThemeMode.SYSTEM.name) ?: PuppyThemeMode.SYSTEM.name)
@@ -313,7 +335,7 @@ internal object PuppyUiPreferences {
             birthdayMonth = store.getInt(KEY_BIRTHDAY_MONTH, 0),
             birthdayDay = store.getInt(KEY_BIRTHDAY_DAY, 0),
             setupComplete = store.getBoolean(KEY_SETUP_COMPLETE, false),
-            setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 5),
+            setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 4),
             dailyRewardNotifications = store.getBoolean(KEY_NOTIFY_DAILY, true),
             gameEventNotifications = store.getBoolean(KEY_NOTIFY_EVENTS, true),
             updateNotifications = store.getBoolean(KEY_NOTIFY_UPDATES, true),
