@@ -1,5 +1,11 @@
 package com.harleytg.puppyclicker
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -395,14 +401,13 @@ private fun ExchangeIdentityHeader(
 ) {
     val context = LocalContext.current
     val username = remember { PuppyPlayerIdentity.username(context) }
-    val playerId = remember { PuppyPlayerIdentity.publicPlayerId(context) }
     val friendCode = remember { PuppyPlayerIdentity.publicFriendCode(context) }
     val officialDeveloper = remember { PuppyPlayerIdentity.isHarleyTgDeveloper(context) }
     val connectionText = when (connection) {
         ExchangeConnectionState.Idle -> "Not connected"
-        ExchangeConnectionState.CreatingOffer -> "Creating offer"
-        ExchangeConnectionState.WaitingForAnswer -> "Waiting for answer"
-        ExchangeConnectionState.ApplyingOffer -> "Applying offer"
+        ExchangeConnectionState.CreatingOffer -> "Preparing connection"
+        ExchangeConnectionState.WaitingForAnswer -> "Waiting for friend"
+        ExchangeConnectionState.ApplyingOffer -> "Joining connection"
         ExchangeConnectionState.Connecting -> "Connecting"
         is ExchangeConnectionState.Connected -> {
             val latency = realtime.latencyMs?.let { " · ${it} ms" }.orEmpty()
@@ -418,16 +423,42 @@ private fun ExchangeIdentityHeader(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
     ) {
-        Column(Modifier.padding(11.dp)) {
+        Column(Modifier.padding(12.dp)) {
             Text(
                 if (officialDeveloper) "$username · DEV / OWNER" else username,
                 fontWeight = FontWeight.Black
             )
-            Text(playerId, style = MaterialTheme.typography.labelMedium)
-            Text(friendCode, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(5.dp))
+            Text(
+                "YOUR FRIEND CODE",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                friendCode,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                "Share this code with another Puppy Clicker player for Friends, Gifts, and Trade.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                OutlinedButton(onClick = { copyFriendCode(context, friendCode) }) {
+                    Text("Copy Code")
+                }
+                OutlinedButton(onClick = { shareFriendCode(context, username, friendCode) }) {
+                    Text("Share Code")
+                }
+            }
             if (officialDeveloper) {
+                Spacer(Modifier.height(4.dp))
                 Text("Official Harley's Studios Account", style = MaterialTheme.typography.bodySmall)
             }
+            Spacer(Modifier.height(5.dp))
             Text(connectionText, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -534,26 +565,58 @@ private fun ExchangeConnectPanel(
     session: PuppyExchangeSession,
     connection: ExchangeConnectionState
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val username = remember { PuppyPlayerIdentity.username(context) }
+    val myFriendCode = remember { PuppyPlayerIdentity.publicFriendCode(context) }
     var friendCode by rememberSaveable { mutableStateOf("") }
     var offerCode by rememberSaveable { mutableStateOf("") }
     var answerCode by rememberSaveable { mutableStateOf("") }
     var generatedCode by rememberSaveable { mutableStateOf("") }
     var result by rememberSaveable { mutableStateOf<String?>(null) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
 
-    Text("Direct Connect", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+    Text("Connection Setup", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
     Text(
-        "Offer/Answer is only used to establish the direct WebRTC link. After connection, Friends, Gifts, and Trade update live without new codes.",
+        "Friend Codes are the player-facing identity. Puppy Clicker keeps the internal Player ID and WebRTC session details behind the connection layer.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(Modifier.height(10.dp))
 
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text("Your Friend Code", fontWeight = FontWeight.Black)
+            Text(myFriendCode, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Share this for friend requests, gifting, and trading.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Button(onClick = { copyFriendCode(context, myFriendCode) }) {
+                    Text("Copy Code")
+                }
+                OutlinedButton(onClick = { shareFriendCode(context, username, myFriendCode) }) {
+                    Text("Share Code")
+                }
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+    Text("Connect to a Player", fontWeight = FontWeight.Black)
     OutlinedTextField(
         value = friendCode,
         onValueChange = { friendCode = it.uppercase().take(32) },
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Expected Friend Code") },
+        label = { Text("Friend Code") },
+        placeholder = { Text("PUP-XXXX-XXXX-XXXX") },
+        supportingText = { Text("Only the Friend Code is shown to players; the internal Player ID stays hidden.") },
         singleLine = true
     )
     Spacer(Modifier.height(7.dp))
@@ -563,81 +626,112 @@ private fun ExchangeConnectPanel(
                 runCatching { session.createOffer(friendCode) }
                     .onSuccess {
                         generatedCode = it
-                        result = "Offer ready. Send it once; live sync begins after the answer is applied."
+                        result = "Connection request prepared for ${friendCode.trim().uppercase()}. Open Advanced Direct Connection to complete the direct-device handshake."
                     }
-                    .onFailure { result = it.message ?: "Unable to create offer." }
+                    .onFailure { result = it.message ?: "Unable to prepare connection." }
             }
         },
         enabled = PuppyPlayerIdentity.isValidFriendCodeInput(friendCode),
         modifier = Modifier.fillMaxWidth()
-    ) { Text("Create Offer Code") }
+    ) { Text("Start Connection") }
 
-    Spacer(Modifier.height(10.dp))
-    OutlinedTextField(
-        value = offerCode,
-        onValueChange = { offerCode = it.take(524_288) },
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Paste Offer Code") },
-        minLines = 2,
-        maxLines = 4
-    )
-    Spacer(Modifier.height(6.dp))
-    OutlinedButton(
-        onClick = {
-            scope.launch {
-                runCatching { session.acceptOfferAndCreateAnswer(offerCode) }
-                    .onSuccess {
-                        generatedCode = it
-                        result = "Answer ready. Send it back to finish the direct connection."
-                    }
-                    .onFailure { result = it.message ?: "Unable to accept offer." }
-            }
-        },
-        enabled = offerCode.isNotBlank(),
-        modifier = Modifier.fillMaxWidth()
-    ) { Text("Create Answer Code") }
-
-    Spacer(Modifier.height(10.dp))
-    OutlinedTextField(
-        value = answerCode,
-        onValueChange = { answerCode = it.take(524_288) },
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Paste Answer Code") },
-        minLines = 2,
-        maxLines = 4
-    )
-    Spacer(Modifier.height(6.dp))
-    OutlinedButton(
-        onClick = {
-            scope.launch {
-                runCatching { session.applyAnswer(answerCode) }
-                    .onSuccess { result = "Answer applied. Establishing live direct connection…" }
-                    .onFailure { result = it.message ?: "Unable to apply answer." }
-            }
-        },
-        enabled = answerCode.isNotBlank(),
-        modifier = Modifier.fillMaxWidth()
-    ) { Text("Apply Answer Code") }
-
-    if (generatedCode.isNotBlank()) {
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = generatedCode,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
-            readOnly = true,
-            label = { Text("Generated Connection Code") },
-            minLines = 2,
-            maxLines = 5
-        )
-    }
     result?.let {
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(7.dp))
         Text(it, style = MaterialTheme.typography.bodySmall)
     }
+    if (connection is ExchangeConnectionState.Connected) {
+        Spacer(Modifier.height(7.dp))
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(11.dp)) {
+                Text("Connected", fontWeight = FontWeight.Black)
+                Text(connection.peer.username)
+                Text(
+                    PuppyPlayerIdentity.displayFriendCode(connection.peer.friendCode),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+    }
     if (connection is ExchangeConnectionState.Failed) {
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(7.dp))
         Text(connection.message, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+    }
+
+    Spacer(Modifier.height(12.dp))
+    OutlinedButton(
+        onClick = { showAdvanced = !showAdvanced },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(if (showAdvanced) "Hide Advanced Direct Connection" else "Advanced Direct Connection")
+    }
+
+    if (showAdvanced) {
+        Spacer(Modifier.height(9.dp))
+        Text(
+            "Temporary connection payloads are required because Puppy Clicker currently connects directly without a cloud signaling service. Players still identify each other by Friend Code.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (generatedCode.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = generatedCode,
+                onValueChange = {},
+                modifier = Modifier.fillMaxWidth(),
+                readOnly = true,
+                label = { Text("Connection Request / Response") },
+                minLines = 2,
+                maxLines = 5
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = offerCode,
+            onValueChange = { offerCode = it.take(524_288) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Paste Connection Request") },
+            minLines = 2,
+            maxLines = 4
+        )
+        Spacer(Modifier.height(6.dp))
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    runCatching { session.acceptOfferAndCreateAnswer(offerCode) }
+                        .onSuccess {
+                            generatedCode = it
+                            result = "Connection response ready. Send it back to the other player."
+                        }
+                        .onFailure { result = it.message ?: "Unable to accept connection request." }
+                }
+            },
+            enabled = offerCode.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Create Connection Response") }
+
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = answerCode,
+            onValueChange = { answerCode = it.take(524_288) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Paste Connection Response") },
+            minLines = 2,
+            maxLines = 4
+        )
+        Spacer(Modifier.height(6.dp))
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    runCatching { session.applyAnswer(answerCode) }
+                        .onSuccess { result = "Response applied. Establishing live direct connection…" }
+                        .onFailure { result = it.message ?: "Unable to apply connection response." }
+                }
+            },
+            enabled = answerCode.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Finish Connection") }
     }
 }
 
@@ -904,6 +998,24 @@ private fun ExchangeHistoryPanel(ledger: PuppyExchangeLedger) {
             }
         }
     }
+}
+
+
+private fun copyFriendCode(context: Context, friendCode: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(
+        ClipData.newPlainText("Puppy Clicker Friend Code", friendCode)
+    )
+    Toast.makeText(context, "Friend Code copied.", Toast.LENGTH_SHORT).show()
+}
+
+private fun shareFriendCode(context: Context, username: String, friendCode: String) {
+    val shareText = "Add $username on Puppy Clicker with Friend Code $friendCode for Friends, Gifts, and Trade."
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share Puppy Clicker Friend Code"))
 }
 
 private fun recordGiftHistory(
