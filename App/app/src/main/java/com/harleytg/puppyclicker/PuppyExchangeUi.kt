@@ -65,7 +65,9 @@ internal fun PuppyExchangeScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val ledger = remember { PuppyExchangeLedger(context) }
+    val ledger = remember {
+        PuppyExchangeLedger(context).also { it.markInterruptedCommitsForRecovery() }
+    }
     val session = remember {
         PuppyExchangeSession(context) {
             ledger.snapshot().friends.asSequence()
@@ -91,6 +93,8 @@ internal fun PuppyExchangeScreen(
     var localCommit by remember { mutableStateOf(false) }
     var remoteCommit by remember { mutableStateOf(false) }
     var tradeCompleted by remember { mutableStateOf(false) }
+    var localTradeApplied by remember { mutableStateOf(false) }
+    var remoteTradeComplete by remember { mutableStateOf(false) }
     var tradeStatus by rememberSaveable { mutableStateOf<String?>(null) }
     val localPlayerId = remember { PuppyPlayerIdentity.playerId(context) }
     var tradeTransactionId by remember { mutableStateOf<String?>(null) }
@@ -104,6 +108,12 @@ internal fun PuppyExchangeScreen(
     LaunchedEffect(connection) {
         val connected = connection as? ExchangeConnectionState.Connected
         if (connected == null) {
+            tradeTransactionId?.let { transactionId ->
+                val transaction = ledger.transaction(transactionId)
+                if (transaction?.state == ExchangeTransactionState.COMMITTING && !tradeCompleted) {
+                    ledger.updateTransactionState(transactionId, ExchangeTransactionState.RECOVERY_REQUIRED)
+                }
+            }
             incomingFriendRequest = false
             incomingGift = null
             localTradeIds = emptyList()
@@ -113,6 +123,8 @@ internal fun PuppyExchangeScreen(
             localCommit = false
             remoteCommit = false
             tradeCompleted = false
+            localTradeApplied = false
+            remoteTradeComplete = false
             tradeTransactionId = null
         } else {
             val connectedPeer = connected.peer
@@ -193,6 +205,8 @@ internal fun PuppyExchangeScreen(
                     localCommit = false
                     remoteCommit = false
                     tradeCompleted = false
+                    localTradeApplied = false
+                    remoteTradeComplete = false
                     tradeStatus = "Trade offer updated live."
                     tab = PuppyExchangeTab.TRADE
                 }
@@ -232,10 +246,30 @@ internal fun PuppyExchangeScreen(
                 }
                 "trade.complete" -> {
                     val completedTransactionId = message.payload.optString("transactionId")
-                    if (completedTransactionId == tradeTransactionId &&
-                        message.payload.optBoolean("success", false)
-                    ) {
-                        tradeStatus = "Trade completed on both devices."
+                    if (completedTransactionId == tradeTransactionId) {
+                        if (message.payload.optBoolean("success", false)) {
+                            remoteTradeComplete = true
+                            if (localTradeApplied) {
+                                ledger.updateTransactionState(
+                                    completedTransactionId,
+                                    ExchangeTransactionState.COMPLETED
+                                )
+                                tradeCompleted = true
+                                tradeStatus = "Trade completed on both devices."
+                            } else {
+                                tradeStatus = "Other device completed. Finalizing your side…"
+                            }
+                        } else {
+                            ledger.transaction(completedTransactionId)?.let { transaction ->
+                                if (transaction.state == ExchangeTransactionState.COMMITTING) {
+                                    ledger.updateTransactionState(
+                                        completedTransactionId,
+                                        ExchangeTransactionState.RECOVERY_REQUIRED
+                                    )
+                                }
+                            }
+                            tradeStatus = "Other device could not finish the trade. Recovery is required."
+                        }
                     }
                 }
             }
@@ -250,11 +284,14 @@ internal fun PuppyExchangeScreen(
         localTradeIds,
         remoteTradeIds,
         tradeCompleted,
+        localTradeApplied,
+        remoteTradeComplete,
         tradeTransactionId,
         peer?.playerId
     ) {
         if (
             !tradeCompleted &&
+            !localTradeApplied &&
             localCommit &&
             remoteCommit &&
             localReady &&
@@ -265,28 +302,53 @@ internal fun PuppyExchangeScreen(
             tradeTransactionId != null
         ) {
             val transactionId = tradeTransactionId ?: return@LaunchedEffect
+            val preCommitState = vm.state.value
+            recordTradeJournal(
+                ledger = ledger,
+                transactionId = transactionId,
+                localPlayerId = localPlayerId,
+                remotePlayerId = peer.playerId,
+                localPuppyIds = localTradeIds,
+                remotePuppyIds = remoteTradeIds,
+                localReceivedAlreadyOwnedIds = remoteTradeIds.filter { it in preCommitState.unlockedPuppies },
+                localSelectedPuppyBeforeCommit = preCommitState.puppyStyle
+            )
+
             val success = vm.applyExchangeTrade(localTradeIds.toSet(), remoteTradeIds.toSet())
             if (success) {
-                recordTradeHistory(
-                    ledger = ledger,
-                    transactionId = transactionId,
-                    localPlayerId = PuppyPlayerIdentity.playerId(context),
-                    remotePlayerId = peer.playerId,
-                    localPuppyIds = localTradeIds,
-                    remotePuppyIds = remoteTradeIds
-                )
-                tradeCompleted = true
-                tradeStatus = "Trade completed."
-                runCatching {
+                ledger.markLocalCommitApplied(transactionId)
+                localTradeApplied = true
+                val completionSent = runCatching {
                     session.sendMessage(
                         "trade.complete",
                         JSONObject()
                             .put("transactionId", transactionId)
                             .put("success", true)
                     )
+                }.isSuccess
+
+                if (!completionSent) {
+                    ledger.updateTransactionState(
+                        transactionId,
+                        ExchangeTransactionState.RECOVERY_REQUIRED
+                    )
+                    tradeStatus = "Connection ended during commit. Open History to recover this trade."
+                } else if (remoteTradeComplete) {
+                    ledger.updateTransactionState(
+                        transactionId,
+                        ExchangeTransactionState.COMPLETED
+                    )
+                    tradeCompleted = true
+                    tradeStatus = "Trade completed on both devices."
+                } else {
+                    tradeStatus = "Your side committed. Waiting for the other device…"
                 }
             } else {
-                tradeStatus = "Trade could not be applied. Recheck the current roster and offers."
+                ledger.updateTransactionState(
+                    transactionId,
+                    ExchangeTransactionState.CANCELLED
+                )
+                tradeStatus = "Trade could not be applied. No recovery mutation was kept."
                 localCommit = false
                 remoteCommit = false
                 runCatching {
@@ -434,6 +496,8 @@ internal fun PuppyExchangeScreen(
                     localCommit = false
                     remoteCommit = false
                     tradeCompleted = false
+                    localTradeApplied = false
+                    remoteTradeComplete = false
                     tradeStatus = "Your trade offer updated."
                     runCatching {
                         val payload = JSONObject().put("puppyIds", JSONArray(next))
@@ -482,7 +546,10 @@ internal fun PuppyExchangeScreen(
                     }
                 }
             )
-            PuppyExchangeTab.HISTORY -> ExchangeHistoryPanel(ledger)
+            PuppyExchangeTab.HISTORY -> ExchangeHistoryPanel(
+                ledger = ledger,
+                vm = vm
+            )
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -1089,21 +1156,216 @@ private fun ExchangeTradePanel(
 }
 
 @Composable
-private fun ExchangeHistoryPanel(ledger: PuppyExchangeLedger) {
-    val transactions = ledger.snapshot().transactions.sortedByDescending { it.createdAtMs }
+private fun ExchangeHistoryPanel(
+    ledger: PuppyExchangeLedger,
+    vm: PuppyClickerV6ViewModel
+) {
+    val context = LocalContext.current
+    val localPlayerId = remember { PuppyPlayerIdentity.playerId(context) }
+    val recovery = remember(ledger) { PuppyExchangeRecovery(context, ledger) }
+    var refresh by remember { mutableStateOf(0) }
+    var activeRecoveryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedChoiceName by rememberSaveable { mutableStateOf<String?>(null) }
+    var generatedCode by rememberSaveable { mutableStateOf("") }
+    var peerCode by rememberSaveable { mutableStateOf("") }
+    var recoveryStatus by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val transactions = remember(refresh) {
+        ledger.snapshot().transactions.sortedByDescending { it.createdAtMs }
+    }
+
     Text("History", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+    Text(
+        "Interrupted commits stay locked until both devices agree to Complete or Cancel.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(8.dp))
+
     if (transactions.isEmpty()) {
         Text("No Puppy Exchange transactions on this device yet.")
         return
     }
+
     transactions.forEach { transaction ->
         Card(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
             Column(Modifier.padding(11.dp)) {
                 Text(transaction.type.name, fontWeight = FontWeight.Bold)
                 Text(transaction.state.name)
                 Text(transaction.transactionId, style = MaterialTheme.typography.labelSmall)
+
                 if (transaction.state == ExchangeTransactionState.RECOVERY_REQUIRED) {
-                    Text("Recovery required", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Recovery required · affected puppies are transfer-locked.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedButton(
+                        onClick = {
+                            activeRecoveryId = if (activeRecoveryId == transaction.transactionId) {
+                                null
+                            } else {
+                                transaction.transactionId
+                            }
+                            selectedChoiceName = transaction.localRecoveryChoice?.name
+                            generatedCode = ""
+                            peerCode = ""
+                            recoveryStatus = null
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (activeRecoveryId == transaction.transactionId) {
+                                "Hide Recovery"
+                            } else {
+                                "Recover Trade"
+                            }
+                        )
+                    }
+
+                    if (activeRecoveryId == transaction.transactionId) {
+                        Spacer(Modifier.height(9.dp))
+                        Text(
+                            "Both players must independently choose the same result. A Recovery Code expires after 10 minutes and is one-use on the receiving device.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(7.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            RecoveryChoice.entries.forEach { choice ->
+                                FilterChip(
+                                    selected = selectedChoiceName == choice.name,
+                                    onClick = {
+                                        selectedChoiceName = choice.name
+                                        generatedCode = ""
+                                        recoveryStatus = null
+                                    },
+                                    label = {
+                                        Text(
+                                            if (choice == RecoveryChoice.COMPLETE) {
+                                                "Complete Trade"
+                                            } else {
+                                                "Cancel Trade"
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(7.dp))
+                        Button(
+                            onClick = {
+                                val choice = selectedChoiceName?.let(RecoveryChoice::valueOf)
+                                    ?: return@Button
+                                runCatching {
+                                    recovery.createCode(transaction.transactionId, choice)
+                                }.onSuccess { code ->
+                                    generatedCode = code
+                                    val updated = ledger.transaction(transaction.transactionId)
+                                    recoveryStatus = if (updated != null) {
+                                        resolveAgreedTradeRecovery(
+                                            transaction = updated,
+                                            ledger = ledger,
+                                            vm = vm,
+                                            localPlayerId = localPlayerId
+                                        )
+                                    } else {
+                                        "Recovery journal is no longer available."
+                                    }
+                                    refresh++
+                                }.onFailure {
+                                    recoveryStatus = it.message ?: "Unable to create Recovery Code."
+                                }
+                            },
+                            enabled = selectedChoiceName != null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Generate My Recovery Code")
+                        }
+
+                        if (generatedCode.isNotBlank()) {
+                            Spacer(Modifier.height(7.dp))
+                            OutlinedTextField(
+                                value = generatedCode,
+                                onValueChange = {},
+                                modifier = Modifier.fillMaxWidth(),
+                                readOnly = true,
+                                label = { Text("My Recovery Code") },
+                                minLines = 2,
+                                maxLines = 5
+                            )
+                            Spacer(Modifier.height(5.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(
+                                        ClipData.newPlainText("Puppy Exchange Recovery Code", generatedCode)
+                                    )
+                                    Toast.makeText(context, "Recovery Code copied.", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Copy Recovery Code")
+                            }
+                        }
+
+                        Spacer(Modifier.height(9.dp))
+                        OutlinedTextField(
+                            value = peerCode,
+                            onValueChange = { peerCode = it.take(524_288) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Other Player's Recovery Code") },
+                            minLines = 2,
+                            maxLines = 5
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    recovery.acceptPeerCode(peerCode)
+                                }.onSuccess { updated ->
+                                    recoveryStatus = resolveAgreedTradeRecovery(
+                                        transaction = updated,
+                                        ledger = ledger,
+                                        vm = vm,
+                                        localPlayerId = localPlayerId
+                                    )
+                                    refresh++
+                                }.onFailure {
+                                    recoveryStatus = it.message ?: "Recovery Code could not be applied."
+                                }
+                            },
+                            enabled = peerCode.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Apply Other Player Code")
+                        }
+
+                        val latest = ledger.transaction(transaction.transactionId) ?: transaction
+                        Spacer(Modifier.height(7.dp))
+                        Text(
+                            "Your choice: ${latest.localRecoveryChoice?.name ?: "Not chosen"} · Other: ${latest.remoteRecoveryChoice?.name ?: "Waiting"}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        recoveryStatus?.let {
+                            Spacer(Modifier.height(5.dp))
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (latest.state == ExchangeTransactionState.RECOVERY_REQUIRED) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1187,13 +1449,15 @@ private fun recordGiftHistory(
     )
 }
 
-private fun recordTradeHistory(
+private fun recordTradeJournal(
     ledger: PuppyExchangeLedger,
     transactionId: String,
     localPlayerId: String,
     remotePlayerId: String,
     localPuppyIds: List<String>,
-    remotePuppyIds: List<String>
+    remotePuppyIds: List<String>,
+    localReceivedAlreadyOwnedIds: List<String>,
+    localSelectedPuppyBeforeCommit: String?
 ) {
     val localIsPlayerA = localPlayerId < remotePlayerId
     val playerAId = if (localIsPlayerA) localPlayerId else remotePlayerId
@@ -1211,9 +1475,73 @@ private fun recordTradeHistory(
             offerAHash = PuppyExchangeProtocol.canonicalOfferHash(offerA),
             offerBHash = PuppyExchangeProtocol.canonicalOfferHash(offerB),
             createdAtMs = System.currentTimeMillis(),
-            state = ExchangeTransactionState.COMPLETED
+            state = ExchangeTransactionState.COMMITTING,
+            localCommitApplied = false,
+            localReceivedAlreadyOwnedIds = localReceivedAlreadyOwnedIds.distinct(),
+            localSelectedPuppyBeforeCommit = localSelectedPuppyBeforeCommit
         )
     )
+}
+
+internal fun resolveAgreedTradeRecovery(
+    transaction: ExchangeTransactionRecord,
+    ledger: PuppyExchangeLedger,
+    vm: PuppyClickerV6ViewModel,
+    localPlayerId: String
+): String {
+    if (transaction.state != ExchangeTransactionState.RECOVERY_REQUIRED) {
+        return "This trade no longer requires recovery."
+    }
+    val choice = agreedRecoveryChoice(transaction)
+        ?: return if (
+            transaction.localRecoveryChoice != null &&
+            transaction.remoteRecoveryChoice != null
+        ) {
+            "Recovery choices differ. Both players must choose the same result."
+        } else {
+            "Recovery code saved. Waiting for both players to choose the same result."
+        }
+
+    val perspective = localTradePerspective(transaction, localPlayerId)
+    return when (choice) {
+        RecoveryChoice.COMPLETE -> {
+            if (!transaction.localCommitApplied) {
+                val applied = vm.applyExchangeTrade(
+                    sentPuppyIds = perspective.sentPuppyIds.toSet(),
+                    receivedPuppyIds = perspective.receivedPuppyIds.toSet(),
+                    recoveryTransactionId = transaction.transactionId
+                )
+                if (!applied) {
+                    return "Could not safely complete this trade from the local journal. It remains locked for recovery."
+                }
+                ledger.markLocalCommitApplied(transaction.transactionId)
+            }
+            ledger.updateTransactionState(
+                transaction.transactionId,
+                ExchangeTransactionState.COMPLETED
+            )
+            "Recovery complete. The trade is finalized and the lock is cleared."
+        }
+
+        RecoveryChoice.CANCEL -> {
+            if (transaction.localCommitApplied) {
+                val restored = vm.cancelRecoveredExchangeTrade(
+                    sentPuppyIds = perspective.sentPuppyIds.toSet(),
+                    receivedPuppyIds = perspective.receivedPuppyIds.toSet(),
+                    receivedAlreadyOwnedIds = transaction.localReceivedAlreadyOwnedIds.toSet(),
+                    selectedPuppyBeforeCommit = transaction.localSelectedPuppyBeforeCommit
+                )
+                if (!restored) {
+                    return "Could not safely restore the pre-trade roster. The trade remains locked for recovery."
+                }
+            }
+            ledger.updateTransactionState(
+                transaction.transactionId,
+                ExchangeTransactionState.CANCELLED
+            )
+            "Recovery complete. The trade was cancelled and the lock is cleared."
+        }
+    }
 }
 
 private fun JSONArray?.stringList(): List<String> {
