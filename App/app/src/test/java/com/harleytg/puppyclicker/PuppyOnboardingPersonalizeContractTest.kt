@@ -20,5 +20,6 @@ class PuppyOnboardingPersonalizeContractTest {
         assertTrue(source.contains("PuppyUiPreferences.setUiScale"))
         assertTrue(source.contains("PuppyUiPreferences.setReducedMotion"))
         assertTrue(source.contains("Skip birthday"))
+        assertTrue(source.contains("Add birthday instead"))
     }
 }
