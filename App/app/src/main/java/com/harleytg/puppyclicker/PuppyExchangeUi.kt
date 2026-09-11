@@ -166,7 +166,8 @@ internal fun PuppyExchangeScreen(
                             transactionId = offerId,
                             localPlayerId = PuppyPlayerIdentity.playerId(context),
                             remotePlayerId = peer.playerId,
-                            puppyId = puppyId
+                            puppyId = puppyId,
+                            localSent = true
                         )
                     }
                 }
@@ -899,7 +900,8 @@ private fun ExchangeGiftsPanel(
                                     transactionId = gift.offerId,
                                     localPlayerId = PuppyPlayerIdentity.playerId(context),
                                     remotePlayerId = peer.playerId,
-                                    puppyId = gift.puppyId
+                                    puppyId = gift.puppyId,
+                                    localSent = false
                                 )
                                 onStatus("Gift accepted and added to your roster.")
                             } else {
@@ -1158,15 +1160,17 @@ private fun recordGiftHistory(
     transactionId: String,
     localPlayerId: String,
     remotePlayerId: String,
-    puppyId: String
+    puppyId: String,
+    localSent: Boolean
 ) {
     val localIsPlayerA = localPlayerId < remotePlayerId
     val playerAId = if (localIsPlayerA) localPlayerId else remotePlayerId
     val playerBId = if (localIsPlayerA) remotePlayerId else localPlayerId
-    val localOffer = listOf(puppyId)
+    val giftedOffer = listOf(puppyId)
     val emptyOffer = emptyList<String>()
-    val offerA = if (localIsPlayerA) localOffer else emptyOffer
-    val offerB = if (localIsPlayerA) emptyOffer else localOffer
+    val senderIsPlayerA = if (localSent) localIsPlayerA else !localIsPlayerA
+    val offerA = if (senderIsPlayerA) giftedOffer else emptyOffer
+    val offerB = if (senderIsPlayerA) emptyOffer else giftedOffer
     ledger.putTransaction(
         ExchangeTransactionRecord(
             transactionId = transactionId,
