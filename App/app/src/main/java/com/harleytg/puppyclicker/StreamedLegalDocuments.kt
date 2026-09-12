@@ -153,6 +153,25 @@ private object StreamedLegalRepository {
     }
 }
 
+private fun markdownToDisplayText(markdown: String): String =
+    markdown.lineSequence()
+        .map { line ->
+            when {
+                line.trim() == "---" -> ""
+                line.startsWith("### ") -> line.removePrefix("### ")
+                line.startsWith("## ") -> line.removePrefix("## ").uppercase()
+                line.startsWith("# ") -> line.removePrefix("# ")
+                line.startsWith("> ") -> line.removePrefix("> ")
+                line.startsWith("- ") -> "• " + line.removePrefix("- ")
+                else -> line
+            }
+        }
+        .joinToString("\n")
+        .replace("**", "")
+        .replace("`", "")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
+
 @Composable
 internal fun PuppyLegalLinks(
     modifier: Modifier = Modifier,
@@ -207,7 +226,7 @@ private fun StreamedLegalDialog(
 
     LaunchedEffect(document) {
         val result = StreamedLegalRepository.load(context, document)
-        body = result.text
+        body = markdownToDisplayText(result.text)
         source = result.source
     }
 
