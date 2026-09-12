@@ -30,7 +30,7 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
 
     @Test
     fun revampedScreensKeepGameplayFeedbackAndLiveCodeValidation() {
-        val source = generated("PuppyMainScreensRevamp.kt").readText()
+        val source = generated("PuppyUiSystem.kt").readText()
 
         assertTrue(source.contains("V6TicketDropOverlay("))
         assertTrue(source.contains("performV6Haptic(context"))
