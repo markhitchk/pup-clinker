@@ -7,12 +7,6 @@ on:
 permissions:
   contents: read
 
-env:
-  PUPPY_KEYSTORE_B64: ${{ secrets.PUPPY_KEYSTORE_B64 }}
-  PUPPY_SIGNING_STORE_PASSWORD: ${{ secrets.PUPPY_SIGNING_STORE_PASSWORD }}
-  PUPPY_SIGNING_KEY_ALIAS: ${{ secrets.PUPPY_SIGNING_KEY_ALIAS }}
-  PUPPY_SIGNING_KEY_PASSWORD: ${{ secrets.PUPPY_SIGNING_KEY_PASSWORD }}
-
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -41,56 +35,12 @@ jobs:
       - name: Compile debug APK
         run: gradle --no-daemon :app:assembleDebug --stacktrace
 
-      - name: Prepare permanent signing
-        id: signing
-        shell: bash
-        run: |
-          set -euo pipefail
-          vars=(
-            PUPPY_KEYSTORE_B64
-            PUPPY_SIGNING_STORE_PASSWORD
-            PUPPY_SIGNING_KEY_ALIAS
-            PUPPY_SIGNING_KEY_PASSWORD
-          )
-          configured=0
-          for name in "${vars[@]}"; do
-            if [ -n "${!name:-}" ]; then
-              configured=$((configured + 1))
-            fi
-          done
-          if [ "$configured" -ne 4 ]; then
-            echo "::error::Permanent signing secrets are unavailable or incomplete."
-            exit 1
-          fi
-          keyfile="$RUNNER_TEMP/puppy-clicker-update-key.p12"
-          printf '%s' "$PUPPY_KEYSTORE_B64" | base64 --decode > "$keyfile"
-          chmod 600 "$keyfile"
-          test -s "$keyfile"
-          echo "PUPPY_SIGNING_STORE_FILE=$keyfile" >> "$GITHUB_ENV"
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-
-      - name: Build permanent signed release APK
+      - name: Build unsigned release APK
         run: gradle --no-daemon :app:assembleRelease --stacktrace
 
-      - name: Verify v1-v4 APK signatures
-        shell: bash
-        run: |
-          set -euo pipefail
-          OUT="app/build/outputs/apk/release"
-          APK="$(find "$OUT" -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          IDSIG="$(find "$OUT" -maxdepth 1 -type f -name '*.idsig' -print -quit)"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          test -n "$APK"
-          test -s "$APK"
-          test -n "$IDSIG"
-          test -s "$IDSIG"
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
-
-      - name: Upload signed v4 release
+      - name: Upload unsigned release for permanent v4 signing
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-six-system-signed-v4
-          path: |
-            App/app/build/outputs/apk/release/*.apk
-            App/app/build/outputs/apk/release/*.idsig
+          name: puppy-clicker-six-system-unsigned-release
+          path: App/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
