@@ -123,20 +123,16 @@ internal fun PuppyOnboardingPlayerSetup(
         title = "Set Up Your Account",
         canGoBack = true,
         primaryLabel = null,
-        onBack = onBack
+        onBack = onBack,
+        preferViewportFit = true
     ) {
         Text(
-            "Choose how you want to use Puppy Clicker.",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black
-        )
-        Text(
-            "Your local account is the device backup identity. Discord stays optional, while the online Puppy Clicker Account is controlled by the remote release flag.",
+            "One account setup for local now and online later.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(6.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -145,7 +141,7 @@ internal fun PuppyOnboardingPlayerSetup(
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Column(Modifier.padding(14.dp)) {
+            Column(Modifier.padding(10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -156,37 +152,31 @@ internal fun PuppyOnboardingPlayerSetup(
                             .weight(1f)
                             .padding(start = 10.dp)
                     ) {
-                        Text("Puppy Clicker Local Account", fontWeight = FontWeight.Black)
+                        Text("Puppy Clicker Account Credentials", fontWeight = FontWeight.Black)
                         Text(
-                            profileSourceLabel + " · device-bound · protected by PupEye",
+                            profileSourceLabel + " · local now · online-ready",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
 
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it.take(24) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Player username") },
-                    supportingText = {
-                        Text("Letters, numbers, _, - and . · up to 24 characters")
-                    },
+                    label = { Text("Username") },
                     singleLine = true
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(5.dp))
                 OutlinedTextField(
                     value = backupPassword,
                     onValueChange = { backupPassword = it.take(128) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Local backup password") },
-                    supportingText = {
-                        Text("8+ characters. Used for portable Puppy Clicker export/import backups.")
-                    },
+                    label = { Text("Password") },
                     singleLine = true,
                     trailingIcon = {
                         TextButton(onClick = { backupPasswordVisible = !backupPasswordVisible }) {
@@ -199,21 +189,12 @@ internal fun PuppyOnboardingPlayerSetup(
                         PasswordVisualTransformation()
                     }
                 )
-                Spacer(Modifier.height(7.dp))
+                Spacer(Modifier.height(5.dp))
                 OutlinedTextField(
                     value = backupPasswordConfirm,
                     onValueChange = { backupPasswordConfirm = it.take(128) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Confirm backup password") },
-                    supportingText = {
-                        Text(
-                            when {
-                                backupPasswordConfirm.isEmpty() -> "Re-enter your backup password."
-                                backupPasswordConfirm == backupPassword -> "Passwords match."
-                                else -> "Passwords do not match."
-                            }
-                        )
-                    },
+                    label = { Text("Confirm password") },
                     singleLine = true,
                     visualTransformation = if (backupPasswordVisible) {
                         VisualTransformation.None
@@ -237,7 +218,7 @@ internal fun PuppyOnboardingPlayerSetup(
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
 
                 Button(
                     onClick = {
@@ -269,97 +250,60 @@ internal fun PuppyOnboardingPlayerSetup(
                         backupPassword == backupPasswordConfirm,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Create Local Account & Continue", fontWeight = FontWeight.Bold)
+                    Text("Save Account & Continue", fontWeight = FontWeight.Bold)
                 }
             }
         }
 
         if (accountFlag.visible) {
-            Spacer(Modifier.height(16.dp))
-            Text("PUPPY CLICKER ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(6.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(Modifier.padding(13.dp)) {
+            Spacer(Modifier.height(6.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SetupBadge("PC")
-                    Spacer(Modifier.size(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(accountFlag.label.ifBlank { "Puppy Clicker Account" }, fontWeight = FontWeight.Black)
                         Text(
-                            accountFlag.description.ifBlank {
-                                "Online account with username, password, and Discord authentication."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text(
-                            accountFlag.statusLabel(),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
+                            accountFlag.label.ifBlank { "Puppy Clicker Online Account" },
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Black
                         )
+                        Text(
+                            if (accountFlag.isAvailable()) {
+                                "Uses the same username and password above."
+                            } else {
+                                "Coming soon · the same credentials will be used."
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
-                }
-                Spacer(Modifier.height(9.dp))
-                OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    label = { Text("Account username") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(6.dp))
-                OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    label = { Text("Account password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Discord authentication will be part of the online account flow. This account does not replace your local backup identity until the service is released.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                accountFlag.releaseDate?.let { release ->
                     Text(
-                        "Planned release: " + release,
+                        accountFlag.statusLabel(),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
 
-        }
-
         if (discordFlag.visible) {
-            Spacer(Modifier.height(14.dp))
-            Text("DISCORD ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(6.dp))
+            Text("DISCORD ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(3.dp))
             OnboardingOptionCard(
                 title = if (account == null) "Connect Discord" else "Discord Connected",
                 detail = if (account == null) {
-                    "Optional Discord identity connection. Protected separately from your local save."
+                    "Optional identity link."
                 } else {
-                    "@" + account.username + " is linked. Tap to manage."
+                    "@" + account.username + " linked."
                 },
                 action = if (!discordFlag.isAvailable()) {
                     discordFlag.statusLabel()
@@ -382,12 +326,12 @@ internal fun PuppyOnboardingPlayerSetup(
         }
 
         if (restoreFlag.visible) {
-            Spacer(Modifier.height(14.dp))
-            Text("SAVE RESTORE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(6.dp))
+            Text("SAVE RESTORE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(3.dp))
             OnboardingOptionCard(
                 title = "Restore a Save",
-                detail = "Import an existing .pupsave using its backup password.",
+                detail = "Import an existing .pupsave.",
                 action = if (restoreFlag.isAvailable()) "Import" else restoreFlag.statusLabel(),
                 enabled = restoreFlag.isAvailable(),
                 onClick = { importSheetOpen = true },
@@ -395,8 +339,6 @@ internal fun PuppyOnboardingPlayerSetup(
             )
         }
 
-        Spacer(Modifier.height(14.dp))
-        Text("PROTECTED BY PUPEYE", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(6.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -406,19 +348,23 @@ internal fun PuppyOnboardingPlayerSetup(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(12.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 StreamedPupEyeBranding(
-                    modifier = Modifier.size(42.dp),
+                    modifier = Modifier.size(30.dp),
                     contentDescription = "PupEye protection"
                 )
-                Spacer(Modifier.size(10.dp))
+                Spacer(Modifier.size(8.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("PupEye Protection", fontWeight = FontWeight.Black)
                     Text(
-                        "Save integrity and fair-play protection stay active for the local account.",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Protected by PupEye",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Save integrity + fair-play protection.",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -793,9 +739,9 @@ private fun OnboardingOptionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             leading()
             Column(Modifier.weight(1f)) {
@@ -823,7 +769,7 @@ private fun OnboardingOptionCard(
 @Composable
 private fun SetupBadge(text: String) {
     Surface(
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier.size(34.dp),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.secondaryContainer
     ) {
