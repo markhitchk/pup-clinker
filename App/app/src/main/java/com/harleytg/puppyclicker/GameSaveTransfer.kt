@@ -350,7 +350,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable {
+        mutableStateOf(PuppyBackupPasswordStore.get(context).orEmpty())
+    }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -380,6 +382,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri != null) {
+            if (password.length >= 8) {
+                runCatching { PuppyBackupPasswordStore.set(context, password) }
+            }
             val result = GameSaveTransfer.export(context, uri, password)
             showPopup(
                 title = if (result.success) "Export Complete" else "Export Failed",
@@ -442,7 +447,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Backup password") },
                 placeholder = { Text("Enter backup password") },
-                supportingText = { Text("8+ characters. The password is never stored in the save file.") },
+                supportingText = { Text("8+ characters. Saved locally using device-bound Keystore encryption; never stored in the exported save.") },
                 singleLine = true,
                 trailingIcon = {
                     TextButton(onClick = { passwordVisible = !passwordVisible }) {
