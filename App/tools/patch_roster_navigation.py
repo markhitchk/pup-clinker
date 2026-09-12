@@ -118,7 +118,6 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     )
                 )
                 .padding(padding)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             val internal = internalDestination
             if (internal != null) {
@@ -189,7 +188,12 @@ private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
                         .size(44.dp)
                         .semantics { contentDescription = "Open settings" }
                 ) {
-                    Text("⚙️", fontSize = 22.sp)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_settings),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
