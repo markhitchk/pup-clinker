@@ -55,24 +55,27 @@ class CompactRosterPatchTest(unittest.TestCase):
 
 
 class SettingsAccountCardTest(unittest.TestCase):
-    def test_complete_account_profile_moves_to_top_card(self) -> None:
+    def test_complete_account_profile_stays_at_top_of_routed_settings(self) -> None:
         source = final_settings_source()
 
-        account = source.index("AccountProfileCard(")
-        appearance = source.index('SettingsSectionCard("appearance"')
+        home = source.index("private fun SettingsHome(")
+        profile = source.index("PuppyPlayerIdentity.username(context)", home)
+        account = source.index('SettingsGroup("Account")', home)
+        appearance = source.index('SettingsGroup("Appearance")', home)
+
+        self.assertLess(profile, account)
         self.assertLess(account, appearance)
-        self.assertNotIn('SettingsSectionCard("account", "👤", "Account & Profile"', source)
-        self.assertIn("private fun AccountProfileCard(", source)
-        self.assertIn("AccountProfileSettings(vm, ui)", source)
+        self.assertIn("SettingsDestination.PROFILE", source)
+        self.assertIn("ProfileSettings(vm, ui)", source)
 
     def test_top_account_card_shows_identity_summary(self) -> None:
         source = final_settings_source()
 
         self.assertIn("PuppyPlayerIdentity.publicPlayerId(context)", source)
         self.assertIn("PuppyPlayerIdentity.publicFriendCode(context)", source)
-        self.assertIn('"Local Profile · Device Bound"', source)
-        self.assertIn('"Account & Profile"', source)
-        self.assertIn('Text("Copy"', source)
+        self.assertIn('"Local Profile"', source)
+        self.assertIn('"Protected by PupEye"', source)
+        self.assertIn("SettingsSummaryValue(", source)
 
 
 if __name__ == "__main__":
