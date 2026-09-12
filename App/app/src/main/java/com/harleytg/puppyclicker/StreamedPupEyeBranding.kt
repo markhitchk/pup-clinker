@@ -55,7 +55,7 @@ internal fun nextPupEyeBrandingRetryDelayMs(
  * Streamed-only PupEye branding.
  *
  * Source of truth:
- * https://github.com/markhitchk/pup-clinker/blob/main/assets/PupEye.png
+ * https://github.com/markhitchk/pup-clinker/blob/main/assets/logos/PupEye.png
  *
  * PupEye.png is never bundled into the APK. The app downloads the repository asset at runtime,
  * validates it as PNG data, downsamples oversized source images safely, and keeps the last valid
@@ -131,8 +131,8 @@ internal fun StreamedPupEyeBranding(
 internal object PupEyeAssetStream {
     // Raw GitHub is the source of truth. jsDelivr is a GitHub-backed transport fallback.
     private val URLS = listOf(
-        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/PupEye.png",
-        "https://cdn.jsdelivr.net/gh/markhitchk/pup-clinker@main/assets/PupEye.png"
+        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/PupEye.png",
+        "https://cdn.jsdelivr.net/gh/markhitchk/pup-clinker@main/assets/logos/PupEye.png"
     )
 
     private const val CACHE_FILE = "PupEye.png"

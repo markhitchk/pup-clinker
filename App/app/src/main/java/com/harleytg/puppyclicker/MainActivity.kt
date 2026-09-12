@@ -224,7 +224,7 @@ private fun GameHeader(state: GameState) {
             tonalElevation = 0.dp
         ) {
             Image(
-                painter = painterResource(R.drawable.source_logo),
+                painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                 contentDescription = "Puppy Clicker logo",
                 modifier = Modifier
                     .padding(6.dp)

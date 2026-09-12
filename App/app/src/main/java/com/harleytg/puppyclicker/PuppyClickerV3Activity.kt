@@ -276,7 +276,7 @@ private fun V3BrandHeader(state: GameState) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface) {
             Image(
-                painter = painterResource(R.drawable.source_logo),
+                painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                 contentDescription = "Puppy Clicker",
                 modifier = Modifier.padding(5.dp).size(54.dp),
                 contentScale = ContentScale.Fit

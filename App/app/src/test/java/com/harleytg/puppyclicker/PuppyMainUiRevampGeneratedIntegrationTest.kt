@@ -82,8 +82,23 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(onboarding.contains("HarleysStudiosBranding("))
         assertTrue(!settings.contains("R.drawable.harleys_studios_icon"))
         assertTrue(!onboarding.contains("R.drawable.harleys_studios_icon"))
+        assertTrue(branding.contains("streamedRepoLogoPainter("))
+        assertTrue(branding.contains("RepoLogoAsset.HARLEYS_STUDIOS"))
         assertTrue(branding.contains("R.drawable.harleys_studios_icon"))
         assertTrue(!branding.contains("HARLEYS_STUDIOS_LOGO_BASE64"))
+    }
+
+    @Test
+    fun appLogosStreamFromCentralRepositoryFolder() {
+        val stream = generated("StreamedRepoLogos.kt").readText()
+        val pupEye = generated("StreamedPupEyeBranding.kt").readText()
+        val launch = generated("PuppyLaunchUi.kt").readText()
+
+        assertTrue(stream.contains("assets/logos"))
+        assertTrue(stream.contains("puppy_clicker.png"))
+        assertTrue(stream.contains("harleys_studios.png"))
+        assertTrue(pupEye.contains("assets/logos/PupEye.png"))
+        assertTrue(launch.contains("streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER"))
     }
 
     @Test

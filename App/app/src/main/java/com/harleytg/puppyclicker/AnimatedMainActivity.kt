@@ -265,7 +265,7 @@ private fun AnimatedGameHeader(state: GameState) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.93f)) {
             Image(
-                painter = painterResource(R.drawable.source_logo),
+                painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                 contentDescription = "Puppy Clicker logo",
                 modifier = Modifier.padding(6.dp).size(54.dp).graphicsLayer { rotationZ = logoTilt },
                 contentScale = ContentScale.Fit

@@ -173,7 +173,7 @@ private fun V2PlayScreen(state: GameState, viewModel: GameViewModel) {
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = painterResource(R.drawable.source_logo),
+                painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                 contentDescription = "Puppy Clicker",
                 modifier = Modifier.size(56.dp),
                 contentScale = ContentScale.Fit

@@ -931,7 +931,7 @@ private fun v6FurDescription(styleId: String): String = when (styleId) {
 @Composable
 private fun V6Header(title: String, subtitle: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(painterResource(R.drawable.source_logo), null, Modifier.size(50.dp), contentScale = ContentScale.Fit)
+        Image(streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo), null, Modifier.size(50.dp), contentScale = ContentScale.Fit)
         Spacer(Modifier.width(10.dp))
         Column {
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)

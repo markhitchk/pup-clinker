@@ -2,5 +2,11 @@ Canonical app branding assets for Puppy Clicker.
 
 - puppy_clicker.png — Puppy Clicker app/logo artwork.
 - harleys_studios.png — Harley's Studios branding.
+- PupEye.png — PupEye anti-cheat / fair-play branding.
 
-The Android Gradle build copies these repository-managed files into generated drawable resources. Keep branding source files here instead of duplicating them under App/app/src/main/res.
+Runtime stream endpoints:
+- https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/puppy_clicker.png
+- https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/harleys_studios.png
+- https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/PupEye.png
+
+The app streams branding from this folder at runtime and keeps a validated cache. Puppy Clicker and Harley's Studios also keep bundled fallbacks for Android system surfaces and offline startup. PupEye remains stream-only.

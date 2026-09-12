@@ -113,7 +113,7 @@ private fun AfkWelcomeScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(R.drawable.source_logo),
+                    painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                     contentDescription = null,
                     modifier = Modifier.size(88.dp),
                     contentScale = ContentScale.Fit

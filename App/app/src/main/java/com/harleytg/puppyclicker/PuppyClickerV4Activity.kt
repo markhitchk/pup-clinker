@@ -684,7 +684,7 @@ private fun V4PuppyPortrait(styleId: String, size: Dp, accessory: String = "None
 @Composable
 private fun V4Header(title: String, subtitle: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(painter = painterResource(R.drawable.source_logo), contentDescription = null, modifier = Modifier.size(50.dp), contentScale = ContentScale.Fit)
+        Image(painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo), contentDescription = null, modifier = Modifier.size(50.dp), contentScale = ContentScale.Fit)
         Spacer(Modifier.width(10.dp))
         Column {
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)

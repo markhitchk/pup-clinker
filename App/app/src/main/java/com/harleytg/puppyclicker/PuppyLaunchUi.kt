@@ -63,7 +63,7 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.source_logo),
+                painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                 contentDescription = "Puppy Clicker logo",
                 modifier = Modifier.size(210.dp),
                 contentScale = ContentScale.Fit
@@ -205,7 +205,7 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(R.drawable.source_logo),
+                    painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                     contentDescription = "Puppy Clicker logo",
                     modifier = Modifier.size(118.dp),
                     contentScale = ContentScale.Fit
