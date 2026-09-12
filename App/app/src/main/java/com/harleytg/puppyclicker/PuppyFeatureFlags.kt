@@ -20,10 +20,13 @@ internal data class PuppyRemoteFeatureFlag(
     val label: String,
     val description: String
 ) {
-    fun isAvailable(today: LocalDate = LocalDate.now()): Boolean =
-        visible &&
+    fun isAvailable(today: LocalDate = LocalDate.now()): Boolean {
+        val releasedState = status.lowercase(Locale.US) in setOf("released", "beta")
+        return visible &&
             enabled &&
+            releasedState &&
             (releaseDate == null || !today.isBefore(releaseDate))
+    }
 
     fun badgeText(today: LocalDate = LocalDate.now()): String {
         val date = releaseDate
