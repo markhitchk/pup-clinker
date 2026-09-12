@@ -40,6 +40,10 @@ def patch_view_model(source: str) -> str:
 
 
 def patch_activity(source: str) -> str:
+    # Routed Settings now owns SaveTransferSettings and already wires vm::reloadImportedSave.
+    # Older generated sources still need the legacy Activity call upgraded.
+    if "        SaveTransferSettings()\n" not in source:
+        return source
     return replace_once(
         source,
         "        SaveTransferSettings()\n",
