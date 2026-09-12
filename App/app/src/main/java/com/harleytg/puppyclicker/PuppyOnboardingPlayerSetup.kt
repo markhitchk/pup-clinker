@@ -120,7 +120,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
     PuppyOnboardingShell(
         step = PuppyOnboardingStep.PLAYER_SETUP,
-        title = "Create Your Player",
+        title = "Set Up Your Account",
         canGoBack = true,
         primaryLabel = null,
         onBack = onBack
@@ -250,15 +250,18 @@ internal fun PuppyOnboardingPlayerSetup(
                             usernameModerationMessage = "Your backup passwords do not match."
                         } else {
                             username = PuppyPlayerIdentity.setUsername(context, username)
-                            runCatching { PuppyBackupPasswordStore.set(context, backupPassword) }
-                                .onFailure {
-                                    usernameModerationMessage = "Unable to protect the backup password on this device."
-                                    return@Button
-                                }
-                            onSessionChange(
-                                session.copy(playerSetupMethod = PuppyPlayerSetupMethod.LOCAL)
-                            )
-                            onComplete()
+                            val backupSaved = runCatching {
+                                PuppyBackupPasswordStore.set(context, backupPassword)
+                            }.isSuccess
+                            if (!backupSaved) {
+                                usernameModerationMessage =
+                                    "Unable to protect the backup password on this device."
+                            } else {
+                                onSessionChange(
+                                    session.copy(playerSetupMethod = PuppyPlayerSetupMethod.LOCAL)
+                                )
+                                onComplete()
+                            }
                         }
                     },
                     enabled = localUsernameSubmissionEnabled(username) &&
@@ -271,8 +274,9 @@ internal fun PuppyOnboardingPlayerSetup(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text("PUPPY CLICKER ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
+        if (accountFlag.visible) {
+            Spacer(Modifier.height(16.dp))
+            Text("PUPPY CLICKER ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(6.dp))
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -342,6 +346,8 @@ internal fun PuppyOnboardingPlayerSetup(
                     )
                 }
             }
+        }
+
         }
 
         if (discordFlag.visible) {
@@ -750,7 +756,7 @@ internal fun PuppyOnboardingPlayerSetup(
         AlertDialog(
             onDismissRequest = { usernameModerationMessage = null },
             title = {
-                Text("Username Not Allowed", fontWeight = FontWeight.Black)
+                Text("Account Setup Issue", fontWeight = FontWeight.Black)
             },
             text = {
                 Text(
