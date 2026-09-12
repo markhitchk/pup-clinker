@@ -42,8 +42,15 @@ internal fun PuppyOnboardingShell(
     onBack: (() -> Unit)? = null,
     onPrimary: (() -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    preferViewportFit: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val horizontalPadding = if (preferViewportFit) 16.dp else 20.dp
+    val headerVerticalPadding = if (preferViewportFit) 8.dp else 14.dp
+    val bodyVerticalPadding = if (preferViewportFit) 4.dp else 8.dp
+    val footerSpacing = if (preferViewportFit) 8.dp else 16.dp
+    val bodyBottomSpacing = if (preferViewportFit) 8.dp else 18.dp
+    val navigationVerticalPadding = if (preferViewportFit) 8.dp else 12.dp
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -62,7 +69,7 @@ internal fun PuppyOnboardingShell(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .padding(horizontal = horizontalPadding, vertical = headerVerticalPadding)
                 ) {
                     Text(
                         text = "Step " + (step.persistedIndex + 1) + " of 5",
@@ -72,10 +79,10 @@ internal fun PuppyOnboardingShell(
                     )
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (preferViewportFit) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(if (preferViewportFit) 6.dp else 10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -101,14 +108,14 @@ internal fun PuppyOnboardingShell(
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                         .imePadding()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                        .padding(horizontal = horizontalPadding, vertical = bodyVerticalPadding),
                     content = {
                         content()
                         if (footer != null) {
-                            Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(footerSpacing))
                             footer()
                         }
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(bodyBottomSpacing))
                     }
                 )
 
@@ -124,7 +131,7 @@ internal fun PuppyOnboardingShell(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .navigationBarsPadding()
-                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                    .padding(horizontal = horizontalPadding, vertical = navigationVerticalPadding),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
