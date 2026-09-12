@@ -72,6 +72,15 @@ internal fun PuppyOnboardingPlayerSetup(
         )
     }
     var usernameModerationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var backupPasswordError by rememberSaveable { mutableStateOf<String?>(null) }
+    var backupPassword by rememberSaveable {
+        mutableStateOf(PuppyLocalBackupPassword.load(context).orEmpty())
+    }
+    var backupPasswordConfirm by rememberSaveable {
+        mutableStateOf(PuppyLocalBackupPassword.load(context).orEmpty())
+    }
+    var backupPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var backupPasswordConfirmVisible by rememberSaveable { mutableStateOf(false) }
     var discordSheetOpen by rememberSaveable { mutableStateOf(false) }
     var importSheetOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -167,6 +176,77 @@ internal fun PuppyOnboardingPlayerSetup(
                     singleLine = true
                 )
 
+                Spacer(Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = backupPassword,
+                    onValueChange = {
+                        backupPassword = it.take(128)
+                        backupPasswordError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Backup password") },
+                    supportingText = {
+                        Text("8+ characters · used to encrypt exported .pupsave backups")
+                    },
+                    singleLine = true,
+                    trailingIcon = {
+                        TextButton(onClick = { backupPasswordVisible = !backupPasswordVisible }) {
+                            Text(if (backupPasswordVisible) "Hide" else "View")
+                        }
+                    },
+                    visualTransformation = if (backupPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    }
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                val backupPasswordsMatch =
+                    backupPasswordConfirm.isBlank() || backupPassword == backupPasswordConfirm
+                OutlinedTextField(
+                    value = backupPasswordConfirm,
+                    onValueChange = {
+                        backupPasswordConfirm = it.take(128)
+                        backupPasswordError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Confirm backup password") },
+                    supportingText = {
+                        Text(
+                            if (backupPasswordsMatch) {
+                                "This becomes your Local Profile backup password."
+                            } else {
+                                "Passwords do not match."
+                            }
+                        )
+                    },
+                    isError = !backupPasswordsMatch,
+                    singleLine = true,
+                    trailingIcon = {
+                        TextButton(
+                            onClick = {
+                                backupPasswordConfirmVisible = !backupPasswordConfirmVisible
+                            }
+                        ) {
+                            Text(if (backupPasswordConfirmVisible) "Hide" else "View")
+                        }
+                    },
+                    visualTransformation = if (backupPasswordConfirmVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    }
+                )
+
+                Text(
+                    "Stored device-bound with Android Keystore. The password itself is never written into an exported save.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 account?.let {
                     Spacer(Modifier.height(6.dp))
                     Surface(
@@ -187,14 +267,30 @@ internal fun PuppyOnboardingPlayerSetup(
                 Button(
                     onClick = {
                         val moderationIssue = PuppyPlayerIdentity.usernameModerationIssue(username)
-                        if (moderationIssue != null) {
-                            usernameModerationMessage = moderationIssue
-                        } else {
-                            username = PuppyPlayerIdentity.setUsername(context, username)
-                            onComplete()
+                        when {
+                            moderationIssue != null -> {
+                                usernameModerationMessage = moderationIssue
+                            }
+                            backupPassword.length < 8 -> {
+                                backupPasswordError =
+                                    "Your backup password must be at least 8 characters."
+                            }
+                            backupPassword != backupPasswordConfirm -> {
+                                backupPasswordError = "Your backup passwords do not match."
+                            }
+                            !PuppyLocalBackupPassword.save(context, backupPassword) -> {
+                                backupPasswordError =
+                                    "Puppy Clicker could not secure the backup password on this device."
+                            }
+                            else -> {
+                                username = PuppyPlayerIdentity.setUsername(context, username)
+                                onComplete()
+                            }
                         }
                     },
-                    enabled = localUsernameSubmissionEnabled(username),
+                    enabled = localUsernameSubmissionEnabled(username) &&
+                        backupPassword.length >= 8 &&
+                        backupPassword == backupPasswordConfirm,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Create Profile & Continue", fontWeight = FontWeight.Bold)
@@ -526,6 +622,9 @@ internal fun PuppyOnboardingPlayerSetup(
                             importingSave = false
                             importMessage = result.message
                             if (result.success) {
+                                if (password.length >= 8) {
+                                    PuppyLocalBackupPassword.save(context, password)
+                                }
                                 vm.reloadImportedSave()
                                 onSessionChange(
                                     session.copy(
@@ -576,6 +675,23 @@ internal fun PuppyOnboardingPlayerSetup(
                 }
             }
         }
+    }
+
+    if (backupPasswordError != null) {
+        AlertDialog(
+            onDismissRequest = { backupPasswordError = null },
+            title = {
+                Text("Backup Password", fontWeight = FontWeight.Black)
+            },
+            text = {
+                Text(backupPasswordError ?: "Check your backup password and try again.")
+            },
+            confirmButton = {
+                TextButton(onClick = { backupPasswordError = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     if (usernameModerationMessage != null) {
