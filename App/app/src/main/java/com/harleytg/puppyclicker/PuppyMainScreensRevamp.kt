@@ -195,7 +195,7 @@ internal fun PuppyRevampedPlayScreen(
             rarity = state.lastTicketDrop,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 105.dp, start = 24.dp, end = 24.dp)
+                .padding(top = 2.dp, start = 24.dp, end = 24.dp)
         )
     }
 }
@@ -405,9 +405,37 @@ internal fun PuppyRevampedRewardsScreen(
                     Text("Keep going! Consistent care unlocks bigger rewards.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        repeat(7) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                                Spacer(Modifier.size(24.dp))
+                        repeat(7) { index ->
+                            val filled = index < state.dailyStreak.coerceIn(0, 7)
+                            Surface(
+                                shape = CircleShape,
+                                color = if (filled) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (filled) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    }
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (filled) {
+                                        Text(
+                                            "✓",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Black,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
