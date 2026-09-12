@@ -63,6 +63,16 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun rewardsFillStreakDotsAndTicketAlertStaysAtPlayHeader() {
+        val source = generated("PuppyMainScreensRevamp.kt").readText()
+
+        assertTrue(source.contains("index < state.dailyStreak.coerceIn(0, 7)"))
+        assertTrue(source.contains("MaterialTheme.colorScheme.onPrimary"))
+        assertTrue(source.contains(".padding(top = 2.dp, start = 24.dp, end = 24.dp)"))
+        assertTrue(!source.contains(".padding(top = 105.dp, start = 24.dp, end = 24.dp)"))
+    }
+
+    @Test
     fun rosterKeepsExchangeWhileUsingRevampedVisualHierarchy() {
         val source = generated("PuppyRosterScreen.kt").readText()
 
