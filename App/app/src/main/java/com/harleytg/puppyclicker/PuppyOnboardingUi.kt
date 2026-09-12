@@ -42,6 +42,7 @@ import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion
 @Composable
 internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
+    val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     val animateUi = LocalPuppyAnimatedUi.current && !LocalPuppyReducedMotion.current
 
     var step by rememberSaveable {
