@@ -39,10 +39,6 @@
                 <data android:scheme="discord-1547982688898777118" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".PuppyClickerV5Activity"
-            android:exported="false" />
-    </application>
+</application>
 
 </manifest>
