@@ -73,6 +73,19 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun harleysStudiosBrandingUsesCorrectedEmbeddedAsset() {
+        val settings = generated("PuppySettingsUi.kt").readText()
+        val onboarding = generated("PuppyOnboardingUi.kt").readText()
+        val branding = generated("HarleysStudiosBranding.kt").readText()
+
+        assertTrue(settings.contains("HarleysStudiosBranding("))
+        assertTrue(onboarding.contains("HarleysStudiosBranding("))
+        assertTrue(!settings.contains("R.drawable.harleys_studios_icon"))
+        assertTrue(!onboarding.contains("R.drawable.harleys_studios_icon"))
+        assertTrue(branding.contains("HARLEYS_STUDIOS_LOGO_BASE64"))
+    }
+
+    @Test
     fun rosterKeepsExchangeWhileUsingRevampedVisualHierarchy() {
         val source = generated("PuppyRosterScreen.kt").readText()
 
