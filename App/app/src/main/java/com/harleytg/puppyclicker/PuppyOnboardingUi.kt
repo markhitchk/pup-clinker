@@ -158,7 +158,7 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
             Image(
                 painter = painterResource(R.drawable.source_logo),
                 contentDescription = "Puppy Clicker logo",
-                modifier = Modifier.size(128.dp),
+                modifier = Modifier.size(112.dp),
                 contentScale = ContentScale.Fit
             )
             Spacer(Modifier.height(10.dp))
@@ -175,7 +175,8 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -188,33 +189,67 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     StreamedPupEyeBranding(
-                        modifier = Modifier.size(40.dp),
-                        contentDescription = "PupEye fair-play protection"
+                        modifier = Modifier.size(42.dp),
+                        contentDescription = "PupEye protection"
                     )
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { PuppyLinks.openDiscord(context) }
+                            .padding(start = 10.dp)
                     ) {
-                        Text("Protected by PupEye", fontWeight = FontWeight.Bold)
+                        Text("Protected by PupEye", fontWeight = FontWeight.Black)
                         Text(
-                            "Fair-play and encrypted-save protection · Discord community available",
+                            "Fair-play checks, save integrity, and encrypted backup protection.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { PuppyLinks.openDiscord(context) },
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Image(
                         painter = painterResource(R.drawable.ic_discord),
-                        contentDescription = "Open Discord",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clickable { PuppyLinks.openDiscord(context) },
+                        contentDescription = "Discord",
+                        modifier = Modifier.size(38.dp),
                         colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 10.dp)
+                    ) {
+                        Text("Discord Community", fontWeight = FontWeight.Black)
+                        Text(
+                            "Optional account connection, community access, and Puppy Clicker updates.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        "Open ›",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
 
             Surface(
                 modifier = Modifier
