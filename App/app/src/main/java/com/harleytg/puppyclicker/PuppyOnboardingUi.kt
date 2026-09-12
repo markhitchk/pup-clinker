@@ -217,10 +217,10 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                     action = if (discordFlag.isAvailable()) "Open ›" else discordFlag.statusLabel(),
                     enabled = discordFlag.isAvailable(),
                     onClick = if (discordFlag.isAvailable()) {
-                        { { PuppyLinks.openDiscord(context) } }
+                        { PuppyLinks.openDiscord(context) }
                     } else {
                         null
-                    }?.invoke(),
+                    },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     icon = {
                         Image(
