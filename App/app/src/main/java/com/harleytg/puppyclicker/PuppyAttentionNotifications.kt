@@ -101,7 +101,7 @@ internal object PuppyAttentionNotifier {
     fun postAttention(context: Context) {
         if (!isEnabled(context) || !canNotify(context)) return
         val prefs = context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE)
-        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+        val backgroundAt = prefs.getLong(PuppySaveContract.KEY_AFK_BACKGROUND_AT, 0L)
         val now = System.currentTimeMillis()
         if (backgroundAt <= 0L || now - backgroundAt < FIRST_REMINDER_MS) return
 
