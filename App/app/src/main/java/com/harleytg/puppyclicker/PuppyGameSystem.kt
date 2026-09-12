@@ -201,3 +201,8 @@ fun v6UpgradeTicketCost(state: V6GameState, upgrade: V5Upgrade): Int {
     val reduction = (if (sense >= 2) 1 else 0) + (if (sense >= 4) 1 else 0)
     return (base - reduction).coerceAtLeast(1)
 }
+
+private val DEFAULT_V6_PUPPIES = setOf("classic", "golden", "poodle", "spotty")
+private const val PRESTIGE_MIN_TREATS = 50_000L
+private const val PRESTIGE_BONUS_STEP = 100_000L
+private const val MAX_POINTS_PER_PRESTIGE = 8
