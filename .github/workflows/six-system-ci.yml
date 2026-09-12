@@ -1,0 +1,33 @@
+name: Six System Kotlin Refactor CI
+
+on:
+  push:
+    branches: [six-system-kotlin-refactor]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
+      - name: Generate protected sources
+        run: gradle --no-daemon :app:generateProtectedPuppySources --stacktrace
+      - name: Compile debug APK
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
