@@ -86,6 +86,23 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun rewardsUseStreamedMonthlyScheduleAndClaimedSection() {
+        val rewards = generated("PuppyMainScreensRevamp.kt").readText()
+        val stream = generated("PuppyMonthlyRewards.kt").readText()
+        val viewModel = generated("PuppyClickerV6ViewModel.kt").readText()
+        val app = generated("PuppyClickerApplication.kt").readText()
+
+        assertTrue(rewards.contains("PuppyMonthlyRewards.schedule.collectAsState()"))
+        assertTrue(rewards.contains("PuppyMonthlyRewards.currentGoals(todayDate)"))
+        assertTrue(rewards.contains("Text(\"Claimed\""))
+        assertTrue(rewards.contains("PuppyClaimedReward("))
+        assertTrue(stream.contains("assets/rewards"))
+        assertTrue(stream.contains("MAX_GOALS_PER_DAY = 12"))
+        assertTrue(viewModel.contains("PuppyMonthlyRewards.goalToday(id)"))
+        assertTrue(app.contains("PuppyMonthlyRewards.initialize(this)"))
+    }
+
+    @Test
     fun rosterKeepsExchangeWhileUsingRevampedVisualHierarchy() {
         val source = generated("PuppyRosterScreen.kt").readText()
 
