@@ -230,7 +230,7 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Choose a local player username now. Website account login is coming soon; the official Discord community is available below.",
+                    "Create a Puppy Clicker Local Account for this device. Puppy Clicker Account online sign-in is coming soon, with username/password and Discord authentication.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -283,12 +283,12 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                     enabled = normalizedUsername.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
-                    Text("Continue with Local Save", fontWeight = FontWeight.Black)
+                    Text("Continue with Puppy Clicker Local Account", fontWeight = FontWeight.Black)
                 }
                 Spacer(Modifier.height(4.dp))
                 PuppyLegalLinks(
                     modifier = Modifier.fillMaxWidth(),
-                    acknowledgementText = "Creating a local player means you agree to the Terms of Use and acknowledge the Privacy Policy."
+                    acknowledgementText = "Creating a Puppy Clicker Local Account means you agree to the Terms of Use and acknowledge the Privacy Policy."
                 )
                 Spacer(Modifier.height(8.dp))
                 PuppyDevelopmentNotice()
