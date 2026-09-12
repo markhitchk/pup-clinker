@@ -44,10 +44,16 @@ def patch_view_model(source: str) -> str:
 
 
 def patch_activity(source: str) -> str:
-    source = replace_once(
-        source,
-        '''                Text("🐶👁️ Pup Eye Fair Play", fontWeight = FontWeight.Black)''',
-        '''                Row(verticalAlignment = Alignment.CenterVertically) {
+    # Legacy V6 Settings rendered PupEye directly in PuppyClickerV6Activity.kt.
+    # The routed PuppySettingsUi.kt now owns PupEye Protection and already uses
+    # StreamedPupEyeBranding plus save/fair-play status. Preserve compatibility
+    # with older generated sources without requiring those obsolete anchors.
+    branding_anchor = '''                Text("🐶👁️ Pup Eye Fair Play", fontWeight = FontWeight.Black)'''
+    if branding_anchor in source:
+        source = replace_once(
+            source,
+            branding_anchor,
+            '''                Row(verticalAlignment = Alignment.CenterVertically) {
                     StreamedPupEyeBranding(
                         modifier = Modifier.size(58.dp),
                         contentDescription = "PupEye Anti-Cheat"
@@ -55,22 +61,24 @@ def patch_activity(source: str) -> str:
                     Spacer(Modifier.width(10.dp))
                     Text("PupEye Fair Play", fontWeight = FontWeight.Black)
                 }''',
-        "streamed PupEye Settings branding",
-    )
-    source = replace_once(
-        source,
-        '''                Text("Fast human tapping is allowed. Repeated machine-like timing and extreme sustained rates trigger a short cooldown.", style = MaterialTheme.typography.bodySmall)
+            "streamed PupEye Settings branding",
+        )
+
+    security_copy_anchor = '''                Text("Fast human tapping is allowed. Repeated machine-like timing and extreme sustained rates trigger a short cooldown.", style = MaterialTheme.typography.bodySmall)
                 Text("Suspicious taps do not count toward ticket awards. No permanent bans or uploads.", style = MaterialTheme.typography.bodySmall)
-                Text("Confirmed cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)''',
-        '''                Text("Fast human tapping is allowed. PupEye checks both short bursts and sustained machine-periodic timing used by Android auto-clickers/scripts.", style = MaterialTheme.typography.bodySmall)
+                Text("Confirmed cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)'''
+    if security_copy_anchor in source:
+        source = replace_once(
+            source,
+            security_copy_anchor,
+            '''                Text("Fast human tapping is allowed. PupEye checks both short bursts and sustained machine-periodic timing used by Android auto-clickers/scripts.", style = MaterialTheme.typography.bodySmall)
                 Text("Suspicious taps do not count toward ticket awards. Accessibility services are not blocked just for being enabled.", style = MaterialTheme.typography.bodySmall)
                 Text("Encrypted saves use AES-GCM authentication; modified save ciphertext is rejected and quarantined.", style = MaterialTheme.typography.bodySmall)
                 Text("Confirmed clicker cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)
                 Text("Save integrity events: ${PupEyeSaveGuard.state(context).tamperEvents}", style = MaterialTheme.typography.labelMedium)''',
-        "PupEye settings security copy",
-    )
+            "PupEye settings security copy",
+        )
     return source
-
 
 def main(root: Path) -> None:
     view_model = root / PACKAGE / "PuppyClickerV6ViewModel.kt"
