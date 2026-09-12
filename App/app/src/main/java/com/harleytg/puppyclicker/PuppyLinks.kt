@@ -7,7 +7,7 @@ import android.net.Uri
 internal object PuppyLinks {
     const val DISCORD_INVITE = "https://discord.gg/HcZweHchbv"
     const val TRELLO_BOARD =
-        "https://trello.com/invite/b/6aa4b77f278c2676155b6d9b/ATTI33a5ace18684382af934f0544d2026a4AF70F7AB/puppy-clicker"
+        "https://trello.com/b/qwwa6bq7"
 
     fun openDiscord(context: Context) {
         openExternal(context, DISCORD_INVITE)
