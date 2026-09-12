@@ -182,7 +182,9 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     StreamedPupEyeBranding(

@@ -677,55 +677,7 @@ private fun V6Prestige(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 
 @Composable
 private fun V6Settings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
-    val context = LocalContext.current
-    var resetConfirm by rememberSaveable { mutableStateOf(false) }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        V6Header("Settings", "Game preferences, fair play and app information.")
-        Spacer(Modifier.height(14.dp))
-        V6Switch("📳", "Haptic feedback", "Direct Android vibration feedback.", state.hapticsEnabled, vm::setHapticsEnabled)
-        Spacer(Modifier.height(7.dp))
-        OutlinedButton(onClick = { performV6Haptic(context, true) }, enabled = state.hapticsEnabled, modifier = Modifier.fillMaxWidth()) { Text("Test haptic") }
-        Spacer(Modifier.height(8.dp))
-        V6Switch("✨", "Animations", "Puppy idle and tap motion.", state.animationsEnabled, vm::setAnimationsEnabled)
-        Spacer(Modifier.height(8.dp))
-        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
-
-        Spacer(Modifier.height(14.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(13.dp)) {
-                Text("🐶👁️ Pup Eye Fair Play", fontWeight = FontWeight.Black)
-                Text("Fast human tapping is allowed. Repeated machine-like timing and extreme sustained rates trigger a short cooldown.", style = MaterialTheme.typography.bodySmall)
-                Text("Suspicious taps do not count toward ticket awards. No permanent bans or uploads.", style = MaterialTheme.typography.bodySmall)
-                Text("Confirmed cooldowns: ${state.pupEyeStrikes}", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(13.dp)) {
-                Text("About", fontWeight = FontWeight.Black)
-                Text("Puppy Clicker ${BuildConfig.VERSION_NAME}")
-                Text("Package: ${BuildConfig.APPLICATION_ID}", style = MaterialTheme.typography.bodySmall)
-                Text("Tickets found: ${state.totalTicketsFound} · owned: ${state.ticketsOwned}", style = MaterialTheme.typography.bodySmall)
-                Text("Prestiges: ${state.prestigeCount} · lifetime skill points: ${state.totalPrestigePointsEarned}", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-        OutlinedButton(onClick = { resetConfirm = true }, modifier = Modifier.fillMaxWidth()) { Text("Reset current run without prestige") }
-        Spacer(Modifier.height(18.dp))
-    }
-
-    if (resetConfirm) {
-        AlertDialog(
-            onDismissRequest = { resetConfirm = false },
-            title = { Text("Reset current run?") },
-            text = { Text("This does not award skill points. Your code puppies, prestige level, permanent skills and settings remain protected.") },
-            confirmButton = { TextButton(onClick = { vm.resetRunWithoutPrestige(); resetConfirm = false }) { Text("Reset run") } },
-            dismissButton = { TextButton(onClick = { resetConfirm = false }) { Text("Cancel") } }
-        )
-    }
+    PuppySettingsScreen(state, vm)
 }
 
 @Composable

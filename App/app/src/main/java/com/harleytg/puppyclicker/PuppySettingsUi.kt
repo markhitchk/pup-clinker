@@ -17,6 +17,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -66,8 +67,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -96,18 +99,150 @@ private val ACCENT_PRESETS = listOf(
     AccentPreset("Green", "#22C55E")
 )
 
+private enum class SettingsDestination {
+    HOME,
+    PROFILE,
+    DISCORD,
+    TRANSFER,
+    APPEARANCE,
+    NOTIFICATIONS,
+    GAMEPLAY,
+    DATA,
+    ROSTER,
+    PUPEYE,
+    ASSETS,
+    ABOUT
+}
+
 @Composable
 internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
-    var expandedKeys by rememberSaveable { mutableStateOf("appearance") }
-
-    fun isExpanded(key: String): Boolean = expandedKeys.split('|').filter { it.isNotBlank() }.contains(key)
-    fun toggle(key: String) {
-        val keys = expandedKeys.split('|').filter { it.isNotBlank() }.toMutableList()
-        if (key in keys) keys.remove(key) else keys.add(key)
-        expandedKeys = keys.distinct().joinToString("|")
+    var destinationName by rememberSaveable {
+        mutableStateOf(SettingsDestination.HOME.name)
     }
+    var developerConsoleOpen by rememberSaveable { mutableStateOf(false) }
+
+    if (developerConsoleOpen) {
+        PuppyDeveloperConsoleScreen(onBack = { developerConsoleOpen = false })
+        return
+    }
+
+    val destination = runCatching {
+        SettingsDestination.valueOf(destinationName)
+    }.getOrDefault(SettingsDestination.HOME)
+
+    fun open(next: SettingsDestination) {
+        destinationName = next.name
+    }
+
+    when (destination) {
+        SettingsDestination.HOME -> SettingsHome(
+            state = state,
+            onOpen = ::open
+        )
+
+        SettingsDestination.PROFILE -> SettingsSubpage(
+            title = "Profile",
+            subtitle = "Username, birthday, and Puppy Clicker identity.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            ProfileSettings(vm, ui)
+        }
+
+        SettingsDestination.DISCORD -> SettingsSubpage(
+            title = "Discord",
+            subtitle = "Connect or manage your Discord account.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            DiscordSettings()
+        }
+
+        SettingsDestination.TRANSFER -> SettingsSubpage(
+            title = "Import / Export",
+            subtitle = "Back up or restore your Puppy Clicker save.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
+        }
+
+        SettingsDestination.APPEARANCE -> SettingsSubpage(
+            title = "Appearance",
+            subtitle = "Theme, accent color, scale, contrast, and motion.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            AppearanceSettings(ui)
+        }
+
+        SettingsDestination.NOTIFICATIONS -> SettingsSubpage(
+            title = "Notifications",
+            subtitle = "Choose what Puppy Clicker may alert you about.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            NotificationSettings()
+        }
+
+        SettingsDestination.GAMEPLAY -> SettingsSubpage(
+            title = "Gameplay",
+            subtitle = "Interaction, feedback, and gameplay preferences.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            GameplaySettings(state, vm)
+        }
+
+        SettingsDestination.DATA -> SettingsSubpage(
+            title = "Data Management",
+            subtitle = "Save status, backups, resets, and local data.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            SaveDataSettings(vm)
+            Spacer(Modifier.height(16.dp))
+            DangerZoneSettings(state, vm)
+        }
+
+        SettingsDestination.ROSTER -> SettingsSubpage(
+            title = "Puppy Roster",
+            subtitle = "Manage streamed puppy roster content.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            PuppyRosterSettings()
+        }
+
+        SettingsDestination.PUPEYE -> SettingsSubpage(
+            title = "PupEye Protection",
+            subtitle = "Fair-play, save integrity, and protection status.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            PupEyeSettings(state)
+        }
+
+        SettingsDestination.ASSETS -> SettingsSubpage(
+            title = "Online Assets",
+            subtitle = "Roster and streamed asset status.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            OnlineAssetSettings()
+        }
+
+        SettingsDestination.ABOUT -> SettingsSubpage(
+            title = "About Puppy Clicker",
+            subtitle = "App information, links, and development details.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            AboutSettings(
+                onOpenDeveloperConsole = { developerConsoleOpen = true }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsHome(
+    state: V6GameState,
+    onOpen: (SettingsDestination) -> Unit
+) {
+    val context = LocalContext.current
+    val security = PupEyeSaveGuard.state(context)
 
     Column(
         modifier = Modifier
@@ -115,45 +250,513 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Customize Puppy Clicker without leaving the game.",
+            "Settings",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            "Customize your experience, manage your account, and more.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpen(SettingsDestination.PROFILE) },
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StreamedPuppyPortrait(
+                    styleId = state.puppyStyle,
+                    size = 66.dp,
+                    accessory = state.accessory,
+                    background = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        PuppyPlayerIdentity.username(context),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Local Profile",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        if (security.tamperEvents > 0) {
+                            "PupEye needs attention"
+                        } else {
+                            "Protected by PupEye"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (security.tamperEvents > 0) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    "›",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SettingsSummaryValue(
+                label = "Player ID",
+                value = PuppyPlayerIdentity.publicPlayerId(context),
+                modifier = Modifier.weight(1f)
+            )
+            SettingsSummaryValue(
+                label = "Friend Code",
+                value = PuppyPlayerIdentity.publicFriendCode(context),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsGroup("Account") {
+            SettingsNavRow("👤", "Profile", "Username, birthday, and profile options") {
+                onOpen(SettingsDestination.PROFILE)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("◉", "Discord", "Connect or manage your Discord account") {
+                onOpen(SettingsDestination.DISCORD)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("↕", "Import / Export", "Back up or restore your .pupsave") {
+                onOpen(SettingsDestination.TRANSFER)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Appearance") {
+            SettingsNavRow("◐", "Theme", "Light, Dark, or System") {
+                onOpen(SettingsDestination.APPEARANCE)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("●", "Accent Color", "Choose your accent color") {
+                onOpen(SettingsDestination.APPEARANCE)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("↔", "UI Scale", "Compact, Default, or Large") {
+                onOpen(SettingsDestination.APPEARANCE)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("◌", "Reduced Motion", "Minimize non-essential animations") {
+                onOpen(SettingsDestination.APPEARANCE)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Notifications") {
+            SettingsNavRow("🔔", "Notification Settings", "In-game alerts, updates, and more") {
+                onOpen(SettingsDestination.NOTIFICATIONS)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Game") {
+            SettingsNavRow("🎮", "Gameplay", "Preferences and gameplay options") {
+                onOpen(SettingsDestination.GAMEPLAY)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("▤", "Data Management", "Back up, restore, reset, and delete data") {
+                onOpen(SettingsDestination.DATA)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Advanced") {
+            SettingsNavRow("🐶", "Puppy Roster", "Roster content and asset refresh") {
+                onOpen(SettingsDestination.ROSTER)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("◉", "PupEye Protection", "Fair-play and save integrity status") {
+                onOpen(SettingsDestination.PUPEYE)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("☁", "Online Assets", "Streamed asset and cache status") {
+                onOpen(SettingsDestination.ASSETS)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
+                onOpen(SettingsDestination.ABOUT)
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun SettingsSubpage(
+    title: String,
+    subtitle: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        TextButton(
+            onClick = onBack,
+            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+        ) {
+            Text("‹ Settings", fontWeight = FontWeight.Bold)
+        }
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(14.dp))
+        content()
+        Spacer(Modifier.height(24.dp))
+    }
+}
 
-        SettingsSectionCard("appearance", "🎨", "Appearance", isExpanded("appearance"), { toggle("appearance") }) {
-            AppearanceSettings(ui)
+@Composable
+private fun SettingsSummaryValue(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(Modifier.padding(10.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        SettingsSectionCard("gameplay", "🎮", "Gameplay", isExpanded("gameplay"), { toggle("gameplay") }) {
-            GameplaySettings(state, vm)
-        }
-        SettingsSectionCard("notifications", "🔔", "Notifications", isExpanded("notifications"), { toggle("notifications") }) {
-            NotificationSettings()
-        }
-        SettingsSectionCard("roster", "🐶", "Puppy Roster", isExpanded("roster"), { toggle("roster") }) {
-            PuppyRosterSettings()
-        }
-        SettingsSectionCard("pupeye", "👁", "PupEye Protection", isExpanded("pupeye"), { toggle("pupeye") }) {
-            PupEyeSettings(state)
-        }
-        SettingsSectionCard("save", "💾", "Save & Data", isExpanded("save"), { toggle("save") }) {
-            SaveDataSettings(vm)
-        }
-        SettingsSectionCard("assets", "☁", "Online Assets", isExpanded("assets"), { toggle("assets") }) {
-            OnlineAssetSettings()
-        }
-        SettingsSectionCard("account", "👤", "Account & Profile", isExpanded("account"), { toggle("account") }) {
-            AccountProfileSettings(vm, ui)
-        }
-        SettingsSectionCard("about", "ℹ", "About Puppy Clicker", isExpanded("about"), { toggle("about") }) {
-            AboutSettings()
-        }
+    }
+}
 
-        Spacer(Modifier.height(12.dp))
-        DangerZoneSettings(state, vm)
-        Spacer(Modifier.height(26.dp))
+@Composable
+private fun SettingsGroup(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Black
+    )
+    Spacer(Modifier.height(7.dp))
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsNavRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier.size(38.dp),
+            shape = RoundedCornerShape(11.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(icon, fontWeight = FontWeight.Black)
+            }
+        }
+        Spacer(Modifier.width(11.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            "›",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun ProfileSettings(
+    vm: PuppyClickerV6ViewModel,
+    ui: PuppyUiState
+) {
+    val context = LocalContext.current
+    var username by rememberSaveable {
+        mutableStateOf(PuppyPlayerIdentity.username(context))
+    }
+    var usernameModerationMessage by rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    var savedMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var birthdayEditor by rememberSaveable { mutableStateOf(false) }
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Local Profile", fontWeight = FontWeight.Black)
+            Text(
+                "Your Puppy Clicker identity stays device-bound.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+            StatusLine("Player ID", PuppyPlayerIdentity.publicPlayerId(context))
+            StatusLine("Friend Code", PuppyPlayerIdentity.publicFriendCode(context))
+            if (officialDeveloper) {
+                StatusLine("Account", "HarleyTG Developer / Owner")
+                StatusLine("Studio", "Harley's Studios")
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = username,
+        onValueChange = {
+            username = it.take(24)
+            savedMessage = null
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Puppy Clicker display name") },
+        supportingText = {
+            Text("Letters, numbers, _, - and . · up to 24 characters")
+        },
+        singleLine = true
+    )
+    Spacer(Modifier.height(8.dp))
+    Button(
+        onClick = {
+            val issue = PuppyPlayerIdentity.usernameModerationIssue(username)
+            if (issue != null) {
+                usernameModerationMessage = issue
+            } else {
+                username = PuppyPlayerIdentity.setUsername(context, username)
+                savedMessage = "Display name saved."
+            }
+        },
+        enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Save Display Name")
+    }
+    savedMessage?.let {
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+
+    Spacer(Modifier.height(16.dp))
+    SettingsLabel("BIRTHDAY")
+    val birthdayText = if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
+        monthName(ui.birthdayMonth) + " " + ui.birthdayDay
+    } else {
+        "Not set"
+    }
+    StatusLine("Birthday", birthdayText)
+    Text(
+        "Only the month and day are stored locally and they are not shown publicly.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = { birthdayEditor = true },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
+                "Edit Birthday"
+            } else {
+                "Add Birthday"
+            }
+        )
+    }
+
+    if (birthdayEditor) {
+        BirthdayEditorDialog(
+            initialMonth = ui.birthdayMonth,
+            initialDay = ui.birthdayDay,
+            onDismiss = { birthdayEditor = false },
+            onSave = { month, day ->
+                if (PuppyUiPreferences.setBirthday(context, month, day)) {
+                    vm.setSeasonalBirthday(month, day)
+                    birthdayEditor = false
+                }
+            }
+        )
+    }
+
+    if (usernameModerationMessage != null) {
+        AlertDialog(
+            onDismissRequest = { usernameModerationMessage = null },
+            title = {
+                Text("Username Not Allowed", fontWeight = FontWeight.Black)
+            },
+            text = {
+                Text(
+                    usernameModerationMessage
+                        ?: "That username isn't allowed. Choose another username."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { usernameModerationMessage = null }) {
+                    Text("Choose Another")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DiscordSettings() {
+    val context = LocalContext.current
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val account = discord.account
+    val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
+        discord.phase == DiscordSignupPhase.EXCHANGING
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(
+                if (account == null) "Discord not connected" else "Discord connected",
+                fontWeight = FontWeight.Black
+            )
+            if (account != null) {
+                StatusLine("Name", account.displayName)
+                StatusLine("Username", "@" + account.username)
+                StatusLine("User ID", account.id)
+            } else {
+                Text(
+                    "Connect Discord for identity and community features. Only the identify permission is requested.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(10.dp))
+
+    Button(
+        onClick = { DiscordSignupAuth.startSignup(context) },
+        enabled = !busy,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            when {
+                busy -> "Waiting for Discord…"
+                account != null -> "Reconnect Discord"
+                else -> "Connect Discord"
+            }
+        )
+    }
+
+    if (account != null) {
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { DiscordSignupAuth.disconnect(context) },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Disconnect Discord")
+        }
+    }
+
+    discord.message?.let {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (discord.phase == DiscordSignupPhase.ERROR) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
     }
 }
 
@@ -450,62 +1053,215 @@ private fun GameplaySettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 private fun NotificationSettings() {
     val context = LocalContext.current
     val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
-    var afkEnabled by remember { mutableStateOf(PuppyAttentionNotifier.isEnabled(context)) }
-    var permissionGranted by remember { mutableStateOf(PuppyNotificationCenter.canNotify(context)) }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    var afkEnabled by remember {
+        mutableStateOf(PuppyAttentionNotifier.isEnabled(context))
+    }
+    var permissionGranted by remember {
+        mutableStateOf(PuppyNotificationCenter.canNotify(context))
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
         permissionGranted = granted
+        PuppyNotificationCenter.schedule(context)
         if (granted) {
-            PuppyNotificationCenter.schedule(context)
             PuppyNotificationCenter.requestImmediate(context)
         }
     }
 
-    Text("ANDROID PERMISSION", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-    StatusLine(
-        "Notification permission",
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || permissionGranted) "Allowed" else "Disabled by Android"
-    )
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionGranted) {
-        Text(
-            "Allow Android notifications to receive AFK, daily reward, game event, and app update alerts.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(7.dp))
-        OutlinedButton(
-            onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Allow Notifications") }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.32f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Notification Permission", fontWeight = FontWeight.Black)
+            Text(
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || permissionGranted) {
+                    "Android notifications are allowed."
+                } else {
+                    "Android may ask for permission to send notifications. You can change this at any time."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !permissionGranted
+            ) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Allow Notifications")
+                }
+            }
+        }
     }
 
     Spacer(Modifier.height(12.dp))
-    SettingsLabel("NOTIFICATION TYPES")
-    InlineSwitch("AFK reward / puppy attention", "Reminder while Puppy Clicker is away.", afkEnabled) { enabled ->
-        afkEnabled = enabled
-        PuppyAttentionNotifier.setEnabled(context, enabled)
-    }
-    InlineSwitch("Daily reward notifications", "One reminder when the current day's reward is available.", ui.dailyRewardNotifications) {
+
+    SettingsToggleCard(
+        icon = "🎁",
+        title = "Daily Rewards",
+        description = "Get notified when daily rewards are available.",
+        checked = ui.dailyRewardNotifications
+    ) {
         PuppyUiPreferences.setDailyRewardNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelDailyReward(context)
-    }
-    InlineSwitch("Game event notifications", "Alerts when timed game events such as Dog Park adventures are ready.", ui.gameEventNotifications) {
-        PuppyUiPreferences.setGameEventNotifications(context, it)
-        PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelParkReady(context)
-    }
-    InlineSwitch("App update notifications", "Checks the official Puppy Clicker repository for a newer Android build.", ui.updateNotifications) {
-        PuppyUiPreferences.setUpdateNotifications(context, it)
-        PuppyNotificationCenter.schedule(context)
-        if (it) PuppyNotificationCenter.requestImmediate(context) else PuppyNotificationCenter.cancelAppUpdate(context)
+        if (it) {
+            PuppyNotificationCenter.requestImmediate(context)
+        } else {
+            PuppyNotificationCenter.cancelDailyReward(context)
+        }
     }
 
     Spacer(Modifier.height(8.dp))
+
+    SettingsToggleCard(
+        icon = "🐾",
+        title = "Game Events",
+        description = "Seasonal and important in-game events.",
+        checked = ui.gameEventNotifications
+    ) {
+        PuppyUiPreferences.setGameEventNotifications(context, it)
+        PuppyNotificationCenter.schedule(context)
+        if (it) {
+            PuppyNotificationCenter.requestImmediate(context)
+        } else {
+            PuppyNotificationCenter.cancelParkReady(context)
+        }
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    SettingsToggleCard(
+        icon = "📣",
+        title = "App Updates",
+        description = "Important Puppy Clicker update notices.",
+        checked = ui.updateNotifications
+    ) {
+        PuppyUiPreferences.setUpdateNotifications(context, it)
+        PuppyNotificationCenter.schedule(context)
+        if (it) {
+            PuppyNotificationCenter.requestImmediate(context)
+        } else {
+            PuppyNotificationCenter.cancelAppUpdate(context)
+        }
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    SettingsToggleCard(
+        icon = "🐶",
+        title = "Puppy Attention",
+        description = "AFK puppy attention reminders while the app is away.",
+        checked = afkEnabled
+    ) { enabled ->
+        afkEnabled = enabled
+        PuppyAttentionNotifier.setEnabled(context, enabled)
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    val anyEnabled = ui.dailyRewardNotifications ||
+        ui.gameEventNotifications ||
+        ui.updateNotifications ||
+        afkEnabled
+    val systemReady = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        permissionGranted
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (anyEnabled && systemReady) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                if (anyEnabled && systemReady) {
+                    "✓ Notifications are ready!"
+                } else if (!anyEnabled) {
+                    "Notifications are off"
+                } else {
+                    "Notification permission is required"
+                },
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                "You can change these choices at any time in Settings.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    Spacer(Modifier.height(10.dp))
+
     OutlinedButton(
         onClick = { PuppyNotificationCenter.requestImmediate(context) },
-        enabled = permissionGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU,
+        enabled = systemReady,
         modifier = Modifier.fillMaxWidth()
-    ) { Text("Check Notifications Now") }
+    ) {
+        Text("Check Notifications Now")
+    }
+}
+
+@Composable
+private fun SettingsToggleCard(
+    icon: String,
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(icon)
+                }
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold)
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+        }
+    }
 }
 
 @Composable
@@ -888,31 +1644,119 @@ private fun BirthdayPicker(label: String, options: List<Pair<Int, String>>, onSe
 }
 
 @Composable
-private fun AboutSettings() {
+private fun AboutSettings(
+    onOpenDeveloperConsole: () -> Unit
+) {
     val context = LocalContext.current
+    val developer by PuppyDeveloperPreferences.observe(context)
+        .collectAsStateWithLifecycle()
+    var buildTapCount by rememberSaveable { mutableIntStateOf(0) }
+    var developerStatus by rememberSaveable { mutableStateOf<String?>(null) }
 
-    SettingsLabel("PUPPY CLICKER")
-    StatusLine("Version", BuildConfig.VERSION_NAME)
-    StatusLine("Build", BuildConfig.VERSION_CODE.toString())
-    StatusLine("Developer", "Harley's Studios")
-    StatusLine("Discord community", PuppyLinks.DISCORD_INVITE)
-
-    Spacer(Modifier.height(10.dp))
-
-    OutlinedButton(
-        onClick = { PuppyLinks.openDiscord(context) },
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Text("Join Puppy Clicker Discord")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(R.drawable.source_logo),
+                contentDescription = "Puppy Clicker logo",
+                modifier = Modifier.size(112.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Puppy Clicker",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text("Version " + BuildConfig.VERSION_NAME)
+            Text(
+                "By Harley's Studios",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Tap, care for puppies, build your collection, and make the game yours.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column {
+            SettingsInfoRow(
+                title = "What is Puppy Clicker?",
+                subtitle = "A local-first puppy clicker and collection game."
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsValueActionRow(
+                title = "Build",
+                value = BuildConfig.VERSION_CODE.toString()
+            ) {
+                val progress = nextDeveloperUnlockProgress(
+                    currentTapCount = buildTapCount,
+                    alreadyUnlocked = developer.unlocked
+                )
+                buildTapCount = progress.tapCount
+                when {
+                    progress.unlocked && !developer.unlocked -> {
+                        PuppyDeveloperPreferences.setUnlocked(context, true)
+                        PuppyDebugLog.i(
+                            "DeveloperMode",
+                            "Developer Mode unlocked from About"
+                        )
+                        developerStatus = "Developer Mode unlocked."
+                    }
+                    developer.unlocked -> {
+                        developerStatus = "Developer Mode is already unlocked."
+                    }
+                    progress.remainingTaps <= 3 -> {
+                        developerStatus =
+                            progress.remainingTaps.toString() +
+                                " more tap" +
+                                if (progress.remainingTaps == 1) "" else "s" +
+                                " to unlock Developer Mode."
+                    }
+                }
+            }
+        }
+    }
+
+    developerStatus?.let {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 
     Spacer(Modifier.height(14.dp))
-
     SettingsLabel("DEVELOPMENT")
-    Surface(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.42f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
@@ -925,7 +1769,7 @@ private fun AboutSettings() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
-            OutlinedButton(
+            Button(
                 onClick = { PuppyLinks.openRoadmap(context) },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -935,12 +1779,120 @@ private fun AboutSettings() {
     }
 
     Spacer(Modifier.height(14.dp))
+    SettingsLabel("COMMUNITY")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        SettingsInfoRow(
+            title = "Discord Server",
+            subtitle = "Join the Puppy Clicker community.",
+            onClick = { PuppyLinks.openDiscord(context) }
+        )
+    }
 
+    if (developer.unlocked) {
+        Spacer(Modifier.height(14.dp))
+        SettingsLabel("DEVELOPER")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                PuppyDeveloperOptions(
+                    onOpenConsole = onOpenDeveloperConsole
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsLabel("CREDITS")
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(Modifier.padding(13.dp)) {
+            Text("Built by Harley's Studios", fontWeight = FontWeight.Black)
+            Text(
+                "With help from the community. Thank you for playing!",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
     SettingsLabel("LEGAL")
     PuppyLegalLinks(
         modifier = Modifier.fillMaxWidth(),
-        acknowledgementText = "Terms and privacy open inside Puppy Clicker using the repository-backed legal document viewer."
+        acknowledgementText =
+            "Terms and privacy open inside Puppy Clicker using the repository-backed legal document viewer."
     )
+}
+
+@Composable
+private fun SettingsInfoRow(
+    title: String,
+    subtitle: String,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (onClick != null) {
+            Text(
+                "›",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsValueActionRow(
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Black
+        )
+    }
 }
 
 @Composable
@@ -1028,6 +1980,7 @@ private fun deletePuppyClickerLocalSave(context: Context) {
     context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
     File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
     ExternalGameSave.path(context)?.let { File(it).delete() }
+    PuppyDeveloperPreferences.clear(context)
     PuppyUiPreferences.prepareFreshSetupAfterDelete(context)
 }
 
