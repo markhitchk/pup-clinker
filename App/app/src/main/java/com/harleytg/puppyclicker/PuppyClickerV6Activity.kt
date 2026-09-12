@@ -8,6 +8,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
@@ -47,6 +48,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -88,8 +91,15 @@ class PuppyClickerV6Activity : ComponentActivity() {
     }
 }
 
-private enum class V6Tab(val label: String, val emoji: String) {
-    PLAY("Play", "🐾"), CARE("Care", "💖"), SHOP("Shop", "🛍️"), PRESTIGE("Prestige", "⭐"), SETTINGS("Settings", "⚙️")
+private enum class V6Tab(val destination: PuppyMainDestination) {
+    PLAY(PuppyMainDestination.PLAY),
+    CARE(PuppyMainDestination.CARE),
+    ROSTER(PuppyMainDestination.ROSTER),
+    SHOP(PuppyMainDestination.SHOP),
+    REWARDS(PuppyMainDestination.REWARDS);
+
+    val label: String get() = destination.label
+    val emoji: String get() = destination.emoji
 }
 
 @Composable
@@ -97,24 +107,85 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+    var internalDestination by rememberSaveable { mutableStateOf<PuppyInternalDestination?>(null) }
+
+    PuppyAttentionLifecycle()
 
     if (!uiPreferences.setupComplete) {
         PuppyOnboardingFlow(vm)
         return
     }
 
+    SeasonalWelcomeGate(vm)
+
+    BackHandler(enabled = internalDestination != null) {
+        internalDestination = null
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) {
-                V6Tab.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = tab == item,
-                        onClick = { tab = item },
-                        icon = { Text(item.emoji, fontSize = 19.sp) },
-                        label = { Text(item.label, fontSize = 10.sp, maxLines = 1) }
+        topBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
+                tonalElevation = 2.dp,
+                shadowElevation = 2.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .height(62.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.source_logo),
+                        contentDescription = "Puppy Clicker logo",
+                        modifier = Modifier.size(38.dp),
+                        contentScale = ContentScale.Fit
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Puppy Clicker",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
+                    IconButton(
+                        onClick = { internalDestination = PuppyInternalDestination.SETTINGS },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .semantics { contentDescription = "Open settings" }
+                    ) {
+                        Text("⚙️", fontSize = 23.sp)
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            if (internalDestination == null) {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
+                    tonalElevation = 4.dp
+                ) {
+                    V6Tab.entries.forEach { item ->
+                        NavigationBarItem(
+                            selected = tab == item,
+                            onClick = { tab = item },
+                            icon = { Text(item.emoji, fontSize = if (item == V6Tab.ROSTER) 23.sp else 20.sp) },
+                            label = {
+                                Text(
+                                    item.label,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    fontWeight = if (tab == item) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -125,21 +196,49 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.055f),
                             MaterialTheme.colorScheme.background,
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.04f)
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.035f)
                         )
                     )
                 )
                 .padding(padding)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            when (tab) {
-                V6Tab.PLAY -> V6Play(state, vm)
-                V6Tab.CARE -> V6CareAndDaily(state, vm)
-                V6Tab.SHOP -> V6Shop(state, vm)
-                V6Tab.PRESTIGE -> V6Prestige(state, vm)
-                V6Tab.SETTINGS -> V6Settings(state, vm)
+            val internal = internalDestination
+            if (internal != null) {
+                when (internal) {
+                    PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)
+                    PuppyInternalDestination.PRESTIGE -> V6Prestige(state, vm)
+                    PuppyInternalDestination.EXCHANGE -> PuppyExchangeScreen(
+                        state = state,
+                        vm = vm,
+                        onBack = { internalDestination = null }
+                    )
+                }
+            } else {
+                when (tab) {
+                    V6Tab.PLAY -> PuppyRevampedPlayScreen(
+                        state = state,
+                        vm = vm,
+                        onOpenRoster = { tab = V6Tab.ROSTER }
+                    )
+                    V6Tab.CARE -> PuppyRevampedCareScreen(state, vm)
+                    V6Tab.ROSTER -> PuppyRosterScreen(
+                        state = state,
+                        vm = vm,
+                        onUseConfirmed = { id ->
+                            vm.setPuppyStyle(id)
+                            if (vm.state.value.puppyStyle == id) tab = V6Tab.PLAY
+                        },
+                        onOpenSettings = { internalDestination = PuppyInternalDestination.SETTINGS }
+                    )
+                    V6Tab.SHOP -> PuppyRevampedShopScreen(state, vm)
+                    V6Tab.REWARDS -> PuppyRevampedRewardsScreen(
+                        state = state,
+                        vm = vm,
+                        onOpenPrestige = { internalDestination = PuppyInternalDestination.PRESTIGE }
+                    )
+                }
             }
         }
     }
