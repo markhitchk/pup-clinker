@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-12T05:20:00Z",
+  "flags": {
+    "feature_flag_system": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": "2026-09-12",
+      "label": "Remote Feature Flags",
+      "description": "Repository-backed remote feature availability."
+    },
+    "puppy_clicker_account": {
+      "visible": true,
+      "enabled": false,
+      "status": "coming_soon",
+      "releaseDate": null,
+      "label": "Puppy Clicker Account",
+      "description": "Online account with username, password, and Discord authentication."
+    },
+    "discord_linking": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": null,
+      "label": "Discord Linking",
+      "description": "Optional Discord identity connection."
+    },
+    "save_restore": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": null,
+      "label": "Save Restore",
+      "description": "Import an existing encrypted .pupsave file."
+    }
+  }
+}
