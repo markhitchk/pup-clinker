@@ -18,3 +18,5 @@ A feature is available only when `visible` and `enabled` are true, `status` is `
 Feature flags can only control code already included in the installed app. Adding a new JSON key does not download or execute new Android code.
 
 The app caches the last valid flag document and uses bundled fallbacks if GitHub is unavailable.
+
+This branch is ready for APK verification builds.
