@@ -90,7 +90,7 @@ internal object PuppyUiPreferences {
     private const val KEY_SETUP_COMPLETE = "setup_complete"
     private const val KEY_SETUP_STEP = "setup_step"
     private const val KEY_SETUP_FLOW_VERSION = "setup_flow_version"
-    private const val SETUP_FLOW_VERSION = 2
+    private const val SETUP_FLOW_VERSION = 3
     private const val KEY_NOTIFY_DAILY = "notify_daily_rewards"
     private const val KEY_NOTIFY_EVENTS = "notify_game_events"
     private const val KEY_NOTIFY_UPDATES = "notify_app_updates"
@@ -253,9 +253,9 @@ internal object PuppyUiPreferences {
     }
 
     /**
-     * Existing installs are not forced through the new onboarding. Android package timestamps
-     * distinguish an updated install from a first install; legacy intro/profile state provides
-     * a second migration signal for restored installs.
+     * Legacy install detection preserves existing profile/birthday data. The current onboarding
+     * revision is versioned separately and may require a one-time setup review without deleting
+     * gameplay state.
      */
     private fun migrateOnce(context: Context, store: SharedPreferences) {
         if (store.getBoolean(KEY_MIGRATION_COMPLETE, false)) return
@@ -291,15 +291,9 @@ internal object PuppyUiPreferences {
     private fun migrateSetupFlowIfNeeded(store: SharedPreferences) {
         if (store.getInt(KEY_SETUP_FLOW_VERSION, 1) >= SETUP_FLOW_VERSION) return
 
-        val complete = store.getBoolean(KEY_SETUP_COMPLETE, false)
-        val migrated = if (complete) {
-            4
-        } else {
-            migrateLegacyOnboardingStep(store.getInt(KEY_SETUP_STEP, 0))
-        }
-
         store.edit()
-            .putInt(KEY_SETUP_STEP, migrated)
+            .putBoolean(KEY_SETUP_COMPLETE, false)
+            .putInt(KEY_SETUP_STEP, PuppyOnboardingStep.WELCOME.persistedIndex)
             .putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
             .apply()
     }
