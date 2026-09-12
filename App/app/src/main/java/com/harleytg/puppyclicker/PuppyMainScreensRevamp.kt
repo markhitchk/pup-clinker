@@ -160,14 +160,6 @@ internal fun PuppyRevampedPlayScreen(
             }
 
             Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PuppyQuickAction("🍖", "Feed", "+Full", state.treats >= PuppyClickerV6ViewModel.FEED_COST && state.fullness < 100, vm::feedPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🎾", "Play", "+Happy", state.energy >= 12, vm::playWithPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🫧", "Clean", "+Clean", state.cleanliness < 100, vm::groomPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🌙", "Rest", "+Energy", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
             val target = 75L
             val progressNow = state.dailyTaps.coerceAtMost(target)
             Surface(
@@ -280,14 +272,28 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
             Text("Care actions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PuppyQuickAction("🍖", "Feed", "+Full", state.treats >= PuppyClickerV6ViewModel.FEED_COST && state.fullness < 100, vm::feedPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🎾", "Play", "+Happy", state.energy >= 12, vm::playWithPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🫧", "Clean", "+Clean", state.cleanliness < 100, vm::groomPuppy, Modifier.weight(1f))
+                PuppyQuickAction(
+                    "🍖",
+                    "Feed",
+                    "-" + PuppyClickerV6ViewModel.FEED_COST + " 🍪",
+                    state.treats >= PuppyClickerV6ViewModel.FEED_COST && state.fullness < 100,
+                    vm::feedPuppy,
+                    Modifier.weight(1f)
+                )
+                PuppyQuickAction(
+                    "🎾",
+                    "Play",
+                    "-12 Energy",
+                    state.energy >= 12 && (state.happiness < 100 || state.bond < 100),
+                    vm::playWithPuppy,
+                    Modifier.weight(1f)
+                )
+                PuppyQuickAction("🫧", "Clean", "+35 Clean", state.cleanliness < 100, vm::groomPuppy, Modifier.weight(1f))
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PuppyQuickAction("🌙", "Rest", "+Energy", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🤗", "Cuddle", "+Bond", state.happiness < 100 || state.bond < 100, vm::cuddlePuppy, Modifier.weight(1f))
+                PuppyQuickAction("🌙", "Rest", "+30 Energy", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
+                PuppyQuickAction("🤗", "Cuddle", "+Happy / Bond", state.happiness < 100 || state.bond < 100, vm::cuddlePuppy, Modifier.weight(1f))
             }
         }
     }
