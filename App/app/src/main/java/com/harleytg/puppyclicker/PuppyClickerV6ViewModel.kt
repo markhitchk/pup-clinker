@@ -330,6 +330,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun feedPuppy() {
+        rollDailyDayIfNeeded()
         val s = _state.value
         if (s.treats < FEED_COST || s.fullness >= 100) return
         _state.value = s.copy(
@@ -344,8 +345,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun playWithPuppy() {
+        rollDailyDayIfNeeded()
         val s = _state.value
-        if (s.energy < 12) return
+        if (s.energy < 12 || (s.happiness >= 100 && s.bond >= 100)) return
         _state.value = s.copy(
             happiness = (s.happiness + 20).coerceAtMost(100),
             fullness = (s.fullness - 4).coerceAtLeast(0),
@@ -358,6 +360,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun restPuppy() {
+        rollDailyDayIfNeeded()
         val s = _state.value
         if (s.energy >= 100) return
         _state.value = s.copy(
@@ -369,6 +372,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun groomPuppy() {
+        rollDailyDayIfNeeded()
         val s = _state.value
         if (s.cleanliness >= 100) return
         _state.value = s.copy(
@@ -381,6 +385,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun cuddlePuppy() {
+        rollDailyDayIfNeeded()
         val s = _state.value
         if (s.happiness >= 100 && s.bond >= 100) return
         _state.value = s.copy(
@@ -416,8 +421,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             cleanliness = (s.cleanliness - 5).coerceAtLeast(0),
             bond = (s.bond + 3).coerceAtMost(100),
             parkActive = false,
-            parkReadyAtMs = 0,
-            careActions = safeAdd(s.careActions, 1)
+            parkReadyAtMs = 0
         )
         saveState()
         PuppyNotificationCenter.cancelParkReady(getApplication())
