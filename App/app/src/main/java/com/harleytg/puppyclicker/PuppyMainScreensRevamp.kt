@@ -382,8 +382,14 @@ internal fun PuppyRevampedRewardsScreen(
     vm: PuppyClickerV6ViewModel,
     onOpenPrestige: () -> Unit
 ) {
-    val today = LocalDate.now().toEpochDay()
+    val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
+    val todayDate = LocalDate.now()
+    val today = todayDate.toEpochDay()
     val nextReward = 150L + (if (state.lastDailyClaimDay == today - 1) state.dailyStreak + 1 else 1) * 25L + state.level * 10L
+    val todayGoals = PuppyMonthlyRewards.currentGoals(todayDate)
+    val activeGoals = todayGoals.filterNot { it.id in state.claimedDailyTasks }
+    val claimedGoals = todayGoals.filter { it.id in state.claimedDailyTasks }
+    val dailyGiftClaimed = state.lastDailyClaimDay == today
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)
@@ -443,34 +449,83 @@ internal fun PuppyRevampedRewardsScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.34f)),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("🎁", fontSize = 34.sp)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Daily Puppy Gift", fontWeight = FontWeight.Black)
-                    Text(nextReward.toString() + " treats + mood + bond", style = MaterialTheme.typography.bodySmall)
-                }
-                Button(onClick = vm::claimDailyReward, enabled = state.lastDailyClaimDay != today) {
-                    Text(if (state.lastDailyClaimDay == today) "Claimed" else "Claim")
+        if (!dailyGiftClaimed) {
+            Spacer(Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.34f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("🎁", fontSize = 34.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Daily Puppy Gift", fontWeight = FontWeight.Black)
+                        Text(nextReward.toString() + " treats + mood + bond", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(onClick = vm::claimDailyReward) {
+                        Text("Claim")
+                    }
                 }
             }
         }
 
         Spacer(Modifier.height(16.dp))
-        Text("Today’s goals", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Today’s goals", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text(
+                rewardSchedule.month + " · " + when (rewardSchedule.source) {
+                    "github" -> "Live"
+                    "cache" -> "Cached"
+                    else -> "Fallback"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Spacer(Modifier.height(8.dp))
-        PuppyDailyGoal("tap75", "🐾", "Tap Time", "Tap your puppy 75 times", state.dailyTaps, 75L, 300L, state, vm)
-        Spacer(Modifier.height(8.dp))
-        PuppyDailyGoal("care3", "💖", "Good Care", "Complete 3 care actions", state.dailyCareActions, 3L, 250L, state, vm)
-        Spacer(Modifier.height(8.dp))
-        PuppyDailyGoal("shop1", "🛍️", "Shop Visit", "Buy 1 upgrade", state.dailyShopPurchases, 1L, 400L, state, vm)
+        if (activeGoals.isEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
+            ) {
+                Text(
+                    "All of today’s streamed goals are claimed. 🎉",
+                    modifier = Modifier.padding(14.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            activeGoals.forEachIndexed { index, goal ->
+                if (index > 0) Spacer(Modifier.height(8.dp))
+                PuppyDailyGoal(goal, state, vm)
+            }
+        }
+
+        if (dailyGiftClaimed || claimedGoals.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("Claimed", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(8.dp))
+            if (dailyGiftClaimed) {
+                PuppyClaimedReward(
+                    emoji = "🎁",
+                    title = "Daily Puppy Gift",
+                    rewardText = nextReward.toString() + " treats + mood + bond"
+                )
+            }
+            claimedGoals.forEach { goal ->
+                if (dailyGiftClaimed || goal != claimedGoals.first()) Spacer(Modifier.height(7.dp))
+                PuppyClaimedReward(
+                    emoji = goal.emoji,
+                    title = goal.title,
+                    rewardText = goal.rewardTreats.toString() + " treats"
+                )
+            }
+        }
+
         Spacer(Modifier.height(14.dp))
 
         Card(
@@ -738,18 +793,12 @@ private fun PuppyTicketInventoryCard(state: V6GameState) {
 
 @Composable
 private fun PuppyDailyGoal(
-    id: String,
-    emoji: String,
-    title: String,
-    description: String,
-    progress: Long,
-    target: Long,
-    reward: Long,
+    goal: PuppyRewardGoal,
     state: V6GameState,
     vm: PuppyClickerV6ViewModel
 ) {
-    val claimed = id in state.claimedDailyTasks
-    val complete = progress >= target
+    val progress = goal.progress(state)
+    val complete = goal.isComplete(state)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -758,28 +807,64 @@ private fun PuppyDailyGoal(
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)) {
-                Text(emoji, modifier = Modifier.padding(12.dp), fontSize = 28.sp)
+                Text(goal.emoji, modifier = Modifier.padding(12.dp), fontSize = 28.sp)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(title, fontWeight = FontWeight.Black)
-                    Text(progress.coerceAtMost(target).toString() + "/" + target, fontWeight = FontWeight.Black)
+                    Text(goal.title, fontWeight = FontWeight.Black)
+                    Text(progress.coerceAtMost(goal.target).toString() + "/" + goal.target, fontWeight = FontWeight.Black)
                 }
-                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(goal.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(
-                    progress = { (progress.toFloat() / target.toFloat()).coerceIn(0f, 1f) },
+                    progress = { (progress.toFloat() / goal.target.toFloat()).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Reward: " + reward + " 🍪", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-                    Button(onClick = { vm.claimDailyTask(id) }, enabled = complete && !claimed) {
-                        Text(if (claimed) "Claimed" else "Claim")
+                    Text(
+                        "Reward: " + goal.rewardTreats + " 🍪",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Button(onClick = { vm.claimDailyTask(goal.id) }, enabled = complete) {
+                        Text("Claim")
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PuppyClaimedReward(
+    emoji: String,
+    title: String,
+    rewardText: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.26f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 24.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Black)
+                Text(rewardText, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                "✓ Claimed",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
