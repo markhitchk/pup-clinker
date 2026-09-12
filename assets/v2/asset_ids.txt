@@ -7,3 +7,4 @@
 25 Prism = v2_prism
 26 Flurry = v2_flurry
 27 HarleyTG Puppy = v2_harleytg
+28 Dev Pup = v2_dev_pup

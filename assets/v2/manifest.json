@@ -1,15 +1,66 @@
 {
   "roster": "V2",
-  "count": 9,
+  "count": 10,
   "puppies": [
-    {"number": 19, "name": "Frost", "asset_id": "v2_frost", "file": "v2_frost.png"},
-    {"number": 20, "name": "Honey", "asset_id": "v2_honey", "file": "v2_honey.png"},
-    {"number": 21, "name": "Biscuit", "asset_id": "v2_biscuit", "file": "v2_biscuit.png"},
-    {"number": 22, "name": "Onyx", "asset_id": "v2_onyx", "file": "v2_onyx.png"},
-    {"number": 23, "name": "Domino", "asset_id": "v2_domino", "file": "v2_domino.png"},
-    {"number": 24, "name": "Chestnut", "asset_id": "v2_chestnut", "file": "v2_chestnut.png"},
-    {"number": 25, "name": "Prism", "asset_id": "v2_prism", "file": "v2_prism.png"},
-    {"number": 26, "name": "Flurry", "asset_id": "v2_flurry", "file": "v2_flurry.png"},
-    {"number": 27, "name": "HarleyTG Puppy", "asset_id": "v2_harleytg", "file": "v2_harleytg.png"}
+    {
+      "number": 19,
+      "name": "Frost",
+      "asset_id": "v2_frost",
+      "file": "v2_frost.png"
+    },
+    {
+      "number": 20,
+      "name": "Honey",
+      "asset_id": "v2_honey",
+      "file": "v2_honey.png"
+    },
+    {
+      "number": 21,
+      "name": "Biscuit",
+      "asset_id": "v2_biscuit",
+      "file": "v2_biscuit.png"
+    },
+    {
+      "number": 22,
+      "name": "Onyx",
+      "asset_id": "v2_onyx",
+      "file": "v2_onyx.png"
+    },
+    {
+      "number": 23,
+      "name": "Domino",
+      "asset_id": "v2_domino",
+      "file": "v2_domino.png"
+    },
+    {
+      "number": 24,
+      "name": "Chestnut",
+      "asset_id": "v2_chestnut",
+      "file": "v2_chestnut.png"
+    },
+    {
+      "number": 25,
+      "name": "Prism",
+      "asset_id": "v2_prism",
+      "file": "v2_prism.png"
+    },
+    {
+      "number": 26,
+      "name": "Flurry",
+      "asset_id": "v2_flurry",
+      "file": "v2_flurry.png"
+    },
+    {
+      "number": 27,
+      "name": "HarleyTG Puppy",
+      "asset_id": "v2_harleytg",
+      "file": "v2_harleytg.png"
+    },
+    {
+      "number": 28,
+      "name": "Dev Pup",
+      "asset_id": "v2_dev_pup",
+      "file": "v2_dev_pup.png"
+    }
   ]
 }
