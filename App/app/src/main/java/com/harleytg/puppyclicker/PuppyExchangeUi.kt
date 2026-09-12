@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -367,23 +368,26 @@ internal fun PuppyExchangeScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
-                Text("Puppy Exchange", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text("Puppy Exchange", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                 Text(
                     "Direct device-to-device gifting and trading.",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = onBack) { Text("Back") }
+            OutlinedButton(
+                onClick = onBack,
+                shape = RoundedCornerShape(16.dp)
+            ) { Text("← Back", fontWeight = FontWeight.Bold) }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(14.dp))
         ExchangeIdentityHeader(connection, realtime)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -581,10 +585,11 @@ private fun ExchangeIdentityHeader(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(16.dp)) {
             Text(
                 if (officialDeveloper) "$username · DEV / OWNER" else username,
                 fontWeight = FontWeight.Black
@@ -606,21 +611,44 @@ private fun ExchangeIdentityHeader(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(7.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                OutlinedButton(onClick = { copyFriendCode(context, friendCode) }) {
-                    Text("Copy Code")
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { copyFriendCode(context, friendCode) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("📋 Copy Code", fontWeight = FontWeight.Bold)
                 }
-                OutlinedButton(onClick = { shareFriendCode(context, username, friendCode) }) {
-                    Text("Share Code")
+                OutlinedButton(
+                    onClick = { shareFriendCode(context, username, friendCode) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("↗ Share Code", fontWeight = FontWeight.Bold)
                 }
             }
             if (officialDeveloper) {
                 Spacer(Modifier.height(4.dp))
                 Text("Official Harley's Studios Account", style = MaterialTheme.typography.bodySmall)
             }
-            Spacer(Modifier.height(5.dp))
-            Text(connectionText, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(10.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Text(
+                    connectionText,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -642,15 +670,18 @@ private fun ExchangeFriendsPanel(
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Column(Modifier.weight(1f)) {
-            Text("Friends", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+            Text("Friends", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
             Text(
                 "Friends are saved locally. New requests are sent live over the active direct connection.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Button(onClick = onAddFriend) {
-            Text(if (peer == null) "Add Friend" else "Send Request")
+        Button(
+            onClick = onAddFriend,
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Text(if (peer == null) "👤+ Add Friend" else "Send Request", fontWeight = FontWeight.Bold)
         }
     }
     Spacer(Modifier.height(9.dp))
@@ -702,7 +733,26 @@ private fun ExchangeFriendsPanel(
     }
 
     if (friends.isEmpty()) {
-        Text("No saved friends yet.")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                Text("🐶")
+                Text("No saved friends yet.", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Text(
+                    "Add a friend to start gifting and trading puppies.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = onAddFriend, shape = RoundedCornerShape(18.dp)) {
+                    Text("Add Your First Friend", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     } else {
         friends.forEach { friend ->
             Card(
