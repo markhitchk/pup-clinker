@@ -543,7 +543,7 @@ private fun SettingsNavIcon(icon: SettingsIcon) {
         )
         SettingsIcon.PUPEYE -> StreamedPupEyeBranding(
             modifier = Modifier.size(23.dp),
-            contentDescription = null
+            contentDescription = "PupEye protection"
         )
         else -> Text(
             icon.glyph,
