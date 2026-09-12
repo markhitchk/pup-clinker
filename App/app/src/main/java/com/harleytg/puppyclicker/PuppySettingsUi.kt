@@ -890,17 +890,53 @@ private fun BirthdayPicker(label: String, options: List<Pair<Int, String>>, onSe
 @Composable
 private fun AboutSettings() {
     val context = LocalContext.current
+
     SettingsLabel("PUPPY CLICKER")
     StatusLine("Version", BuildConfig.VERSION_NAME)
     StatusLine("Build", BuildConfig.VERSION_CODE.toString())
     StatusLine("Developer", "Harley's Studios")
     StatusLine("Discord community", PuppyLinks.DISCORD_INVITE)
-    Spacer(Modifier.height(7.dp))
+
+    Spacer(Modifier.height(10.dp))
+
     OutlinedButton(
         onClick = { PuppyLinks.openDiscord(context) },
         modifier = Modifier.fillMaxWidth()
-    ) { Text("Join Puppy Clicker Discord") }
-    Spacer(Modifier.height(8.dp))
+    ) {
+        Text("Join Puppy Clicker Discord")
+    }
+
+    Spacer(Modifier.height(14.dp))
+
+    SettingsLabel("DEVELOPMENT")
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text(
+                "Puppy Clicker Development",
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                "Follow planned features, work in progress, known tasks, and upcoming changes on the official Puppy Clicker Trello board.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = { PuppyLinks.openRoadmap(context) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Open Development Roadmap")
+            }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+
+    SettingsLabel("LEGAL")
     PuppyLegalLinks(
         modifier = Modifier.fillMaxWidth(),
         acknowledgementText = "Terms and privacy open inside Puppy Clicker using the repository-backed legal document viewer."
