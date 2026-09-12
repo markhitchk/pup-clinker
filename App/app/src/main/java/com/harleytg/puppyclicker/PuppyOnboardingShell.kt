@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -64,7 +65,7 @@ internal fun PuppyOnboardingShell(
                         .padding(horizontal = 20.dp, vertical = 14.dp)
                 ) {
                     Text(
-                        text = "Step ${step.persistedIndex + 1} of 5",
+                        text = "Step " + (step.persistedIndex + 1) + " of 5",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
@@ -74,11 +75,24 @@ internal fun PuppyOnboardingShell(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black
                     )
-                    Spacer(Modifier.height(9.dp))
-                    LinearProgressIndicator(
-                        progress = { (step.persistedIndex + 1) / 5f },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        repeat(5) { index ->
+                            LinearProgressIndicator(
+                                progress = {
+                                    if (index <= step.persistedIndex) 1f else 0f
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(4.dp),
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 Column(
@@ -94,34 +108,43 @@ internal fun PuppyOnboardingShell(
                             Spacer(Modifier.height(16.dp))
                             footer()
                         }
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(18.dp))
                     }
                 )
 
                 if ((canGoBack && onBack != null) || (primaryLabel != null && onPrimary != null)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.background,
+                        tonalElevation = 2.dp
                     ) {
-                        if (canGoBack && onBack != null) {
-                            OutlinedButton(
-                                onClick = onBack,
-                                modifier = Modifier.weight(1f)
+                        Column {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .navigationBarsPadding()
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Back")
-                            }
-                        }
-                        if (primaryLabel != null && onPrimary != null) {
-                            Button(
-                                onClick = onPrimary,
-                                enabled = primaryEnabled,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(primaryLabel, fontWeight = FontWeight.Bold)
+                                if (canGoBack && onBack != null) {
+                                    OutlinedButton(
+                                        onClick = onBack,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Back")
+                                    }
+                                }
+                                if (primaryLabel != null && onPrimary != null) {
+                                    Button(
+                                        onClick = onPrimary,
+                                        enabled = primaryEnabled,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(primaryLabel, fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     }

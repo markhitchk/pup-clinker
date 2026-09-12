@@ -4,13 +4,17 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,9 +96,9 @@ internal fun PuppyOnboardingNotifications(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        NotificationPreferenceRow(
+        NotificationPreferenceCard(
             title = "Daily rewards",
             detail = "Reminders when daily rewards are available.",
             checked = ui.dailyRewardNotifications,
@@ -102,7 +106,10 @@ internal fun PuppyOnboardingNotifications(
                 PuppyUiPreferences.setDailyRewardNotifications(context, it)
             }
         )
-        NotificationPreferenceRow(
+
+        Spacer(Modifier.height(8.dp))
+
+        NotificationPreferenceCard(
             title = "Game events",
             detail = "Seasonal and important in-game events.",
             checked = ui.gameEventNotifications,
@@ -110,7 +117,10 @@ internal fun PuppyOnboardingNotifications(
                 PuppyUiPreferences.setGameEventNotifications(context, it)
             }
         )
-        NotificationPreferenceRow(
+
+        Spacer(Modifier.height(8.dp))
+
+        NotificationPreferenceCard(
             title = "App updates",
             detail = "Important Puppy Clicker update notices.",
             checked = ui.updateNotifications,
@@ -119,13 +129,24 @@ internal fun PuppyOnboardingNotifications(
             }
         )
 
+        Spacer(Modifier.height(12.dp))
+
         if (permissionDecision == PuppyNotificationPermissionDecision.REQUEST) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Android will ask for notification permission after you continue.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Notification permission", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Android will ask for permission after you continue. You can skip this and enable it later.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
             TextButton(
                 onClick = {
                     PuppyNotificationCenter.schedule(context)
@@ -139,40 +160,55 @@ internal fun PuppyOnboardingNotifications(
             wantsNotifications &&
             (permissionGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
         ) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Notifications are ready.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text(
+                    "✓ Notifications are ready.",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun NotificationPreferenceRow(
+private fun NotificationPreferenceCard(
     title: String,
     detail: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold)
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
             )
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
     }
 }
