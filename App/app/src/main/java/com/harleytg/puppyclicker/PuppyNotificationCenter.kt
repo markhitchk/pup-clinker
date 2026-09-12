@@ -32,6 +32,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_DAILY = 42101
     private const val NOTIFY_EVENT = 42102
     private const val NOTIFY_UPDATE = 42103
+    private const val NOTIFY_ROSTER = 42104
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
     private const val WORK_NOW = "puppy_notification_now_v1"
@@ -139,9 +140,54 @@ internal object PuppyNotificationCenter {
             .cancel(NOTIFY_UPDATE)
     }
 
+    internal fun notifyRosterUpdated(
+        context: Context,
+        addedNames: List<String>,
+        removedCount: Int,
+        changedCount: Int
+    ) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).gameEventNotifications) return
+
+        val title = when (addedNames.size) {
+            0 -> "Puppy roster updated"
+            1 -> "New puppy added to the roster"
+            else -> addedNames.size.toString() + " new puppies added"
+        }
+        val text = when {
+            addedNames.size == 1 && removedCount == 0 && changedCount == 0 ->
+                addedNames.first() + " joined the Puppy Clicker roster."
+            addedNames.isNotEmpty() -> {
+                val preview = addedNames.take(3).joinToString(", ")
+                val more = if (addedNames.size > 3) " +" + (addedNames.size - 3) + " more" else ""
+                "New roster puppies: " + preview + more + "."
+            }
+            else ->
+                "The Puppy Clicker roster changed. Open the app to see the latest roster."
+        }
+
+        post(
+            context = app,
+            channel = CHANNEL_EVENTS,
+            id = NOTIFY_ROSTER,
+            title = title,
+            text = text
+        )
+    }
+
     internal suspend fun runSweep(context: Context) {
         val app = context.applicationContext
         createChannels(app)
+
+        // WorkManager wakes periodically even when the activity is not open. The roster
+        // itself enforces the one-hour network throttle, so this keeps GitHub roster
+        // updates discoverable in the background without polling every sweep.
+        withContext(Dispatchers.IO) {
+            DynamicPuppyRoster.refreshIfDue(app)
+        }
+
         if (PuppyAppRuntime.isForeground || !canNotify(app)) return
 
         val ui = PuppyUiPreferences.current(app)
