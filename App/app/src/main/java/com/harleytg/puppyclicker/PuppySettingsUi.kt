@@ -114,6 +114,7 @@ private enum class SettingsDestination {
     ROSTER,
     PUPEYE,
     ASSETS,
+    FLAGS,
     ABOUT
 }
 
@@ -131,6 +132,7 @@ private enum class SettingsIcon(val glyph: String) {
     ROSTER(""),
     PUPEYE(""),
     ASSETS("C"),
+    FLAGS("F"),
     ABOUT("i")
 }
 
@@ -242,6 +244,14 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             onBack = { open(SettingsDestination.HOME) }
         ) {
             OnlineAssetSettings()
+        }
+
+        SettingsDestination.FLAGS -> SettingsSubpage(
+            title = "Feature Availability",
+            subtitle = "Remote feature flags loaded from FlagSys/flags.json.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            FeatureFlagSettings()
         }
 
         SettingsDestination.ABOUT -> SettingsSubpage(
@@ -429,6 +439,10 @@ private fun SettingsHome(
                 onOpen(SettingsDestination.ASSETS)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsNavRow(SettingsIcon.FLAGS, "Feature Availability", "Remote enable, disable, and release-date status") {
+                onOpen(SettingsDestination.FLAGS)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsNavRow(SettingsIcon.ABOUT, "About Puppy Clicker", "Version, links, development, and legal") {
                 onOpen(SettingsDestination.ABOUT)
             }
@@ -436,6 +450,117 @@ private fun SettingsHome(
 
         Spacer(Modifier.height(24.dp))
     }
+}
+
+@Composable
+private fun FeatureFlagSettings() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var snapshot by remember { mutableStateOf(PuppyFeatureFlags.cached(context)) }
+    var refreshing by rememberSaveable { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Remote Feature Flags", fontWeight = FontWeight.Black)
+            Text(
+                "Edit FlagSys/flags.json on the main repository branch to control shipped feature paths. Flags cannot download new app code.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            StatusLine(
+                "Last checked",
+                if (snapshot.fetchedAtMs > 0L) {
+                    formatTimestamp(snapshot.fetchedAtMs)
+                } else {
+                    "Bundled fallback"
+                }
+            )
+            StatusLine(
+                "Source",
+                if (snapshot.remote) "Remote" else "Cached / fallback"
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    if (!refreshing) {
+                        refreshing = true
+                        scope.launch {
+                            snapshot = PuppyFeatureFlags.refresh(context)
+                            refreshing = false
+                        }
+                    }
+                },
+                enabled = !refreshing,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (refreshing) "Refreshing…" else "Refresh Flags")
+            }
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    snapshot.flags.values
+        .sortedBy { it.label.lowercase(Locale.US) }
+        .forEach { flag ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(flag.label, fontWeight = FontWeight.Black)
+                            Text(
+                                flag.key,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (flag.isAvailable()) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        ) {
+                            Text(
+                                flag.badgeText(),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    if (flag.description.isNotBlank()) {
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            flag.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text(
+                        "Visible: " + if (flag.visible) "Yes" else "No" +
+                            " · Enabled: " + if (flag.enabled) "Yes" else "No",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+        }
 }
 
 @Composable
