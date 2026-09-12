@@ -908,24 +908,6 @@ private fun PupScreen(state: GameState, viewModel: GameViewModel) {
             Spacer(Modifier.height(7.dp))
         }
 
-        Spacer(Modifier.height(10.dp))
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(R.drawable.source_htg),
-                    contentDescription = "Original HTG artwork",
-                    modifier = Modifier.size(58.dp),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Original Puppy Clicker assets", fontWeight = FontWeight.Bold)
-                    Text("pup.png • logo.png • htg.png", style = MaterialTheme.typography.bodySmall)
-                    Text("HarleyTG-O/Puppy-Clicker", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
-
         Spacer(Modifier.height(12.dp))
         OutlinedButton(onClick = { showReset = true }, modifier = Modifier.fillMaxWidth()) {
             Text("Reset game")

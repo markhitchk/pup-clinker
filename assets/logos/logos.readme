@@ -1,7 +1,6 @@
 Canonical app branding assets for Puppy Clicker.
 
 - puppy_clicker.png — Puppy Clicker app/logo artwork.
-- harleytg.png — HarleyTG artwork used by the app.
 - harleys_studios.png — Harley's Studios branding.
 
 The Android Gradle build copies these repository-managed files into generated drawable resources. Keep branding source files here instead of duplicating them under App/app/src/main/res.

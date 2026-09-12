@@ -224,7 +224,6 @@ val prepareProtectedPuppyAssets by tasks.registering {
 
         mapOf(
             "source_logo.png" to "puppy_clicker.png",
-            "source_htg.png" to "harleytg.png",
             "harleys_studios_icon.png" to "harleys_studios.png"
         ).forEach { (drawableName, assetName) ->
             val source = appLogoSourceDir.resolve(assetName)
