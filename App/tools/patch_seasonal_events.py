@@ -182,9 +182,15 @@ def patch_activity(source: str) -> str:
                         )
                     }''',
         'dynamic roster labels')
-    source = replace_once(source,
-        '        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)',
-        '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
+    # Older V6 builds hosted birthday controls directly in the Activity Settings panel.
+    # Current builds use PuppySettingsScreen/ProfileSettings, which already persists the
+    # month/day and calls vm.setSeasonalBirthday(). Only inject the legacy control when
+    # that legacy Settings anchor is actually present.
+    birthday_settings_anchor = '        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)'
+    if birthday_settings_anchor in source:
+        source = replace_once(source,
+            birthday_settings_anchor,
+            '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
         Spacer(Modifier.height(14.dp))
         SeasonalBirthdaySettings(vm)''', 'birthday settings')
     source = replace_once(source,
