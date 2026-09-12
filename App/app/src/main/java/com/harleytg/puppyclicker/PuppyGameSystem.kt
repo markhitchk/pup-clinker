@@ -202,7 +202,7 @@ fun v6UpgradeTicketCost(state: V6GameState, upgrade: V5Upgrade): Int {
     return (base - reduction).coerceAtLeast(1)
 }
 
-private val DEFAULT_V6_PUPPIES = setOf("classic", "golden", "poodle", "spotty")
-private const val PRESTIGE_MIN_TREATS = 50_000L
-private const val PRESTIGE_BONUS_STEP = 100_000L
-private const val MAX_POINTS_PER_PRESTIGE = 8
+internal val DEFAULT_V6_PUPPIES = setOf("classic", "golden", "poodle", "spotty")
+internal const val PRESTIGE_MIN_TREATS = 50_000L
+internal const val PRESTIGE_BONUS_STEP = 100_000L
+internal const val MAX_POINTS_PER_PRESTIGE = 8
