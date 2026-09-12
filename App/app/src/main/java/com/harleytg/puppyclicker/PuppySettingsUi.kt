@@ -2002,6 +2002,7 @@ private fun deletePuppyClickerLocalSave(context: Context) {
     context.getSharedPreferences("puppy_seasonal_v1", Context.MODE_PRIVATE).edit().clear().commit()
     context.getSharedPreferences("puppy_player_identity_v1", Context.MODE_PRIVATE).edit().clear().commit()
     DiscordSignupAuth.disconnect(context)
+    PuppyBackupPasswordStore.clear(context)
     context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
     File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
     ExternalGameSave.path(context)?.let { File(it).delete() }
