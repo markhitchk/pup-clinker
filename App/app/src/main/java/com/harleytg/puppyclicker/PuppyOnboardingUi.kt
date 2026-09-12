@@ -148,6 +148,23 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 PuppyLegalLinks(modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 PuppyDevelopmentNotice()
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.harleys_studios_icon),
+                        contentDescription = "Harley's Studios",
+                        modifier = Modifier.size(22.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.size(5.dp))
+                    Text(
+                        "Harley's Studios",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     ) {
