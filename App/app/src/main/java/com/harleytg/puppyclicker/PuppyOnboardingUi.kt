@@ -136,6 +136,8 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
 @Composable
 private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
     val context = LocalContext.current
+    val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
+    val discordFlag = flags["discord_linking"] ?: PuppyFeatureFlags.flag("discord_linking")
 
     PuppyOnboardingShell(
         step = PuppyOnboardingStep.WELCOME,
@@ -176,41 +178,90 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
             )
 
             Spacer(Modifier.height(16.dp))
+            Text(
+                "PROTECTED BY PUPEYE",
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(6.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     StreamedPupEyeBranding(
                         modifier = Modifier.size(40.dp),
                         contentDescription = "PupEye fair-play protection"
                     )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { PuppyLinks.openDiscord(context) }
-                    ) {
-                        Text("Protected by PupEye", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.size(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("PupEye Protection", fontWeight = FontWeight.Bold)
                         Text(
-                            "Fair-play and encrypted-save protection · Discord community available",
+                            "Fair-play checks and encrypted save-integrity protection.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Image(
-                        painter = painterResource(R.drawable.ic_discord),
-                        contentDescription = "Open Discord",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clickable { PuppyLinks.openDiscord(context) },
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
-                    )
+                }
+            }
+
+            if (discordFlag.visible) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "DISCORD",
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(6.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = discordFlag.isAvailable()) {
+                            PuppyLinks.openDiscord(context)
+                        },
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_discord),
+                            contentDescription = "Discord",
+                            modifier = Modifier.size(34.dp),
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                        )
+                        Spacer(Modifier.size(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Puppy Clicker Discord", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (discordFlag.isAvailable()) {
+                                    "Community and optional account connection."
+                                } else {
+                                    discordFlag.statusLabel()
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            if (discordFlag.isAvailable()) "Open ›" else discordFlag.statusLabel(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (discordFlag.isAvailable()) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
                 }
             }
 
@@ -250,6 +301,27 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                     )
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.harleys_studios_icon),
+                    contentDescription = "Harley's Studios",
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(Modifier.size(7.dp))
+                Text(
+                    "Harley's Studios",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
         }
     }
 }
