@@ -238,6 +238,12 @@ internal object PuppyLocalBackupPassword {
             .edit()
             .clear()
             .commit()
+        runCatching {
+            val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            if (keyStore.containsAlias(KEY_ALIAS)) {
+                keyStore.deleteEntry(KEY_ALIAS)
+            }
+        }
     }
 
     private fun key(): SecretKey {
