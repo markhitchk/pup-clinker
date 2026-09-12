@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun PuppyRevampedPlayScreen(
@@ -26,65 +28,133 @@ internal fun PuppyRevampedPlayScreen(
     vm: PuppyClickerV6ViewModel,
     onOpenRoster: () -> Unit
 ) {
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        PuppyMainPageHeader("Play", "Tap, earn treats, and have fun with your puppy!")
-        Spacer(Modifier.height(14.dp))
-        PuppyActivePuppyCard(state, onOpenRoster)
-        Spacer(Modifier.height(10.dp))
-        PuppyWalletCard(state)
-        Spacer(Modifier.height(12.dp))
+    val context = LocalContext.current
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var ticketVisible by remember { mutableStateOf(false) }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.065f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(250)
+            now = System.currentTimeMillis()
+        }
+    }
+    LaunchedEffect(state.ticketDropSerial) {
+        if (state.ticketDropSerial > 0 && state.lastTicketDrop != null) {
+            ticketVisible = true
+            if (state.hapticsEnabled) performV6Haptic(context, true)
+            delay(2_750)
+            ticketVisible = false
+        }
+    }
+
+    val cooldown = (state.cooldownUntilMs - now).coerceAtLeast(0L)
+
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Column(
-                Modifier.fillMaxWidth().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            PuppyMainPageHeader("Play", "Tap, earn treats, and have fun with your puppy!")
+            Spacer(Modifier.height(14.dp))
+            PuppyActivePuppyCard(state, onOpenRoster)
+            Spacer(Modifier.height(10.dp))
+            PuppyWalletCard(state)
+            Spacer(Modifier.height(12.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.065f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
             ) {
-                StreamedPuppyPortrait(
-                    styleId = state.puppyStyle,
-                    size = 230.dp,
-                    accessory = state.accessory,
-                    background = Color.Transparent
-                )
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = vm::tapPuppy,
-                    enabled = state.cooldownUntilMs <= System.currentTimeMillis(),
-                    modifier = Modifier.fillMaxWidth().height(58.dp),
-                    shape = RoundedCornerShape(22.dp)
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("🐾 Tap the Puppy!  +" + state.clickPower + " treat", fontWeight = FontWeight.Black)
+                    StreamedPuppyPortrait(
+                        styleId = state.puppyStyle,
+                        size = 230.dp,
+                        accessory = state.accessory,
+                        background = Color.Transparent
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            vm.tapPuppy()
+                            if (state.hapticsEnabled) performV6Haptic(context)
+                        },
+                        enabled = cooldown == 0L,
+                        modifier = Modifier.fillMaxWidth().height(58.dp),
+                        shape = RoundedCornerShape(22.dp)
+                    ) {
+                        Text(
+                            if (cooldown > 0L) {
+                                "🐶👁️ Fair-play cooldown · " + ((cooldown + 999L) / 1000L) + "s"
+                            } else {
+                                "🐾 Tap the Puppy!  +" + state.clickPower + " treat"
+                            },
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+            Text("Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PuppyQuickAction(
+                    "🍖", "Feed", "+Fullness",
+                    state.treats >= PuppyClickerV6ViewModel.FEED_COST && state.fullness < 100,
+                    vm::feedPuppy,
+                    Modifier.weight(1f)
+                )
+                PuppyQuickAction(
+                    "🎾", "Play", "+Happiness",
+                    state.energy >= 12,
+                    vm::playWithPuppy,
+                    Modifier.weight(1f)
+                )
+                PuppyQuickAction(
+                    "🫧", "Clean", "+Clean",
+                    state.cleanliness < 100,
+                    vm::groomPuppy,
+                    Modifier.weight(1f)
+                )
+                PuppyQuickAction(
+                    "🌙", "Rest", "+Energy",
+                    state.energy < 100,
+                    vm::restPuppy,
+                    Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            val tapProgress = state.dailyTaps.coerceAtMost(75L).toFloat() / 75f
+            PuppyProgressCard(
+                emoji = "🎁",
+                title = "Next Reward",
+                subtitle = if (state.dailyTaps >= 75L) {
+                    "Ready to claim in Rewards."
+                } else {
+                    "Tap " + (75L - state.dailyTaps.coerceAtMost(75L)) + " more times"
+                },
+                progressText = state.dailyTaps.coerceAtMost(75L).toString() + "/75",
+                progress = tapProgress,
+                footer = "Reward: 300 🍪"
+            )
+            Spacer(Modifier.height(20.dp))
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text("Quick Actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PuppyQuickAction("🍖", "Feed", "+Fullness", state.treats >= PuppyClickerV6ViewModel.FEED_COST && state.fullness < 100, vm::feedPuppy, Modifier.weight(1f))
-            PuppyQuickAction("🎾", "Play", "+Happiness", state.energy >= 12, vm::playWithPuppy, Modifier.weight(1f))
-            PuppyQuickAction("🫧", "Clean", "+Clean", state.cleanliness < 100, vm::groomPuppy, Modifier.weight(1f))
-            PuppyQuickAction("🌙", "Rest", "+Energy", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
-        }
-
-        Spacer(Modifier.height(12.dp))
-        val tapProgress = state.dailyTaps.coerceAtMost(75L).toFloat() / 75f
-        PuppyProgressCard(
-            emoji = "🎁",
-            title = "Next Reward",
-            subtitle = if (state.dailyTaps >= 75L) "Ready to claim in Rewards." else "Tap " + (75L - state.dailyTaps.coerceAtMost(75L)) + " more times",
-            progressText = state.dailyTaps.coerceAtMost(75L).toString() + "/75",
-            progress = tapProgress,
-            footer = "Reward: 300 🍪"
+        V6TicketDropOverlay(
+            visible = ticketVisible,
+            rarity = state.lastTicketDrop,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 150.dp, start = 24.dp, end = 24.dp)
         )
-        Spacer(Modifier.height(20.dp))
     }
 }
 
@@ -588,31 +658,73 @@ private fun PuppyRevampedRedeemDialog(vm: PuppyClickerV6ViewModel, onClose: () -
     var code by rememberSaveable { mutableStateOf("") }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
     var success by rememberSaveable { mutableStateOf(false) }
+    var checking by rememberSaveable { mutableStateOf(false) }
+
     AlertDialog(
-        onDismissRequest = onClose,
+        onDismissRequest = { if (!checking) onClose() },
         title = { Text("🎫 Redeem Puppy Code") },
         text = {
             Column {
+                Text(
+                    "Enter the Puppy Code exactly as provided. Claims are checked live before rewards are applied.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = code,
-                    onValueChange = { code = it.take(64) },
+                    onValueChange = {
+                        if (!checking) {
+                            code = it.take(64)
+                            message = null
+                        }
+                    },
                     label = { Text("Puppy Code") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    enabled = !checking,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 )
+                if (checking) {
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
                 message?.let {
-                    Spacer(Modifier.height(8.dp))
-                    Text(it, color = if (success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(10.dp))
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (success) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer
+                        }
+                    ) {
+                        Text(it, Modifier.padding(10.dp), fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val result = vm.redeemCode(code)
-                success = result.success
-                message = result.message
-            }) { Text("Redeem") }
+            Button(
+                onClick = {
+                    checking = true
+                    success = false
+                    message = null
+                    vm.redeemCode(code) { result ->
+                        checking = false
+                        success = result.success
+                        message = result.message
+                        if (result.success) code = ""
+                    }
+                },
+                enabled = code.isNotBlank() && !checking
+            ) {
+                Text(if (checking) "Checking…" else "Redeem")
+            }
         },
-        dismissButton = { TextButton(onClick = onClose) { Text("Close") } }
+        dismissButton = {
+            TextButton(onClick = onClose, enabled = !checking) { Text("Close") }
+        }
     )
 }
