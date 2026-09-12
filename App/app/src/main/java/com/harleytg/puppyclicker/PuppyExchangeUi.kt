@@ -633,7 +633,21 @@ private fun ExchangeIdentityHeader(
             }
             if (officialDeveloper) {
                 Spacer(Modifier.height(4.dp))
-                Text("Official Harley's Studios Account", style = MaterialTheme.typography.bodySmall)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.harleys_studios_icon),
+                        contentDescription = "Harley's Studios",
+                        modifier = Modifier.size(20.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Text(
+                        "Official Harley's Studios Account",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
             Spacer(Modifier.height(10.dp))
             Surface(
