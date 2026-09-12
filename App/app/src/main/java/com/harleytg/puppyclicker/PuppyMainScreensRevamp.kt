@@ -513,7 +513,7 @@ internal fun PuppyRevampedRewardsScreen(
                 PuppyClaimedReward(
                     emoji = "🎁",
                     title = "Daily Puppy Gift",
-                    rewardText = nextReward.toString() + " treats + mood + bond"
+                    rewardText = "Treats + mood + bond"
                 )
             }
             claimedGoals.forEach { goal ->
