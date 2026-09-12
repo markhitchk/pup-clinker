@@ -145,10 +145,11 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
         canGoBack = false,
         primaryLabel = "Get Started",
         onPrimary = onNext,
+        preferViewportFit = true,
         footer = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 PuppyLegalLinks(modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(5.dp))
                 PuppyDevelopmentNotice()
             }
         }
@@ -160,50 +161,54 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
             Image(
                 painter = painterResource(R.drawable.source_logo),
                 contentDescription = "Puppy Clicker logo",
-                modifier = Modifier.size(128.dp),
+                modifier = Modifier.size(88.dp),
                 contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 "Welcome to Puppy Clicker",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 textAlign = TextAlign.Center
             )
             Text(
                 "Tap, care for puppies, build your collection, and make the game yours.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 "PROTECTED BY PUPEYE",
                 modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(3.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     StreamedPupEyeBranding(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(30.dp),
                         contentDescription = "PupEye fair-play protection"
                     )
-                    Spacer(Modifier.size(10.dp))
+                    Spacer(Modifier.size(8.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("PupEye Protection", fontWeight = FontWeight.Bold)
                         Text(
-                            "Fair-play checks and encrypted save-integrity protection.",
-                            style = MaterialTheme.typography.bodySmall,
+                            "PupEye Protection",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Fair-play checks + encrypted save integrity.",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -211,14 +216,14 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
             }
 
             if (discordFlag.visible) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(7.dp))
                 Text(
                     "DISCORD",
                     modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(3.dp))
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -229,25 +234,29 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
                             painter = painterResource(R.drawable.ic_discord),
                             contentDescription = "Discord",
-                            modifier = Modifier.size(34.dp),
+                            modifier = Modifier.size(28.dp),
                             colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
                         )
-                        Spacer(Modifier.size(10.dp))
+                        Spacer(Modifier.size(8.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Puppy Clicker Discord", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Puppy Clicker Discord",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
                             Text(
                                 if (discordFlag.isAvailable()) {
-                                    "Community and optional account connection."
+                                    "Community + optional account connection."
                                 } else {
                                     discordFlag.statusLabel()
                                 },
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -265,8 +274,7 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-
+            Spacer(Modifier.height(7.dp))
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,31 +285,33 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 11.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
                             "Puppy Clicker Roadmap",
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            "See planned features, work in progress, and upcoming changes on Trello.",
-                            style = MaterialTheme.typography.bodySmall,
+                            "Planned features and work in progress.",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                     Text(
                         "Trello ›",
-                        modifier = Modifier.padding(start = 12.dp),
-                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(start = 8.dp),
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
+
+            Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
@@ -310,18 +320,17 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 Image(
                     painter = painterResource(R.drawable.harleys_studios_icon),
                     contentDescription = "Harley's Studios",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                     contentScale = ContentScale.Fit
                 )
-                Spacer(Modifier.size(7.dp))
+                Spacer(Modifier.size(6.dp))
                 Text(
                     "Harley's Studios",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
         }
     }
 }
