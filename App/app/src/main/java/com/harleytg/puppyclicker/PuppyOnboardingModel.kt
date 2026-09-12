@@ -15,6 +15,7 @@ enum class PuppyOnboardingStep(val persistedIndex: Int) {
 
 enum class PuppyPlayerSetupMethod {
     LOCAL,
+    ONLINE_ACCOUNT,
     DISCORD,
     IMPORT_SAVE
 }
