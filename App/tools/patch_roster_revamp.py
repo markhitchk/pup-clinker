@@ -66,14 +66,16 @@ def patch_dynamic_roster(source: str) -> str:
     return source
 
 
-def patch_view_model(source: str) -> str:
-    source = replace_once(
+def patch_game_system(source: str) -> str:
+    return replace_once(
         source,
         '''    val puppyStyle: String = "classic",\n    val unlockedPuppies: Set<String> = DEFAULT_V6_PUPPIES,\n    val accessory: String = "None",''',
         '''    val puppyStyle: String = "classic",\n    val unlockedPuppies: Set<String> = DEFAULT_V6_PUPPIES,\n    val favoritePuppies: Set<String> = emptySet(),\n    val accessory: String = "None",''',
         "favorite state field",
     )
 
+
+def patch_view_model(source: str) -> str:
     source = replace_once(
         source,
         '''    fun setPuppyStyle(id: String) {\n        val s = _state.value\n        if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return\n        _state.value = s.copy(puppyStyle = id)\n        saveState()\n    }\n\n    fun receiveExchangePuppy(puppyId: String): Boolean {''',
@@ -152,6 +154,12 @@ def patch_activity(source: str) -> str:
 
 
 def main(root: Path) -> None:
+    game_system = root / PACKAGE / "PuppyGameSystem.kt"
+    game_system.write_text(
+        patch_game_system(game_system.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+
     dynamic_roster = root / PACKAGE / "DynamicPuppyRoster.kt"
     dynamic_roster.write_text(
         patch_dynamic_roster(dynamic_roster.read_text(encoding="utf-8")),
