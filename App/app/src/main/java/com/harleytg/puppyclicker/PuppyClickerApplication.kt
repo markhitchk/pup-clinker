@@ -20,7 +20,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     private var welcomeVisible = false
 
     private val prefs by lazy {
-        getSharedPreferences(PuppyClickerV5ViewModel.PREFS_NAME, MODE_PRIVATE)
+        getSharedPreferences(PuppySaveContract.PREFS_NAME, MODE_PRIVATE)
     }
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
@@ -97,7 +97,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
                 prefs.edit()
                     .putLong(
-                        PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT,
+                        PuppySaveContract.KEY_AFK_BACKGROUND_AT,
                         if (setupComplete) System.currentTimeMillis() else 0L
                     )
                     .apply()
@@ -120,12 +120,12 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         ).getBoolean("setup_complete", false)
         if (!setupComplete) {
             prefs.edit()
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .putLong(PuppySaveContract.KEY_AFK_BACKGROUND_AT, 0L)
                 .apply()
             return
         }
 
-        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+        val backgroundAt = prefs.getLong(PuppySaveContract.KEY_AFK_BACKGROUND_AT, 0L)
         if (backgroundAt <= 0L || now <= backgroundAt) return
 
         val awayMs = now - backgroundAt
@@ -136,13 +136,13 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             safeMultiply(remainder, AFK_TREATS_PER_DAY) / DAY_MS
         )
 
-        val existingPending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
-        val existingAway = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
+        val existingPending = prefs.getLong(PuppySaveContract.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
+        val existingAway = prefs.getLong(PuppySaveContract.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
 
         prefs.edit()
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, safeAdd(existingPending, earned))
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, safeAdd(existingAway, awayMs))
+            .putLong(PuppySaveContract.KEY_AFK_BACKGROUND_AT, 0L)
+            .putLong(PuppySaveContract.KEY_AFK_PENDING, safeAdd(existingPending, earned))
+            .putLong(PuppySaveContract.KEY_AFK_AWAY_MS, safeAdd(existingAway, awayMs))
             .apply()
         PupEyeSaveGuard.seal(this, prefs)
     }
@@ -150,7 +150,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     private fun maybeShowWelcome(activity: Activity) {
         if (welcomeVisible || activity is AfkWelcomeActivity) return
         val pending = runCatching {
-            prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+            prefs.getLong(PuppySaveContract.KEY_AFK_PENDING, 0L)
         }.getOrDefault(0L)
         if (pending <= 0L) return
 
