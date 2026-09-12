@@ -184,6 +184,85 @@ internal object PuppySaveCrypto {
     private fun unb64(value: String): ByteArray = Base64.decode(value, Base64.NO_WRAP)
 }
 
+
+/**
+ * Device-bound storage for the Local Profile backup password.
+ *
+ * The password is encrypted with an Android Keystore AES-GCM key before it is written
+ * to SharedPreferences. It is never included in exported .pupsave files.
+ */
+internal object PuppyLocalBackupPassword {
+    private const val PREFS = "puppy_local_backup_password_v1"
+    private const val KEY_ALIAS = "puppy_clicker_local_backup_password_aes_v1"
+    private const val KEY_IV = "iv"
+    private const val KEY_CIPHERTEXT = "ciphertext"
+    private const val AAD = "PuppyClicker/local-backup-password/v1"
+    private const val IV_BYTES = 12
+    private const val GCM_TAG_BITS = 128
+
+    fun hasPassword(context: Context): Boolean = load(context) != null
+
+    fun save(context: Context, password: String): Boolean = runCatching {
+        require(password.length >= 8) { "Backup password must be at least 8 characters" }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key())
+        cipher.updateAAD(AAD.toByteArray(Charsets.UTF_8))
+        val encrypted = cipher.doFinal(password.toByteArray(Charsets.UTF_8))
+        require(cipher.iv.size == IV_BYTES) { "Unexpected local backup password IV length" }
+
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .putString(KEY_CIPHERTEXT, Base64.encodeToString(encrypted, Base64.NO_WRAP))
+            .commit()
+    }.getOrDefault(false)
+
+    fun load(context: Context): String? = runCatching {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val iv = prefs.getString(KEY_IV, null)
+            ?.let { Base64.decode(it, Base64.NO_WRAP) }
+            ?: return null
+        val encrypted = prefs.getString(KEY_CIPHERTEXT, null)
+            ?.let { Base64.decode(it, Base64.NO_WRAP) }
+            ?: return null
+        require(iv.size == IV_BYTES) { "Invalid local backup password IV" }
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(GCM_TAG_BITS, iv))
+        cipher.updateAAD(AAD.toByteArray(Charsets.UTF_8))
+        cipher.doFinal(encrypted).toString(Charsets.UTF_8)
+    }.getOrNull()?.takeIf { it.length >= 8 }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
+    }
+
+    private fun key(): SecretKey {
+        val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+
+        val generator = KeyGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_AES,
+            "AndroidKeyStore"
+        )
+        generator.init(
+            KeyGenParameterSpec.Builder(
+                KEY_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(256)
+                .setRandomizedEncryptionRequired(true)
+                .build()
+        )
+        return generator.generateKey()
+    }
+}
+
 internal data class PupEyeSecurityState(
     val tamperEvents: Int,
     val lastReason: String?,
