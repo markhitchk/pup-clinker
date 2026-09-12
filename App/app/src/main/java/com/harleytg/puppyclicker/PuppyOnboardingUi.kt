@@ -46,7 +46,13 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     val animateUi = LocalPuppyAnimatedUi.current && !LocalPuppyReducedMotion.current
 
     var step by rememberSaveable {
-        mutableIntStateOf(PuppyOnboardingStep.WELCOME.persistedIndex)
+        mutableIntStateOf(
+            if (ui.setupComplete) {
+                ui.setupStep.coerceIn(0, 4)
+            } else {
+                PuppyOnboardingStep.WELCOME.persistedIndex
+            }
+        )
     }
     var selectedMethodName by rememberSaveable {
         mutableStateOf(PuppyPlayerSetupMethod.LOCAL.name)
