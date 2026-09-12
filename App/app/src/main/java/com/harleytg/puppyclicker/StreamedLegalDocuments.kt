@@ -40,13 +40,13 @@ enum class PuppyLegalDocument(
 ) {
     TERMS(
         title = "Terms of Use",
-        fileName = "terms-of-use.txt",
-        rawUrl = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/legal/terms-of-use.txt"
+        fileName = "terms-of-use.md",
+        rawUrl = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/legal/terms-of-use.md"
     ),
     PRIVACY(
         title = "Privacy Policy",
-        fileName = "privacy-policy.txt",
-        rawUrl = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/legal/privacy-policy.txt"
+        fileName = "privacy-policy.md",
+        rawUrl = "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/legal/privacy-policy.md"
     );
 
     val assetPath: String
