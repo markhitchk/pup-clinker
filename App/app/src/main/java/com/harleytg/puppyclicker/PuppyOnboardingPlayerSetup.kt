@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,6 +64,19 @@ internal fun PuppyOnboardingPlayerSetup(
     val discordBusy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
     val scope = rememberCoroutineScope()
+    val featureFlags by produceState(
+        initialValue = PuppyFeatureFlags.cached(context),
+        key1 = context
+    ) {
+        value = PuppyFeatureFlags.refresh(context)
+    }
+    val onlineAccountFlag = featureFlags.flag("puppy_clicker_account")
+    val discordLinkingFlag = featureFlags.flag("discord_linking")
+    val saveRestoreFlag = featureFlags.flag("save_restore")
+
+    var onlineUsername by rememberSaveable { mutableStateOf("") }
+    var onlinePassword by rememberSaveable { mutableStateOf("") }
+    var onlinePasswordVisible by rememberSaveable { mutableStateOf(false) }
 
     var username by rememberSaveable {
         mutableStateOf(
@@ -95,9 +109,10 @@ internal fun PuppyOnboardingPlayerSetup(
     var importingSave by remember { mutableStateOf(false) }
 
     val profileSourceLabel = when (session.playerSetupMethod) {
-        PuppyPlayerSetupMethod.LOCAL -> "Local profile"
-        PuppyPlayerSetupMethod.DISCORD -> "Discord-linked profile"
-        PuppyPlayerSetupMethod.IMPORT_SAVE -> "Restored save"
+        PuppyPlayerSetupMethod.LOCAL -> "Puppy Clicker Local Account"
+        PuppyPlayerSetupMethod.ONLINE_ACCOUNT -> "Puppy Clicker Account"
+        PuppyPlayerSetupMethod.DISCORD -> "Puppy Clicker Local Account · Discord linked"
+        PuppyPlayerSetupMethod.IMPORT_SAVE -> "Restored Puppy Clicker Local Account"
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -124,17 +139,143 @@ internal fun PuppyOnboardingPlayerSetup(
         onBack = onBack
     ) {
         Text(
-            "Your Puppy Clicker profile lives on this device.",
+            "Choose your Puppy Clicker account.",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black
         )
         Text(
-            "Create a local username first. Discord and save restore stay optional and can also be managed later in Settings.",
+            "Puppy Clicker Local Account works entirely on this device. The upcoming Puppy Clicker Account adds online username/password sign-in with Discord authentication.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.height(14.dp))
+
+        if (onlineAccountFlag.visible) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SetupBadge("PC+")
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 10.dp)
+                        ) {
+                            Text("Puppy Clicker Account", fontWeight = FontWeight.Black)
+                            Text(
+                                "Online account · username/password + Discord authentication",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            Text(
+                                onlineAccountFlag.badgeText(),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = onlineUsername,
+                        onValueChange = { onlineUsername = it.take(24) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Account username") },
+                        supportingText = {
+                            Text("Your Puppy Clicker Account username.")
+                        },
+                        enabled = false,
+                        singleLine = true
+                    )
+
+                    Spacer(Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = onlinePassword,
+                        onValueChange = { onlinePassword = it.take(128) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Account password") },
+                        supportingText = {
+                            Text("Password sign-in for your online Puppy Clicker Account.")
+                        },
+                        enabled = false,
+                        singleLine = true,
+                        trailingIcon = {
+                            TextButton(
+                                onClick = {
+                                    onlinePasswordVisible = !onlinePasswordVisible
+                                },
+                                enabled = false
+                            ) {
+                                Text(if (onlinePasswordVisible) "Hide" else "View")
+                            }
+                        },
+                        visualTransformation = if (onlinePasswordVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        }
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_discord),
+                            contentDescription = "Discord authentication",
+                            modifier = Modifier.size(26.dp),
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                        )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp)
+                        ) {
+                            Text("Discord authentication", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (account == null) {
+                                    "A Discord account will be linked during online account setup."
+                                } else {
+                                    "Connected: @" + account.username
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        "This account service is not active in this build yet. The remote flag controls its visibility and release-date label; account creation stays disabled until the online backend is shipped.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -154,9 +295,9 @@ internal fun PuppyOnboardingPlayerSetup(
                             .weight(1f)
                             .padding(start = 10.dp)
                     ) {
-                        Text("Your Profile", fontWeight = FontWeight.Black)
+                        Text("Puppy Clicker Local Account", fontWeight = FontWeight.Black)
                         Text(
-                            profileSourceLabel + " · stored on this device",
+                            profileSourceLabel + " · stored only on this device",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -217,7 +358,7 @@ internal fun PuppyOnboardingPlayerSetup(
                     supportingText = {
                         Text(
                             if (backupPasswordsMatch) {
-                                "This becomes your Local Profile backup password."
+                                "This becomes your Puppy Clicker Local Account backup password."
                             } else {
                                 "Passwords do not match."
                             }
@@ -293,7 +434,7 @@ internal fun PuppyOnboardingPlayerSetup(
                         backupPassword == backupPasswordConfirm,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Create Profile & Continue", fontWeight = FontWeight.Bold)
+                    Text("Create Local Account & Continue", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -321,34 +462,55 @@ internal fun PuppyOnboardingPlayerSetup(
         }
         Spacer(Modifier.height(10.dp))
 
-        OnboardingOptionCard(
-            title = if (account == null) "Connect Discord" else "Discord Connected",
-            detail = if (account == null) {
-                "Link your Discord account for identity and community features."
-            } else {
-                "@" + account.username + " is linked. Tap to manage."
-            },
-            action = if (account == null) "Connect" else "Manage",
-            onClick = { discordSheetOpen = true },
-            leading = {
-                Image(
-                    painter = painterResource(R.drawable.ic_discord),
-                    contentDescription = "Discord",
-                    modifier = Modifier.size(30.dp),
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
-                )
-            }
-        )
+        if (discordLinkingFlag.visible) {
+            OnboardingOptionCard(
+                title = if (account == null) "Connect Discord" else "Discord Connected",
+                detail = if (discordLinkingFlag.isAvailable()) {
+                    if (account == null) {
+                        "Link Discord to your Puppy Clicker Local Account for identity and community features."
+                    } else {
+                        "@" + account.username + " is linked. Tap to manage."
+                    }
+                } else {
+                    "Discord linking is currently unavailable."
+                },
+                action = if (discordLinkingFlag.isAvailable()) {
+                    if (account == null) "Connect" else "Manage"
+                } else {
+                    discordLinkingFlag.badgeText()
+                },
+                enabled = discordLinkingFlag.isAvailable(),
+                onClick = { discordSheetOpen = true },
+                leading = {
+                    Image(
+                        painter = painterResource(R.drawable.ic_discord),
+                        contentDescription = "Discord",
+                        modifier = Modifier.size(30.dp),
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                    )
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
 
-        Spacer(Modifier.height(8.dp))
-
-        OnboardingOptionCard(
-            title = "Restore a Save",
-            detail = "Already played before? Import an existing .pupsave file.",
-            action = "Import",
-            onClick = { importSheetOpen = true },
-            leading = { SetupBadge("SAVE") }
-        )
+        if (saveRestoreFlag.visible) {
+            OnboardingOptionCard(
+                title = "Restore a Save",
+                detail = if (saveRestoreFlag.isAvailable()) {
+                    "Already played before? Import an existing .pupsave file."
+                } else {
+                    "Save restore is currently unavailable."
+                },
+                action = if (saveRestoreFlag.isAvailable()) {
+                    "Import"
+                } else {
+                    saveRestoreFlag.badgeText()
+                },
+                enabled = saveRestoreFlag.isAvailable(),
+                onClick = { importSheetOpen = true },
+                leading = { SetupBadge("SAVE") }
+            )
+        }
     }
 
     if (discordSheetOpen) {
@@ -384,7 +546,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Puppy Clicker only uses Discord's identify permission. Your Player ID, Friend Code, progress, and save remain local.",
+                    "For Puppy Clicker Local Account, Discord is optional and only the identify permission is requested. Your Player ID, Friend Code, progress, and save remain local.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -720,13 +882,14 @@ private fun OnboardingOptionCard(
     title: String,
     detail: String,
     action: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     leading: @Composable () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -751,7 +914,11 @@ private fun OnboardingOptionCard(
                 action,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
         }
     }
