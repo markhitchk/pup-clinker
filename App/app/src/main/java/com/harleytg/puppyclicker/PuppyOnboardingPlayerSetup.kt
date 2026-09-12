@@ -133,7 +133,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
     PuppyOnboardingShell(
         step = PuppyOnboardingStep.PLAYER_SETUP,
-        title = "Create Your Player",
+        title = "Choose Your Account",
         canGoBack = true,
         primaryLabel = null,
         onBack = onBack
