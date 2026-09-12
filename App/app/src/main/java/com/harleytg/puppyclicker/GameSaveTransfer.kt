@@ -254,7 +254,9 @@ internal object GameSaveTransfer {
 internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable {
+        mutableStateOf(PuppyLocalBackupPassword.load(context).orEmpty())
+    }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -350,7 +352,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable {
+        mutableStateOf(PuppyLocalBackupPassword.load(context).orEmpty())
+    }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -381,6 +385,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     ) { uri ->
         if (uri != null) {
             val result = GameSaveTransfer.export(context, uri, password)
+            if (result.success && password.length >= 8) {
+                PuppyLocalBackupPassword.save(context, password)
+            }
             showPopup(
                 title = if (result.success) "Export Complete" else "Export Failed",
                 result = result
@@ -392,6 +399,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     ) { uri ->
         if (uri != null) {
             val result = GameSaveTransfer.import(context, uri, password)
+            if (result.success && password.length >= 8) {
+                PuppyLocalBackupPassword.save(context, password)
+            }
             showPopup(
                 title = if (result.success) "Save Imported" else "Import Failed",
                 result = result,
@@ -442,7 +452,9 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Backup password") },
                 placeholder = { Text("Enter backup password") },
-                supportingText = { Text("8+ characters. The password is never stored in the save file.") },
+                supportingText = {
+                    Text("Your Local Profile backup password. It is stored device-bound and never written into the save file.")
+                },
                 singleLine = true,
                 trailingIcon = {
                     TextButton(onClick = { passwordVisible = !passwordVisible }) {
