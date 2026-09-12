@@ -156,11 +156,22 @@ internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             PuppyDevelopmentNotice()
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Harley's Studios",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.harleys_studios_icon),
+                    contentDescription = "Harley's Studios",
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text(
+                    "Harley's Studios",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
