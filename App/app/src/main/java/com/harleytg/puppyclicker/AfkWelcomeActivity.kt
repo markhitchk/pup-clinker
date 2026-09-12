@@ -39,9 +39,9 @@ class AfkWelcomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val prefs = getSharedPreferences(PuppyClickerV5ViewModel.PREFS_NAME, MODE_PRIVATE)
-        val pending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
-        val awayMs = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
+        val prefs = getSharedPreferences(PuppySaveContract.PREFS_NAME, MODE_PRIVATE)
+        val pending = prefs.getLong(PuppySaveContract.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
+        val awayMs = prefs.getLong(PuppySaveContract.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
 
         if (pending <= 0L) {
             finish()
@@ -55,16 +55,16 @@ class AfkWelcomeActivity : ComponentActivity() {
                     reward = pending,
                     awayMs = awayMs,
                     onCollect = {
-                        val latestReward = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                        val latestReward = prefs.getLong(PuppySaveContract.KEY_AFK_PENDING, 0L)
                             .coerceAtLeast(0L)
                         if (latestReward > 0L) {
-                            val existingClaim = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
+                            val existingClaim = prefs.getLong(PuppySaveContract.KEY_AFK_CLAIM_READY, 0L)
                                 .coerceAtLeast(0L)
                             val combined = safeAdd(existingClaim, latestReward)
                             prefs.edit()
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, combined)
+                                .putLong(PuppySaveContract.KEY_AFK_PENDING, 0L)
+                                .putLong(PuppySaveContract.KEY_AFK_AWAY_MS, 0L)
+                                .putLong(PuppySaveContract.KEY_AFK_CLAIM_READY, combined)
                                 .apply()
                         }
                         finish()
