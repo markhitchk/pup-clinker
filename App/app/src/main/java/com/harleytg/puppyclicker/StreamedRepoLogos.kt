@@ -27,9 +27,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-internal enum class RepoLogoAsset(val fileName: String) {
+internal enum class RepoLogoAsset(
+    val fileName: String,
+    val revision: String? = null
+) {
     PUPPY_CLICKER("puppy_clicker.png"),
-    HARLEYS_STUDIOS("harleys_studios.png")
+    HARLEYS_STUDIOS(
+        "harleys_studios.png",
+        "b44d69c5b56eb7adce6a16327bbcb3bf463fbd6b"
+    )
 }
 
 @Composable
@@ -75,12 +81,12 @@ internal fun streamedRepoLogoPainter(
 }
 
 internal object RepoLogoAssetStream {
-    private const val RAW_BASE =
-        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos"
-    private const val CDN_BASE =
-        "https://cdn.jsdelivr.net/gh/markhitchk/pup-clinker@main/assets/logos"
+    private const val RAW_REPO =
+        "https://raw.githubusercontent.com/markhitchk/pup-clinker"
+    private const val CDN_REPO =
+        "https://cdn.jsdelivr.net/gh/markhitchk/pup-clinker"
 
-    private const val PREFS = "repo_logo_stream_v1"
+    private const val PREFS = "repo_logo_stream_v2"
     private const val MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024
     private const val MAX_SOURCE_EDGE = 16_384
     private const val MAX_SOURCE_PIXELS = 64L * 1024L * 1024L
@@ -107,7 +113,7 @@ internal object RepoLogoAssetStream {
                 }
 
                 val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val prefix = asset.name.lowercase()
+                val prefix = cacheKey(asset)
                 val now = System.currentTimeMillis()
                 val checked = prefs.getLong("${prefix}_checked", 0L)
                 val attempted = prefs.getLong("${prefix}_attempted", 0L)
@@ -121,9 +127,10 @@ internal object RepoLogoAssetStream {
 
                 prefs.edit().putLong("${prefix}_attempted", now).apply()
 
+                val ref = asset.revision ?: "main"
                 val urls = listOf(
-                    "$RAW_BASE/${asset.fileName}",
-                    "$CDN_BASE/${asset.fileName}"
+                    "$RAW_REPO/$ref/assets/logos/${asset.fileName}",
+                    "$CDN_REPO@${ref}/assets/logos/${asset.fileName}"
                 )
                 var lastError: Exception? = null
 
@@ -161,6 +168,11 @@ internal object RepoLogoAssetStream {
                 cached
             }
         }
+
+    private fun cacheKey(asset: RepoLogoAsset): String {
+        val revision = asset.revision?.take(12) ?: "main"
+        return "${asset.name.lowercase()}_$revision"
+    }
 
     private fun download(urlString: String, asset: RepoLogoAsset): ByteArray {
         val connection = URL(urlString).openConnection() as HttpURLConnection
@@ -206,8 +218,10 @@ internal object RepoLogoAssetStream {
         return output.toByteArray()
     }
 
-    private fun cacheFile(context: Context, asset: RepoLogoAsset): File =
-        File(context.cacheDir, "branding/${asset.fileName}")
+    private fun cacheFile(context: Context, asset: RepoLogoAsset): File {
+        val revision = asset.revision?.take(12) ?: "main"
+        return File(context.cacheDir, "branding/$revision-${asset.fileName}")
+    }
 
     private fun readCached(context: Context, asset: RepoLogoAsset): Bitmap? {
         val file = cacheFile(context, asset)
