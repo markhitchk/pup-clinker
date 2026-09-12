@@ -163,8 +163,8 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
         )
 
         SettingsDestination.PROFILE -> SettingsSubpage(
-            title = "Profile",
-            subtitle = "Username, birthday, and Puppy Clicker identity.",
+            title = "Puppy Clicker Local Account",
+            subtitle = "Local username, backup password, birthday, and device-bound identity.",
             onBack = { open(SettingsDestination.HOME) }
         ) {
             ProfileSettings(vm, ui)
@@ -313,7 +313,7 @@ private fun SettingsHome(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        "Local Profile",
+                        "Puppy Clicker Local Account",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -361,7 +361,7 @@ private fun SettingsHome(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup("Account") {
-            SettingsNavRow(SettingsIcon.PROFILE, "Profile", "Username, birthday, and profile options") {
+            SettingsNavRow(SettingsIcon.PROFILE, "Puppy Clicker Local Account", "Username, backup password, birthday, and local identity") {
                 onOpen(SettingsDestination.PROFILE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -626,9 +626,9 @@ private fun ProfileSettings(
         )
     ) {
         Column(Modifier.padding(14.dp)) {
-            Text("Local Profile", fontWeight = FontWeight.Black)
+            Text("Puppy Clicker Local Account", fontWeight = FontWeight.Black)
             Text(
-                "Your Puppy Clicker identity stays device-bound.",
+                "This account stays device-bound and does not require the online account service.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -695,7 +695,7 @@ private fun ProfileSettings(
                 if (backupPasswordConfigured) "Configured" else "Not configured"
             )
             Text(
-                "This Local Profile password encrypts portable .pupsave exports and is stored device-bound with Android Keystore.",
+                "This Puppy Clicker Local Account password encrypts portable .pupsave exports and is stored device-bound with Android Keystore.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
