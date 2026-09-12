@@ -1,0 +1,1155 @@
+{
+  "schemaVersion": 1,
+  "month": "2026-09",
+  "description": "Puppy Clicker monthly Today’s Goals. Edit this file on GitHub; the Android app streams and caches it.",
+  "goalTypeHelp": {
+    "taps": "Daily accepted puppy taps",
+    "care": "Daily care actions",
+    "shop": "Daily upgrade purchases",
+    "wellness": "Current care wellness percentage",
+    "bond": "Current puppy bond percentage",
+    "tickets": "Current ticket inventory total"
+  },
+  "days": {
+    "1": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 50 times",
+        "target": 50,
+        "rewardTreats": 200
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "2": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 75 times",
+        "target": 75,
+        "rewardTreats": 300
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "3": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 90 times",
+        "target": 90,
+        "rewardTreats": 360
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "4": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 100 times",
+        "target": 100,
+        "rewardTreats": 400
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "5": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 120 times",
+        "target": 120,
+        "rewardTreats": 480
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ],
+    "6": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 140 times",
+        "target": 140,
+        "rewardTreats": 560
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "7": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 50 times",
+        "target": 50,
+        "rewardTreats": 200
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "8": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 75 times",
+        "target": 75,
+        "rewardTreats": 300
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "9": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 90 times",
+        "target": 90,
+        "rewardTreats": 360
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "10": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 100 times",
+        "target": 100,
+        "rewardTreats": 400
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ],
+    "11": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 120 times",
+        "target": 120,
+        "rewardTreats": 480
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "12": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 140 times",
+        "target": 140,
+        "rewardTreats": 560
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "13": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 50 times",
+        "target": 50,
+        "rewardTreats": 200
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "14": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 75 times",
+        "target": 75,
+        "rewardTreats": 300
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "15": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 90 times",
+        "target": 90,
+        "rewardTreats": 360
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ],
+    "16": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 100 times",
+        "target": 100,
+        "rewardTreats": 400
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "17": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 120 times",
+        "target": 120,
+        "rewardTreats": 480
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "18": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 140 times",
+        "target": 140,
+        "rewardTreats": 560
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "19": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 50 times",
+        "target": 50,
+        "rewardTreats": 200
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "20": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 75 times",
+        "target": 75,
+        "rewardTreats": 300
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ],
+    "21": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 90 times",
+        "target": 90,
+        "rewardTreats": 360
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "22": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 100 times",
+        "target": 100,
+        "rewardTreats": 400
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "23": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 120 times",
+        "target": 120,
+        "rewardTreats": 480
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "24": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 140 times",
+        "target": 140,
+        "rewardTreats": 560
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "25": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 50 times",
+        "target": 50,
+        "rewardTreats": 200
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ],
+    "26": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 75 times",
+        "target": 75,
+        "rewardTreats": 300
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 75% wellness",
+        "target": 75,
+        "rewardTreats": 400
+      }
+    ],
+    "27": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 90 times",
+        "target": 90,
+        "rewardTreats": 360
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 5 care actions",
+        "target": 5,
+        "rewardTreats": 350
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 1 upgrade",
+        "target": 1,
+        "rewardTreats": 400
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 80% wellness",
+        "target": 80,
+        "rewardTreats": 410
+      }
+    ],
+    "28": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 100 times",
+        "target": 100,
+        "rewardTreats": 400
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 6 care actions",
+        "target": 6,
+        "rewardTreats": 390
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 85% wellness",
+        "target": 85,
+        "rewardTreats": 420
+      }
+    ],
+    "29": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 120 times",
+        "target": 120,
+        "rewardTreats": 480
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 3 care actions",
+        "target": 3,
+        "rewardTreats": 270
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 2 upgrades",
+        "target": 2,
+        "rewardTreats": 500
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 90% wellness",
+        "target": 90,
+        "rewardTreats": 430
+      }
+    ],
+    "30": [
+      {
+        "id": "tap_time",
+        "type": "taps",
+        "emoji": "🐾",
+        "title": "Tap Time",
+        "description": "Tap your puppy 140 times",
+        "target": 140,
+        "rewardTreats": 560
+      },
+      {
+        "id": "good_care",
+        "type": "care",
+        "emoji": "💖",
+        "title": "Good Care",
+        "description": "Complete 4 care actions",
+        "target": 4,
+        "rewardTreats": 310
+      },
+      {
+        "id": "shop_visit",
+        "type": "shop",
+        "emoji": "🛍️",
+        "title": "Shop Visit",
+        "description": "Buy 3 upgrades",
+        "target": 3,
+        "rewardTreats": 600
+      },
+      {
+        "id": "wellness",
+        "type": "wellness",
+        "emoji": "✨",
+        "title": "Healthy Pup",
+        "description": "Reach 95% wellness",
+        "target": 95,
+        "rewardTreats": 440
+      }
+    ]
+  }
+}
