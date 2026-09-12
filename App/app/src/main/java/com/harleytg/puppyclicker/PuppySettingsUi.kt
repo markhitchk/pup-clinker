@@ -59,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -273,6 +274,14 @@ private fun SettingsHome(
 ) {
     val context = LocalContext.current
     val security = PupEyeSaveGuard.state(context)
+    val featureFlags by produceState(
+        initialValue = PuppyFeatureFlags.cached(context),
+        key1 = context
+    ) {
+        value = PuppyFeatureFlags.refresh(context)
+    }
+    val discordLinkingFlag = featureFlags.flag("discord_linking")
+    val saveRestoreFlag = featureFlags.flag("save_restore")
 
     Column(
         modifier = Modifier
@@ -371,16 +380,44 @@ private fun SettingsHome(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup("Account") {
-            SettingsNavRow(SettingsIcon.PROFILE, "Puppy Clicker Local Account", "Username, backup password, birthday, and local identity") {
+            SettingsNavRow(
+                SettingsIcon.PROFILE,
+                "Puppy Clicker Local Account",
+                "Username, backup password, birthday, and local identity"
+            ) {
                 onOpen(SettingsDestination.PROFILE)
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow(SettingsIcon.DISCORD, "Discord", "Connect or manage your Discord account") {
-                onOpen(SettingsDestination.DISCORD)
+
+            if (discordLinkingFlag.visible) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SettingsNavRow(
+                    SettingsIcon.DISCORD,
+                    "Discord",
+                    if (discordLinkingFlag.isAvailable()) {
+                        "Connect or manage your Discord account"
+                    } else {
+                        "Unavailable · " + discordLinkingFlag.badgeText()
+                    },
+                    enabled = discordLinkingFlag.isAvailable()
+                ) {
+                    onOpen(SettingsDestination.DISCORD)
+                }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow(SettingsIcon.TRANSFER, "Import / Export", "Back up or restore your .pupsave") {
-                onOpen(SettingsDestination.TRANSFER)
+
+            if (saveRestoreFlag.visible) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SettingsNavRow(
+                    SettingsIcon.TRANSFER,
+                    "Import / Export",
+                    if (saveRestoreFlag.isAvailable()) {
+                        "Back up or restore your .pupsave"
+                    } else {
+                        "Unavailable · " + saveRestoreFlag.badgeText()
+                    },
+                    enabled = saveRestoreFlag.isAvailable()
+                ) {
+                    onOpen(SettingsDestination.TRANSFER)
+                }
             }
         }
 
@@ -558,6 +595,11 @@ private fun FeatureFlagSettings() {
                             " · Enabled: " + (if (flag.enabled) "Yes" else "No"),
                         style = MaterialTheme.typography.labelSmall
                     )
+                    Text(
+                        "Release date: " + (flag.releaseDate?.toString() ?: "Not scheduled"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -684,12 +726,13 @@ private fun SettingsNavRow(
     icon: SettingsIcon,
     title: String,
     subtitle: String,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -704,7 +747,15 @@ private fun SettingsNavRow(
         }
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
+            Text(
+                title,
+                fontWeight = FontWeight.Bold,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
