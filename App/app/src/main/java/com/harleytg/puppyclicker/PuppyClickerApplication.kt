@@ -56,6 +56,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
         startupSafely("dynamic puppy roster") { DynamicPuppyRoster.initialize(this) }
         startupSafely("remote feature flags") { PuppyFeatureFlags.initialize(this) }
+        startupSafely("monthly rewards stream") { PuppyMonthlyRewards.initialize(this) }
         startupSafely("redeem code stream") { StreamedRedeemCodes.initialize(this) }
         startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
