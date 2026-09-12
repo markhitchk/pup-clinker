@@ -135,19 +135,21 @@ internal object DynamicPuppyRoster {
         .toCollection(linkedSetOf())
 
     private fun buildAssetMap(remoteDynamic: List<PuppyRosterAsset>): Map<String, PuppyRosterAsset> {
-        val dynamic = LinkedHashMap<String, PuppyRosterAsset>()
-        bundledDynamicAssets.forEach { dynamic[it.style.id] = it }
-        remoteDynamic.forEach { dynamic[it.style.id] = it }
+        // V1/V2 remain bundled compatibility fallbacks, but a valid live V2 manifest is
+        // authoritative for roster membership. This lets new V2 puppies appear without
+        // waiting for a new APK while preserving the bundled list when GitHub is offline.
+        val merged = LinkedHashMap<String, PuppyRosterAsset>()
+        legacyAssets.forEach { merged[it.style.id] = it }
+        bundledDynamicAssets.forEach { merged[it.style.id] = it }
+        remoteDynamic.forEach { merged[it.style.id] = it }
 
-        val all = legacyAssets + dynamic.values
+        val all = merged.values.toList()
         require(all.size <= MAX_DYNAMIC_PUPPIES + legacyAssets.size) { "Too many puppy roster entries" }
-        val byStyle = LinkedHashMap<String, PuppyRosterAsset>(all.size)
         val assetIds = HashSet<String>()
         all.forEach { asset ->
-            require(byStyle.put(asset.style.id, asset) == null) { "Duplicate puppy style id: ${asset.style.id}" }
             require(assetIds.add(asset.assetId)) { "Duplicate puppy asset id: ${asset.assetId}" }
         }
-        return byStyle.toMap()
+        return merged.toMap()
     }
 
     private fun publishRemote(remoteDynamic: List<PuppyRosterAsset>) {
@@ -203,7 +205,7 @@ internal object DynamicPuppyRoster {
                     val item = directories.getJSONObject(index)
                     if (item.optString("type") != "dir") continue
                     val name = item.optString("name")
-                    if (name == "test" || folderRegex.matches(name)) add(name)
+                    if (name == "v2" || name == "test" || folderRegex.matches(name)) add(name)
                 }
             }.distinct().sortedWith(compareBy<String> {
                 if (it == "test") Int.MAX_VALUE else it.removePrefix("v").toIntOrNull() ?: Int.MAX_VALUE - 1
@@ -234,7 +236,7 @@ internal object DynamicPuppyRoster {
     }
 
     internal fun parseManifest(folder: String, text: String): List<PuppyRosterAsset> {
-        require(folder == "test" || folderRegex.matches(folder)) { "Unsupported dynamic folder" }
+        require(folder == "v2" || folder == "test" || folderRegex.matches(folder)) { "Unsupported dynamic folder" }
         val root = JSONObject(text)
         val puppies = root.getJSONArray("puppies")
         if (puppies.length() > MAX_DYNAMIC_PUPPIES) throw IOException("Too many dynamic puppies")
@@ -327,7 +329,7 @@ internal object DynamicPuppyRoster {
             val folder = item.getString("folder")
             val fileName = item.getString("fileName")
             if (!idRegex.matches(styleId) || styleId != assetId || !seen.add(styleId)) throw IOException("Invalid cached style")
-            if (!(folder == "test" || folderRegex.matches(folder)) || !fileRegex.matches(fileName)) throw IOException("Invalid cached asset path")
+            if (!(folder == "v2" || folder == "test" || folderRegex.matches(folder)) || !fileRegex.matches(fileName)) throw IOException("Invalid cached asset path")
             val free = item.getBoolean("free")
             val redeemOnly = if (free) false else item.getBoolean("redeemOnly")
             result += PuppyRosterAsset(
