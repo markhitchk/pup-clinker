@@ -111,6 +111,7 @@ private enum class SettingsDestination {
     ROSTER,
     PUPEYE,
     ASSETS,
+    DEVELOPER,
     ABOUT
 }
 
@@ -224,6 +225,16 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             OnlineAssetSettings()
         }
 
+        SettingsDestination.DEVELOPER -> SettingsSubpage(
+            title = "Developer",
+            subtitle = "Diagnostics, logs, and developer-only app tools.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            PuppyDeveloperOptions(
+                onOpenConsole = { developerConsoleOpen = true }
+            )
+        }
+
         SettingsDestination.ABOUT -> SettingsSubpage(
             title = "About Puppy Clicker",
             subtitle = "App information, links, and development details.",
@@ -243,6 +254,8 @@ private fun SettingsHome(
 ) {
     val context = LocalContext.current
     val security = PupEyeSaveGuard.state(context)
+    val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
+    val showDeveloper = developer.unlocked || PuppyPlayerIdentity.isHarleyTgDeveloper(context)
 
     Column(
         modifier = Modifier
@@ -411,6 +424,15 @@ private fun SettingsHome(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
                 onOpen(SettingsDestination.ABOUT)
+            }
+        }
+
+        if (showDeveloper) {
+            Spacer(Modifier.height(14.dp))
+            SettingsGroup("Developer") {
+                SettingsNavRow("🛠", "Developer Options", "Diagnostics, app logs, and developer tools") {
+                    onOpen(SettingsDestination.DEVELOPER)
+                }
             }
         }
 
@@ -1794,22 +1816,11 @@ private fun AboutSettings(
         )
     }
 
-    if (developer.unlocked) {
-        Spacer(Modifier.height(14.dp))
-        SettingsLabel("DEVELOPER")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(Modifier.padding(14.dp)) {
-                PuppyDeveloperOptions(
-                    onOpenConsole = onOpenDeveloperConsole
-                )
-            }
-        }
-    }
+    // Developer tools have their own top-level Settings category. Keep the callback
+    // parameter here so the generated Developer Console compatibility patch can
+    // recognize this routed Settings implementation without restoring the old card.
+    @Suppress("UNUSED_VARIABLE")
+    val developerConsoleRoute = onOpenDeveloperConsole
 
     Spacer(Modifier.height(14.dp))
     SettingsLabel("CREDITS")
