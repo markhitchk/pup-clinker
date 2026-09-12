@@ -226,9 +226,9 @@ internal fun PuppyOnboardingPlayerSetup(
                         if (moderationIssue != null) {
                             usernameModerationMessage = moderationIssue
                         } else if (backupPassword.length < 8) {
-                            usernameModerationMessage = "Your local backup password must be at least 8 characters."
+                            usernameModerationMessage = "Your password must be at least 8 characters."
                         } else if (backupPassword != backupPasswordConfirm) {
-                            usernameModerationMessage = "Your backup passwords do not match."
+                            usernameModerationMessage = "Your passwords do not match."
                         } else {
                             username = PuppyPlayerIdentity.setUsername(context, username)
                             val backupSaved = runCatching {
