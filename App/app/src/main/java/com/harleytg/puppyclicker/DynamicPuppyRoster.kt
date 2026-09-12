@@ -59,7 +59,7 @@ internal object DynamicPuppyRoster {
     private const val MAX_INDEX_BYTES = 512 * 1024
     private const val MAX_MANIFEST_BYTES = 256 * 1024
     private const val MAX_DYNAMIC_PUPPIES = 500
-    private const val REFRESH_INTERVAL_MS = 6L * 60L * 60L * 1_000L
+    private const val REFRESH_INTERVAL_MS = 60L * 60L * 1_000L
     private const val RETRY_INTERVAL_MS = 5L * 60L * 1_000L
     private const val LOOP_INTERVAL_MS = 60L * 60L * 1_000L
     private val folderRegex = Regex("v[3-9][0-9]*")
