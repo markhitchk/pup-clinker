@@ -450,16 +450,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         rollDailyDayIfNeeded()
         val s = _state.value
         if (id in s.claimedDailyTasks) return
-        val reward = when (id) {
-            "tap75" -> if (s.dailyTaps >= 75) 300L else return
-            "care3" -> if (s.dailyCareActions >= 3) 250L else return
-            "shop1" -> if (s.dailyShopPurchases >= 1) 400L else return
-            "wellness" -> if (s.careScore >= 90) 350L else return
-            else -> return
-        }
+
+        // Reward values are resolved from the validated repository schedule inside
+        // the ViewModel rather than trusted from UI arguments.
+        val goal = PuppyMonthlyRewards.goalToday(id) ?: return
+        if (!goal.isComplete(s)) return
+
         _state.value = s.copy(
-            treats = safeAdd(s.treats, reward),
-            lifetimeTreats = safeAdd(s.lifetimeTreats, reward),
+            treats = safeAdd(s.treats, goal.rewardTreats),
+            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
             claimedDailyTasks = s.claimedDailyTasks + id
         )
         saveState()
