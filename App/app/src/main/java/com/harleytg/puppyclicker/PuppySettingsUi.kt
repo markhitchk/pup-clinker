@@ -2040,7 +2040,8 @@ private fun AboutSettings(
             Image(
                 painter = painterResource(R.drawable.harleys_studios_icon),
                 contentDescription = "Harley's Studios",
-                modifier = Modifier.size(46.dp)
+                modifier = Modifier.size(32.dp),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit
             )
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
