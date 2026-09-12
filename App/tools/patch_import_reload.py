@@ -40,10 +40,19 @@ def patch_view_model(source: str) -> str:
 
 
 def patch_activity(source: str) -> str:
+    callback_call = "        SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)\n"
+    legacy_call = "        SaveTransferSettings()\n"
+
+    # The modern Settings implementation owns SaveTransferSettings in PuppySettingsUi.kt,
+    # where the import-success callback is already wired. Older generated bases still
+    # contain the call in the Activity, so only patch that legacy shape when present.
+    if callback_call in source or legacy_call not in source:
+        return source
+
     return replace_once(
         source,
-        "        SaveTransferSettings()\n",
-        "        SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)\n",
+        legacy_call,
+        callback_call,
         "V6 save import callback",
     )
 
