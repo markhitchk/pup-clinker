@@ -38,8 +38,9 @@ jobs:
           python3 -m pip install --disable-pip-version-check --quiet pillow
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image
+          from PIL import Image, ImageFile
 
+          ImageFile.LOAD_TRUNCATED_IMAGES = True
           path = Path("app/src/main/res/drawable-nodpi/harleys_studios_icon.png")
           with Image.open(path) as source:
               image = source.convert("RGBA")
