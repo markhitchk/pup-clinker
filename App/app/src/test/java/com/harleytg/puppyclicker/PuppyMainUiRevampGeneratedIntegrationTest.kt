@@ -103,6 +103,19 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun rosterUpdatesTriggerBackgroundNotifications() {
+        val roster = generated("DynamicPuppyRoster.kt").readText()
+        val notifications = generated("PuppyNotificationCenter.kt").readText()
+
+        assertTrue(roster.contains("REFRESH_INTERVAL_MS = 60L * 60L * 1_000L"))
+        assertTrue(roster.contains("notifyIfRosterChanged("))
+        assertTrue(roster.contains("PuppyNotificationCenter.notifyRosterUpdated("))
+        assertTrue(notifications.contains("DynamicPuppyRoster.refreshIfDue(app)"))
+        assertTrue(notifications.contains("NOTIFY_ROSTER = 42104"))
+        assertTrue(notifications.contains("New puppy added to the roster"))
+    }
+
+    @Test
     fun rosterKeepsExchangeWhileUsingRevampedVisualHierarchy() {
         val source = generated("PuppyRosterScreen.kt").readText()
 
