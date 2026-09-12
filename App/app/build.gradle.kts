@@ -1,4 +1,3 @@
-import java.net.URI
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -10,7 +9,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val puppySourceCommit = "ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1"
 val generatedSourceRes = layout.buildDirectory.dir("generated/source-assets/res")
 val generatedSourceDrawables = layout.buildDirectory.dir("generated/source-assets/res/drawable-nodpi")
 val generatedSourceVectorDrawables = layout.buildDirectory.dir("generated/source-assets/res/drawable")
@@ -20,6 +18,7 @@ val originalMainSourceDir = layout.projectDirectory.dir("src/main/java")
 val puppySvgSourceDir = layout.projectDirectory.dir("src/main/puppy-svg")
 val protectedPuppySourceDir = layout.buildDirectory.dir("generated/puppy-vectors").get()
 val legalSourceDir = rootProject.file("../assets/legal")
+val appLogoSourceDir = rootProject.file("../assets/logos")
 
 val v1ProtectedPuppyIds = listOf(
     "classic",
@@ -180,6 +179,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
     inputs.files(v1ProtectedPuppyIds.map { protectedPuppySourceDir.file("v1_$it.xml") })
     inputs.files(v2ProtectedPuppyIds.map { protectedPuppySourceDir.file("$it.xml") })
     inputs.dir(legalSourceDir)
+    inputs.dir(appLogoSourceDir)
     outputs.dir(generatedProtectedAssets)
     outputs.dir(generatedSourceDrawables)
     outputs.dir(generatedSourceVectorDrawables)
@@ -222,14 +222,14 @@ val prepareProtectedPuppyAssets by tasks.registering {
             )
         }
 
-        val baseUrl = "https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/$puppySourceCommit/Images"
         mapOf(
-            "source_logo.png" to "$baseUrl/logo.png",
-            "source_htg.png" to "$baseUrl/htg.png"
-        ).forEach { (fileName, sourceUrl) ->
-            URI(sourceUrl).toURL().openStream().use { input ->
-                drawableDir.resolve(fileName).outputStream().use { output -> input.copyTo(output) }
-            }
+            "source_logo.png" to "puppy_clicker.png",
+            "source_htg.png" to "harleytg.png",
+            "harleys_studios_icon.png" to "harleys_studios.png"
+        ).forEach { (drawableName, assetName) ->
+            val source = appLogoSourceDir.resolve(assetName)
+            require(source.isFile) { "Missing repository app logo: ${source.path}" }
+            source.copyTo(drawableDir.resolve(drawableName), overwrite = true)
         }
 
         vectorDrawableDir.resolve("source_pup.xml").writeText(

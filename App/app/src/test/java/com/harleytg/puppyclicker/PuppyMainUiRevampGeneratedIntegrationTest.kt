@@ -73,7 +73,7 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
-    fun harleysStudiosBrandingUsesCorrectedEmbeddedAsset() {
+    fun harleysStudiosBrandingUsesRepositoryLogoAsset() {
         val settings = generated("PuppySettingsUi.kt").readText()
         val onboarding = generated("PuppyOnboardingUi.kt").readText()
         val branding = generated("HarleysStudiosBranding.kt").readText()
@@ -82,7 +82,8 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(onboarding.contains("HarleysStudiosBranding("))
         assertTrue(!settings.contains("R.drawable.harleys_studios_icon"))
         assertTrue(!onboarding.contains("R.drawable.harleys_studios_icon"))
-        assertTrue(branding.contains("HARLEYS_STUDIOS_LOGO_BASE64"))
+        assertTrue(branding.contains("R.drawable.harleys_studios_icon"))
+        assertTrue(!branding.contains("HARLEYS_STUDIOS_LOGO_BASE64"))
     }
 
     @Test
