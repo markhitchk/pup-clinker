@@ -1835,10 +1835,9 @@ private fun AboutSettings(
                 .padding(13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(R.drawable.harleys_studios_icon),
-                contentDescription = "Harley's Studios",
-                modifier = Modifier.size(46.dp)
+            HarleysStudiosBranding(
+                modifier = Modifier.size(54.dp),
+                contentDescription = "Harley's Studios"
             )
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
