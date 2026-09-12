@@ -19,6 +19,38 @@ internal object PuppySaveContract {
     const val KEY_AFK_CLAIM_READY = "afk_claim_ready_v6"
 }
 
+// ---- Shared puppy and ticket primitives ----
+data class PuppyStyle(
+    val id: String,
+    val name: String,
+    val emoji: String,
+    val description: String,
+    val redeemOnly: Boolean = false
+)
+
+enum class TicketRarity(
+    val displayName: String,
+    val emoji: String,
+    val discountPercent: Int,
+    val rarityWeight: Int
+) {
+    COMMON("Common", "🎟️", 10, 60),
+    UNCOMMON("Uncommon", "🟢", 20, 25),
+    RARE("Rare", "🔵", 35, 10),
+    EPIC("Epic", "🟣", 50, 4),
+    LEGENDARY("Legendary", "🟡", 75, 1)
+}
+
+/** Stable V1 compatibility roster used as the base for V6's streamed catalogue. */
+val PUPPY_STYLES = listOf(
+    PuppyStyle("classic", "Buddy", "🐾", "The original Puppy Clicker pup."),
+    PuppyStyle("golden", "Sunny", "🌻", "The original pup with a sunny flower theme."),
+    PuppyStyle("poodle", "Mochi", "🎀", "The original pup with a soft pink bow theme."),
+    PuppyStyle("spotty", "Pepper", "🖤", "The original pup with a playful dark-bandana theme."),
+    PuppyStyle("midnight", "Midnight", "🌙", "A moonlit version of the original pup.", redeemOnly = true),
+    PuppyStyle("cloud", "Cloud", "☁️", "A dreamy cloud version of the original pup.", redeemOnly = true)
+)
+
 // ---- Shared upgrade economy ----
 enum class V5UpgradeEffect { CLICK, AUTO }
 enum class V5UpgradeType { COOKIE, TICKET }
