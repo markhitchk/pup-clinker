@@ -317,11 +317,9 @@ private fun PuppyOnboardingWelcome(onNext: () -> Unit) {
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(R.drawable.harleys_studios_icon),
-                    contentDescription = "Harley's Studios",
-                    modifier = Modifier.size(20.dp),
-                    contentScale = ContentScale.Fit
+                HarleysStudiosBranding(
+                    modifier = Modifier.size(24.dp),
+                    contentDescription = "Harley's Studios"
                 )
                 Spacer(Modifier.size(6.dp))
                 Text(
