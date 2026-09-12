@@ -22,6 +22,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val puppyExchangePatch = rootProject.file("tools/patch_puppy_exchange.py")
     val compactRosterSettingsPatch = rootProject.file("tools/patch_compact_roster_settings.py")
     val puppyCodeV2Patch = rootProject.file("tools/patch_puppy_codes_v2.py")
+    val mainUiRevampPatch = rootProject.file("tools/patch_main_ui_revamp.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -35,7 +36,8 @@ tasks.named("generateProtectedPuppySources").configure {
         rosterNavigationPatch,
         puppyExchangePatch,
         compactRosterSettingsPatch,
-        puppyCodeV2Patch
+        puppyCodeV2Patch,
+        mainUiRevampPatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -87,6 +89,11 @@ tasks.named("generateProtectedPuppySources").configure {
         // the deprecated local claim fallback.
         project.exec {
             commandLine("python3", puppyCodeV2Patch.absolutePath, generatedSourceRoot)
+        }
+        // The visual revamp runs last against the fully integrated app shell so it cannot
+        // disrupt Exchange, Settings/onboarding, compact roster, or live Puppy Code behavior.
+        project.exec {
+            commandLine("python3", mainUiRevampPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
