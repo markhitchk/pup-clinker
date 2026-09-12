@@ -1729,10 +1729,11 @@ private fun AboutSettings(
                         developerStatus = "Developer Mode is already unlocked."
                     }
                     progress.remainingTaps <= 3 -> {
+                        val suffix = if (progress.remainingTaps == 1) "" else "s"
                         developerStatus =
                             progress.remainingTaps.toString() +
                                 " more tap" +
-                                if (progress.remainingTaps == 1) "" else "s" +
+                                suffix +
                                 " to unlock Developer Mode."
                     }
                 }
