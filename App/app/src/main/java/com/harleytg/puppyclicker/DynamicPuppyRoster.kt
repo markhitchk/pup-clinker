@@ -188,6 +188,14 @@ internal object DynamicPuppyRoster {
         }
     }
 
+    internal fun refreshIfDue(context: Context): Boolean {
+        val app = context.applicationContext
+        val before = prefs(app).getLong("checked", 0L)
+        refresh(app)
+        return prefs(app).getLong("checked", 0L) > before
+    }
+
+    @Synchronized
     private fun refresh(context: Context) {
         val settings = prefs(context)
         val now = System.currentTimeMillis()
@@ -198,6 +206,7 @@ internal object DynamicPuppyRoster {
         settings.edit().putLong("attempted", now).apply()
 
         try {
+            val previousRemote = loadCache(context)
             val directoryText = fetchText(CONTENTS_URL, MAX_INDEX_BYTES, "application/vnd.github+json")
             val directories = JSONArray(directoryText)
             val dynamicFolders = buildList {
@@ -225,6 +234,7 @@ internal object DynamicPuppyRoster {
             val serialized = serializeCache(remote)
             persist(context, serialized)
             publishRemote(remote)
+            previousRemote?.let { notifyIfRosterChanged(context, it, remote) }
             settings.edit().putLong("checked", now).apply()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -350,6 +360,37 @@ internal object DynamicPuppyRoster {
             )
         }
         return result
+    }
+
+    private fun notifyIfRosterChanged(
+        context: Context,
+        previous: List<PuppyRosterAsset>,
+        current: List<PuppyRosterAsset>
+    ) {
+        val previousById = previous.associateBy { it.assetId }
+        val currentById = current.associateBy { it.assetId }
+
+        val added = current.filter { it.assetId !in previousById }
+        val removedCount = previous.count { it.assetId !in currentById }
+        val changedCount = current.count { asset ->
+            val old = previousById[asset.assetId] ?: return@count false
+            old.fileName != asset.fileName ||
+                old.folder != asset.folder ||
+                old.groupTitle != asset.groupTitle ||
+                old.free != asset.free ||
+                old.style.name != asset.style.name ||
+                old.style.description != asset.style.description ||
+                old.style.redeemOnly != asset.style.redeemOnly
+        }
+
+        if (added.isEmpty() && removedCount == 0 && changedCount == 0) return
+
+        PuppyNotificationCenter.notifyRosterUpdated(
+            context = context,
+            addedNames = added.map { it.style.name },
+            removedCount = removedCount,
+            changedCount = changedCount
+        )
     }
 
     private fun fetchText(url: String, maxBytes: Int, accept: String): String {
