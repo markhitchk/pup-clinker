@@ -45,6 +45,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -70,6 +71,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,6 +115,23 @@ private enum class SettingsDestination {
     PUPEYE,
     ASSETS,
     ABOUT
+}
+
+private enum class SettingsIcon(val glyph: String) {
+    PROFILE("P"),
+    DISCORD(""),
+    TRANSFER("↕"),
+    THEME("◐"),
+    ACCENT("A"),
+    SCALE("↔"),
+    MOTION("M"),
+    NOTIFICATIONS("N"),
+    GAMEPLAY("G"),
+    DATA("D"),
+    ROSTER(""),
+    PUPEYE(""),
+    ASSETS("C"),
+    ABOUT("i")
 }
 
 @Composable
@@ -341,15 +361,15 @@ private fun SettingsHome(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup("Account") {
-            SettingsNavRow("👤", "Profile", "Username, birthday, and profile options") {
+            SettingsNavRow(SettingsIcon.PROFILE, "Profile", "Username, birthday, and profile options") {
                 onOpen(SettingsDestination.PROFILE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◉", "Discord", "Connect or manage your Discord account") {
+            SettingsNavRow(SettingsIcon.DISCORD, "Discord", "Connect or manage your Discord account") {
                 onOpen(SettingsDestination.DISCORD)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("↕", "Import / Export", "Back up or restore your .pupsave") {
+            SettingsNavRow(SettingsIcon.TRANSFER, "Import / Export", "Back up or restore your .pupsave") {
                 onOpen(SettingsDestination.TRANSFER)
             }
         }
@@ -357,19 +377,19 @@ private fun SettingsHome(
         Spacer(Modifier.height(14.dp))
 
         SettingsGroup("Appearance") {
-            SettingsNavRow("◐", "Theme", "Light, Dark, or System") {
+            SettingsNavRow(SettingsIcon.THEME, "Theme", "Light, Dark, or System") {
                 onOpen(SettingsDestination.APPEARANCE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("●", "Accent Color", "Choose your accent color") {
+            SettingsNavRow(SettingsIcon.ACCENT, "Accent Color", "Choose your accent color") {
                 onOpen(SettingsDestination.APPEARANCE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("↔", "UI Scale", "Compact, Default, or Large") {
+            SettingsNavRow(SettingsIcon.SCALE, "UI Scale", "Compact, Default, or Large") {
                 onOpen(SettingsDestination.APPEARANCE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◌", "Reduced Motion", "Minimize non-essential animations") {
+            SettingsNavRow(SettingsIcon.MOTION, "Reduced Motion", "Minimize non-essential animations") {
                 onOpen(SettingsDestination.APPEARANCE)
             }
         }
@@ -377,7 +397,7 @@ private fun SettingsHome(
         Spacer(Modifier.height(14.dp))
 
         SettingsGroup("Notifications") {
-            SettingsNavRow("🔔", "Notification Settings", "In-game alerts, updates, and more") {
+            SettingsNavRow(SettingsIcon.NOTIFICATIONS, "Notification Settings", "In-game alerts, updates, and more") {
                 onOpen(SettingsDestination.NOTIFICATIONS)
             }
         }
@@ -385,11 +405,11 @@ private fun SettingsHome(
         Spacer(Modifier.height(14.dp))
 
         SettingsGroup("Game") {
-            SettingsNavRow("🎮", "Gameplay", "Preferences and gameplay options") {
+            SettingsNavRow(SettingsIcon.GAMEPLAY, "Gameplay", "Preferences and gameplay options") {
                 onOpen(SettingsDestination.GAMEPLAY)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("▤", "Data Management", "Back up, restore, reset, and delete data") {
+            SettingsNavRow(SettingsIcon.DATA, "Data Management", "Back up, restore, reset, and delete data") {
                 onOpen(SettingsDestination.DATA)
             }
         }
@@ -397,19 +417,19 @@ private fun SettingsHome(
         Spacer(Modifier.height(14.dp))
 
         SettingsGroup("Advanced") {
-            SettingsNavRow("🐶", "Puppy Roster", "Roster content and asset refresh") {
+            SettingsNavRow(SettingsIcon.ROSTER, "Puppy Roster", "Roster content and asset refresh") {
                 onOpen(SettingsDestination.ROSTER)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◉", "PupEye Protection", "Fair-play and save integrity status") {
+            SettingsNavRow(SettingsIcon.PUPEYE, "PupEye Protection", "Fair-play and save integrity status") {
                 onOpen(SettingsDestination.PUPEYE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("☁", "Online Assets", "Streamed asset and cache status") {
+            SettingsNavRow(SettingsIcon.ASSETS, "Online Assets", "Streamed asset and cache status") {
                 onOpen(SettingsDestination.ASSETS)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
+            SettingsNavRow(SettingsIcon.ABOUT, "About Puppy Clicker", "Version, links, development, and legal") {
                 onOpen(SettingsDestination.ABOUT)
             }
         }
@@ -507,8 +527,36 @@ private fun SettingsGroup(
 }
 
 @Composable
+private fun SettingsNavIcon(icon: SettingsIcon) {
+    when (icon) {
+        SettingsIcon.DISCORD -> Icon(
+            painter = painterResource(R.drawable.ic_discord),
+            contentDescription = null,
+            modifier = Modifier.size(21.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        SettingsIcon.ROSTER -> Icon(
+            painter = painterResource(R.drawable.ic_paw),
+            contentDescription = null,
+            modifier = Modifier.size(21.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        SettingsIcon.PUPEYE -> StreamedPupEyeBranding(
+            modifier = Modifier.size(23.dp),
+            contentDescription = null
+        )
+        else -> Text(
+            icon.glyph,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
 private fun SettingsNavRow(
-    icon: String,
+    icon: SettingsIcon,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -526,7 +574,7 @@ private fun SettingsNavRow(
             color = MaterialTheme.colorScheme.secondaryContainer
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(icon, fontWeight = FontWeight.Black)
+                SettingsNavIcon(icon)
             }
         }
         Spacer(Modifier.width(11.dp))
@@ -560,6 +608,15 @@ private fun ProfileSettings(
     }
     var savedMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var birthdayEditor by rememberSaveable { mutableStateOf(false) }
+    var backupPasswordConfigured by rememberSaveable {
+        mutableStateOf(PuppyLocalBackupPassword.hasPassword(context))
+    }
+    var backupPasswordEditor by rememberSaveable { mutableStateOf(false) }
+    var currentBackupPassword by rememberSaveable { mutableStateOf("") }
+    var newBackupPassword by rememberSaveable { mutableStateOf("") }
+    var confirmBackupPassword by rememberSaveable { mutableStateOf("") }
+    var backupPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var backupPasswordStatus by rememberSaveable { mutableStateOf<String?>(null) }
     val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
 
     Card(
@@ -622,6 +679,162 @@ private fun ProfileSettings(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary
         )
+    }
+
+    Spacer(Modifier.height(16.dp))
+    SettingsLabel("BACKUP PASSWORD")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            StatusLine(
+                "Status",
+                if (backupPasswordConfigured) "Configured" else "Not configured"
+            )
+            Text(
+                "This Local Profile password encrypts portable .pupsave exports and is stored device-bound with Android Keystore.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    backupPasswordEditor = !backupPasswordEditor
+                    backupPasswordStatus = null
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (backupPasswordEditor) {
+                        "Cancel Password Change"
+                    } else if (backupPasswordConfigured) {
+                        "Change Backup Password"
+                    } else {
+                        "Create Backup Password"
+                    }
+                )
+            }
+
+            if (backupPasswordEditor) {
+                Spacer(Modifier.height(10.dp))
+                if (backupPasswordConfigured) {
+                    OutlinedTextField(
+                        value = currentBackupPassword,
+                        onValueChange = {
+                            currentBackupPassword = it.take(128)
+                            backupPasswordStatus = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Current backup password") },
+                        singleLine = true,
+                        visualTransformation = if (backupPasswordVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        }
+                    )
+                    Spacer(Modifier.height(7.dp))
+                }
+                OutlinedTextField(
+                    value = newBackupPassword,
+                    onValueChange = {
+                        newBackupPassword = it.take(128)
+                        backupPasswordStatus = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("New backup password") },
+                    supportingText = { Text("Minimum 8 characters.") },
+                    singleLine = true,
+                    visualTransformation = if (backupPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    }
+                )
+                Spacer(Modifier.height(7.dp))
+                OutlinedTextField(
+                    value = confirmBackupPassword,
+                    onValueChange = {
+                        confirmBackupPassword = it.take(128)
+                        backupPasswordStatus = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Confirm new password") },
+                    isError = confirmBackupPassword.isNotBlank() &&
+                        newBackupPassword != confirmBackupPassword,
+                    singleLine = true,
+                    trailingIcon = {
+                        TextButton(
+                            onClick = { backupPasswordVisible = !backupPasswordVisible }
+                        ) {
+                            Text(if (backupPasswordVisible) "Hide" else "View")
+                        }
+                    },
+                    visualTransformation = if (backupPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    }
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        val existing = PuppyLocalBackupPassword.load(context)
+                        when {
+                            backupPasswordConfigured &&
+                                existing != currentBackupPassword -> {
+                                backupPasswordStatus =
+                                    "Current backup password is incorrect."
+                            }
+                            newBackupPassword.length < 8 -> {
+                                backupPasswordStatus =
+                                    "New backup password must be at least 8 characters."
+                            }
+                            newBackupPassword != confirmBackupPassword -> {
+                                backupPasswordStatus =
+                                    "New backup passwords do not match."
+                            }
+                            !PuppyLocalBackupPassword.save(
+                                context,
+                                newBackupPassword
+                            ) -> {
+                                backupPasswordStatus =
+                                    "Could not secure the backup password on this device."
+                            }
+                            else -> {
+                                backupPasswordConfigured = true
+                                backupPasswordEditor = false
+                                currentBackupPassword = ""
+                                newBackupPassword = ""
+                                confirmBackupPassword = ""
+                                backupPasswordStatus = "Backup password updated."
+                            }
+                        }
+                    },
+                    enabled = newBackupPassword.length >= 8 &&
+                        newBackupPassword == confirmBackupPassword,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Save Backup Password")
+                }
+            }
+
+            backupPasswordStatus?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (it.contains("updated", ignoreCase = true)) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    }
+                )
+            }
+        }
     }
 
     Spacer(Modifier.height(16.dp))
@@ -1992,6 +2205,7 @@ private fun deletePuppyClickerLocalSave(context: Context) {
     context.getSharedPreferences("puppy_player_identity_v1", Context.MODE_PRIVATE).edit().clear().commit()
     DiscordSignupAuth.disconnect(context)
     context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
+    PuppyLocalBackupPassword.clear(context)
     File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
     ExternalGameSave.path(context)?.let { File(it).delete() }
     PuppyDeveloperPreferences.clear(context)
