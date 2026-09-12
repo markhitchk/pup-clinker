@@ -125,20 +125,25 @@ internal fun PuppyRosterScreen(
             Column(Modifier.weight(1f)) {
                 Text(
                     "Puppy Roster",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     "Browse every streamed puppy in the live roster.",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(
-                onClick = onOpenSettings,
-                modifier = Modifier.semantics { contentDescription = "Open settings" }
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.46f)
             ) {
-                Text("⚙️", fontSize = 22.sp)
+                Text(
+                    "🐾 " + assets.count { it.style.id in state.unlockedPuppies } + " / " + assets.size + " Unlocked",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -172,8 +177,9 @@ internal fun PuppyRosterScreen(
             onValueChange = { search = it.take(64) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Search puppies or ID") },
-            leadingIcon = { Text("🔍") }
+            placeholder = { Text("Search puppies or ID") },
+            leadingIcon = { Text("🔍") },
+            shape = RoundedCornerShape(18.dp)
         )
 
         Spacer(Modifier.height(7.dp))
@@ -406,9 +412,11 @@ private fun SelectedPuppyPanel(
     val active = id == state.puppyStyle
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f)
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
