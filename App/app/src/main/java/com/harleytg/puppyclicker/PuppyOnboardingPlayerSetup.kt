@@ -423,7 +423,7 @@ internal fun PuppyOnboardingPlayerSetup(
                     )
                 }
             }
-        )
+        }
     }
 
     if (discordSheetOpen) {
