@@ -199,7 +199,7 @@ val prepareProtectedPuppyAssets by tasks.registering {
         vectorDrawableDir.mkdirs()
 
         require(legalSourceDir.isDirectory) { "Missing repository legal source directory: ${legalSourceDir.path}" }
-        listOf("terms-of-use.txt", "privacy-policy.txt").forEach { fileName ->
+        listOf("terms-of-use.md", "privacy-policy.md").forEach { fileName ->
             val source = legalSourceDir.resolve(fileName)
             require(source.isFile) { "Missing repository legal document: ${source.path}" }
             source.copyTo(legalAssetDir.resolve(fileName), overwrite = true)
