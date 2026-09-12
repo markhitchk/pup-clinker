@@ -1,0 +1,34 @@
+PUPPY CLICKER — TERMS OF USE
+Effective: September 9, 2026
+
+These Terms of Use apply to Puppy Clicker, provided by Harley's Studios. By using Puppy Clicker, you agree to these terms.
+
+1. GAME ACCESS
+Puppy Clicker is provided for personal entertainment. New player setup uses Discord OAuth to verify a Discord account with the identify permission. Existing local saves may continue to use their existing device-bound Puppy Clicker identity. Discord signup does not replace the local Player ID, Friend Code, save file, or PupEye integrity protections.
+
+2. FAIR PLAY AND PUPEYE
+Puppy Clicker uses PupEye fair-play protections. PupEye may detect automated clicking patterns, external clicker scripts, modified or unauthenticated save data, and other behavior that attempts to manipulate normal gameplay. The app may reject suspicious input, apply temporary cooldowns, restore a last-known-good save, quarantine a modified save, or record local fair-play strikes.
+
+3. SAVES AND BACKUPS
+Automatic Android/data saves are encrypted and device-bound using Android security features. Portable backups may be password protected. You are responsible for keeping backup passwords private and for maintaining copies of saves you wish to retain. Modified, damaged, incorrectly authenticated, or incompatible save files may be rejected.
+
+4. PLAYER IDENTITY
+Local player usernames are normalized to lowercase. Encrypted save metadata may include the player's lowercase username and a coarse Android manufacturer/model label to help identify the save source. Puppy Clicker does not use IMEI, hardware serial number, Android ID, phone number, or advertising ID for this purpose.
+
+5. ACCEPTABLE USE
+You may not intentionally bypass PupEye protections, distribute cheats designed specifically to manipulate Puppy Clicker, impersonate another player through save manipulation, or use the app in a way that interferes with its operation.
+
+6. OWNERSHIP
+Puppy Clicker software, branding, original artwork, game content, and PupEye branding are owned by Harley's Studios or used with appropriate rights. These terms do not transfer ownership of those materials to you.
+
+7. THIRD-PARTY SERVICES
+Puppy Clicker may connect to services such as GitHub to retrieve streamed assets, legal documents, or configuration data. Discord OAuth is used for player signup and is also subject to Discord's terms and privacy practices. Puppy Clicker requests the Discord identify permission for this signup flow.
+
+8. AVAILABILITY AND CHANGES
+Features, balancing, characters, online services, save formats, and PupEye protections may change over time. Harley's Studios may update these terms when the app or its services change.
+
+9. DISCLAIMER
+Puppy Clicker is provided on an as-available basis. To the extent permitted by applicable law, Harley's Studios does not guarantee uninterrupted availability or that every save file can be recovered after device loss, corruption, unsupported modification, or forgotten backup credentials.
+
+10. CONTACT
+Questions about Puppy Clicker, these terms, or privacy may be directed to Harley's Studios through the official Puppy Clicker community or support channels made available in the app or official website.
