@@ -40,6 +40,29 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun playKeepsCareActionsExclusiveToCareTab() {
+        val source = generated("PuppyMainScreensRevamp.kt").readText()
+        val play = source.substring(
+            source.indexOf("internal fun PuppyRevampedPlayScreen"),
+            source.indexOf("internal fun PuppyRevampedCareScreen")
+        )
+        val care = source.substring(
+            source.indexOf("internal fun PuppyRevampedCareScreen"),
+            source.indexOf("private fun PuppyCompactCareMeter")
+        )
+
+        assertTrue(!play.contains("vm::feedPuppy"))
+        assertTrue(!play.contains("vm::playWithPuppy"))
+        assertTrue(!play.contains("vm::groomPuppy"))
+        assertTrue(!play.contains("vm::restPuppy"))
+        assertTrue(care.contains("vm::feedPuppy"))
+        assertTrue(care.contains("vm::playWithPuppy"))
+        assertTrue(care.contains("vm::groomPuppy"))
+        assertTrue(care.contains("vm::restPuppy"))
+        assertTrue(care.contains("vm::cuddlePuppy"))
+    }
+
+    @Test
     fun rosterKeepsExchangeWhileUsingRevampedVisualHierarchy() {
         val source = generated("PuppyRosterScreen.kt").readText()
 
