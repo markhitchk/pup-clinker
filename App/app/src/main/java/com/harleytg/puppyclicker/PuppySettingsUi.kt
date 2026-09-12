@@ -1818,13 +1818,26 @@ private fun AboutSettings(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
-        Column(Modifier.padding(13.dp)) {
-            Text("Built by Harley's Studios", fontWeight = FontWeight.Black)
-            Text(
-                "With help from the community. Thank you for playing!",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(R.drawable.harleys_studios_icon),
+                contentDescription = "Harley's Studios",
+                modifier = Modifier.size(46.dp)
             )
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Built by Harley's Studios", fontWeight = FontWeight.Black)
+                Text(
+                    "With help from the community. Thank you for playing!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 
