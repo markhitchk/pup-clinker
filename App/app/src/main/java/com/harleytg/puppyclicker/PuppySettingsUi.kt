@@ -554,8 +554,8 @@ private fun FeatureFlagSettings() {
                     }
                     Spacer(Modifier.height(5.dp))
                     Text(
-                        "Visible: " + if (flag.visible) "Yes" else "No" +
-                            " · Enabled: " + if (flag.enabled) "Yes" else "No",
+                        "Visible: " + (if (flag.visible) "Yes" else "No") +
+                            " · Enabled: " + (if (flag.enabled) "Yes" else "No"),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
