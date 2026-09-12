@@ -120,6 +120,7 @@ private enum class SettingsDestination {
 }
 
 private enum class SettingsIcon(val glyph: String) {
+    ONLINE_ACCOUNT("PC+"),
     PROFILE("P"),
     DISCORD(""),
     TRANSFER("↕"),
@@ -280,6 +281,7 @@ private fun SettingsHome(
     ) {
         value = PuppyFeatureFlags.refresh(context)
     }
+    val onlineAccountFlag = featureFlags.flag("puppy_clicker_account")
     val discordLinkingFlag = featureFlags.flag("discord_linking")
     val saveRestoreFlag = featureFlags.flag("save_restore")
 
@@ -380,6 +382,17 @@ private fun SettingsHome(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup("Account") {
+            if (onlineAccountFlag.visible) {
+                SettingsNavRow(
+                    SettingsIcon.ONLINE_ACCOUNT,
+                    "Puppy Clicker Account",
+                    "Online username/password + Discord authentication · " +
+                        onlineAccountFlag.badgeText(),
+                    enabled = false
+                ) {}
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+
             SettingsNavRow(
                 SettingsIcon.PROFILE,
                 "Puppy Clicker Local Account",
