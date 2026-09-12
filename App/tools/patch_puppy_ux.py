@@ -29,27 +29,31 @@ def patch_activity(source: str) -> str:
         "title and attention lifecycle",
     )
 
-    source = replace_once(
-        source,
-        '''        V6Header("Settings", "Game preferences, fair play and app information.")''',
-        '''        V6Header("Settings", "Game preferences, notifications, saves, fair play and app information.")''',
-        "settings subtitle",
-    )
+    legacy_settings_header = '        V6Header("Settings", "Game preferences, fair play and app information.")'
+    if legacy_settings_header in source:
+        source = replace_once(
+            source,
+            legacy_settings_header,
+            '        V6Header("Settings", "Game preferences, notifications, saves, fair play and app information.")',
+            "settings subtitle",
+        )
 
-    source = replace_once(
-        source,
-        '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
+    legacy_settings_controls = '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
         Spacer(Modifier.height(14.dp))
-        SeasonalBirthdaySettings(vm)''',
-        '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
+        SeasonalBirthdaySettings(vm)'''
+    if legacy_settings_controls in source:
+        source = replace_once(
+            source,
+            legacy_settings_controls,
+            '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
         Spacer(Modifier.height(8.dp))
         PuppyAttentionSettings()
         Spacer(Modifier.height(8.dp))
         SaveTransferSettings()
         Spacer(Modifier.height(14.dp))
         SeasonalBirthdaySettings(vm)''',
-        "notification and save settings",
-    )
+            "notification and save settings",
+        )
     return source
 
 
