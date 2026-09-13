@@ -1,5 +1,8 @@
 package com.harleytg.puppyclicker
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,11 +32,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -119,7 +124,7 @@ internal fun PuppyBlackjackScreen(
 
             lastStatePayload = round.wagerPayload
             lastOutcomePayload = round.outcomePayload
-            delay(900)
+            delay(if (state.animationsEnabled) 1_500 else 250)
 
             val settled = vm.settleCasinoRound(round.roundId)
             if (!settled.success) {
@@ -152,7 +157,7 @@ internal fun PuppyBlackjackScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -189,7 +194,8 @@ internal fun PuppyBlackjackScreen(
                 Spacer(Modifier.height(6.dp))
                 BlackjackCardRow(
                     cards = displayState?.dealerCards.orEmpty(),
-                    hideAfterFirst = displayState?.complete == false
+                    hideAfterFirst = displayState?.complete == false,
+                    animationsEnabled = state.animationsEnabled
                 )
 
                 if (displayState != null && displayState.complete) {
@@ -226,7 +232,8 @@ internal fun PuppyBlackjackScreen(
                             hand = hand,
                             active = !displayState.complete &&
                                 index == displayState.activeHandIndex,
-                            outcome = displayOutcome?.hands?.getOrNull(index)
+                            outcome = displayOutcome?.hands?.getOrNull(index),
+                            animationsEnabled = state.animationsEnabled
                         )
                     }
                 }
@@ -382,7 +389,7 @@ internal fun PuppyBlackjackScreen(
         Spacer(Modifier.height(16.dp))
         BlackjackRulesCard()
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -421,7 +428,8 @@ private fun BlackjackWalletCard(state: V6GameState) {
 @Composable
 private fun BlackjackCardRow(
     cards: List<Int>,
-    hideAfterFirst: Boolean
+    hideAfterFirst: Boolean,
+    animationsEnabled: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -430,20 +438,53 @@ private fun BlackjackCardRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         cards.forEachIndexed { index, id ->
-            BlackjackPlayingCard(
-                card = if (hideAfterFirst && index > 0) null else PuppyBlackjackCard(id)
-            )
+            val hidden = hideAfterFirst && index > 0
+            key(index, id) {
+                BlackjackPlayingCard(
+                    card = if (hidden) null else PuppyBlackjackCard(id),
+                    animationToken = id.toString() + ":" + hidden,
+                    animationsEnabled = animationsEnabled,
+                    dealDelayMs = index * 90L
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun BlackjackPlayingCard(card: PuppyBlackjackCard?) {
+private fun BlackjackPlayingCard(
+    card: PuppyBlackjackCard?,
+    animationToken: String,
+    animationsEnabled: Boolean,
+    dealDelayMs: Long
+) {
     val red = card != null &&
         card.suit in setOf(PuppyBlackjackSuit.DIAMONDS, PuppyBlackjackSuit.HEARTS)
+    val reveal = remember { Animatable(1f) }
+
+    LaunchedEffect(animationToken, animationsEnabled) {
+        if (!animationsEnabled) {
+            reveal.snapTo(1f)
+            return@LaunchedEffect
+        }
+        reveal.snapTo(0f)
+        delay(dealDelayMs)
+        reveal.animateTo(
+            1f,
+            animationSpec = tween(340, easing = FastOutSlowInEasing)
+        )
+    }
 
     Surface(
-        modifier = Modifier.width(54.dp).height(72.dp),
+        modifier = Modifier
+            .width(54.dp)
+            .height(72.dp)
+            .graphicsLayer {
+                alpha = reveal.value
+                translationY = (1f - reveal.value) * -34f
+                scaleX = 0.72f + (0.28f * reveal.value)
+                scaleY = 0.84f + (0.16f * reveal.value)
+            },
         shape = RoundedCornerShape(10.dp),
         color = if (card == null) MaterialTheme.colorScheme.primary else Color.White,
         border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.2f))
@@ -476,7 +517,8 @@ private fun BlackjackHandCard(
     index: Int,
     hand: PuppyBlackjackHand,
     active: Boolean,
-    outcome: PuppyBlackjackHandOutcome?
+    outcome: PuppyBlackjackHandOutcome?,
+    animationsEnabled: Boolean
 ) {
     val value = PuppyBlackjackEngine.handValue(hand.cards)
 
@@ -504,7 +546,11 @@ private fun BlackjackHandCard(
                 )
             }
             Spacer(Modifier.height(6.dp))
-            BlackjackCardRow(cards = hand.cards, hideAfterFirst = false)
+            BlackjackCardRow(
+                cards = hand.cards,
+                hideAfterFirst = false,
+                animationsEnabled = animationsEnabled
+            )
             Spacer(Modifier.height(6.dp))
             Text(
                 "Total " + value.total +
