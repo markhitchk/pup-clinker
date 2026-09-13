@@ -26,11 +26,36 @@ class PuppyCasinoScreenTest {
     fun setUp() {
         app = ApplicationProvider.getApplicationContext()
         prefs.edit().clear().commit()
+        PuppyUiPreferences.setCasinoDisclaimerHidden(app, true)
     }
 
     @After
     fun tearDown() {
         prefs.edit().clear().commit()
+    }
+
+    @Test
+    fun casinoFirstEntryWarnsAboutSimulatedGambling() {
+        PuppyUiPreferences.setCasinoDisclaimerHidden(app, false)
+        val vm = PuppyClickerV6ViewModel(app)
+
+        composeRule.setContent {
+            MaterialTheme {
+                PuppyCasinoHub(
+                    state = vm.state.value,
+                    vm = vm,
+                    onBack = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Puppy Casino — Simulated Gambling").assertExists()
+        composeRule.onNodeWithText(
+            "No real money is used, no prizes have real-world cash value, and nothing can be cashed out."
+        ).assertExists()
+        composeRule.onNodeWithText("Don’t show again").assertExists()
+        composeRule.onNodeWithText("Continue").assertExists()
+        composeRule.onNodeWithText("Go Back").assertExists()
     }
 
     @Test
@@ -48,6 +73,9 @@ class PuppyCasinoScreenTest {
         }
 
         composeRule.onNodeWithText("Puppy Casino").assertExists()
+        composeRule.onNodeWithText(
+            "Simulated gambling • No real-money wagering or cash prizes."
+        ).assertExists()
         composeRule.onNodeWithText("Puppy Slots").assertExists()
         composeRule.onNodeWithText("Puppy Roulette").assertExists()
         composeRule.onNodeWithText("Puppy Blackjack").assertExists()
