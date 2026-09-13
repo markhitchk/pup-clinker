@@ -168,7 +168,7 @@ internal fun PuppyCasinoHub(
             )
         }
 
-        Spacer(Modifier.height(16.dp)
+        Spacer(Modifier.height(16.dp))
         Text("Games", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
 
