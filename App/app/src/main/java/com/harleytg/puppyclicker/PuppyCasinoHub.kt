@@ -341,25 +341,26 @@ private fun CasinoRecoveryCard(
 
             Spacer(Modifier.height(10.dp))
 
-            when (round.state) {
-                PuppyCasinoRoundState.WAGER_ACCEPTED -> {
-                    if (round.game == PuppyCasinoGame.BLACKJACK) {
-                        Button(
-                            onClick = onResumeBlackjack,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Resume Blackjack Hand")
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = { vm.refundCasinoRound(round.roundId) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Refund Accepted Wager")
-                        }
+            when (PuppyCasinoFeaturePolicy.recoveryAction(round)) {
+                PuppyCasinoRecoveryAction.REFUND_ACCEPTED_WAGER -> {
+                    OutlinedButton(
+                        onClick = { vm.refundCasinoRound(round.roundId) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Refund Accepted Wager")
                     }
                 }
-                PuppyCasinoRoundState.OUTCOME_COMMITTED -> {
+
+                PuppyCasinoRecoveryAction.RESUME_BLACKJACK -> {
+                    Button(
+                        onClick = onResumeBlackjack,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Resume Blackjack Hand")
+                    }
+                }
+
+                PuppyCasinoRecoveryAction.SETTLE_COMMITTED_OUTCOME -> {
                     Button(
                         onClick = { vm.settleCasinoRound(round.roundId) },
                         modifier = Modifier.fillMaxWidth()
