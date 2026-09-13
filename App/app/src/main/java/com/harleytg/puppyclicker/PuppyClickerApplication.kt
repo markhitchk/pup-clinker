@@ -54,6 +54,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         registerActivityLifecycleCallbacks(this)
         prefs.registerOnSharedPreferenceChangeListener(saveChangeListener)
 
+        startupSafely("support reporting") { PuppySupportReporting.initialize(this) }
         startupSafely("dynamic puppy roster") { DynamicPuppyRoster.initialize(this) }
         startupSafely("remote feature flags") { PuppyFeatureFlags.initialize(this) }
         startupSafely("monthly rewards stream") { PuppyMonthlyRewards.initialize(this) }
