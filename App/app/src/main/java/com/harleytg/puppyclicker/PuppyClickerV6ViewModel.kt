@@ -285,6 +285,79 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
+    internal fun startRouletteSpin(
+        bet: PuppyRouletteBet,
+        wagerTreats: Long
+    ): PuppyRouletteStartResult {
+        if (!PuppyRouletteEngine.isValidWager(wagerTreats)) {
+            return PuppyRouletteStartResult(
+                success = false,
+                failure = PuppyRouletteStartFailure.INVALID_WAGER
+            )
+        }
+        if (!PuppyRouletteEngine.isValidBet(bet)) {
+            return PuppyRouletteStartResult(
+                success = false,
+                failure = PuppyRouletteStartFailure.INVALID_BET
+            )
+        }
+
+        val wagerPayload = PuppyRouletteBetCodec.encode(bet)
+        val accepted = beginCasinoRound(
+            game = PuppyCasinoGame.ROULETTE,
+            wagerTreats = wagerTreats,
+            wagerPayload = wagerPayload
+        )
+        if (!accepted.success) {
+            return PuppyRouletteStartResult(
+                success = false,
+                failure = PuppyRouletteStartFailure.TRANSACTION_REJECTED,
+                transactionFailure = accepted.failure
+            )
+        }
+
+        val round = accepted.activeRound
+            ?: return PuppyRouletteStartResult(
+                success = false,
+                failure = PuppyRouletteStartFailure.TRANSACTION_REJECTED
+            )
+
+        val outcome = runCatching {
+            PuppyRouletteEngine.randomSpin(
+                wagerTreats = wagerTreats,
+                bet = bet
+            )
+        }.getOrElse {
+            refundCasinoRound(round.roundId)
+            return PuppyRouletteStartResult(
+                success = false,
+                failure = PuppyRouletteStartFailure.OUTCOME_GENERATION_FAILED
+            )
+        }
+
+        val committed = commitCasinoOutcome(
+            roundId = round.roundId,
+            outcomePayload = PuppyRouletteOutcomeCodec.encode(outcome),
+            payoutTreats = outcome.payoutTreats
+        )
+        if (!committed.success) {
+            return PuppyRouletteStartResult(
+                success = false,
+                roundId = round.roundId,
+                outcome = outcome,
+                failure = PuppyRouletteStartFailure.OUTCOME_COMMIT_FAILED,
+                transactionFailure = committed.failure
+            )
+        }
+
+        return PuppyRouletteStartResult(
+            success = true,
+            roundId = round.roundId,
+            outcome = outcome
+        )
+    }
+
+    @Synchronized
     internal fun commitCasinoOutcome(
         roundId: String,
         outcomePayload: String,
@@ -316,7 +389,17 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                     raw = active.outcomePayload,
                     wagerTreats = active.wagerTreats
                 )?.takeIf { it.payoutTreats == active.payoutTreats } != null
-                PuppyCasinoGame.ROULETTE,
+
+                PuppyCasinoGame.ROULETTE -> {
+                    val bet = PuppyRouletteBetCodec.decodeAndValidate(active.wagerPayload)
+                    bet != null &&
+                        PuppyRouletteOutcomeCodec.decodeAndValidate(
+                            raw = active.outcomePayload,
+                            wagerTreats = active.wagerTreats,
+                            expectedBet = bet
+                        )?.takeIf { it.payoutTreats == active.payoutTreats } != null
+                }
+
                 PuppyCasinoGame.BLACKJACK -> true
             }
             if (!validOutcome) {
