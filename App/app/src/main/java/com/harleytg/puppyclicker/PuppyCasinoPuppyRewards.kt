@@ -251,8 +251,33 @@ internal object PuppyCasinoPuppyRewardPersistence {
     }
 
     internal fun decodeForValidation(raw: String?): PuppyCasinoPuppyRewardLedger? {
-        if (raw.isNullOrBlank()) return PuppyCasinoPuppyRewardLedger()
-        return decode(raw)
+        if (raw.isNullOrBlank()) return null
+        return runCatching {
+            val root = JSONObject(raw)
+            if (root.getInt("schemaVersion") != SCHEMA_VERSION) return@runCatching null
+            val idsJson = root.getJSONArray("evaluatedRoundIds")
+            if (idsJson.length() > PuppyCasinoPuppyRewardEngine.MAX_EVALUATED_ROUND_IDS) {
+                return@runCatching null
+            }
+            val ids = buildList {
+                for (index in 0 until idsJson.length()) {
+                    val id = idsJson.getString(index)
+                    if (!PuppyCasinoTransactionEngine.isValidRoundId(id) || id in this) {
+                        return@runCatching null
+                    }
+                    add(id)
+                }
+            }
+            val dailyUnlocks = root.getInt("dailyPuppyUnlocks")
+            if (dailyUnlocks !in 0..PuppyCasinoPuppyRewardEngine.MAX_DAILY_CASINO_PUPPIES) {
+                return@runCatching null
+            }
+            PuppyCasinoPuppyRewardLedger(
+                evaluatedRoundIds = ids,
+                dailyEpochDay = root.getLong("dailyEpochDay"),
+                dailyPuppyUnlocks = dailyUnlocks
+            )
+        }.getOrNull()
     }
 
     fun write(
