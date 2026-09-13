@@ -112,6 +112,17 @@ class PuppyCasinoFeaturePolicyTest {
     }
 
     @Test
+    fun malformedReleaseDateFailsClosed() {
+        val malformed = flag(
+            key = "casino_slots",
+            releaseDate = "not-a-date"
+        )
+
+        assertFalse(malformed.isAvailable(today))
+        assertEquals("Disabled", malformed.statusLabel(today))
+    }
+
+    @Test
     fun missingRemoteFlagFailsClosed() {
         assertFalse(
             PuppyCasinoFeaturePolicy.canStartNewRound(
