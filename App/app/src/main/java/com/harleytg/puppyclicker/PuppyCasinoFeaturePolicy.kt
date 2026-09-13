@@ -34,9 +34,12 @@ internal object PuppyCasinoFeaturePolicy {
      */
     fun shouldExposeCasinoEntry(
         flags: Map<String, PuppyFeatureFlag>,
-        activeRound: PuppyCasinoRound?
+        activeRound: PuppyCasinoRound?,
+        hasRecoveryIssue: Boolean = false
     ): Boolean =
-        activeRound != null || flags[CASINO_FLAG_KEY]?.visible == true
+        activeRound != null ||
+            hasRecoveryIssue ||
+            flags[CASINO_FLAG_KEY]?.visible == true
 
     /**
      * Existing rounds deliberately do not consult feature flags.
