@@ -72,7 +72,7 @@ internal fun PuppyCasinoHub(
             text = {
                 Column {
                     Text(
-                        "This area contains simulated casino-style games, including slots, roulette, and blackjack."
+                        "This area contains simulated casino-style games, including slots, roulette, blackjack, Plinko, scratch cards, and the Lucky Pup Wheel."
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -145,10 +145,37 @@ internal fun PuppyCasinoHub(
         )
         return
     }
+    if (page == "plinko") {
+        PuppyPlinkoScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
+    if (page == "scratchers") {
+        PuppyScratchersScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
+    if (page == "lucky_wheel") {
+        PuppyLuckyWheelScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
     val casinoFlag = flags["puppy_casino"] ?: PuppyFeatureFlags.flag("puppy_casino")
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
     val blackjackFlag = flags["casino_blackjack"] ?: PuppyFeatureFlags.flag("casino_blackjack")
+    val plinkoFlag = flags["casino_plinko"] ?: PuppyFeatureFlags.flag("casino_plinko")
+    val scratchersFlag = flags["casino_scratchers"] ?: PuppyFeatureFlags.flag("casino_scratchers")
+    val luckyWheelFlag = flags["casino_lucky_wheel"] ?: PuppyFeatureFlags.flag("casino_lucky_wheel")
     val recoveryHealthy = recoveryIssue == null
     val slotsCanStart = recoveryHealthy &&
         PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.SLOTS, flags)
@@ -156,6 +183,12 @@ internal fun PuppyCasinoHub(
         PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.ROULETTE, flags)
     val blackjackCanStart = recoveryHealthy &&
         PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.BLACKJACK, flags)
+    val plinkoCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.PLINKO, flags)
+    val scratchersCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.SCRATCHERS, flags)
+    val luckyWheelCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.LUCKY_WHEEL, flags)
 
     Column(
         modifier = Modifier
@@ -280,6 +313,39 @@ internal fun PuppyCasinoHub(
             flag = blackjackFlag,
             canStart = blackjackCanStart,
             onOpen = { page = "blackjack" }
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        CasinoGameCard(
+            emoji = "📍",
+            title = "Pup Plinko",
+            detail = "Drop a Treat ball through eight rows of pegs into published multiplier bins.",
+            flag = plinkoFlag,
+            canStart = plinkoCanStart,
+            onOpen = { page = "plinko" }
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        CasinoGameCard(
+            emoji = "🎟️",
+            title = "Pup Scratchers",
+            detail = "Scratch the coating with touch input to reveal a committed prize.",
+            flag = scratchersFlag,
+            canStart = scratchersCanStart,
+            onOpen = { page = "scratchers" }
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        CasinoGameCard(
+            emoji = "🎡",
+            title = "Lucky Pup Wheel",
+            detail = "Spin for Treat multipliers or a casino-eligible puppy unlock.",
+            flag = luckyWheelFlag,
+            canStart = luckyWheelCanStart,
+            onOpen = { page = "lucky_wheel" }
         )
 
         Spacer(Modifier.height(16.dp))
