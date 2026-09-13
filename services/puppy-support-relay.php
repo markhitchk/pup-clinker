@@ -7,9 +7,13 @@ declare(strict_types=1);
  * Server environment variables:
  *   PUPPY_DISCORD_TELEMETRY_WEBHOOK
  *   PUPPY_DISCORD_CRASH_WEBHOOK
- *   PUPPY_DISCORD_USER_REPORT_WEBHOOK
+ *   PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC
+ *   PUPPY_SUPPORT_WEBHOOK_KEY_B64
  *
- * Never put those Discord webhook URLs in the Android app or this repository.
+ * Tier 1 user-report webhook format:
+ *   v1:<base64 12-byte IV>:<base64 16-byte GCM tag>:<base64 ciphertext>
+ *
+ * Never put plaintext Discord webhook URLs or the AES key in the Android app or repository.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -44,9 +48,57 @@ if (!in_array($kind, ['telemetry', 'crash', 'user_report'], true)) {
     exit;
 }
 
+$decryptEncryptedWebhook = static function (): string|false {
+    $encoded = getenv('PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC');
+    $keyB64 = getenv('PUPPY_SUPPORT_WEBHOOK_KEY_B64');
+
+    if (!is_string($encoded) || !is_string($keyB64)) {
+        return false;
+    }
+
+    $parts = explode(':', $encoded, 4);
+    if (count($parts) !== 4 || $parts[0] !== 'v1') {
+        return false;
+    }
+
+    $key = base64_decode($keyB64, true);
+    $iv = base64_decode($parts[1], true);
+    $tag = base64_decode($parts[2], true);
+    $ciphertext = base64_decode($parts[3], true);
+
+    if (
+        !is_string($key) ||
+        strlen($key) !== 32 ||
+        !is_string($iv) ||
+        strlen($iv) !== 12 ||
+        !is_string($tag) ||
+        strlen($tag) !== 16 ||
+        !is_string($ciphertext) ||
+        $ciphertext === ''
+    ) {
+        return false;
+    }
+
+    $plaintext = openssl_decrypt(
+        $ciphertext,
+        'aes-256-gcm',
+        $key,
+        OPENSSL_RAW_DATA,
+        $iv,
+        $tag,
+        'puppy-support-webhook-v1'
+    );
+
+    if (!is_string($plaintext)) {
+        return false;
+    }
+
+    return $plaintext;
+};
+
 $webhook = match ($kind) {
     'crash' => getenv('PUPPY_DISCORD_CRASH_WEBHOOK'),
-    'user_report' => getenv('PUPPY_DISCORD_USER_REPORT_WEBHOOK'),
+    'user_report' => $decryptEncryptedWebhook(),
     default => getenv('PUPPY_DISCORD_TELEMETRY_WEBHOOK'),
 };
 
