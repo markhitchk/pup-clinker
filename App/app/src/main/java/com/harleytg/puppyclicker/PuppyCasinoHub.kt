@@ -43,6 +43,8 @@ internal fun PuppyCasinoHub(
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
     val rewardLedger by vm.casinoRewardLedger.collectAsStateWithLifecycle()
     val lastTicketReward by vm.lastCasinoTicketReward.collectAsStateWithLifecycle()
+    val puppyRewardLedger by vm.casinoPuppyRewardLedger.collectAsStateWithLifecycle()
+    val lastPuppyReward by vm.lastCasinoPuppyReward.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableStateOf("hub") }
 
     if (page == "slots") {
@@ -170,6 +172,14 @@ internal fun PuppyCasinoHub(
         CasinoRewardsCard(
             ledger = rewardLedger,
             lastReward = lastTicketReward
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        CasinoPuppyRewardsCard(
+            state = state,
+            ledger = puppyRewardLedger,
+            lastReward = lastPuppyReward
         )
 
         Spacer(Modifier.height(16.dp))
@@ -435,12 +445,6 @@ private fun CasinoRewardsCard(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Casino puppy rewards remain separate from this milestone and will map only to verified existing roster IDs.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -457,4 +461,115 @@ private fun casinoRewardLabel(reward: PuppyCasinoTicketReward): String =
         PuppyCasinoRewardStatus.INVENTORY_CAP_REACHED ->
             "No Ticket: " + (reward.rarity?.displayName ?: "rarity") + " inventory is full."
         PuppyCasinoRewardStatus.ALREADY_EVALUATED -> "Reward already evaluated for this round."
+    }
+
+
+@Composable
+private fun CasinoPuppyRewardsCard(
+    state: V6GameState,
+    ledger: PuppyCasinoPuppyRewardLedger,
+    lastReward: PuppyCasinoPuppyReward?
+) {
+    val eligible = PuppyCasinoPuppyRewardEngine.eligibleStyles
+    val ownedEligible = eligible.count { it.id in state.unlockedPuppies }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("🐶 Casino Puppy Rewards", fontWeight = FontWeight.Black)
+            Text(
+                "Casino wins can unlock verified puppies directly into your existing Roster.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(7.dp))
+
+            Row(Modifier.fillMaxWidth()) {
+                Text("Eligible puppies", modifier = Modifier.weight(1f))
+                Text(
+                    ownedEligible.toString() + " / " + eligible.size + " owned",
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Row(Modifier.fillMaxWidth()) {
+                Text("Daily casino cap", modifier = Modifier.weight(1f))
+                Text(
+                    ledger.dailyPuppyUnlocks.toString() + " / " +
+                        PuppyCasinoPuppyRewardEngine.MAX_DAILY_CASINO_PUPPIES,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Spacer(Modifier.height(7.dp))
+
+            Text(
+                "Drop chance: <2× profitable return 0.25% · 2× 0.50% · " +
+                    "5× 1.50% · 20× 5% · 100×+ guaranteed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "A settled round is evaluated once. The chosen puppy is deterministic and duplicates are skipped.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Pool: " + eligible.joinToString(" · ") { it.name },
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Reserved: seasonal, developer, secret, tribute, and branded special puppies are not casino drops.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            lastReward?.let { reward ->
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+                ) {
+                    Text(
+                        casinoPuppyRewardLabel(reward),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun casinoPuppyRewardLabel(reward: PuppyCasinoPuppyReward): String =
+    when (reward.status) {
+        PuppyCasinoPuppyRewardStatus.UNLOCKED -> {
+            val style = reward.styleId?.let { id ->
+                PuppyCasinoPuppyRewardEngine.eligibleStyles.firstOrNull { it.id == id }
+            }
+            "Puppy unlocked: " +
+                (style?.emoji ?: "🐶") + " " +
+                (style?.name ?: reward.styleId ?: "Puppy")
+        }
+        PuppyCasinoPuppyRewardStatus.NO_DROP -> "No puppy dropped this round."
+        PuppyCasinoPuppyRewardStatus.NOT_ELIGIBLE ->
+            "No puppy roll: the round did not finish with a profit."
+        PuppyCasinoPuppyRewardStatus.DAILY_CAP_REACHED ->
+            "No puppy: daily casino puppy cap reached."
+        PuppyCasinoPuppyRewardStatus.ALL_ELIGIBLE_OWNED ->
+            "All casino-eligible puppies are already in your Roster."
+        PuppyCasinoPuppyRewardStatus.ALREADY_EVALUATED ->
+            "Puppy reward already evaluated for this round."
     }
