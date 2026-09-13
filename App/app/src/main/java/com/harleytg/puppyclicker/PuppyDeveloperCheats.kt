@@ -431,6 +431,134 @@ internal fun PuppyDeveloperCheatsSettings(
     }
 }
 
+private fun developerCasinoXrayLines(round: PuppyCasinoRound?): List<String> {
+    if (round == null) {
+        return listOf(
+            "Casino idle",
+            "Start a casino round to inspect its hidden committed state."
+        )
+    }
+
+    return when (round.game) {
+        PuppyCasinoGame.BLACKJACK -> {
+            val blackjack = PuppyBlackjackStateCodec.decodeAndValidate(round.wagerPayload)
+                ?: return listOf("Blackjack", "Saved hand state unavailable.")
+            val dealerCards = blackjack.dealerCards.map { PuppyBlackjackCard(it).label }
+            val dealerTotal = PuppyBlackjackEngine.handValue(blackjack.dealerCards).total
+            val nextCards = blackjack.remainingDeck.take(4)
+                .joinToString(" ") { PuppyBlackjackCard(it).label }
+                .ifBlank { "—" }
+            buildList {
+                add("🃏 BLACKJACK X-RAY")
+                if (!blackjack.complete) {
+                    add("Dealer hole: ${dealerCards.getOrNull(1) ?: "—"}")
+                }
+                add("Dealer hand: ${dealerCards.joinToString(" ")} · total $dealerTotal")
+                add("Next deck: $nextCards")
+            }
+        }
+
+        PuppyCasinoGame.SLOTS -> {
+            val outcome = if (round.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
+                PuppySlotsOutcomeCodec.decodeAndValidate(
+                    raw = round.outcomePayload,
+                    wagerTreats = round.wagerTreats
+                )
+            } else null
+            if (outcome == null) {
+                listOf("🎰 SLOTS X-RAY", "Outcome not committed yet.")
+            } else {
+                listOf(
+                    "🎰 SLOTS X-RAY",
+                    "Reels: " + outcome.symbols.joinToString(" ") { it.emoji },
+                    "${outcome.winKind.name} · ${outcome.multiplierLabel} · ${outcome.payoutTreats} Treats"
+                )
+            }
+        }
+
+        PuppyCasinoGame.ROULETTE -> {
+            val bet = PuppyRouletteBetCodec.decodeAndValidate(round.wagerPayload)
+            val outcome = if (
+                bet != null &&
+                round.state == PuppyCasinoRoundState.OUTCOME_COMMITTED
+            ) {
+                PuppyRouletteOutcomeCodec.decodeAndValidate(
+                    raw = round.outcomePayload,
+                    wagerTreats = round.wagerTreats,
+                    expectedBet = bet
+                )
+            } else null
+            if (outcome == null) {
+                listOf("🎯 ROULETTE X-RAY", "Winning pocket not committed yet.")
+            } else {
+                listOf(
+                    "🎯 ROULETTE X-RAY",
+                    "Winning pocket: ${outcome.winningNumber} · ${outcome.color.name}",
+                    "${if (outcome.won) "WIN" else "LOSS"} · payout ${outcome.payoutTreats}"
+                )
+            }
+        }
+
+        PuppyCasinoGame.PLINKO -> {
+            val outcome = if (round.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
+                PuppyPlinkoOutcomeCodec.decodeAndValidate(
+                    raw = round.outcomePayload,
+                    wagerTreats = round.wagerTreats
+                )
+            } else null
+            if (outcome == null) {
+                listOf("🔵 PLINKO X-RAY", "Drop path not committed yet.")
+            } else {
+                listOf(
+                    "🔵 PLINKO X-RAY",
+                    "Path: " + outcome.pathRight.joinToString("") { if (it) "→" else "←" },
+                    "Bin ${outcome.binIndex + 1}/9 · ${outcome.multiplierLabel} · ${outcome.payoutTreats} Treats"
+                )
+            }
+        }
+
+        PuppyCasinoGame.SCRATCHERS -> {
+            val outcome = if (round.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
+                PuppyScratcherOutcomeCodec.decodeAndValidate(
+                    raw = round.outcomePayload,
+                    wagerTreats = round.wagerTreats
+                )
+            } else null
+            if (outcome == null) {
+                listOf("🎟 SCRATCHER X-RAY", "Hidden card not committed yet.")
+            } else {
+                listOf(
+                    "🎟 SCRATCHER X-RAY",
+                    "Under coating: ${outcome.symbols.joinToString(" ")}",
+                    "${outcome.prize.label} · ${outcome.payoutTreats} Treats"
+                )
+            }
+        }
+
+        PuppyCasinoGame.LUCKY_WHEEL -> {
+            val outcome = if (round.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
+                LuckyPupWheelOutcomeCodec.decodeAndValidate(
+                    raw = round.outcomePayload,
+                    wagerTreats = round.wagerTreats
+                )
+            } else null
+            if (outcome == null) {
+                listOf("🎡 WHEEL X-RAY", "Selected segment not committed yet.")
+            } else {
+                buildList {
+                    add("🎡 WHEEL X-RAY")
+                    add("Segment ${outcome.segmentIndex + 1} · ${outcome.prize.label}")
+                    outcome.puppyStyleId?.let { styleId ->
+                        val name = DynamicPuppyRoster.style(styleId)?.name ?: styleId
+                        add("Puppy: $name")
+                    }
+                    add("Payout: ${outcome.payoutTreats} Treats")
+                }
+            }
+        }
+    }
+}
+
 @Composable
 internal fun PuppyDeveloperCheatOverlay(
     state: V6GameState,
@@ -441,8 +569,9 @@ internal fun PuppyDeveloperCheatOverlay(
     if (!session.active) return
 
     val casinoRound by vm.casinoRound.collectAsStateWithLifecycle()
-    val nextCasinoPuppy = PuppyCasinoPuppyRewardEngine.eligibleStyleIds
-        .firstOrNull { it !in state.unlockedPuppies }
+    val xrayLines = remember(casinoRound) {
+        developerCasinoXrayLines(casinoRound)
+    }
 
     fun dragHandleModifier(): Modifier = Modifier.pointerInput(session.overlayExpanded) {
         var dragDistance = 0f
@@ -463,9 +592,9 @@ internal fun PuppyDeveloperCheatOverlay(
     }
 
     /*
-     * Only the pull tab and the actual cheat buttons install pointer handlers.
-     * The outer Column and translucent panel background are intentionally passive,
-     * so taps on transparent/non-control areas continue to the game underneath.
+     * Read-only X-ray inspector. Only the pull tab and explicit Fold/Disable
+     * buttons capture input. The transparent body has no pointer handler, so
+     * non-control areas remain touch-through to the casino game underneath.
      */
     Column(
         modifier = modifier,
@@ -492,7 +621,7 @@ internal fun PuppyDeveloperCheatOverlay(
                     .padding(horizontal = 4.dp)
             ) {
                 Text(
-                    if (session.overlayExpanded) "📂 DEV · VOID ︿" else "📁 DEV · VOID ﹀",
+                    if (session.overlayExpanded) "📂 X-RAY · VOID ︿" else "📁 X-RAY · VOID ﹀",
                     fontWeight = FontWeight.Black,
                     style = MaterialTheme.typography.labelSmall
                 )
@@ -506,78 +635,32 @@ internal fun PuppyDeveloperCheatOverlay(
                 .width(272.dp)
                 .padding(top = 2.dp),
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.48f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
             tonalElevation = 0.dp,
-            shadowElevation = 2.dp
+            shadowElevation = 1.dp
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    "T ${state.treats} · 🎟 ${state.ticketsOwned} · " +
-                        (casinoRound?.let { it.game.name } ?: "Casino idle"),
+                    "👁 CASINO X-RAY",
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text(
+                    "Read-only hidden state · winnings void",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f)
+                    color = MaterialTheme.colorScheme.error
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    TextButton(
-                        onClick = { vm.developerAddTreats(1_000L) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+1K") }
-                    TextButton(
-                        onClick = { vm.developerAddTreats(10_000L) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+10K") }
-                    TextButton(
-                        onClick = { vm.developerFillCare() },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Care") }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(1.dp)
-                ) {
-                    TicketRarity.entries.forEach { rarity ->
-                        TextButton(
-                            onClick = { vm.developerAddTicket(rarity) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(rarity.emoji)
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    TextButton(
-                        onClick = { vm.developerAddSkillPoints(10) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+10 SP") }
-                    TextButton(
-                        onClick = { vm.developerClearPupEyeCooldown() },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("PupEye") }
-                }
-
-                if (nextCasinoPuppy != null) {
-                    TextButton(
-                        onClick = { vm.developerUnlockPuppy(nextCasinoPuppy) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "🐶 Unlock " +
-                                (DynamicPuppyRoster.style(nextCasinoPuppy)?.name ?: nextCasinoPuppy),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
+                xrayLines.forEachIndexed { index, line ->
+                    Text(
+                        line,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.86f)
+                    )
                 }
 
                 Row(
