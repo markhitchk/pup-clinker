@@ -75,6 +75,9 @@ internal fun PuppyCasinoHub(
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
     val blackjackFlag = flags["casino_blackjack"] ?: PuppyFeatureFlags.flag("casino_blackjack")
+    val slotsCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.SLOTS, flags)
+    val rouletteCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.ROULETTE, flags)
+    val blackjackCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.BLACKJACK, flags)
 
     Column(
         modifier = Modifier
@@ -144,6 +147,7 @@ internal fun PuppyCasinoHub(
             title = "Puppy Slots",
             detail = "Weighted symbols, published payout table, and committed outcomes before animations.",
             flag = slotsFlag,
+            canStart = slotsCanStart,
             onOpen = { page = "slots" }
         )
 
@@ -154,6 +158,7 @@ internal fun PuppyCasinoHub(
             title = "Puppy Roulette",
             detail = "Single-zero table with red/black, odd/even, halves, and recorded bets before the spin.",
             flag = rouletteFlag,
+            canStart = rouletteCanStart,
             onOpen = { page = "roulette" }
         )
 
@@ -164,6 +169,7 @@ internal fun PuppyCasinoHub(
             title = "Puppy Blackjack",
             detail = "CPU dealer, soft-17 rules, 3:2 natural Blackjack, doubling and splits.",
             flag = blackjackFlag,
+            canStart = blackjackCanStart,
             onOpen = { page = "blackjack" }
         )
 
@@ -246,15 +252,15 @@ private fun CasinoGameCard(
     title: String,
     detail: String,
     flag: PuppyFeatureFlag,
+    canStart: Boolean,
     onOpen: (() -> Unit)? = null
 ) {
-    val available = flag.isAvailable()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (available) {
+            containerColor = if (canStart) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f)
             } else {
                 MaterialTheme.colorScheme.surface
@@ -280,7 +286,7 @@ private fun CasinoGameCard(
                     flag.statusLabel(),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (available) {
+                    color = if (canStart) {
                         MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -293,9 +299,9 @@ private fun CasinoGameCard(
             ) {
                 Text(
                     when {
-                        onOpen != null && available -> "Play"
+                        onOpen != null && canStart -> "Play"
                         onOpen != null -> "View"
-                        available -> "Not Ready"
+                        canStart -> "Not Ready"
                         else -> "Locked"
                     }
                 )
