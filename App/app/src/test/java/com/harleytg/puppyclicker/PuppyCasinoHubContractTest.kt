@@ -20,14 +20,15 @@ class PuppyCasinoHubContractTest {
     }
 
     @Test
-    fun allThreeGamesAreVisibleButCannotStartRoundsYet() {
+    fun allThreeGamesAreVisibleAndOnlySlotsHasAPreviewRoute() {
         val source = source("PuppyCasinoHub.kt")
 
         assertTrue(source.contains("Puppy Slots"))
         assertTrue(source.contains("Puppy Roulette"))
         assertTrue(source.contains("Puppy Blackjack"))
-        assertTrue(source.contains("enabled = false"))
+        assertTrue(source.contains("onOpen = { page = \"slots\" }"))
         assertFalse(source.contains("beginCasinoRound("))
+        assertFalse(source.contains("startSlotsSpin("))
     }
 
     @Test
