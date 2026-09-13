@@ -97,8 +97,14 @@ internal fun PuppyLuckyWheelScreen(
     }
 
     val display = recovered ?: lastOutcome
-    val spinning = revealRoundId != null && revealFinishedRoundId != revealRoundId
-    val showResult = display != null && !spinning
+    val showResult =
+        display != null &&
+            revealRoundId != null &&
+            revealFinishedRoundId == revealRoundId
+    val spinning =
+        display != null &&
+            !showResult &&
+            round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED
 
     Column(
         modifier = Modifier
@@ -128,7 +134,7 @@ internal fun PuppyLuckyWheelScreen(
                 Spacer(Modifier.height(6.dp))
                 LuckyWheelBoard(
                     outcome = display,
-                    spinKey = revealRoundId,
+                    spinKey = round?.roundId ?: revealRoundId,
                     animationsEnabled = state.animationsEnabled
                 )
                 Text(
