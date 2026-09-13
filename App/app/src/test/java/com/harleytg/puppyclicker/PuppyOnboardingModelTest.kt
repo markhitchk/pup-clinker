@@ -23,6 +23,15 @@ class PuppyOnboardingModelTest {
     }
 
     @Test
+    fun v3UnfinishedNotificationOrReadyStepsRouteThroughPrivacy() {
+        assertEquals(PuppyOnboardingStep.WELCOME.persistedIndex, migrateV3OnboardingStepToV4(0))
+        assertEquals(PuppyOnboardingStep.PLAYER_SETUP.persistedIndex, migrateV3OnboardingStepToV4(1))
+        assertEquals(PuppyOnboardingStep.PERSONALIZE.persistedIndex, migrateV3OnboardingStepToV4(2))
+        assertEquals(PuppyOnboardingStep.PRIVACY.persistedIndex, migrateV3OnboardingStepToV4(3))
+        assertEquals(PuppyOnboardingStep.PRIVACY.persistedIndex, migrateV3OnboardingStepToV4(4))
+    }
+
+    @Test
     fun freshSessionDefaultsToLocalProfile() {
         val state = PuppyOnboardingSessionState()
         assertEquals(PuppyPlayerSetupMethod.LOCAL, state.playerSetupMethod)
