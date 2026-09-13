@@ -178,6 +178,16 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     internal val lastCasinoTicketReward: StateFlow<PuppyCasinoTicketReward?> =
         _lastCasinoTicketReward.asStateFlow()
 
+    private val _casinoPuppyRewardLedger =
+        MutableStateFlow(PuppyCasinoPuppyRewardPersistence.load(prefs))
+    internal val casinoPuppyRewardLedger: StateFlow<PuppyCasinoPuppyRewardLedger> =
+        _casinoPuppyRewardLedger.asStateFlow()
+
+    private val _lastCasinoPuppyReward =
+        MutableStateFlow<PuppyCasinoPuppyReward?>(null)
+    internal val lastCasinoPuppyReward: StateFlow<PuppyCasinoPuppyReward?> =
+        _lastCasinoPuppyReward.asStateFlow()
+
     init {
         rollDailyDayIfNeeded()
         consumeClaimedAfkReward()
@@ -663,15 +673,22 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             settledRound = active,
             ledger = _casinoRewardLedger.value
         )
-        val rewardedResult = result.copy(state = rewardApplication.state)
+        val puppyApplication = PuppyCasinoPuppyRewardEngine.apply(
+            before = rewardApplication.state,
+            settledRound = active,
+            ledger = _casinoPuppyRewardLedger.value
+        )
+        val rewardedResult = result.copy(state = puppyApplication.state)
         val persisted = persistCasinoMutation(
             before = current,
             completedBefore = completed,
             result = rewardedResult,
-            rewardLedger = rewardApplication.ledger
+            rewardLedger = rewardApplication.ledger,
+            puppyRewardLedger = puppyApplication.ledger
         )
         if (persisted.success) {
             _lastCasinoTicketReward.value = rewardApplication.reward
+            _lastCasinoPuppyReward.value = puppyApplication.reward
         }
         return persisted
     }
@@ -1164,6 +1181,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _casinoRound.value = PuppyCasinoPersistence.loadActiveRound(prefs)
         _casinoRewardLedger.value = PuppyCasinoRewardPersistence.load(prefs)
         _lastCasinoTicketReward.value = null
+        _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardPersistence.load(prefs)
+        _lastCasinoPuppyReward.value = null
     }
 
     /**
@@ -1178,6 +1197,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _casinoRound.value = null
         _casinoRewardLedger.value = PuppyCasinoRewardLedger()
         _lastCasinoTicketReward.value = null
+        _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardLedger()
+        _lastCasinoPuppyReward.value = null
         _state.value = V6GameState()
     }
 
@@ -1286,7 +1307,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         before: V6GameState,
         completedBefore: List<String>,
         result: PuppyCasinoTransactionResult,
-        rewardLedger: PuppyCasinoRewardLedger? = null
+        rewardLedger: PuppyCasinoRewardLedger? = null,
+        puppyRewardLedger: PuppyCasinoPuppyRewardLedger? = null
     ): PuppyCasinoTransactionResult {
         if (!result.success) return result
 
@@ -1294,6 +1316,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             .putLong(KEY_TREATS, result.state.treats)
             .putLong(KEY_LIFETIME, result.state.lifetimeTreats)
             .putLong(KEY_TOTAL_TICKETS_FOUND, result.state.totalTicketsFound)
+            .putStringSet(KEY_UNLOCKED_PUPPIES, result.state.unlockedPuppies)
         TicketRarity.entries.forEach { rarity ->
             editor.putInt(
                 ticketKey(rarity),
@@ -1307,6 +1330,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             completedRoundIds = result.completedRoundIds
         )
         rewardLedger?.let { PuppyCasinoRewardPersistence.write(editor, it) }
+        puppyRewardLedger?.let {
+            PuppyCasinoPuppyRewardPersistence.write(editor, it)
+        }
         if (!editor.commit()) {
             return PuppyCasinoTransactionResult(
                 success = false,
@@ -1320,6 +1346,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = result.state
         _casinoRound.value = result.activeRound
         rewardLedger?.let { _casinoRewardLedger.value = it }
+        puppyRewardLedger?.let { _casinoPuppyRewardLedger.value = it }
         return result
     }
 
