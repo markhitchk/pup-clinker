@@ -199,7 +199,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     @Synchronized
     internal fun beginCasinoRound(
         game: PuppyCasinoGame,
-        wagerTreats: Long
+        wagerTreats: Long,
+        wagerPayload: String? = null
     ): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
@@ -218,7 +219,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             wagerTreats = wagerTreats,
             featureAvailable =
                 PuppyFeatureFlags.flag("puppy_casino").isAvailable() && gameAvailable,
-            acceptedAtMs = System.currentTimeMillis()
+            acceptedAtMs = System.currentTimeMillis(),
+            wagerPayload = wagerPayload
         )
         return persistCasinoMutation(current, completed, result)
     }
