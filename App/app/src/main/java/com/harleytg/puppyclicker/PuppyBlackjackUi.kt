@@ -157,7 +157,7 @@ internal fun PuppyBlackjackScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -481,7 +481,9 @@ private fun BlackjackPlayingCard(
             .height(72.dp)
             .graphicsLayer {
                 alpha = reveal.value
+                translationX = (1f - reveal.value) * 26f
                 translationY = (1f - reveal.value) * -34f
+                rotationY = (1f - reveal.value) * 90f
                 scaleX = 0.72f + (0.28f * reveal.value)
                 scaleY = 0.84f + (0.16f * reveal.value)
             },
