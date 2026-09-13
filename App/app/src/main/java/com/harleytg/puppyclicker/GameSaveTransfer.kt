@@ -185,7 +185,10 @@ internal object GameSaveTransfer {
     ) {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
             ?: error("Save does not contain the main game store")
-        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
+        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(
+            store = mainStore,
+            disallowedActiveRoundIds = disallowedCasinoRoundIds
+        )
         require(casinoValidation.valid) {
             "Casino save validation failed: " +
                 (casinoValidation.message ?: "invalid Casino data")
