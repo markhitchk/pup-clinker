@@ -50,11 +50,10 @@ internal fun PuppySlotsScreen(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
-    val casinoAvailable =
-        (flags["puppy_casino"] ?: PuppyFeatureFlags.flag("puppy_casino")).isAvailable()
-    val slotsAvailable =
-        (flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")).isAvailable()
-    val canPlayFeature = casinoAvailable && slotsAvailable
+    val canPlayFeature = PuppyCasinoFeaturePolicy.canStartNewRound(
+        game = PuppyCasinoGame.SLOTS,
+        flags = flags
+    )
 
     var wager by rememberSaveable { mutableLongStateOf(100L) }
     var lastOutcomePayload by rememberSaveable { mutableStateOf<String?>(null) }
