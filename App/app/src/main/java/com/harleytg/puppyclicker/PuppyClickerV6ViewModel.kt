@@ -306,9 +306,31 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     internal fun settleCasinoRound(roundId: String): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val active = _casinoRound.value
+
+        if (active?.roundId == roundId && active.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
+            val validOutcome = when (active.game) {
+                PuppyCasinoGame.SLOTS -> PuppySlotsOutcomeCodec.decodeAndValidate(
+                    raw = active.outcomePayload,
+                    wagerTreats = active.wagerTreats
+                )?.takeIf { it.payoutTreats == active.payoutTreats } != null
+                PuppyCasinoGame.ROULETTE,
+                PuppyCasinoGame.BLACKJACK -> true
+            }
+            if (!validOutcome) {
+                return PuppyCasinoTransactionResult(
+                    success = false,
+                    state = current,
+                    activeRound = active,
+                    completedRoundIds = completed,
+                    failure = PuppyCasinoTransactionFailure.INVALID_OUTCOME
+                )
+            }
+        }
+
         val result = PuppyCasinoTransactionEngine.settle(
             before = current,
-            activeRound = _casinoRound.value,
+            activeRound = active,
             completedRoundIds = completed,
             roundId = roundId
         )
