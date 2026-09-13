@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-13T04:30:00Z",
+  "updatedAt": "2026-09-13T07:00:00Z",
   "flags": {
     "feature_flag_system": {
       "visible": true,
@@ -36,32 +36,32 @@
     },
     "puppy_casino": {
       "visible": true,
-      "enabled": false,
-      "status": "coming_soon",
+      "enabled": true,
+      "status": "released",
       "releaseDate": null,
       "label": "Puppy Casino",
       "description": "Treat-wager casino games backed by the existing Puppy Clicker economy."
     },
     "casino_slots": {
       "visible": true,
-      "enabled": false,
-      "status": "coming_soon",
+      "enabled": true,
+      "status": "released",
       "releaseDate": null,
       "label": "Puppy Slots",
       "description": "Weighted slot engine and published payout table."
     },
     "casino_roulette": {
       "visible": true,
-      "enabled": false,
-      "status": "coming_soon",
+      "enabled": true,
+      "status": "released",
       "releaseDate": null,
       "label": "Puppy Roulette",
       "description": "Single-zero roulette using Treat wagers."
     },
     "casino_blackjack": {
       "visible": true,
-      "enabled": false,
-      "status": "coming_soon",
+      "enabled": true,
+      "status": "released",
       "releaseDate": null,
       "label": "Puppy Blackjack",
       "description": "CPU blackjack with multiplayer planned later."
