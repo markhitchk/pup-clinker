@@ -35,6 +35,7 @@ data class PuppyUiState(
     val anonymousDiagnosticsEnabled: Boolean = false,
     val crashReportsEnabled: Boolean = false,
     val privacyConsentVersion: Int = 0,
+    val casinoDisclaimerHidden: Boolean = false,
     val dailyRewardNotifications: Boolean = true,
     val gameEventNotifications: Boolean = true,
     val updateNotifications: Boolean = true,
@@ -98,6 +99,7 @@ internal object PuppyUiPreferences {
     private const val KEY_ANONYMOUS_DIAGNOSTICS = "anonymous_diagnostics_enabled"
     private const val KEY_CRASH_REPORTS = "crash_reports_enabled"
     private const val KEY_PRIVACY_CONSENT_VERSION = "privacy_consent_version"
+    private const val KEY_CASINO_DISCLAIMER_HIDDEN = "casino_disclaimer_hidden"
     private const val KEY_NOTIFY_DAILY = "notify_daily_rewards"
     private const val KEY_NOTIFY_EVENTS = "notify_game_events"
     private const val KEY_NOTIFY_UPDATES = "notify_app_updates"
@@ -218,6 +220,10 @@ internal object PuppyUiPreferences {
         putInt(KEY_PRIVACY_CONSENT_VERSION, CURRENT_PRIVACY_CONSENT_VERSION)
     }
 
+    fun setCasinoDisclaimerHidden(context: Context, hidden: Boolean) = edit(context) {
+        putBoolean(KEY_CASINO_DISCLAIMER_HIDDEN, hidden)
+    }
+
     fun setDailyRewardNotifications(context: Context, enabled: Boolean) = edit(context) {
         putBoolean(KEY_NOTIFY_DAILY, enabled)
     }
@@ -244,6 +250,7 @@ internal object PuppyUiPreferences {
             putBoolean(KEY_ANONYMOUS_DIAGNOSTICS, keep.anonymousDiagnosticsEnabled)
             putBoolean(KEY_CRASH_REPORTS, keep.crashReportsEnabled)
             putInt(KEY_PRIVACY_CONSENT_VERSION, keep.privacyConsentVersion)
+            putBoolean(KEY_CASINO_DISCLAIMER_HIDDEN, keep.casinoDisclaimerHidden)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
         }
     }
@@ -371,6 +378,7 @@ internal object PuppyUiPreferences {
             anonymousDiagnosticsEnabled = store.getBoolean(KEY_ANONYMOUS_DIAGNOSTICS, false),
             crashReportsEnabled = store.getBoolean(KEY_CRASH_REPORTS, false),
             privacyConsentVersion = store.getInt(KEY_PRIVACY_CONSENT_VERSION, 0),
+            casinoDisclaimerHidden = store.getBoolean(KEY_CASINO_DISCLAIMER_HIDDEN, false),
             dailyRewardNotifications = store.getBoolean(KEY_NOTIFY_DAILY, true),
             gameEventNotifications = store.getBoolean(KEY_NOTIFY_EVENTS, true),
             updateNotifications = store.getBoolean(KEY_NOTIFY_UPDATES, true),
