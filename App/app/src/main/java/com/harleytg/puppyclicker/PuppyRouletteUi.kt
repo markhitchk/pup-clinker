@@ -1,6 +1,12 @@
 package com.harleytg.puppyclicker
 
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,13 +42,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val RouletteRed = Color(0xFFB92B35)
 private val RouletteBlack = Color(0xFF16181C)
@@ -71,6 +87,7 @@ internal fun PuppyRouletteScreen(
     var lastOutcomePayload by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOutcomeWager by rememberSaveable { mutableLongStateOf(0L) }
     var lastBetPayload by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
     val selectedType = runCatching {
@@ -136,8 +153,9 @@ internal fun PuppyRouletteScreen(
         lastOutcomePayload = round.outcomePayload
         lastOutcomeWager = round.wagerTreats
         lastBetPayload = round.wagerPayload
+        revealRoundId = round.roundId
 
-        delay(900)
+        delay(if (state.animationsEnabled) 2_600 else 250)
 
         val settled = vm.settleCasinoRound(round.roundId)
         if (!settled.success) {
@@ -164,7 +182,7 @@ internal fun PuppyRouletteScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -185,7 +203,15 @@ internal fun PuppyRouletteScreen(
 
         RouletteWalletCard(state)
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
+
+        RouletteWheel(
+            outcome = displayOutcome,
+            spinKey = revealRoundId,
+            animationsEnabled = state.animationsEnabled
+        )
+
+        Spacer(Modifier.height(8.dp))
 
         displayOutcome?.let { outcome ->
             RouletteResultCard(outcome)
@@ -314,7 +340,148 @@ internal fun PuppyRouletteScreen(
         Spacer(Modifier.height(16.dp))
         RouletteRulesCard()
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
+    }
+}
+
+private val EuropeanRouletteWheelOrder = listOf(
+    0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
+    5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
+)
+
+@Composable
+private fun RouletteWheel(
+    outcome: PuppyRouletteOutcome?,
+    spinKey: String?,
+    animationsEnabled: Boolean
+) {
+    val wheelRotation = remember { Animatable(0f) }
+    val ballAngle = remember { Animatable(-90f) }
+    val sweep = 360f / EuropeanRouletteWheelOrder.size
+    val labelPaint = remember {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textAlign = Paint.Align.CENTER
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+        }
+    }
+
+    LaunchedEffect(spinKey, outcome?.winningNumber, animationsEnabled) {
+        val result = outcome ?: return@LaunchedEffect
+        val index = EuropeanRouletteWheelOrder.indexOf(result.winningNumber)
+            .coerceAtLeast(0)
+        val pocketAngle = -90f + (index * sweep) + (sweep / 2f)
+
+        if (!animationsEnabled || spinKey == null) {
+            wheelRotation.snapTo(0f)
+            ballAngle.snapTo(pocketAngle)
+            return@LaunchedEffect
+        }
+
+        wheelRotation.snapTo(0f)
+        ballAngle.snapTo(-90f)
+        val wheelTarget = (360f * 4f) + 120f
+        val ballTarget = wheelTarget + pocketAngle - (360f * 7f)
+
+        coroutineScope {
+            launch {
+                wheelRotation.animateTo(
+                    wheelTarget,
+                    animationSpec = tween(2_400, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                ballAngle.animateTo(
+                    ballTarget,
+                    animationSpec = tween(2_400, easing = FastOutSlowInEasing)
+                )
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxWidth().height(266.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.size(248.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val radius = size.minDimension / 2f
+            val wheelRadius = radius * 0.95f
+            val topLeft = Offset(center.x - wheelRadius, center.y - wheelRadius)
+            val wheelSize = Size(wheelRadius * 2f, wheelRadius * 2f)
+
+            EuropeanRouletteWheelOrder.forEachIndexed { index, number ->
+                val pocketColor = when (PuppyRouletteEngine.colorOf(number)) {
+                    PuppyRouletteColor.GREEN -> RouletteGreen
+                    PuppyRouletteColor.RED -> RouletteRed
+                    PuppyRouletteColor.BLACK -> RouletteBlack
+                }
+                val start = -90f + (index * sweep) + wheelRotation.value
+                drawArc(
+                    color = pocketColor,
+                    startAngle = start,
+                    sweepAngle = sweep + 0.35f,
+                    useCenter = true,
+                    topLeft = topLeft,
+                    size = wheelSize
+                )
+
+                val labelAngle = (start + sweep / 2f) * PI / 180.0
+                val labelRadius = wheelRadius * 0.77f
+                val x = center.x + cos(labelAngle).toFloat() * labelRadius
+                val y = center.y + sin(labelAngle).toFloat() * labelRadius
+                drawContext.canvas.nativeCanvas.drawText(
+                    number.toString(),
+                    x,
+                    y + labelPaint.textSize / 3f,
+                    labelPaint
+                )
+            }
+
+            drawCircle(
+                color = Color.White.copy(alpha = 0.30f),
+                radius = wheelRadius,
+                center = center,
+                style = Stroke(width = 3f)
+            )
+            drawCircle(
+                color = MaterialTheme.colorScheme.surface,
+                radius = wheelRadius * 0.48f,
+                center = center
+            )
+            drawCircle(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                radius = wheelRadius * 0.41f,
+                center = center
+            )
+
+            val ballRadians = ballAngle.value * PI / 180.0
+            val ballRadius = wheelRadius * 0.88f
+            val ballCenter = Offset(
+                center.x + cos(ballRadians).toFloat() * ballRadius,
+                center.y + sin(ballRadians).toFloat() * ballRadius
+            )
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.35f),
+                radius = 9f,
+                center = ballCenter + Offset(2f, 3f)
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 8f,
+                center = ballCenter
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🐾", fontSize = 26.sp)
+            Text(
+                outcome?.winningNumber?.toString() ?: "SPIN",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+        }
     }
 }
 
