@@ -30,15 +30,21 @@ internal data class PuppyFeatureFlag(
 ) {
     fun isAvailable(today: LocalDate = LocalDate.now()): Boolean {
         if (!visible || !enabled || status !in setOf("released", "beta")) return false
-        val release = releaseDate?.let { value ->
-            runCatching { LocalDate.parse(value) }.getOrNull()
+        val release = if (releaseDate == null) {
+            null
+        } else {
+            runCatching { LocalDate.parse(releaseDate) }.getOrNull()
+                ?: return false
         }
         return release == null || !today.isBefore(release)
     }
 
     fun statusLabel(today: LocalDate = LocalDate.now()): String {
-        val release = releaseDate?.let { value ->
-            runCatching { LocalDate.parse(value) }.getOrNull()
+        val release = if (releaseDate == null) {
+            null
+        } else {
+            runCatching { LocalDate.parse(releaseDate) }.getOrNull()
+                ?: return "Disabled"
         }
         if (release != null && today.isBefore(release)) return "Coming " + release
         return when (status) {
