@@ -209,11 +209,16 @@ internal object PuppyCasinoRewardEngine {
 
 internal object PuppyCasinoRewardPersistence {
     private const val SCHEMA_VERSION = 1
-    private const val LEDGER_KEY = "casino_ticket_reward_ledger_v1"
+    internal const val LEDGER_KEY = "casino_ticket_reward_ledger_v1"
 
     fun load(prefs: SharedPreferences): PuppyCasinoRewardLedger {
         val raw = prefs.getString(LEDGER_KEY, null) ?: return PuppyCasinoRewardLedger()
         return decode(raw) ?: PuppyCasinoRewardLedger()
+    }
+
+    internal fun decodeForValidation(raw: String?): PuppyCasinoRewardLedger? {
+        if (raw.isNullOrBlank()) return PuppyCasinoRewardLedger()
+        return decode(raw)
     }
 
     fun write(
