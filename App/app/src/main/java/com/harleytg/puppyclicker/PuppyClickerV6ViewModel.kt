@@ -170,6 +170,14 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private val _casinoRound = MutableStateFlow(PuppyCasinoPersistence.loadActiveRound(prefs))
     internal val casinoRound: StateFlow<PuppyCasinoRound?> = _casinoRound.asStateFlow()
 
+    private val _casinoRewardLedger = MutableStateFlow(PuppyCasinoRewardPersistence.load(prefs))
+    internal val casinoRewardLedger: StateFlow<PuppyCasinoRewardLedger> =
+        _casinoRewardLedger.asStateFlow()
+
+    private val _lastCasinoTicketReward = MutableStateFlow<PuppyCasinoTicketReward?>(null)
+    internal val lastCasinoTicketReward: StateFlow<PuppyCasinoTicketReward?> =
+        _lastCasinoTicketReward.asStateFlow()
+
     init {
         rollDailyDayIfNeeded()
         consumeClaimedAfkReward()
@@ -646,7 +654,26 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             completedRoundIds = completed,
             roundId = roundId
         )
-        return persistCasinoMutation(current, completed, result)
+        if (!result.success || active == null) {
+            return persistCasinoMutation(current, completed, result)
+        }
+
+        val rewardApplication = PuppyCasinoRewardEngine.apply(
+            before = result.state,
+            settledRound = active,
+            ledger = _casinoRewardLedger.value
+        )
+        val rewardedResult = result.copy(state = rewardApplication.state)
+        val persisted = persistCasinoMutation(
+            before = current,
+            completedBefore = completed,
+            result = rewardedResult,
+            rewardLedger = rewardApplication.ledger
+        )
+        if (persisted.success) {
+            _lastCasinoTicketReward.value = rewardApplication.reward
+        }
+        return persisted
     }
 
     @Synchronized
@@ -1135,6 +1162,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         suspicionWindowStartedMs = 0L
         _state.value = loadState()
         _casinoRound.value = PuppyCasinoPersistence.loadActiveRound(prefs)
+        _casinoRewardLedger.value = PuppyCasinoRewardPersistence.load(prefs)
+        _lastCasinoTicketReward.value = null
     }
 
     /**
@@ -1147,6 +1176,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
         _casinoRound.value = null
+        _casinoRewardLedger.value = PuppyCasinoRewardLedger()
+        _lastCasinoTicketReward.value = null
         _state.value = V6GameState()
     }
 
@@ -1254,18 +1285,28 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private fun persistCasinoMutation(
         before: V6GameState,
         completedBefore: List<String>,
-        result: PuppyCasinoTransactionResult
+        result: PuppyCasinoTransactionResult,
+        rewardLedger: PuppyCasinoRewardLedger? = null
     ): PuppyCasinoTransactionResult {
         if (!result.success) return result
 
         val editor = prefs.edit()
             .putLong(KEY_TREATS, result.state.treats)
             .putLong(KEY_LIFETIME, result.state.lifetimeTreats)
+            .putLong(KEY_TOTAL_TICKETS_FOUND, result.state.totalTicketsFound)
+        TicketRarity.entries.forEach { rarity ->
+            editor.putInt(
+                ticketKey(rarity),
+                (result.state.ticketInventory[rarity] ?: 0)
+                    .coerceIn(0, MAX_TICKETS_PER_RARITY)
+            )
+        }
         PuppyCasinoPersistence.write(
             editor = editor,
             activeRound = result.activeRound,
             completedRoundIds = result.completedRoundIds
         )
+        rewardLedger?.let { PuppyCasinoRewardPersistence.write(editor, it) }
         if (!editor.commit()) {
             return PuppyCasinoTransactionResult(
                 success = false,
@@ -1278,6 +1319,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         _state.value = result.state
         _casinoRound.value = result.activeRound
+        rewardLedger?.let { _casinoRewardLedger.value = it }
         return result
     }
 
