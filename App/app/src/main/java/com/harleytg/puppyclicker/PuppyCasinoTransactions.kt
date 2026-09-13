@@ -8,7 +8,10 @@ import org.json.JSONObject
 internal enum class PuppyCasinoGame {
     SLOTS,
     ROULETTE,
-    BLACKJACK
+    BLACKJACK,
+    PLINKO,
+    SCRATCHERS,
+    LUCKY_WHEEL
 }
 
 internal enum class PuppyCasinoRoundState {
