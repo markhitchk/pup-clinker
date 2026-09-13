@@ -12,9 +12,10 @@ class PuppyOnboardingUiStructureTest {
     }
 
     @Test
-    fun sharedShellUsesFiveStepResponsiveLayout() {
+    fun sharedShellUsesSixStepResponsiveLayout() {
         val source = source("PuppyOnboardingShell.kt")
-        assertTrue(source.contains("of 5"))
+        assertTrue(source.contains("of 6"))
+        assertTrue(source.contains("repeat(6)"))
         assertTrue(source.contains("widthIn(max = 560.dp)"))
         assertTrue(source.contains("imePadding()"))
         assertTrue(source.contains("navigationBarsPadding()"))
