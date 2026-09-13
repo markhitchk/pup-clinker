@@ -99,7 +99,7 @@ internal fun PuppyRevampedPlayScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = if (tiny) 7.dp else 10.dp)
+                .padding(horizontal = 14.dp, vertical = if (tiny) 2.dp else 4.dp)
         ) {
             PuppyMainPageHeader(
                 "Play",
@@ -214,7 +214,7 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = if (tiny) 7.dp else 10.dp)
+                .padding(horizontal = 14.dp, vertical = if (tiny) 2.dp else 4.dp)
         ) {
             PuppyMainPageHeader(
                 "Pup Care",
@@ -333,7 +333,7 @@ internal fun PuppyRevampedShopScreen(state: V6GameState, vm: PuppyClickerV6ViewM
     var redeemOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         PuppyMainPageHeader("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
         Spacer(Modifier.height(14.dp))
@@ -401,7 +401,7 @@ internal fun PuppyRevampedRewardsScreen(
     val dailyGiftClaimed = state.lastDailyClaimDay == today
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         PuppyMainPageHeader("Rewards", "Daily goals, adventures and permanent progression.")
         Spacer(Modifier.height(14.dp))
