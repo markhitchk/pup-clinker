@@ -116,7 +116,7 @@ internal fun PuppyRosterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -297,7 +297,7 @@ internal fun PuppyRosterScreen(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 100.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 24.dp),
+                contentPadding = PaddingValues(bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
