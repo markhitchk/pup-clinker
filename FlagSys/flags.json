@@ -65,6 +65,30 @@
       "releaseDate": null,
       "label": "Puppy Blackjack",
       "description": "CPU blackjack with multiplayer planned later."
+    },
+    "casino_plinko": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": null,
+      "label": "Pup Plinko",
+      "description": "Eight-row Treat Plinko with committed bounce paths."
+    },
+    "casino_scratchers": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": null,
+      "label": "Pup Scratchers",
+      "description": "Touch-driven scratch cards with committed prizes."
+    },
+    "casino_lucky_wheel": {
+      "visible": true,
+      "enabled": true,
+      "status": "released",
+      "releaseDate": null,
+      "label": "Lucky Pup Wheel",
+      "description": "Prize wheel with Treat rewards and eligible puppy unlocks."
     }
   }
 }
