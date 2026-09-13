@@ -157,6 +157,11 @@ internal object GameSaveTransfer {
     private fun restoreStores(context: Context, stores: JSONObject) {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
             ?: error("Save does not contain the main game store")
+        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
+        require(casinoValidation.valid) {
+            "Casino save validation failed: " +
+                (casinoValidation.message ?: "invalid Casino data")
+        }
         SecurePreferenceCodec.restore(
             context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE),
             mainStore
@@ -189,6 +194,11 @@ internal object GameSaveTransfer {
         val keys = values.keys()
         while (keys.hasNext()) {
             val key = keys.next()
+            if (key.startsWith("casino_")) {
+                // Legacy v1 JSON saves predate the Casino ledger. Never import
+                // synthetic modern transaction/reward keys through this path.
+                continue
+            }
             val value = values.get(key)
             when (inferLegacyType(prefs, key, value)) {
                 "string" -> editor.putString(key, value.toString())
