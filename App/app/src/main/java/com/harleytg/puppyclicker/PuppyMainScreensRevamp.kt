@@ -384,6 +384,12 @@ internal fun PuppyRevampedRewardsScreen(
     onOpenCasino: () -> Unit
 ) {
     val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
+    val casinoFlags by PuppyFeatureFlags.flags.collectAsState()
+    val activeCasinoRound by vm.casinoRound.collectAsState()
+    val showCasinoEntry = PuppyCasinoFeaturePolicy.shouldExposeCasinoEntry(
+        flags = casinoFlags,
+        activeRound = activeCasinoRound
+    )
     val todayDate = LocalDate.now()
     val today = todayDate.toEpochDay()
     val nextReward = 150L + (if (state.lastDailyClaimDay == today - 1) state.dailyStreak + 1 else 1) * 25L + state.level * 10L
@@ -529,31 +535,39 @@ internal fun PuppyRevampedRewardsScreen(
 
         Spacer(Modifier.height(14.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("🎰", fontSize = 30.sp)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Puppy Casino", fontWeight = FontWeight.Black)
-                    Text("Treat wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        "Hub available now · games unlock only after engine validation.",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        if (showCasinoEntry) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("🎰", fontSize = 30.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Puppy Casino", fontWeight = FontWeight.Black)
+                        Text("Treat wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            if (activeCasinoRound != null) {
+                                "Recovery required · finish the saved casino round."
+                            } else {
+                                "Hub available · new wagers follow remote release flags."
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    OutlinedButton(onClick = onOpenCasino) {
+                        Text(if (activeCasinoRound != null) "Recover" else "Open")
+                    }
                 }
-                OutlinedButton(onClick = onOpenCasino) { Text("Open") }
             }
-        }
 
-        Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
