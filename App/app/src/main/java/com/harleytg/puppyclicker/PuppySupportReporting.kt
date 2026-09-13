@@ -51,6 +51,12 @@ internal data class PuppyPreparedSupportReport(
     val body: String
 )
 
+internal data class PuppySupportDeliveryResult(
+    val success: Boolean,
+    val statusCode: Int? = null,
+    val error: String? = null
+)
+
 internal object PuppySupportReporting {
     private const val TAG = "PuppySupportReporting"
     private const val CONNECT_TIMEOUT_MS = 2_000
@@ -176,8 +182,9 @@ internal object PuppySupportReporting {
             appendLine()
             appendLine("DELIVERY")
             appendLine(
-                "This report was prepared locally because Puppy Clicker does not have a " +
-                    "user-report API. Android Share does not confirm delivery."
+                "This report was prepared locally. Puppy Clicker uses a minimal support relay " +
+                    "instead of a full ticket API. It is only submitted after the relay " +
+                    "returns a successful delivery response."
             )
         }
 
@@ -231,6 +238,30 @@ internal object PuppySupportReporting {
             Intent.createChooser(send, "Share Puppy Clicker support report")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
+    }
+
+    fun isRelayConfigured(): Boolean = isConfigured()
+
+    fun submitPreparedReport(
+        context: Context,
+        report: PuppyPreparedSupportReport
+    ): PuppySupportDeliveryResult {
+        if (!isConfigured()) {
+            return PuppySupportDeliveryResult(
+                success = false,
+                error = "support_relay_not_configured"
+            )
+        }
+
+        val app = context.applicationContext
+        val ui = PuppyUiPreferences.current(app)
+        val payload = basePayload("user_report")
+            .put("report_id", report.reportId)
+            .put("report_type", report.type.label)
+            .put("subject", report.subject)
+            .put("body", report.body.take(6_000))
+        appendSupportIdentity(app, payload, ui)
+        return post(payload)
     }
 
     private fun newReportId(): String {
@@ -322,9 +353,14 @@ internal object PuppySupportReporting {
     private fun isConfigured(): Boolean =
         BuildConfig.PUPPY_SUPPORT_RELAY_URL.startsWith("https://")
 
-    private fun post(payload: JSONObject) {
+    private fun post(payload: JSONObject): PuppySupportDeliveryResult {
         val endpoint = BuildConfig.PUPPY_SUPPORT_RELAY_URL
-        if (!endpoint.startsWith("https://")) return
+        if (!endpoint.startsWith("https://")) {
+            return PuppySupportDeliveryResult(
+                success = false,
+                error = "support_relay_not_configured"
+            )
+        }
 
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -336,16 +372,30 @@ internal object PuppySupportReporting {
             setRequestProperty("User-Agent", "PuppyClicker/${BuildConfig.VERSION_NAME}")
         }
 
-        try {
+        return try {
             connection.outputStream.use { output ->
                 output.write(payload.toString().toByteArray(Charsets.UTF_8))
             }
             val code = connection.responseCode
-            if (code !in 200..299) {
+            if (code in 200..299) {
+                PuppySupportDeliveryResult(
+                    success = true,
+                    statusCode = code
+                )
+            } else {
                 Log.w(TAG, "Support relay returned HTTP $code")
+                PuppySupportDeliveryResult(
+                    success = false,
+                    statusCode = code,
+                    error = "support_relay_rejected"
+                )
             }
         } catch (error: Exception) {
             Log.w(TAG, "Support relay request failed", error)
+            PuppySupportDeliveryResult(
+                success = false,
+                error = "support_relay_unavailable"
+            )
         } finally {
             connection.disconnect()
         }
