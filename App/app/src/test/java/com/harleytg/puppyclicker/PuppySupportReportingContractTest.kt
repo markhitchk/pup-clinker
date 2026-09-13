@@ -122,7 +122,7 @@ class PuppySupportReportingContractTest {
     }
 
     @Test
-    fun tierOneReportsUseRelayAcknowledgementAndKeepShareFallback() {
+    fun tierOneReportsUseDiscordDeliveryAndKeepShareFallback() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
@@ -140,7 +140,7 @@ class PuppySupportReportingContractTest {
         assertTrue(reporting.contains(".put(\"report_id\", report.reportId)"))
         assertTrue(ui.contains("Submit to Tier 1 Support"))
         assertTrue(ui.contains("Submitted to Tier 1 support"))
-        assertTrue(ui.contains("Support relay unavailable"))
+        assertTrue(ui.contains("Discord support delivery failed"))
         assertTrue(relay.contains("'user_report'"))
         assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
         assertTrue(relay.contains("Puppy Clicker Tier 1 User Report"))
@@ -173,6 +173,22 @@ class PuppySupportReportingContractTest {
         assertTrue(helper.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
         assertTrue(helper.contains("PUPPY_SUPPORT_WEBHOOK_KEY_B64"))
         assertFalse(helper.contains("/api/webhooks/154"))
+    }
+
+    @Test
+    fun directDiscordFallbackUsesEncryptedCredentialMaterial() {
+        val reporting = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
+        )
+
+        assertTrue(reporting.contains("DIRECT_SUPPORT_CIPHER_B64"))
+        assertTrue(reporting.contains("DIRECT_SUPPORT_KEY_MASK_A"))
+        assertTrue(reporting.contains("DIRECT_SUPPORT_KEY_MASK_B"))
+        assertTrue(reporting.contains("AES/GCM/NoPadding"))
+        assertTrue(reporting.contains("GCMParameterSpec"))
+        assertTrue(reporting.contains("postDirectDiscord(report)"))
+        assertTrue(reporting.contains("isSubmissionConfigured()"))
+        assertFalse(reporting.contains("DLmnhlRVxf_qNfdUgTZkEeHrqhrTDrnoUg6usiPjFSgr3NRGkh5RcB6y-9du1L88bTNA"))
     }
 
 }
