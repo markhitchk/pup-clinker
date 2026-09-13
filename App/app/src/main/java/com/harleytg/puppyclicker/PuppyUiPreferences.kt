@@ -34,6 +34,7 @@ data class PuppyUiState(
     val setupStep: Int = 0,
     val anonymousDiagnosticsEnabled: Boolean = false,
     val crashReportsEnabled: Boolean = false,
+    val supportIdentityEnabled: Boolean = false,
     val privacyConsentVersion: Int = 0,
     val casinoDisclaimerHidden: Boolean = false,
     val dailyRewardNotifications: Boolean = true,
@@ -98,6 +99,7 @@ internal object PuppyUiPreferences {
     const val CURRENT_PRIVACY_CONSENT_VERSION = 4
     private const val KEY_ANONYMOUS_DIAGNOSTICS = "anonymous_diagnostics_enabled"
     private const val KEY_CRASH_REPORTS = "crash_reports_enabled"
+    private const val KEY_SUPPORT_IDENTITY = "support_identity_enabled"
     private const val KEY_PRIVACY_CONSENT_VERSION = "privacy_consent_version"
     private const val KEY_CASINO_DISCLAIMER_HIDDEN = "casino_disclaimer_hidden"
     private const val KEY_NOTIFY_DAILY = "notify_daily_rewards"
@@ -216,6 +218,10 @@ internal object PuppyUiPreferences {
         putBoolean(KEY_CRASH_REPORTS, enabled)
     }
 
+    fun setSupportIdentityEnabled(context: Context, enabled: Boolean) = edit(context) {
+        putBoolean(KEY_SUPPORT_IDENTITY, enabled)
+    }
+
     fun markPrivacyConsentReviewed(context: Context) = edit(context) {
         putInt(KEY_PRIVACY_CONSENT_VERSION, CURRENT_PRIVACY_CONSENT_VERSION)
     }
@@ -249,6 +255,7 @@ internal object PuppyUiPreferences {
             putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
             putBoolean(KEY_ANONYMOUS_DIAGNOSTICS, keep.anonymousDiagnosticsEnabled)
             putBoolean(KEY_CRASH_REPORTS, keep.crashReportsEnabled)
+            putBoolean(KEY_SUPPORT_IDENTITY, keep.supportIdentityEnabled)
             putInt(KEY_PRIVACY_CONSENT_VERSION, keep.privacyConsentVersion)
             putBoolean(KEY_CASINO_DISCLAIMER_HIDDEN, keep.casinoDisclaimerHidden)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
@@ -377,6 +384,7 @@ internal object PuppyUiPreferences {
             setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 5),
             anonymousDiagnosticsEnabled = store.getBoolean(KEY_ANONYMOUS_DIAGNOSTICS, false),
             crashReportsEnabled = store.getBoolean(KEY_CRASH_REPORTS, false),
+            supportIdentityEnabled = store.getBoolean(KEY_SUPPORT_IDENTITY, false),
             privacyConsentVersion = store.getInt(KEY_PRIVACY_CONSENT_VERSION, 0),
             casinoDisclaimerHidden = store.getBoolean(KEY_CASINO_DISCLAIMER_HIDDEN, false),
             dailyRewardNotifications = store.getBoolean(KEY_NOTIFY_DAILY, true),
