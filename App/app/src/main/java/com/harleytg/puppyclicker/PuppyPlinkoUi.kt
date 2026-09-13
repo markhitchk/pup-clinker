@@ -275,7 +275,10 @@ private fun PlinkoBoard(
             }
 
             val path = outcome?.pathRight ?: emptyList()
-            val scaled = progress.value * rows
+            // Eight bounce decisions create nine vertical travel segments:
+            // start -> row 1 ... row 8 -> final multiplier bin.
+            val travelSegments = rows + 1
+            val scaled = progress.value * travelSegments
             val completedRows = scaled.toInt().coerceIn(0, rows)
             val fraction = (scaled - completedRows).coerceIn(0f, 1f)
             var x = centerX
