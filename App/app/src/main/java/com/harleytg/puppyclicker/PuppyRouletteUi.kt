@@ -56,10 +56,13 @@ internal fun PuppyRouletteScreen(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
-    val canPlayFeature = PuppyCasinoFeaturePolicy.canStartNewRound(
-        game = PuppyCasinoGame.ROULETTE,
-        flags = flags
-    )
+    val recoveryIssue by vm.casinoRecoveryIssue.collectAsStateWithLifecycle()
+    val canPlayFeature =
+        recoveryIssue == null &&
+            PuppyCasinoFeaturePolicy.canStartNewRound(
+                game = PuppyCasinoGame.ROULETTE,
+                flags = flags
+            )
 
     var wager by rememberSaveable { mutableLongStateOf(100L) }
     var selectedTypeName by rememberSaveable {
