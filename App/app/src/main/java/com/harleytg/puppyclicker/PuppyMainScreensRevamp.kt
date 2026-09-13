@@ -386,9 +386,11 @@ internal fun PuppyRevampedRewardsScreen(
     val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
     val casinoFlags by PuppyFeatureFlags.flags.collectAsState()
     val activeCasinoRound by vm.casinoRound.collectAsState()
+    val casinoRecoveryIssue by vm.casinoRecoveryIssue.collectAsState()
     val showCasinoEntry = PuppyCasinoFeaturePolicy.shouldExposeCasinoEntry(
         flags = casinoFlags,
-        activeRound = activeCasinoRound
+        activeRound = activeCasinoRound,
+        hasRecoveryIssue = casinoRecoveryIssue != null
     )
     val todayDate = LocalDate.now()
     val today = todayDate.toEpochDay()
@@ -551,17 +553,26 @@ internal fun PuppyRevampedRewardsScreen(
                         Text("Puppy Casino", fontWeight = FontWeight.Black)
                         Text("Treat wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
                         Text(
-                            if (activeCasinoRound != null) {
-                                "Recovery required · finish the saved casino round."
-                            } else {
-                                "Hub available · new wagers follow remote release flags."
+                            when {
+                                casinoRecoveryIssue != null ->
+                                    "Recovery warning · saved Casino data needs attention."
+                                activeCasinoRound != null ->
+                                    "Recovery required · finish the saved casino round."
+                                else ->
+                                    "Hub available · new wagers follow remote release flags."
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     OutlinedButton(onClick = onOpenCasino) {
-                        Text(if (activeCasinoRound != null) "Recover" else "Open")
+                        Text(
+                            if (activeCasinoRound != null || casinoRecoveryIssue != null) {
+                                "Recover"
+                            } else {
+                                "Open"
+                            }
+                        )
                     }
                 }
             }
