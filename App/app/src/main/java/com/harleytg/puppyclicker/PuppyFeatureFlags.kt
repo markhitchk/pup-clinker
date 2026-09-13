@@ -183,7 +183,11 @@ internal object PuppyFeatureFlags {
                 visible = item.optBoolean("visible", false),
                 enabled = item.optBoolean("enabled", false),
                 status = status,
-                releaseDate = item.optString("releaseDate").trim().ifBlank { null },
+                releaseDate = if (item.isNull("releaseDate")) {
+                    null
+                } else {
+                    item.optString("releaseDate").trim().ifBlank { null }
+                },
                 label = item.optString("label", key).take(80),
                 description = item.optString("description").take(240)
             )
