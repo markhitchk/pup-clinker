@@ -25,11 +25,33 @@ class PuppyDeveloperCheatsContractTest {
     fun activationClearlyVoidsDeveloperCasinoWinningsAndCanBeDisabled() {
         val cheats = source("PuppyDeveloperCheats.kt")
 
-        assertTrue(cheats.contains("Activate Developer Cheats?"))
-        assertTrue(cheats.contains("voids all casino winnings"))
-        assertTrue(cheats.contains("DEV CHEATS ACTIVE · WINNINGS VOID"))
-        assertTrue(cheats.contains("Disable Developer Cheats"))
+        assertTrue(cheats.contains("Activate Casino X-Ray?"))
+        assertTrue(cheats.contains("voids all winnings"))
+        assertTrue(cheats.contains("CASINO X-RAY ACTIVE · WINNINGS VOID"))
+        assertTrue(cheats.contains("Disable Casino X-Ray"))
         assertTrue(cheats.contains("PuppyDeveloperCheatsSession.disable()"))
+    }
+
+    @Test
+    fun xrayReadsEveryCasinoGamesCommittedHiddenStateWithoutMutationControls() {
+        val cheats = source("PuppyDeveloperCheats.kt")
+
+        assertTrue(cheats.contains("BLACKJACK X-RAY"))
+        assertTrue(cheats.contains("Dealer hole:"))
+        assertTrue(cheats.contains("SLOTS X-RAY"))
+        assertTrue(cheats.contains("Reels:"))
+        assertTrue(cheats.contains("ROULETTE X-RAY"))
+        assertTrue(cheats.contains("Winning pocket:"))
+        assertTrue(cheats.contains("PLINKO X-RAY"))
+        assertTrue(cheats.contains("Path:"))
+        assertTrue(cheats.contains("SCRATCHER X-RAY"))
+        assertTrue(cheats.contains("Under coating:"))
+        assertTrue(cheats.contains("WHEEL X-RAY"))
+        assertTrue(cheats.contains("Selected segment"))
+        assertFalse(cheats.contains("developerAddTreats(1_000L)"))
+        assertFalse(cheats.contains("developerAddTicket(rarity)"))
+        assertFalse(cheats.contains("developerFillCare()"))
+        assertFalse(cheats.contains("developerAddSkillPoints(10)"))
     }
 
     @Test
