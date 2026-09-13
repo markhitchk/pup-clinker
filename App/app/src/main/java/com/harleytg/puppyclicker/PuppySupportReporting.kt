@@ -195,9 +195,9 @@ internal object PuppySupportReporting {
             appendLine()
             appendLine("DELIVERY")
             appendLine(
-                "This report was prepared locally. Puppy Clicker uses a minimal support relay " +
-                    "instead of a full ticket API. It is only submitted after the relay " +
-                    "returns a successful delivery response."
+                "Press Submit in Puppy Clicker to send this report to the Tier 1 Discord " +
+                    "support inbox. Copy and Android Share are fallback options. The app " +
+                    "shows Submitted only after the configured Discord delivery path succeeds."
             )
         }
 
