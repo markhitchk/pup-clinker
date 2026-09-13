@@ -105,7 +105,7 @@ internal fun PuppyDeveloperConsoleScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(onClick = onBack) { Text("‹ Settings") }
         Text(
