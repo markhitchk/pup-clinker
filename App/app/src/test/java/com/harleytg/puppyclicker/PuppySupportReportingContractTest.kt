@@ -84,7 +84,10 @@ class PuppySupportReportingContractTest {
 
         assertTrue(relay.contains("PUPPY_DISCORD_TELEMETRY_WEBHOOK"))
         assertTrue(relay.contains("PUPPY_DISCORD_CRASH_WEBHOOK"))
-        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK"))
+        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
+        assertTrue(relay.contains("PUPPY_SUPPORT_WEBHOOK_KEY_B64"))
+        assertTrue(relay.contains("openssl_decrypt"))
+        assertTrue(relay.contains("aes-256-gcm"))
         assertTrue(relay.contains("allowed_mentions"))
         assertFalse(relay.contains("/api/webhooks/154"))
     }
@@ -139,7 +142,7 @@ class PuppySupportReportingContractTest {
         assertTrue(ui.contains("Submitted to Tier 1 support"))
         assertTrue(ui.contains("Support relay unavailable"))
         assertTrue(relay.contains("'user_report'"))
-        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK"))
+        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
         assertTrue(relay.contains("Puppy Clicker Tier 1 User Report"))
     }
 
@@ -156,6 +159,20 @@ class PuppySupportReportingContractTest {
         assertTrue(settings.contains("PuppySupportReportSettings(ui)"))
         assertTrue(ui.contains("internal fun PuppySupportReportSettings(ui: PuppyUiState)"))
         assertFalse(settings.contains("PuppyUserReportSettings"))
+    }
+
+    @Test
+    fun tierOneWebhookEncryptionHelperKeepsPlaintextOutOfSource() {
+        val helper = source(
+            "../../services/encrypt-support-webhook.php"
+        )
+
+        assertTrue(helper.contains("random_bytes(32)"))
+        assertTrue(helper.contains("random_bytes(12)"))
+        assertTrue(helper.contains("aes-256-gcm"))
+        assertTrue(helper.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
+        assertTrue(helper.contains("PUPPY_SUPPORT_WEBHOOK_KEY_B64"))
+        assertFalse(helper.contains("/api/webhooks/154"))
     }
 
 }
