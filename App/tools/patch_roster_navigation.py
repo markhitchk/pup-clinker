@@ -125,6 +125,11 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 when (internal) {
                     PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)
                     PuppyInternalDestination.PRESTIGE -> V6Prestige(state, vm)
+                    PuppyInternalDestination.CASINO -> PuppyCasinoHub(
+                        state = state,
+                        vm = vm,
+                        onBack = { internalDestination = null }
+                    )
                 }
             } else {
                 when (tab) {
@@ -143,7 +148,8 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     V6Tab.REWARDS -> PuppyRewardsHub(
                         state = state,
                         vm = vm,
-                        onOpenPrestige = { internalDestination = PuppyInternalDestination.PRESTIGE }
+                        onOpenPrestige = { internalDestination = PuppyInternalDestination.PRESTIGE },
+                        onOpenCasino = { internalDestination = PuppyInternalDestination.CASINO }
                     )
                 }
 
