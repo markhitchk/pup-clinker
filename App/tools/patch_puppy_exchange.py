@@ -84,7 +84,7 @@ def patch_roster_screen(source: str) -> str:
     source = replace_once(
         source,
         '''            .fillMaxSize()\n            .padding(horizontal = 16.dp, vertical = 10.dp)''',
-        '''            .fillMaxSize()\n            .padding(\n                horizontal = if (compactRoster) 12.dp else 16.dp,\n                vertical = if (compactRoster) 6.dp else 10.dp\n            )''',
+        '''            .fillMaxSize()\n            .padding(\n                horizontal = if (compactRoster) 12.dp else 16.dp,\n                vertical = if (compactRoster) 2.dp else 4.dp\n            )''',
         "compact roster screen padding",
     )
     source = replace_once(
