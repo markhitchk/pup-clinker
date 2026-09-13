@@ -72,7 +72,7 @@ internal fun PuppyOnboardingShell(
                         .padding(horizontal = horizontalPadding, vertical = headerVerticalPadding)
                 ) {
                     Text(
-                        text = "Step " + (step.persistedIndex + 1) + " of 5",
+                        text = "Step " + (step.persistedIndex + 1) + " of 6",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
@@ -88,7 +88,7 @@ internal fun PuppyOnboardingShell(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        repeat(5) { index ->
+                        repeat(6) { index ->
                             LinearProgressIndicator(
                                 progress = {
                                     if (index <= step.persistedIndex) 1f else 0f
