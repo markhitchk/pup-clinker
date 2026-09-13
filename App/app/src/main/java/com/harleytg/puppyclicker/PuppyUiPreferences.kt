@@ -32,6 +32,9 @@ data class PuppyUiState(
     val birthdayDay: Int = 0,
     val setupComplete: Boolean = false,
     val setupStep: Int = 0,
+    val anonymousDiagnosticsEnabled: Boolean = false,
+    val crashReportsEnabled: Boolean = false,
+    val privacyConsentVersion: Int = 0,
     val dailyRewardNotifications: Boolean = true,
     val gameEventNotifications: Boolean = true,
     val updateNotifications: Boolean = true,
@@ -90,7 +93,11 @@ internal object PuppyUiPreferences {
     private const val KEY_SETUP_COMPLETE = "setup_complete"
     private const val KEY_SETUP_STEP = "setup_step"
     private const val KEY_SETUP_FLOW_VERSION = "setup_flow_version"
-    private const val SETUP_FLOW_VERSION = 3
+    private const val SETUP_FLOW_VERSION = 4
+    const val CURRENT_PRIVACY_CONSENT_VERSION = 4
+    private const val KEY_ANONYMOUS_DIAGNOSTICS = "anonymous_diagnostics_enabled"
+    private const val KEY_CRASH_REPORTS = "crash_reports_enabled"
+    private const val KEY_PRIVACY_CONSENT_VERSION = "privacy_consent_version"
     private const val KEY_NOTIFY_DAILY = "notify_daily_rewards"
     private const val KEY_NOTIFY_EVENTS = "notify_game_events"
     private const val KEY_NOTIFY_UPDATES = "notify_app_updates"
@@ -182,13 +189,13 @@ internal object PuppyUiPreferences {
     fun setSetupStep(context: Context, step: Int) {
         ensure(context)
         if (!mutableState.value.setupComplete) edit(context) {
-            putInt(KEY_SETUP_STEP, step.coerceIn(0, 4))
+            putInt(KEY_SETUP_STEP, step.coerceIn(0, 5))
         }
     }
 
     fun finishSetup(context: Context) = edit(context) {
         putBoolean(KEY_SETUP_COMPLETE, true)
-        putInt(KEY_SETUP_STEP, 4)
+        putInt(KEY_SETUP_STEP, PuppyOnboardingStep.READY.persistedIndex)
         putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
     }
 
@@ -197,6 +204,18 @@ internal object PuppyUiPreferences {
         putInt(KEY_SETUP_STEP, PuppyOnboardingStep.PLAYER_SETUP.persistedIndex)
         putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
         putBoolean(KEY_MIGRATION_COMPLETE, true)
+    }
+
+    fun setAnonymousDiagnosticsEnabled(context: Context, enabled: Boolean) = edit(context) {
+        putBoolean(KEY_ANONYMOUS_DIAGNOSTICS, enabled)
+    }
+
+    fun setCrashReportsEnabled(context: Context, enabled: Boolean) = edit(context) {
+        putBoolean(KEY_CRASH_REPORTS, enabled)
+    }
+
+    fun markPrivacyConsentReviewed(context: Context) = edit(context) {
+        putInt(KEY_PRIVACY_CONSENT_VERSION, CURRENT_PRIVACY_CONSENT_VERSION)
     }
 
     fun setDailyRewardNotifications(context: Context, enabled: Boolean) = edit(context) {
@@ -220,8 +239,11 @@ internal object PuppyUiPreferences {
             if (keep.birthdayMonth > 0) putInt(KEY_BIRTHDAY_MONTH, keep.birthdayMonth)
             if (keep.birthdayDay > 0) putInt(KEY_BIRTHDAY_DAY, keep.birthdayDay)
             putBoolean(KEY_SETUP_COMPLETE, true)
-            putInt(KEY_SETUP_STEP, 4)
+            putInt(KEY_SETUP_STEP, PuppyOnboardingStep.READY.persistedIndex)
             putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
+            putBoolean(KEY_ANONYMOUS_DIAGNOSTICS, keep.anonymousDiagnosticsEnabled)
+            putBoolean(KEY_CRASH_REPORTS, keep.crashReportsEnabled)
+            putInt(KEY_PRIVACY_CONSENT_VERSION, keep.privacyConsentVersion)
             putBoolean(KEY_MIGRATION_COMPLETE, true)
         }
     }
@@ -289,11 +311,20 @@ internal object PuppyUiPreferences {
     }
 
     private fun migrateSetupFlowIfNeeded(store: SharedPreferences) {
-        if (store.getInt(KEY_SETUP_FLOW_VERSION, 1) >= SETUP_FLOW_VERSION) return
+        val previousVersion = store.getInt(KEY_SETUP_FLOW_VERSION, 1)
+        if (previousVersion >= SETUP_FLOW_VERSION) return
+
+        val setupComplete = store.getBoolean(KEY_SETUP_COMPLETE, false)
+        val previousStep = store.getInt(KEY_SETUP_STEP, PuppyOnboardingStep.WELCOME.persistedIndex)
+        val migratedStep = when {
+            setupComplete -> PuppyOnboardingStep.READY.persistedIndex
+            previousVersion >= 3 -> migrateV3OnboardingStepToV4(previousStep)
+            else -> PuppyOnboardingStep.WELCOME.persistedIndex
+        }
 
         store.edit()
-            .putBoolean(KEY_SETUP_COMPLETE, false)
-            .putInt(KEY_SETUP_STEP, PuppyOnboardingStep.WELCOME.persistedIndex)
+            .putBoolean(KEY_SETUP_COMPLETE, setupComplete)
+            .putInt(KEY_SETUP_STEP, migratedStep)
             .putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
             .apply()
     }
@@ -336,7 +367,10 @@ internal object PuppyUiPreferences {
             birthdayMonth = store.getInt(KEY_BIRTHDAY_MONTH, 0),
             birthdayDay = store.getInt(KEY_BIRTHDAY_DAY, 0),
             setupComplete = store.getBoolean(KEY_SETUP_COMPLETE, false),
-            setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 4),
+            setupStep = store.getInt(KEY_SETUP_STEP, 0).coerceIn(0, 5),
+            anonymousDiagnosticsEnabled = store.getBoolean(KEY_ANONYMOUS_DIAGNOSTICS, false),
+            crashReportsEnabled = store.getBoolean(KEY_CRASH_REPORTS, false),
+            privacyConsentVersion = store.getInt(KEY_PRIVACY_CONSENT_VERSION, 0),
             dailyRewardNotifications = store.getBoolean(KEY_NOTIFY_DAILY, true),
             gameEventNotifications = store.getBoolean(KEY_NOTIFY_EVENTS, true),
             updateNotifications = store.getBoolean(KEY_NOTIFY_UPDATES, true),
