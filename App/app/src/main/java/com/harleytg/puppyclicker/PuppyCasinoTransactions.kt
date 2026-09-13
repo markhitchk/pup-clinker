@@ -284,11 +284,14 @@ internal object PuppyCasinoTransactionEngine {
 
 internal object PuppyCasinoPersistence {
     private const val SCHEMA_VERSION = 1
-    private const val ACTIVE_ROUND_KEY = "casino_active_round_v1"
-    private const val COMPLETED_ROUND_IDS_KEY = "casino_completed_round_ids_v1"
+    internal const val ACTIVE_ROUND_KEY = "casino_active_round_v1"
+    internal const val COMPLETED_ROUND_IDS_KEY = "casino_completed_round_ids_v1"
 
     fun loadActiveRound(prefs: SharedPreferences): PuppyCasinoRound? =
         decodeRound(prefs.getString(ACTIVE_ROUND_KEY, null))
+
+    internal fun decodeRoundForValidation(raw: String?): PuppyCasinoRound? =
+        decodeRound(raw)
 
     fun loadCompletedRoundIds(prefs: SharedPreferences): List<String> =
         decodeCompletedIds(prefs.getString(COMPLETED_ROUND_IDS_KEY, null))
