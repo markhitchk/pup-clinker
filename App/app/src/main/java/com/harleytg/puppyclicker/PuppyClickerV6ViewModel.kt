@@ -653,9 +653,23 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     internal fun refundCasinoRound(roundId: String): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val active = _casinoRound.value
+        if (
+            active?.roundId == roundId &&
+            active.game == PuppyCasinoGame.BLACKJACK &&
+            PuppyBlackjackStateCodec.decodeAndValidate(active.wagerPayload) != null
+        ) {
+            return PuppyCasinoTransactionResult(
+                success = false,
+                state = current,
+                activeRound = active,
+                completedRoundIds = completed,
+                failure = PuppyCasinoTransactionFailure.INVALID_ROUND_STATE
+            )
+        }
         val result = PuppyCasinoTransactionEngine.refund(
             before = current,
-            activeRound = _casinoRound.value,
+            activeRound = active,
             completedRoundIds = completed,
             roundId = roundId
         )
