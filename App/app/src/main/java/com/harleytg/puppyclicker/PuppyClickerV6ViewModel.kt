@@ -223,11 +223,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
         val roundId = PuppyCasinoRoundIds.newId()
-        val gameAvailable = when (game) {
-            PuppyCasinoGame.SLOTS -> PuppyFeatureFlags.flag("casino_slots").isAvailable()
-            PuppyCasinoGame.ROULETTE -> PuppyFeatureFlags.flag("casino_roulette").isAvailable()
-            PuppyCasinoGame.BLACKJACK -> PuppyFeatureFlags.flag("casino_blackjack").isAvailable()
-        }
+        val flagSnapshot = PuppyFeatureFlags.flags.value
         val result = PuppyCasinoTransactionEngine.acceptWager(
             before = current,
             activeRound = _casinoRound.value,
@@ -235,8 +231,10 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             roundId = roundId,
             game = game,
             wagerTreats = wagerTreats,
-            featureAvailable =
-                PuppyFeatureFlags.flag("puppy_casino").isAvailable() && gameAvailable,
+            featureAvailable = PuppyCasinoFeaturePolicy.canStartNewRound(
+                game = game,
+                flags = flagSnapshot
+            ),
             acceptedAtMs = System.currentTimeMillis(),
             wagerPayload = wagerPayload
         )
