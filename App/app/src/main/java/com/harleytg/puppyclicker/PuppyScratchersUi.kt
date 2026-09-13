@@ -130,8 +130,9 @@ internal fun PuppyScratchersScreen(
                 Text(
                     when {
                         display == null -> "Buy a card to begin."
-                        !revealed && round != null -> "Scratch to reveal • ${(scratchProgress * 100).toInt()}%"
-                        revealed || round == null -> "${display.prize.label} • ${display.payoutTreats} Treats returned"
+                        revealed -> "${display.prize.label} • ${display.payoutTreats} Treats returned"
+                        round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
+                            "Scratch to reveal • ${(scratchProgress * 100).toInt()}%"
                         else -> "Scratch to reveal."
                     },
                     color = Color.White,
