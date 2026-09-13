@@ -112,6 +112,7 @@ private enum class SettingsDestination {
     ROSTER,
     PUPEYE,
     ASSETS,
+    SUPPORT,
     DEVELOPER,
     ABOUT
 }
@@ -232,6 +233,14 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             onBack = { open(SettingsDestination.HOME) }
         ) {
             OnlineAssetSettings()
+        }
+
+        SettingsDestination.SUPPORT -> SettingsSubpage(
+            title = "Support & Reports",
+            subtitle = "Tier 1 support intake that works without a Puppy Clicker API.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            PuppyUserReportSettings()
         }
 
         SettingsDestination.DEVELOPER -> SettingsSubpage(
@@ -426,6 +435,18 @@ private fun SettingsHome(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsNavRow("▤", "Data Management", "Back up, restore, reset, and delete data") {
                 onOpen(SettingsDestination.DATA)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Support") {
+            SettingsNavRow(
+                "🐾",
+                "Support & Reports",
+                "Report bugs, casino issues, users, account problems, and more"
+            ) {
+                onOpen(SettingsDestination.SUPPORT)
             }
         }
 
