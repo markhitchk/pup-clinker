@@ -29,10 +29,10 @@ class PuppyCasinoTransactionEngineTest {
             250, true, 1000
         )
         assertTrue(accepted.success)
-        assertEquals(750, accepted.state.treats)
-        assertEquals(5_000, accepted.state.lifetimeTreats)
+        assertEquals(750L, accepted.state.treats)
+        assertEquals(5_000L, accepted.state.lifetimeTreats)
         assertEquals(PuppyCasinoRoundState.WAGER_ACCEPTED, accepted.activeRound?.state)
-        assertEquals(250, accepted.activeRound?.wagerTreats)
+        assertEquals(250L, accepted.activeRound?.wagerTreats)
     }
 
     @Test
@@ -65,7 +65,7 @@ class PuppyCasinoTransactionEngineTest {
         assertTrue(committed.success)
         assertEquals(afterWager, committed.state)
         assertEquals(PuppyCasinoRoundState.OUTCOME_COMMITTED, committed.activeRound?.state)
-        assertEquals(250, committed.activeRound?.payoutTreats)
+        assertEquals(250L, committed.activeRound?.payoutTreats)
     }
 
     @Test
@@ -85,8 +85,8 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, committed, emptyList(), roundId
         )
         assertTrue(settled.success)
-        assertEquals(1_150, settled.state.treats)
-        assertEquals(5_150, settled.state.lifetimeTreats)
+        assertEquals(1_150L, settled.state.treats)
+        assertEquals(5_150L, settled.state.lifetimeTreats)
         assertNull(settled.activeRound)
         assertTrue(roundId in settled.completedRoundIds)
     }
@@ -108,8 +108,8 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, committed, emptyList(), roundId
         )
         assertTrue(settled.success)
-        assertEquals(900, settled.state.treats)
-        assertEquals(5_000, settled.state.lifetimeTreats)
+        assertEquals(900L, settled.state.treats)
+        assertEquals(5_000L, settled.state.lifetimeTreats)
     }
 
     @Test
@@ -123,8 +123,8 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, accepted, emptyList(), roundId
         )
         assertTrue(refunded.success)
-        assertEquals(1_000, refunded.state.treats)
-        assertEquals(5_000, refunded.state.lifetimeTreats)
+        assertEquals(1_000L, refunded.state.treats)
+        assertEquals(5_000L, refunded.state.lifetimeTreats)
         assertNull(refunded.activeRound)
     }
 
