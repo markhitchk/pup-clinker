@@ -7,6 +7,7 @@ declare(strict_types=1);
  * Server environment variables:
  *   PUPPY_DISCORD_TELEMETRY_WEBHOOK
  *   PUPPY_DISCORD_CRASH_WEBHOOK
+ *   PUPPY_DISCORD_USER_REPORT_WEBHOOK
  *
  * Never put those Discord webhook URLs in the Android app or this repository.
  */
@@ -37,15 +38,17 @@ if (!is_array($data)) {
 }
 
 $kind = isset($data['kind']) && is_string($data['kind']) ? $data['kind'] : '';
-if (!in_array($kind, ['telemetry', 'crash'], true)) {
+if (!in_array($kind, ['telemetry', 'crash', 'user_report'], true)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'invalid_kind']);
     exit;
 }
 
-$webhook = $kind === 'crash'
-    ? getenv('PUPPY_DISCORD_CRASH_WEBHOOK')
-    : getenv('PUPPY_DISCORD_TELEMETRY_WEBHOOK');
+$webhook = match ($kind) {
+    'crash' => getenv('PUPPY_DISCORD_CRASH_WEBHOOK'),
+    'user_report' => getenv('PUPPY_DISCORD_USER_REPORT_WEBHOOK'),
+    default => getenv('PUPPY_DISCORD_TELEMETRY_WEBHOOK'),
+};
 
 if (!is_string($webhook) || !str_starts_with($webhook, 'https://discord.com/api/webhooks/')) {
     http_response_code(503);
@@ -59,7 +62,8 @@ $rateFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
     . DIRECTORY_SEPARATOR . 'puppy-report-' . $bucket;
 $now = time();
 $last = is_file($rateFile) ? (int) @file_get_contents($rateFile) : 0;
-if ($last > 0 && ($now - $last) < 2) {
+$minimumInterval = $kind === 'user_report' ? 8 : 2;
+if ($last > 0 && ($now - $last) < $minimumInterval) {
     http_response_code(429);
     echo json_encode(['ok' => false, 'error' => 'rate_limited']);
     exit;
@@ -121,6 +125,29 @@ if ($kind === 'telemetry') {
     $title = '📊 Puppy Clicker Anonymous Diagnostics';
     $description = 'Event: **' . ($event !== '' ? $event : 'unknown') . '**';
     $username = 'Puppy Clicker Diagnostics';
+} elseif ($kind === 'user_report') {
+    $reportId = $clean($data['report_id'] ?? '', 64);
+    $reportType = $clean($data['report_type'] ?? 'Other', 64);
+    $subject = $clean($data['subject'] ?? 'User report', 120);
+    $body = $clean($data['body'] ?? '', 3500);
+
+    if ($reportId === '' || $body === '') {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'invalid_user_report']);
+        exit;
+    }
+
+    $title = '🐾 Puppy Clicker Tier 1 User Report';
+    $description = '**' . ($subject !== '' ? $subject : 'User report') . '**';
+    $fields[] = ['name' => 'Report ID', 'value' => $reportId, 'inline' => true];
+    $fields[] = ['name' => 'Category', 'value' => $reportType !== '' ? $reportType : 'Other', 'inline' => true];
+    $fields[] = ['name' => 'Status', 'value' => '🟡 New · Tier 1', 'inline' => true];
+    $fields[] = [
+        'name' => 'Report',
+        'value' => $body !== '' ? $body : 'No report body supplied.',
+        'inline' => false
+    ];
+    $username = 'Puppy Clicker Tier 1 Support';
 } else {
     $exception = $clean($data['exception'] ?? 'Unknown exception', 240);
     $message = $clean($data['message'] ?? '', 600);
@@ -158,7 +185,11 @@ $discordPayload = json_encode([
         'title' => $title,
         'description' => $description,
         'fields' => $fields,
-        'footer' => ['text' => 'Consent-gated Puppy Clicker support reporting']
+        'footer' => [
+            'text' => $kind === 'user_report'
+                ? 'Puppy Clicker Tier 1 Support · User-submitted report'
+                : 'Consent-gated Puppy Clicker support reporting'
+        ]
     ]]
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
