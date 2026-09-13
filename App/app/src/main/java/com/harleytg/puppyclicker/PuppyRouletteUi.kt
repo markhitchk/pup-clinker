@@ -23,7 +23,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -89,6 +91,8 @@ internal fun PuppyRouletteScreen(
     var lastOutcomeWager by rememberSaveable { mutableLongStateOf(0L) }
     var lastBetPayload by rememberSaveable { mutableStateOf<String?>(null) }
     var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealFinishedRoundId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showNumberPicker by rememberSaveable { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
     val selectedType = runCatching {
@@ -155,8 +159,10 @@ internal fun PuppyRouletteScreen(
         lastOutcomeWager = round.wagerTreats
         lastBetPayload = round.wagerPayload
         revealRoundId = round.roundId
+        revealFinishedRoundId = null
 
         delay(if (state.animationsEnabled) 2_600 else 250)
+        revealFinishedRoundId = round.roundId
 
         val settled = vm.settleCasinoRound(round.roundId)
         if (!settled.success) {
@@ -178,6 +184,21 @@ internal fun PuppyRouletteScreen(
         }
     }
     val displayOutcome = recoveredOutcome ?: lastOutcome
+    val resultRevealReady =
+        displayOutcome != null &&
+            (revealRoundId == null || revealFinishedRoundId == revealRoundId)
+
+    if (showNumberPicker) {
+        RouletteNumberPickerDialog(
+            selectedNumber = selectedNumber,
+            onSelect = { number ->
+                selectedNumber = number
+                selectedTypeName = PuppyRouletteBetType.STRAIGHT.name
+                showNumberPicker = false
+            },
+            onDismiss = { showNumberPicker = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -206,16 +227,47 @@ internal fun PuppyRouletteScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        RouletteWheel(
-            outcome = displayOutcome,
-            spinKey = revealRoundId,
-            animationsEnabled = state.animationsEnabled
-        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF0D2118),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f))
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                RouletteWheel(
+                    outcome = displayOutcome,
+                    spinKey = revealRoundId,
+                    animationsEnabled = state.animationsEnabled,
+                    showResult = resultRevealReady
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                RouletteColorBoard(
+                    selectedType = selectedType,
+                    selectedNumber = selectedNumber,
+                    onSelectRed = {
+                        selectedTypeName = PuppyRouletteBetType.RED.name
+                    },
+                    onSelectBlack = {
+                        selectedTypeName = PuppyRouletteBetType.BLACK.name
+                    },
+                    onSelectGreen = {
+                        selectedNumber = 0
+                        selectedTypeName = PuppyRouletteBetType.STRAIGHT.name
+                    },
+                    onPickNumber = { showNumberPicker = true }
+                )
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
 
-        displayOutcome?.let { outcome ->
-            RouletteResultCard(outcome)
+        if (resultRevealReady && displayOutcome != null) {
+            RouletteResultCard(displayOutcome)
             Spacer(Modifier.height(12.dp))
         }
 
@@ -241,39 +293,13 @@ internal fun PuppyRouletteScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        Text("Choose bet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Zero is green and loses red/black, odd/even, and 1–18/19–36 bets.",
+            "Bet board: red, black, green zero, or choose an exact landing number.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
-
-        RouletteOutsideBetRow(
-            selectedType = selectedType,
-            onSelect = { selectedTypeName = it.name }
         )
 
         Spacer(Modifier.height(12.dp))
-
-        Text("Straight number", fontWeight = FontWeight.Black)
-        Text(
-            "Pick any number from 0 to 36 for a 36× total return.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
-
-        RouletteNumberTable(
-            selectedNumber = selectedNumber,
-            selected = selectedType == PuppyRouletteBetType.STRAIGHT,
-            onSelect = { number ->
-                selectedNumber = number
-                selectedTypeName = PuppyRouletteBetType.STRAIGHT.name
-            }
-        )
-
-        Spacer(Modifier.height(16.dp))
 
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
@@ -354,7 +380,8 @@ private val EuropeanRouletteWheelOrder = listOf(
 private fun RouletteWheel(
     outcome: PuppyRouletteOutcome?,
     spinKey: String?,
-    animationsEnabled: Boolean
+    animationsEnabled: Boolean,
+    showResult: Boolean
 ) {
     val wheelRotation = remember { Animatable(0f) }
     val ballAngle = remember { Animatable(-90f) }
@@ -366,7 +393,7 @@ private fun RouletteWheel(
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
             textAlign = Paint.Align.CENTER
-            textSize = 18f
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
         }
     }
@@ -419,10 +446,10 @@ private fun RouletteWheel(
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth().height(266.dp),
+        modifier = Modifier.fillMaxWidth().height(190.dp),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(Modifier.size(248.dp)) {
+        Canvas(Modifier.size(176.dp)) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val radius = size.minDimension / 2f
             val wheelRadius = radius * 0.95f
@@ -483,14 +510,146 @@ private fun RouletteWheel(
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🐾", fontSize = 26.sp)
+            Text("🐾", fontSize = 20.sp)
             Text(
-                outcome?.winningNumber?.toString() ?: "SPIN",
-                style = MaterialTheme.typography.titleLarge,
+                if (showResult) outcome?.winningNumber?.toString() ?: "—" else "SPIN",
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Black
             )
         }
     }
+}
+
+@Composable
+private fun RouletteColorBoard(
+    selectedType: PuppyRouletteBetType,
+    selectedNumber: Int,
+    onSelectRed: () -> Unit,
+    onSelectBlack: () -> Unit,
+    onSelectGreen: () -> Unit,
+    onPickNumber: () -> Unit
+) {
+    val straightSelected = selectedType == PuppyRouletteBetType.STRAIGHT
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            "BET BOARD",
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White.copy(alpha = 0.72f),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Button(
+                onClick = onSelectRed,
+                colors = ButtonDefaults.buttonColors(containerColor = RouletteRed),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("RED", color = Color.White, fontWeight = FontWeight.Black)
+            }
+            Button(
+                onClick = onSelectGreen,
+                colors = ButtonDefaults.buttonColors(containerColor = RouletteGreen),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("0", color = Color.White, fontWeight = FontWeight.Black)
+            }
+            Button(
+                onClick = onSelectBlack,
+                colors = ButtonDefaults.buttonColors(containerColor = RouletteBlack),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("BLACK", color = Color.White, fontWeight = FontWeight.Black)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        OutlinedButton(
+            onClick = onPickNumber,
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+        ) {
+            Text(
+                if (straightSelected && selectedNumber != 0) {
+                    "Exact number: " + selectedNumber + " · change"
+                } else {
+                    "Choose exact landing number"
+                },
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouletteNumberPickerDialog(
+    selectedNumber: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Choose landing number", fontWeight = FontWeight.Black)
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    "Pick 0–36. Exact-number bets return 36× total.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(8.dp))
+                (0..36).toList().chunked(3).forEach { rowNumbers ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        rowNumbers.forEach { number ->
+                            val color = when (PuppyRouletteEngine.colorOf(number)) {
+                                PuppyRouletteColor.GREEN -> RouletteGreen
+                                PuppyRouletteColor.RED -> RouletteRed
+                                PuppyRouletteColor.BLACK -> RouletteBlack
+                            }
+                            Button(
+                                onClick = { onSelect(number) },
+                                colors = ButtonDefaults.buttonColors(containerColor = color),
+                                modifier = Modifier.weight(1f),
+                                border = if (number == selectedNumber) {
+                                    BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                } else {
+                                    null
+                                }
+                            ) {
+                                Text(
+                                    number.toString(),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
+                        repeat(3 - rowNumbers.size) {
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
