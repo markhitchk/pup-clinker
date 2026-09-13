@@ -38,6 +38,7 @@ internal enum class PuppyCasinoTransactionFailure {
     ROUND_NOT_FOUND,
     ROUND_MISMATCH,
     INVALID_ROUND_STATE,
+    INVALID_WAGER_PAYLOAD,
     INVALID_OUTCOME,
     BALANCE_OVERFLOW,
     PERSISTENCE_FAILED
@@ -109,6 +110,49 @@ internal object PuppyCasinoTransactionEngine {
             success = true,
             state = before.copy(treats = before.treats - wagerTreats),
             activeRound = round,
+            completedRoundIds = completedRoundIds
+        )
+    }
+
+    fun updateAcceptedRound(
+        before: V6GameState,
+        activeRound: PuppyCasinoRound?,
+        completedRoundIds: List<String>,
+        roundId: String,
+        wagerPayload: String,
+        additionalWagerTreats: Long = 0L
+    ): PuppyCasinoTransactionResult {
+        if (roundId in completedRoundIds) {
+            return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
+        }
+        val round = activeRound
+            ?: return failure(before, null, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_NOT_FOUND)
+        if (round.roundId != roundId) {
+            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_MISMATCH)
+        }
+        if (round.state != PuppyCasinoRoundState.WAGER_ACCEPTED) {
+            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_ROUND_STATE)
+        }
+        val payload = wagerPayload.trim()
+        if (payload.isBlank() || payload.length > MAX_OUTCOME_PAYLOAD_CHARS) {
+            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_WAGER_PAYLOAD)
+        }
+        if (additionalWagerTreats < 0L) {
+            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_WAGER)
+        }
+        if (before.treats < additionalWagerTreats) {
+            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INSUFFICIENT_TREATS)
+        }
+        val totalWager = checkedAdd(round.wagerTreats, additionalWagerTreats)
+            ?: return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.BALANCE_OVERFLOW)
+
+        return PuppyCasinoTransactionResult(
+            success = true,
+            state = before.copy(treats = before.treats - additionalWagerTreats),
+            activeRound = round.copy(
+                wagerTreats = totalWager,
+                wagerPayload = payload
+            ),
             completedRoundIds = completedRoundIds
         )
     }
