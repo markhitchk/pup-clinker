@@ -84,6 +84,10 @@ internal object PuppyFeatureFlags {
         "save_restore" to PuppyFeatureFlag(
             "save_restore", true, true, "released", null,
             "Save Restore", "Import an existing encrypted .pupsave file."
+        ),
+        "puppy_casino" to PuppyFeatureFlag(
+            "puppy_casino", true, false, "coming_soon", null,
+            "Puppy Casino", "Treat-wager casino games backed by the existing Puppy Clicker economy."
         )
     )
 
