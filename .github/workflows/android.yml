@@ -51,6 +51,15 @@ jobs:
       - name: Compile Android instrumentation tests
         run: gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 
+      - name: Run Android instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          working-directory: App
+          script: gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+
       - name: Export Android apksigner tool
         shell: bash
         run: |
