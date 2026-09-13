@@ -22,6 +22,7 @@ internal data class PuppyCasinoRound(
     val wagerTreats: Long,
     val state: PuppyCasinoRoundState,
     val acceptedAtMs: Long,
+    val wagerPayload: String? = null,
     val outcomePayload: String? = null,
     val payoutTreats: Long = 0L,
     val outcomeCommittedAtMs: Long = 0L
@@ -70,7 +71,8 @@ internal object PuppyCasinoTransactionEngine {
         game: PuppyCasinoGame,
         wagerTreats: Long,
         featureAvailable: Boolean,
-        acceptedAtMs: Long
+        acceptedAtMs: Long,
+        wagerPayload: String? = null
     ): PuppyCasinoTransactionResult {
         if (!featureAvailable) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.FEATURE_DISABLED)
@@ -90,13 +92,18 @@ internal object PuppyCasinoTransactionEngine {
         if (before.treats < wagerTreats) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.INSUFFICIENT_TREATS)
         }
+        val persistedWagerPayload = wagerPayload?.trim()?.ifBlank { null }
+        if (persistedWagerPayload != null && persistedWagerPayload.length > MAX_OUTCOME_PAYLOAD_CHARS) {
+            return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_OUTCOME)
+        }
 
         val round = PuppyCasinoRound(
             roundId = roundId,
             game = game,
             wagerTreats = wagerTreats,
             state = PuppyCasinoRoundState.WAGER_ACCEPTED,
-            acceptedAtMs = acceptedAtMs.coerceAtLeast(0L)
+            acceptedAtMs = acceptedAtMs.coerceAtLeast(0L),
+            wagerPayload = persistedWagerPayload
         )
         return PuppyCasinoTransactionResult(
             success = true,
@@ -265,6 +272,7 @@ internal object PuppyCasinoPersistence {
         put("wagerTreats", round.wagerTreats)
         put("state", round.state.name)
         put("acceptedAtMs", round.acceptedAtMs)
+        round.wagerPayload?.let { put("wagerPayload", it) }
         round.outcomePayload?.let { put("outcomePayload", it) }
         put("payoutTreats", round.payoutTreats)
         put("outcomeCommittedAtMs", round.outcomeCommittedAtMs)
@@ -283,6 +291,10 @@ internal object PuppyCasinoPersistence {
             if (wager <= 0L) return@runCatching null
             val payout = json.optLong("payoutTreats", 0L)
             if (payout < 0L) return@runCatching null
+            val wagerPayload = json.optString("wagerPayload", "").trim().ifBlank { null }
+            if (wagerPayload != null && wagerPayload.length > PuppyCasinoTransactionEngine.MAX_OUTCOME_PAYLOAD_CHARS) {
+                return@runCatching null
+            }
             val outcome = json.optString("outcomePayload", "").trim().ifBlank { null }
             if (state == PuppyCasinoRoundState.OUTCOME_COMMITTED && outcome == null) {
                 return@runCatching null
@@ -293,6 +305,7 @@ internal object PuppyCasinoPersistence {
                 wagerTreats = wager,
                 state = state,
                 acceptedAtMs = json.optLong("acceptedAtMs", 0L).coerceAtLeast(0L),
+                wagerPayload = wagerPayload,
                 outcomePayload = outcome,
                 payoutTreats = payout,
                 outcomeCommittedAtMs = json.optLong("outcomeCommittedAtMs", 0L).coerceAtLeast(0L)
