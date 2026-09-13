@@ -204,6 +204,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
         val roundId = PuppyCasinoRoundIds.newId()
+        val gameAvailable = when (game) {
+            PuppyCasinoGame.SLOTS -> PuppyFeatureFlags.flag("casino_slots").isAvailable()
+            PuppyCasinoGame.ROULETTE -> PuppyFeatureFlags.flag("casino_roulette").isAvailable()
+            PuppyCasinoGame.BLACKJACK -> PuppyFeatureFlags.flag("casino_blackjack").isAvailable()
+        }
         val result = PuppyCasinoTransactionEngine.acceptWager(
             before = current,
             activeRound = _casinoRound.value,
@@ -211,10 +216,70 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             roundId = roundId,
             game = game,
             wagerTreats = wagerTreats,
-            featureAvailable = PuppyFeatureFlags.flag("puppy_casino").isAvailable(),
+            featureAvailable =
+                PuppyFeatureFlags.flag("puppy_casino").isAvailable() && gameAvailable,
             acceptedAtMs = System.currentTimeMillis()
         )
         return persistCasinoMutation(current, completed, result)
+    }
+
+    @Synchronized
+    internal fun startSlotsSpin(wagerTreats: Long): PuppySlotsStartResult {
+        if (!PuppySlotsEngine.isValidWager(wagerTreats)) {
+            return PuppySlotsStartResult(
+                success = false,
+                failure = PuppySlotsStartFailure.INVALID_WAGER
+            )
+        }
+
+        val accepted = beginCasinoRound(
+            game = PuppyCasinoGame.SLOTS,
+            wagerTreats = wagerTreats
+        )
+        if (!accepted.success) {
+            return PuppySlotsStartResult(
+                success = false,
+                failure = PuppySlotsStartFailure.TRANSACTION_REJECTED,
+                transactionFailure = accepted.failure
+            )
+        }
+
+        val round = accepted.activeRound
+            ?: return PuppySlotsStartResult(
+                success = false,
+                failure = PuppySlotsStartFailure.TRANSACTION_REJECTED
+            )
+
+        val outcome = runCatching {
+            PuppySlotsEngine.randomSpin(wagerTreats)
+        }.getOrElse {
+            refundCasinoRound(round.roundId)
+            return PuppySlotsStartResult(
+                success = false,
+                failure = PuppySlotsStartFailure.OUTCOME_GENERATION_FAILED
+            )
+        }
+
+        val committed = commitCasinoOutcome(
+            roundId = round.roundId,
+            outcomePayload = PuppySlotsOutcomeCodec.encode(outcome),
+            payoutTreats = outcome.payoutTreats
+        )
+        if (!committed.success) {
+            return PuppySlotsStartResult(
+                success = false,
+                roundId = round.roundId,
+                outcome = outcome,
+                failure = PuppySlotsStartFailure.OUTCOME_COMMIT_FAILED,
+                transactionFailure = committed.failure
+            )
+        }
+
+        return PuppySlotsStartResult(
+            success = true,
+            roundId = round.roundId,
+            outcome = outcome
+        )
     }
 
     @Synchronized
