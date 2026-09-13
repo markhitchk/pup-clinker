@@ -41,6 +41,7 @@ internal enum class PuppyCasinoTransactionFailure {
     INVALID_WAGER_PAYLOAD,
     INVALID_OUTCOME,
     BALANCE_OVERFLOW,
+    CORRUPT_SAVE,
     PERSISTENCE_FAILED
 }
 
@@ -282,13 +283,39 @@ internal object PuppyCasinoTransactionEngine {
     )
 }
 
+internal data class PuppyCasinoStoredRoundInspection(
+    val round: PuppyCasinoRound?,
+    val issue: String? = null
+) {
+    val hasIssue: Boolean get() = issue != null
+}
+
 internal object PuppyCasinoPersistence {
     private const val SCHEMA_VERSION = 1
     internal const val ACTIVE_ROUND_KEY = "casino_active_round_v1"
     internal const val COMPLETED_ROUND_IDS_KEY = "casino_completed_round_ids_v1"
 
     fun loadActiveRound(prefs: SharedPreferences): PuppyCasinoRound? =
-        decodeRound(prefs.getString(ACTIVE_ROUND_KEY, null))
+        inspectActiveRound(prefs).round
+
+    fun inspectActiveRound(prefs: SharedPreferences): PuppyCasinoStoredRoundInspection {
+        val raw = prefs.getString(ACTIVE_ROUND_KEY, null)
+        if (raw.isNullOrBlank()) return PuppyCasinoStoredRoundInspection(round = null)
+
+        val round = decodeRound(raw)
+            ?: return PuppyCasinoStoredRoundInspection(
+                round = null,
+                issue = "Stored Casino round is malformed"
+            )
+        val validation = PuppyCasinoSaveValidator.validateActiveRound(round)
+        if (!validation.valid) {
+            return PuppyCasinoStoredRoundInspection(
+                round = null,
+                issue = validation.message ?: "Stored Casino round failed validation"
+            )
+        }
+        return PuppyCasinoStoredRoundInspection(round = round)
+    }
 
     internal fun decodeRoundForValidation(raw: String?): PuppyCasinoRound? =
         decodeRound(raw)
