@@ -59,6 +59,14 @@ internal fun PuppyCasinoHub(
         )
         return
     }
+    if (page == "blackjack") {
+        PuppyBlackjackScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
     val casinoFlag = flags["puppy_casino"] ?: PuppyFeatureFlags.flag("puppy_casino")
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
@@ -118,7 +126,8 @@ internal fun PuppyCasinoHub(
             Spacer(Modifier.height(12.dp))
             CasinoRecoveryCard(
                 round = activeRound!!,
-                vm = vm
+                vm = vm,
+                onResumeBlackjack = { page = "blackjack" }
             )
         }
 
@@ -149,8 +158,9 @@ internal fun PuppyCasinoHub(
         CasinoGameCard(
             emoji = "🃏",
             title = "Puppy Blackjack",
-            detail = "Dealer CPU first. Natural blackjack is planned at 3:2; multiplayer comes later with server authority.",
-            flag = blackjackFlag
+            detail = "CPU dealer, soft-17 rules, 3:2 natural Blackjack, doubling and splits.",
+            flag = blackjackFlag,
+            onOpen = { page = "blackjack" }
         )
 
         Spacer(Modifier.height(16.dp))
@@ -302,7 +312,8 @@ private fun CasinoGameCard(
 @Composable
 private fun CasinoRecoveryCard(
     round: PuppyCasinoRound,
-    vm: PuppyClickerV6ViewModel
+    vm: PuppyClickerV6ViewModel,
+    onResumeBlackjack: () -> Unit
 ) {
     val stateLabel = when (round.state) {
         PuppyCasinoRoundState.WAGER_ACCEPTED -> "Wager accepted"
@@ -337,11 +348,20 @@ private fun CasinoRecoveryCard(
 
             when (round.state) {
                 PuppyCasinoRoundState.WAGER_ACCEPTED -> {
-                    OutlinedButton(
-                        onClick = { vm.refundCasinoRound(round.roundId) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Refund Accepted Wager")
+                    if (round.game == PuppyCasinoGame.BLACKJACK) {
+                        Button(
+                            onClick = onResumeBlackjack,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Resume Blackjack Hand")
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { vm.refundCasinoRound(round.roundId) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Refund Accepted Wager")
+                        }
                     }
                 }
                 PuppyCasinoRoundState.OUTCOME_COMMITTED -> {
