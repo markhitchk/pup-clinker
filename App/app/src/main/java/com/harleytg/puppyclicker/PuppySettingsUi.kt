@@ -240,7 +240,7 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             subtitle = "Tier 1 support intake that works without a Puppy Clicker API.",
             onBack = { open(SettingsDestination.HOME) }
         ) {
-            PuppyUserReportSettings()
+            PuppySupportReportSettings(ui)
         }
 
         SettingsDestination.DEVELOPER -> SettingsSubpage(
