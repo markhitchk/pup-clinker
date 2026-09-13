@@ -22,6 +22,54 @@ class PuppyCasinoSaveTransferContractTest {
     }
 
     @Test
+    fun validActiveRoundMustFinishBeforeImportingAnotherSave() {
+        val transfer = source("GameSaveTransfer.kt")
+
+        assertTrue(
+            transfer.contains(
+                "require(currentCasino.round == null)"
+            )
+        )
+        assertTrue(
+            transfer.contains(
+                "Finish the current Casino round before importing another save."
+            )
+        )
+        assertTrue(
+            transfer.contains(
+                "importing a known-good backup is the supported non-destructive repair path"
+            )
+        )
+    }
+
+    @Test
+    fun importRejectsActiveRoundIdsAlreadyConsumedOnThisDevice() {
+        val transfer = source("GameSaveTransfer.kt")
+        val validator = source("PuppyCasinoSaveValidator.kt")
+
+        assertTrue(
+            transfer.contains(
+                "addAll(PuppyCasinoPersistence.loadCompletedRoundIds(currentMainPrefs))"
+            )
+        )
+        assertTrue(
+            transfer.contains(
+                "addAll(PuppyCasinoRewardPersistence.load(currentMainPrefs).evaluatedRoundIds)"
+            )
+        )
+        assertTrue(
+            transfer.contains(
+                "addAll(PuppyCasinoPuppyRewardPersistence.load(currentMainPrefs).evaluatedRoundIds)"
+            )
+        )
+        assertTrue(
+            validator.contains(
+                "if (round.roundId in disallowedActiveRoundIds)"
+            )
+        )
+    }
+
+    @Test
     fun importedMainStoreIsValidatedBeforeItReplacesLocalPrefs() {
         val transfer = source("GameSaveTransfer.kt")
 
