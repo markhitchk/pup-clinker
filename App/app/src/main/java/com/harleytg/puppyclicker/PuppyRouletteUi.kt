@@ -358,6 +358,8 @@ private fun RouletteWheel(
     val wheelRotation = remember { Animatable(0f) }
     val ballAngle = remember { Animatable(-90f) }
     val sweep = 360f / EuropeanRouletteWheelOrder.size
+    val wheelCenterColor = MaterialTheme.colorScheme.surface
+    val wheelAccentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     val labelPaint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
@@ -446,12 +448,12 @@ private fun RouletteWheel(
                 style = Stroke(width = 3f)
             )
             drawCircle(
-                color = MaterialTheme.colorScheme.surface,
+                color = wheelCenterColor,
                 radius = wheelRadius * 0.48f,
                 center = center
             )
             drawCircle(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                color = wheelAccentColor,
                 radius = wheelRadius * 0.41f,
                 center = center
             )
