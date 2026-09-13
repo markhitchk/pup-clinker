@@ -62,7 +62,8 @@ class PuppyCasinoPersistenceContractTest {
     fun newRoundsRespectFeatureFlagButRecoveryPathsDoNot() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
         val transactions = source("PuppyCasinoTransactions.kt")
-        assertTrue(viewModel.contains("PuppyFeatureFlags.flag(\"puppy_casino\").isAvailable()"))
+        assertTrue(viewModel.contains("val flagSnapshot = PuppyFeatureFlags.flags.value"))
+        assertTrue(viewModel.contains("PuppyCasinoFeaturePolicy.canStartNewRound("))
         assertTrue(viewModel.contains("fun settleCasinoRound"))
         assertTrue(viewModel.contains("fun refundCasinoRound"))
         assertTrue(transactions.contains("fun settle("))
