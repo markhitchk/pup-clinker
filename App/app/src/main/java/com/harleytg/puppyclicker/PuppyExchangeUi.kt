@@ -368,7 +368,7 @@ internal fun PuppyExchangeScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
