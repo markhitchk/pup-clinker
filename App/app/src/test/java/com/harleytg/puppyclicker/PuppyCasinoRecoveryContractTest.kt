@@ -74,8 +74,10 @@ class PuppyCasinoRecoveryContractTest {
         assertTrue(rewards.contains("showCasinoEntry"))
         assertTrue(rewards.contains("activeCasinoRound"))
         assertTrue(rewards.contains("Recovery required · finish the saved casino round."))
-        assertTrue(rewards.contains("Text(if (activeCasinoRound != null) \"Recover\" else \"Open\")"))
-        assertTrue(policy.contains("activeRound != null ||"))
+        assertTrue(rewards.contains("Recovery warning · saved Casino data needs attention."))
+        assertTrue(rewards.contains("hasRecoveryIssue = casinoRecoveryIssue != null"))
+        assertTrue(rewards.contains("\"Recover\""))
+        assertTrue(policy.contains("hasRecoveryIssue ||"))
     }
 
     @Test
@@ -115,9 +117,11 @@ class PuppyCasinoRecoveryContractTest {
 
         assertTrue(
             viewModel.contains(
-                "_casinoRound.value = PuppyCasinoPersistence.loadActiveRound(prefs)"
+                "val casinoInspection = PuppyCasinoPersistence.inspectActiveRound(prefs)"
             )
         )
+        assertTrue(viewModel.contains("_casinoRound.value = casinoInspection.round"))
+        assertTrue(viewModel.contains("_casinoRecoveryIssue.value = casinoInspection.issue"))
         assertTrue(
             viewModel.contains(
                 "_casinoRewardLedger.value = PuppyCasinoRewardPersistence.load(prefs)"
