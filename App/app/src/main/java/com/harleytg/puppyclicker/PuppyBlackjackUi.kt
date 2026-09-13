@@ -1,6 +1,8 @@
 package com.harleytg.puppyclicker
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -256,74 +258,24 @@ internal fun PuppyBlackjackScreen(
             roundState != null &&
             !roundState.complete
         ) {
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black
+            Spacer(Modifier.height(10.dp))
+            BlackjackActionPanel(
+                roundState = roundState,
+                activeHand = activeHand,
+                treats = state.treats,
+                onHit = {
+                    message = commandMessage(vm.blackjackHit())
+                },
+                onStand = {
+                    message = commandMessage(vm.blackjackStand())
+                },
+                onDouble = {
+                    message = commandMessage(vm.blackjackDouble())
+                },
+                onSplit = {
+                    message = commandMessage(vm.blackjackSplit())
+                }
             )
-            Text(
-                "Current hand wager: " + (activeHand?.wagerTreats ?: 0L) + " Treats",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Button(
-                    onClick = {
-                        message = commandMessage(vm.blackjackHit())
-                    },
-                    enabled = PuppyBlackjackEngine.canHit(roundState),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Hit")
-                }
-                Button(
-                    onClick = {
-                        message = commandMessage(vm.blackjackStand())
-                    },
-                    enabled = PuppyBlackjackEngine.canStand(roundState),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Stand")
-                }
-            }
-
-            Spacer(Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        message = commandMessage(vm.blackjackDouble())
-                    },
-                    enabled =
-                        PuppyBlackjackEngine.canDouble(roundState) &&
-                            activeHand != null &&
-                            state.treats >= activeHand.wagerTreats,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Double")
-                }
-                OutlinedButton(
-                    onClick = {
-                        message = commandMessage(vm.blackjackSplit())
-                    },
-                    enabled =
-                        PuppyBlackjackEngine.canSplit(roundState) &&
-                            activeHand != null &&
-                            state.treats >= activeHand.wagerTreats,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Split")
-                }
-            }
         } else if (activeRound == null) {
             Spacer(Modifier.height(16.dp))
             Text(
@@ -394,6 +346,124 @@ internal fun PuppyBlackjackScreen(
 }
 
 @Composable
+private fun BlackjackActionPanel(
+    roundState: PuppyBlackjackState,
+    activeHand: PuppyBlackjackHand?,
+    treats: Long,
+    onHit: () -> Unit,
+    onStand: () -> Unit,
+    onDouble: () -> Unit,
+    onSplit: () -> Unit
+) {
+    val activeValue = activeHand?.let { PuppyBlackjackEngine.handValue(it.cards) }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = tween(260)),
+        shape = RoundedCornerShape(20.dp),
+        color = BlackjackTableGreen.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "YOUR TURN",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Hand " + (roundState.activeHandIndex + 1) +
+                            " · " + (activeValue?.total ?: 0) + " points",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Text(
+                    (activeHand?.wagerTreats ?: 0L).toString() + " 🍪",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onHit,
+                    enabled = PuppyBlackjackEngine.canHit(roundState),
+                    modifier = Modifier.weight(1f).height(58.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("＋ HIT", fontWeight = FontWeight.Black)
+                        Text(
+                            "Take a card",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = onStand,
+                    enabled = PuppyBlackjackEngine.canStand(roundState),
+                    modifier = Modifier.weight(1f).height(58.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.55f))
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("■ STAND", color = Color.White, fontWeight = FontWeight.Black)
+                        Text(
+                            "Hold hand",
+                            color = Color.White.copy(alpha = 0.80f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDouble,
+                    enabled =
+                        PuppyBlackjackEngine.canDouble(roundState) &&
+                            activeHand != null &&
+                            treats >= activeHand.wagerTreats,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("2× DOUBLE", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = onSplit,
+                    enabled =
+                        PuppyBlackjackEngine.canSplit(roundState) &&
+                            activeHand != null &&
+                            treats >= activeHand.wagerTreats,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("⇄ SPLIT", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Text(
+                "Hit adds a card. Stand locks this hand. Double adds one card and stands.",
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
 private fun BlackjackWalletCard(state: V6GameState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -444,7 +514,7 @@ private fun BlackjackCardRow(
                     card = if (hidden) null else PuppyBlackjackCard(id),
                     animationToken = id.toString() + ":" + hidden,
                     animationsEnabled = animationsEnabled,
-                    dealDelayMs = index * 90L
+                    dealDelayMs = index * 120L
                 )
             }
         }
@@ -471,7 +541,7 @@ private fun BlackjackPlayingCard(
         delay(dealDelayMs)
         reveal.animateTo(
             1f,
-            animationSpec = tween(340, easing = FastOutSlowInEasing)
+            animationSpec = tween(420, easing = FastOutSlowInEasing)
         )
     }
 
@@ -481,11 +551,13 @@ private fun BlackjackPlayingCard(
             .height(72.dp)
             .graphicsLayer {
                 alpha = reveal.value
-                translationX = (1f - reveal.value) * 26f
-                translationY = (1f - reveal.value) * -34f
-                rotationY = (1f - reveal.value) * 90f
-                scaleX = 0.72f + (0.28f * reveal.value)
-                scaleY = 0.84f + (0.16f * reveal.value)
+                translationX = (1f - reveal.value) * 42f
+                translationY = (1f - reveal.value) * -46f
+                rotationY = (1f - reveal.value) * 105f
+                rotationZ = (1f - reveal.value) * -7f
+                shadowElevation = 2f + (8f * reveal.value)
+                scaleX = 0.68f + (0.32f * reveal.value)
+                scaleY = 0.80f + (0.20f * reveal.value)
             },
         shape = RoundedCornerShape(10.dp),
         color = if (card == null) MaterialTheme.colorScheme.primary else Color.White,
@@ -523,9 +595,20 @@ private fun BlackjackHandCard(
     animationsEnabled: Boolean
 ) {
     val value = PuppyBlackjackEngine.handValue(hand.cards)
+    val activeScale by animateFloatAsState(
+        targetValue = if (active) 1f else 0.985f,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "blackjack_active_hand_scale"
+    )
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = activeScale
+                scaleY = activeScale
+            }
+            .animateContentSize(animationSpec = tween(260)),
         shape = RoundedCornerShape(14.dp),
         color = Color.White.copy(alpha = if (active) 0.18f else 0.09f),
         border = BorderStroke(
