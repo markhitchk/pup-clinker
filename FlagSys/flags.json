@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12T05:20:00Z",
+  "updatedAt": "2026-09-13T04:13:00Z",
   "flags": {
     "feature_flag_system": {
       "visible": true,
@@ -33,6 +33,14 @@
       "releaseDate": null,
       "label": "Save Restore",
       "description": "Import an existing encrypted .pupsave file."
+    },
+    "puppy_casino": {
+      "visible": true,
+      "enabled": false,
+      "status": "coming_soon",
+      "releaseDate": null,
+      "label": "Puppy Casino",
+      "description": "Treat-wager casino games backed by the existing Puppy Clicker economy."
     }
   }
 }
