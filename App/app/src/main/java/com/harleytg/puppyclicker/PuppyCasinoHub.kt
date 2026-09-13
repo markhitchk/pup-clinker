@@ -41,6 +41,7 @@ internal fun PuppyCasinoHub(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
+    val recoveryIssue by vm.casinoRecoveryIssue.collectAsStateWithLifecycle()
     val rewardLedger by vm.casinoRewardLedger.collectAsStateWithLifecycle()
     val lastTicketReward by vm.lastCasinoTicketReward.collectAsStateWithLifecycle()
     val puppyRewardLedger by vm.casinoPuppyRewardLedger.collectAsStateWithLifecycle()
@@ -129,6 +130,31 @@ internal fun PuppyCasinoHub(
             }
         }
 
+        if (recoveryIssue != null) {
+            Spacer(Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("⚠️ Casino recovery protection", fontWeight = FontWeight.Black)
+                    Text(
+                        recoveryIssue ?: "Saved Casino data failed validation.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "New wagers are blocked to protect your Treat balance. Restore a known-good .pupsave or use the existing full local-data reset if you intentionally want to discard the damaged save.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
         if (activeRound != null) {
             Spacer(Modifier.height(12.dp))
             CasinoRecoveryCard(
@@ -138,7 +164,7 @@ internal fun PuppyCasinoHub(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp)
         Text("Games", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
 
