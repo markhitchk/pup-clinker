@@ -189,9 +189,9 @@ def patch_save_transfer(source: str) -> str:
     )
     source = replace_once(
         source,
-        '''            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+        '''            put(MAIN_PREFS, mainStore)
             put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))''',
-        '''            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+        '''            put(MAIN_PREFS, mainStore)
             put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
             put(UI_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE)))''',
         "UI preferences encrypted export",
