@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,7 @@ internal fun PuppySlotsScreen(
     var lastOutcomePayload by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOutcomeWager by rememberSaveable { mutableLongStateOf(0L) }
     var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealFinishedRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
     val slotsRound = activeRound?.takeIf { it.game == PuppyCasinoGame.SLOTS }
@@ -103,7 +105,9 @@ internal fun PuppySlotsScreen(
         lastOutcomePayload = round.outcomePayload
         lastOutcomeWager = round.wagerTreats
         revealRoundId = round.roundId
-        delay(if (state.animationsEnabled) 1_900 else 250)
+        revealFinishedRoundId = null
+        delay(if (state.animationsEnabled) 2_350 else 250)
+        revealFinishedRoundId = round.roundId
 
         val settled = vm.settleCasinoRound(round.roundId)
         if (!settled.success) {
@@ -173,62 +177,121 @@ internal fun PuppySlotsScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Card(
+        val display = recoveredOutcome ?: lastOutcome
+        val resultRevealReady =
+            display != null &&
+                (revealRoundId == null || revealFinishedRoundId == revealRoundId)
+        val reelsSpinning =
+            display != null &&
+                revealRoundId != null &&
+                revealFinishedRoundId != revealRoundId
+
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            shape = RoundedCornerShape(26.dp),
+            color = Color(0xFF17191F),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val display = recoveredOutcome ?: lastOutcome
+                Text(
+                    "●  PUPPY SLOTS  ●",
+                    color = Color(0xFFFFD54F),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp
+                )
+                Text(
+                    if (reelsSpinning) "REELS IN MOTION" else "TREAT JACKPOT MACHINE",
+                    color = Color.White.copy(alpha = 0.70f),
+                    style = MaterialTheme.typography.labelSmall
+                )
+
+                Spacer(Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(PuppySlotsEngine.REEL_COUNT) { index ->
-                        SlotReel(
-                            emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?",
-                            spinKey = revealRoundId,
-                            reelIndex = index,
-                            animationsEnabled = state.animationsEnabled,
-                            modifier = Modifier.weight(1f)
-                        )
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFF08090B),
+                        border = BorderStroke(2.dp, Color(0xFFB8BDC8))
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            repeat(PuppySlotsEngine.REEL_COUNT) { index ->
+                                SlotReel(
+                                    emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?",
+                                    spinKey = revealRoundId,
+                                    reelIndex = index,
+                                    animationsEnabled = state.animationsEnabled,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.width(10.dp))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("●", color = Color(0xFFFFD54F), fontSize = 20.sp)
+                        Text("│", color = Color(0xFFB8BDC8), fontSize = 34.sp)
+                        Text("●", color = MaterialTheme.colorScheme.primary, fontSize = 20.sp)
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
 
-                if (display != null) {
-                    val resultText = when (display.winKind) {
-                        PuppySlotsWinKind.LOSS -> "No match"
-                        PuppySlotsWinKind.PAIR -> "Pair · " + display.multiplierLabel
-                        PuppySlotsWinKind.TRIPLE -> "Triple · " + display.multiplierLabel
+                when {
+                    reelsSpinning -> {
+                        Text(
+                            "Reel 1 → Reel 2 → Reel 3",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Result reveals after the final reel locks.",
+                            color = Color.White.copy(alpha = 0.70f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
-                    Text(
-                        resultText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        display.payoutTreats.toString() + " Treats returned",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else if (slotsRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
-                    Text(
-                        "Wager accepted. Outcome not committed.",
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    Text(
-                        "Choose a wager and spin.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    resultRevealReady && display != null -> {
+                        val resultText = when (display.winKind) {
+                            PuppySlotsWinKind.LOSS -> "No match"
+                            PuppySlotsWinKind.PAIR -> "Pair · " + display.multiplierLabel
+                            PuppySlotsWinKind.TRIPLE -> "Triple · " + display.multiplierLabel
+                        }
+                        Text(
+                            resultText,
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            display.payoutTreats.toString() + " Treats returned",
+                            color = Color.White.copy(alpha = 0.82f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    slotsRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED -> {
+                        Text(
+                            "Wager accepted. Outcome not committed.",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    else -> {
+                        Text(
+                            "Choose a wager and pull the machine.",
+                            color = Color.White.copy(alpha = 0.82f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }
@@ -326,7 +389,7 @@ internal fun PuppySlotsScreen(
                     !canPlayFeature -> "Slots Locked"
                     activeRound != null -> "Round In Progress"
                     state.treats < wager -> "Not Enough Treats"
-                    else -> "Spin for " + wager + " Treats"
+                    else -> "Pull Lever · " + wager + " Treats"
                 }
             )
         }
@@ -361,19 +424,20 @@ private fun SlotReel(
         }
 
         val symbols = PuppySlotSymbol.entries
-        val ticks = 14 + (reelIndex * 4)
+        val stopTicks = listOf(16, 23, 30)
+        val ticks = stopTicks.getOrElse(reelIndex) { 30 }
         repeat(ticks) { tick ->
             visibleEmoji = symbols[(tick + reelIndex * 2) % symbols.size].emoji
-            delay(65L + reelIndex * 5L)
+            delay(70L)
         }
         visibleEmoji = emoji
     }
 
     Surface(
-        modifier = modifier.height(92.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        modifier = modifier.height(96.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFF4F4F1),
+        border = BorderStroke(2.dp, Color(0xFF34373D))
     ) {
         Box(contentAlignment = Alignment.Center) {
             AnimatedContent(
