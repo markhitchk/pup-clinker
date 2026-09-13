@@ -84,5 +84,8 @@ class PuppyCasinoPersistenceContractTest {
         assertTrue(flags.contains("\"casino_slots\", true, true, \"released\""))
         assertTrue(flags.contains("\"casino_roulette\", true, true, \"released\""))
         assertTrue(flags.contains("\"casino_blackjack\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_plinko\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_scratchers\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_lucky_wheel\", true, true, \"released\""))
     }
 }
