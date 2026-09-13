@@ -308,9 +308,9 @@ internal fun PuppyDeveloperCheatsSettings(
     var confirmActivation by rememberSaveable { mutableStateOf(false) }
 
     Spacer(Modifier.width(1.dp))
-    Text("Developer Cheats", fontWeight = FontWeight.Black)
+    Text("Casino X-Ray", fontWeight = FontWeight.Black)
     Text(
-        "PIN-gated testing controls. Cheat authorization lasts only for this app session.",
+        "PIN-gated read-only casino inspector. Authorization lasts only for this app session.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
@@ -325,12 +325,12 @@ internal fun PuppyDeveloperCheatsSettings(
         ) {
             Column(Modifier.padding(12.dp)) {
                 Text(
-                    "🛠 DEV CHEATS ACTIVE · WINNINGS VOID",
+                    "👁 CASINO X-RAY ACTIVE · WINNINGS VOID",
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Text(
-                    "Casino rounds started in this mode do not charge a real wager, pay Treat winnings, grant Upgrade Tickets, or unlock casino puppies.",
+                    "X-Ray reveals hidden committed casino state. Rounds started while it is active remain DEV TEST rounds and cannot award real winnings.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -343,13 +343,13 @@ internal fun PuppyDeveloperCheatsSettings(
                     onClick = {
                         PuppyDeveloperCheatsSession.disable()
                         vm.clearDeveloperCheatOverrides()
-                        status = "Developer Cheats disabled. New casino rounds are normal."
+                        status = "Casino X-Ray disabled. New casino rounds are normal."
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 ) {
-                    Text("Disable Developer Cheats")
+                    Text("Disable Casino X-Ray")
                 }
             }
         }
@@ -384,7 +384,7 @@ internal fun PuppyDeveloperCheatsSettings(
                 .padding(top = 8.dp),
             enabled = pin.length == 5
         ) {
-            Text("Unlock Developer Cheats")
+            Text("Unlock Casino X-Ray")
         }
     }
 
@@ -400,14 +400,14 @@ internal fun PuppyDeveloperCheatsSettings(
     if (confirmActivation) {
         AlertDialog(
             onDismissRequest = { confirmActivation = false },
-            title = { Text("⚠️ Activate Developer Cheats?") },
+            title = { Text("⚠️ Activate Casino X-Ray?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Developer Cheats are intended for Puppy Clicker testing only.")
-                    Text("Activating this mode voids all casino winnings from DEV TEST rounds.")
+                    Text("Casino X-Ray is intended for Puppy Clicker developer testing only.")
+                    Text("Activating X-Ray reveals hidden casino information and voids all winnings from DEV TEST rounds.")
                     Text("Treat payouts, Upgrade Ticket rewards, and casino puppy unlock rewards are not granted.")
                     Text("A DEV TEST round remains void even if cheats are disabled before that round finishes.")
-                    Text("Developer Cheats can be disabled at any time from Developer Tools or the overlay.")
+                    Text("Casino X-Ray can be disabled at any time from Developer Tools or the pull-down tab.")
                 }
             },
             confirmButton = {
@@ -415,11 +415,11 @@ internal fun PuppyDeveloperCheatsSettings(
                     onClick = {
                         PuppyDeveloperCheatsSession.activate()
                         pin = ""
-                        status = "Developer Cheats activated. Casino winnings are void."
+                        status = "Casino X-Ray activated. Casino winnings are void."
                         confirmActivation = false
                     }
                 ) {
-                    Text("Activate Developer Cheats")
+                    Text("Activate Casino X-Ray")
                 }
             },
             dismissButton = {
