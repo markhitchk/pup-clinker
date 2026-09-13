@@ -65,7 +65,7 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
         Column(Modifier.padding(14.dp)) {
             Text("🐾 Tier 1 Support", fontWeight = FontWeight.Black)
             Text(
-                "Reports use Puppy Clicker's existing support subsystem and submit to the Tier 1 Discord inbox. The relay is preferred when configured; encrypted direct Discord delivery is the fallback.",
+                "Reports use Puppy Clicker's existing support subsystem and submit directly to the Tier 1 Discord inbox using the encrypted webhook.",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
@@ -233,7 +233,7 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "Use Submit to send through Puppy Clicker's support relay. Copy/Share remain available as fallback delivery.",
+                    "Use Submit to send directly to Puppy Clicker's Tier 1 Discord support inbox. Copy/Share remain available as fallback delivery.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
