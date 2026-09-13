@@ -24,7 +24,7 @@ class PuppyCompactFitmentContractTest {
     }
 
     @Test
-    fun primaryScreensUseCompactVerticalContentPadding() {
+    fun primaryScreensUseMinimalTopAndNoBottomContentPadding() {
         listOf(
             "PuppySlotsUi.kt",
             "PuppyRouletteUi.kt",
@@ -36,11 +36,15 @@ class PuppyCompactFitmentContractTest {
             "PuppyExchangeUi.kt"
         ).forEach { name ->
             val source = appSource(name)
-            assertTrue(
-                name + " should use compact 4dp vertical padding",
-                source.contains("vertical = 4.dp")
-            )
+            assertTrue(name + " should use a 2dp top inset", source.contains("top = 2.dp"))
+            assertTrue(name + " should remove extra bottom padding", source.contains("bottom = 0.dp"))
         }
+
+        val finalPatch = File("../../tools/patch_compact_viewport.py").readText()
+        val buildWiring = File("../../tools/seasonal.gradle.kts").readText()
+        assertTrue(finalPatch.contains("top = 2.dp"))
+        assertTrue(finalPatch.contains("bottom = 0.dp"))
+        assertTrue(buildWiring.contains("compactViewportPatch"))
     }
 
     @Test
@@ -48,8 +52,8 @@ class PuppyCompactFitmentContractTest {
         val shell = appSource("PuppyOnboardingShell.kt")
 
         assertTrue(shell.contains(".navigationBarsPadding()"))
-        assertTrue(shell.contains("headerVerticalPadding = if (preferViewportFit) 4.dp else 8.dp"))
-        assertTrue(shell.contains("bodyVerticalPadding = if (preferViewportFit) 2.dp else 4.dp"))
-        assertTrue(shell.contains("navigationVerticalPadding = if (preferViewportFit) 4.dp else 6.dp"))
+        assertTrue(shell.contains("headerVerticalPadding = if (preferViewportFit) 2.dp else 4.dp"))
+        assertTrue(shell.contains("bodyVerticalPadding = if (preferViewportFit) 0.dp else 2.dp"))
+        assertTrue(shell.contains("navigationVerticalPadding = if (preferViewportFit) 2.dp else 4.dp"))
     }
 }
