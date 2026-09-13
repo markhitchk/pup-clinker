@@ -24,8 +24,8 @@ import org.json.JSONObject
 /**
  * Consent-gated support reporting.
  *
- * The APK never contains a Discord webhook URL. Reports go to a neutral HTTPS relay configured
- * at build time; that relay owns the Discord webhook credentials server-side.
+ * Support delivery uses only an AES-GCM encrypted Discord webhook bundled as ciphertext.
+ * The plaintext webhook URL is never stored in source or BuildConfig.
  */
 internal enum class PuppySupportReportType(
     val emoji: String,
@@ -101,7 +101,7 @@ internal object PuppySupportReporting {
         val app = context.applicationContext
         val ui = PuppyUiPreferences.current(app)
         if (!ui.anonymousDiagnosticsEnabled) return
-        if (!isConfigured()) return
+        if (!isSubmissionConfigured()) return
 
         val safeEvent = event
             .lowercase()
@@ -114,7 +114,7 @@ internal object PuppySupportReporting {
         appendSupportIdentity(app, payload, ui)
 
         Thread(
-            { post(payload) },
+            { postEncryptedDiscordPayload(payload) },
             "puppy-support-telemetry"
         ).apply {
             isDaemon = true
@@ -253,10 +253,8 @@ internal object PuppySupportReporting {
         )
     }
 
-    fun isRelayConfigured(): Boolean = isConfigured()
-
     fun isSubmissionConfigured(): Boolean =
-        isConfigured() || decryptDirectDiscordWebhook() != null
+        decryptDirectDiscordWebhook() != null
 
     fun submitPreparedReport(
         context: Context,
@@ -267,21 +265,11 @@ internal object PuppySupportReporting {
             .put("report_type", report.type.label)
             .put("subject", report.subject)
             .put("body", report.body.take(6_000))
-
-        if (isConfigured()) {
-            val relayResult = post(payload)
-            if (relayResult.success) return relayResult
-            PuppyDebugLog.w(
-                TAG,
-                "Support relay unavailable; trying encrypted direct Discord fallback"
-            )
-        }
-
-        return postDirectDiscord(report)
+        return postEncryptedDiscordPayload(payload)
     }
 
-    private fun postDirectDiscord(
-        report: PuppyPreparedSupportReport
+    private fun postEncryptedDiscordPayload(
+        payload: JSONObject
     ): PuppySupportDeliveryResult {
         val webhook = decryptDirectDiscordWebhook()
             ?: return PuppySupportDeliveryResult(
@@ -289,40 +277,194 @@ internal object PuppySupportReporting {
                 error = "discord_destination_unavailable"
             )
 
+        val kind = payload.optString("kind")
         val fields = JSONArray()
-            .put(
+        val appVersion = payload.optString("app_version")
+        val appVersionCode = payload.optString("app_version_code")
+        val androidSdk = payload.optString("android_sdk")
+        val timestamp = payload.optString("timestamp_ms")
+
+        if (appVersion.isNotBlank()) {
+            fields.put(
                 JSONObject()
-                    .put("name", "Report ID")
-                    .put("value", report.reportId)
+                    .put("name", "App")
+                    .put("value", "$appVersion ($appVersionCode)")
                     .put("inline", true)
             )
-            .put(
+        }
+        if (androidSdk.isNotBlank()) {
+            fields.put(
                 JSONObject()
-                    .put("name", "Category")
-                    .put("value", report.type.label)
+                    .put("name", "Android SDK")
+                    .put("value", androidSdk)
                     .put("inline", true)
             )
-            .put(
+        }
+        if (timestamp.isNotBlank()) {
+            fields.put(
                 JSONObject()
-                    .put("name", "Status")
-                    .put("value", "🟡 New · Tier 1")
+                    .put("name", "Timestamp")
+                    .put("value", timestamp)
+                    .put("inline", false)
+            )
+        }
+
+        val username = payload.optString("username")
+        val playerId = payload.optString("player_id")
+        val friendCode = payload.optString("friend_code")
+        val discordUserId = payload.optString("discord_user_id")
+        val discordUsername = payload.optString("discord_username")
+        val discordDisplayName = payload.optString("discord_display_name")
+
+        if (username.isNotBlank()) {
+            fields.put(
+                JSONObject()
+                    .put("name", "Puppy Clicker User")
+                    .put("value", username.take(1024))
                     .put("inline", true)
             )
+        }
+        if (playerId.isNotBlank()) {
+            fields.put(
+                JSONObject()
+                    .put("name", "Player ID")
+                    .put("value", playerId.take(1024))
+                    .put("inline", true)
+            )
+        }
+        if (friendCode.isNotBlank()) {
+            fields.put(
+                JSONObject()
+                    .put("name", "Friend Code")
+                    .put("value", friendCode.take(1024))
+                    .put("inline", true)
+            )
+        }
+        if (
+            discordUserId.isNotBlank() ||
+            discordUsername.isNotBlank() ||
+            discordDisplayName.isNotBlank()
+        ) {
+            val discordValue = buildString {
+                if (discordDisplayName.isNotBlank()) append(discordDisplayName)
+                if (discordUsername.isNotBlank()) {
+                    if (isNotEmpty()) append(" ")
+                    append("@").append(discordUsername)
+                }
+                if (discordUserId.isNotBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append("ID: ").append(discordUserId)
+                }
+            }
+            fields.put(
+                JSONObject()
+                    .put("name", "Discord Identity")
+                    .put("value", discordValue.take(1024))
+                    .put("inline", false)
+            )
+        }
+
+        val title: String
+        val description: String
+        val footer: String
+        val webhookUsername: String
+
+        when (kind) {
+            "telemetry" -> {
+                val event = payload.optString("event").ifBlank { "unknown" }.take(64)
+                title = "📊 Puppy Clicker Anonymous Diagnostics"
+                description = "Event: **$event**"
+                footer = "Consent-gated Puppy Clicker diagnostics"
+                webhookUsername = "Puppy Clicker Diagnostics"
+            }
+
+            "crash" -> {
+                val exception = payload.optString("exception")
+                    .ifBlank { "Unknown exception" }
+                    .take(240)
+                val message = payload.optString("message").take(MAX_MESSAGE_CHARS)
+                val thread = payload.optString("thread").take(120)
+                val stack = payload.optString("stack").take(900)
+
+                title = "🐛 Puppy Clicker Crash Report"
+                description = buildString {
+                    append("**").append(exception).append("**")
+                    if (message.isNotBlank()) append("\n").append(message)
+                }
+                if (thread.isNotBlank()) {
+                    fields.put(
+                        JSONObject()
+                            .put("name", "Thread")
+                            .put("value", thread)
+                            .put("inline", true)
+                    )
+                }
+                if (stack.isNotBlank()) {
+                    fields.put(
+                        JSONObject()
+                            .put("name", "Stack trace")
+                            .put("value", stack)
+                            .put("inline", false)
+                    )
+                }
+                footer = "Consent-gated Puppy Clicker crash reporting"
+                webhookUsername = "Puppy Clicker Crash Handler"
+            }
+
+            "user_report" -> {
+                val reportId = payload.optString("report_id").take(64)
+                val reportType = payload.optString("report_type")
+                    .ifBlank { "Other" }
+                    .take(64)
+                val subject = payload.optString("subject")
+                    .ifBlank { "User report" }
+                    .take(120)
+                val body = payload.optString("body").take(3_800)
+
+                fields.put(
+                    JSONObject()
+                        .put("name", "Report ID")
+                        .put("value", reportId)
+                        .put("inline", true)
+                )
+                fields.put(
+                    JSONObject()
+                        .put("name", "Category")
+                        .put("value", reportType)
+                        .put("inline", true)
+                )
+                fields.put(
+                    JSONObject()
+                        .put("name", "Status")
+                        .put("value", "🟡 New · Tier 1")
+                        .put("inline", true)
+                )
+
+                title = "🐾 Puppy Clicker Tier 1 User Report"
+                description = buildString {
+                    append("**").append(subject).append("**")
+                    if (body.isNotBlank()) append("\n\n").append(body)
+                }.take(4_096)
+                footer = "Puppy Clicker Tier 1 Support · Encrypted Discord webhook"
+                webhookUsername = "Puppy Clicker Support"
+            }
+
+            else -> {
+                return PuppySupportDeliveryResult(
+                    success = false,
+                    error = "unsupported_support_payload"
+                )
+            }
+        }
 
         val embed = JSONObject()
-            .put("title", "🐾 Puppy Clicker Tier 1 User Report")
-            .put("description", report.body.take(3_800))
+            .put("title", title)
+            .put("description", description)
             .put("fields", fields)
-            .put(
-                "footer",
-                JSONObject().put(
-                    "text",
-                    "Puppy Clicker Tier 1 Support · Direct encrypted fallback"
-                )
-            )
+            .put("footer", JSONObject().put("text", footer))
 
         val discordPayload = JSONObject()
-            .put("username", "Puppy Clicker Support")
+            .put("username", webhookUsername)
             .put(
                 "avatar_url",
                 "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/puppy_clicker.png"
@@ -354,7 +496,7 @@ internal object PuppySupportReporting {
                     statusCode = code
                 )
             } else {
-                PuppyDebugLog.w(TAG, "Direct Discord support delivery returned HTTP $code")
+                PuppyDebugLog.w(TAG, "Discord support delivery returned HTTP $code")
                 PuppySupportDeliveryResult(
                     success = false,
                     statusCode = code,
@@ -362,7 +504,7 @@ internal object PuppySupportReporting {
                 )
             }
         } catch (error: Exception) {
-            PuppyDebugLog.w(TAG, "Direct Discord support delivery failed", error)
+            PuppyDebugLog.w(TAG, "Discord support delivery failed", error)
             PuppySupportDeliveryResult(
                 success = false,
                 error = "discord_delivery_unavailable"
@@ -417,7 +559,7 @@ internal object PuppySupportReporting {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             runCatching {
                 val ui = PuppyUiPreferences.current(context)
-                if (ui.crashReportsEnabled && isConfigured()) {
+                if (ui.crashReportsEnabled && isSubmissionConfigured()) {
                     val payload = basePayload("crash")
                         .put("event", "uncaught_exception")
                         .put("thread", thread.name.take(120))
@@ -449,7 +591,7 @@ internal object PuppySupportReporting {
 
     private fun postCrashWithDeadline(payload: JSONObject) {
         val worker = Thread(
-            { post(payload) },
+            { postEncryptedDiscordPayload(payload) },
             "puppy-support-crash"
         )
         worker.start()
@@ -486,54 +628,4 @@ internal object PuppySupportReporting {
         }
     }
 
-    private fun isConfigured(): Boolean =
-        BuildConfig.PUPPY_SUPPORT_RELAY_URL.startsWith("https://")
-
-    private fun post(payload: JSONObject): PuppySupportDeliveryResult {
-        val endpoint = BuildConfig.PUPPY_SUPPORT_RELAY_URL
-        if (!endpoint.startsWith("https://")) {
-            return PuppySupportDeliveryResult(
-                success = false,
-                error = "support_relay_not_configured"
-            )
-        }
-
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = CONNECT_TIMEOUT_MS
-            readTimeout = READ_TIMEOUT_MS
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "PuppyClicker/${BuildConfig.VERSION_NAME}")
-        }
-
-        return try {
-            connection.outputStream.use { output ->
-                output.write(payload.toString().toByteArray(Charsets.UTF_8))
-            }
-            val code = connection.responseCode
-            if (code in 200..299) {
-                PuppySupportDeliveryResult(
-                    success = true,
-                    statusCode = code
-                )
-            } else {
-                Log.w(TAG, "Support relay returned HTTP $code")
-                PuppySupportDeliveryResult(
-                    success = false,
-                    statusCode = code,
-                    error = "support_relay_rejected"
-                )
-            }
-        } catch (error: Exception) {
-            Log.w(TAG, "Support relay request failed", error)
-            PuppySupportDeliveryResult(
-                success = false,
-                error = "support_relay_unavailable"
-            )
-        } finally {
-            connection.disconnect()
-        }
-    }
 }
