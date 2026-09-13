@@ -1503,7 +1503,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         private const val KEY_AFK_CLAIM_READY = "afk_claim_ready_v6"
 
-        private const val MAX_TICKETS_PER_RARITY = 9_999
+        private const val MAX_TICKETS_PER_RARITY =
+            PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY
         private const val COMBO_CHAIN_MS = 900L
         private const val COMBO_TIMEOUT_MS = 1_600L
         private const val FAIR_PLAY_HISTORY_MS = 3_000L
