@@ -4,6 +4,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -182,7 +183,7 @@ internal fun PuppyRouletteScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -357,6 +358,7 @@ private fun RouletteWheel(
 ) {
     val wheelRotation = remember { Animatable(0f) }
     val ballAngle = remember { Animatable(-90f) }
+    val ballRadiusFraction = remember { Animatable(0.93f) }
     val sweep = 360f / EuropeanRouletteWheelOrder.size
     val wheelCenterColor = MaterialTheme.colorScheme.surface
     val wheelAccentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
@@ -371,19 +373,22 @@ private fun RouletteWheel(
 
     LaunchedEffect(spinKey, outcome?.winningNumber, animationsEnabled) {
         val result = outcome ?: return@LaunchedEffect
-        val index = EuropeanRouletteWheelOrder.indexOf(result.winningNumber)
-            .coerceAtLeast(0)
+        val index = EuropeanRouletteWheelOrder.indexOf(result.winningNumber).coerceAtLeast(0)
         val pocketAngle = -90f + (index * sweep) + (sweep / 2f)
 
         if (!animationsEnabled || spinKey == null) {
             wheelRotation.snapTo(0f)
             ballAngle.snapTo(pocketAngle)
+            ballRadiusFraction.snapTo(0.80f)
             return@LaunchedEffect
         }
 
         wheelRotation.snapTo(0f)
         ballAngle.snapTo(-90f)
-        val wheelTarget = (360f * 4f) + 120f
+        ballRadiusFraction.snapTo(0.93f)
+
+        val wheelTarget = (360f * 5f) + 75f
+        val ballCruiseTarget = -90f - (360f * 7f)
         val ballTarget = wheelTarget + pocketAngle - (360f * 7f)
 
         coroutineScope {
@@ -395,8 +400,19 @@ private fun RouletteWheel(
             }
             launch {
                 ballAngle.animateTo(
+                    ballCruiseTarget,
+                    animationSpec = tween(1_750, easing = LinearEasing)
+                )
+                ballAngle.animateTo(
                     ballTarget,
-                    animationSpec = tween(2_400, easing = FastOutSlowInEasing)
+                    animationSpec = tween(650, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                delay(1_650)
+                ballRadiusFraction.animateTo(
+                    0.80f,
+                    animationSpec = tween(750, easing = FastOutSlowInEasing)
                 )
             }
         }
@@ -428,38 +444,32 @@ private fun RouletteWheel(
                     topLeft = topLeft,
                     size = wheelSize
                 )
-
                 val labelAngle = (start + sweep / 2f) * PI / 180.0
                 val labelRadius = wheelRadius * 0.77f
                 val x = center.x + cos(labelAngle).toFloat() * labelRadius
                 val y = center.y + sin(labelAngle).toFloat() * labelRadius
                 drawContext.canvas.nativeCanvas.drawText(
-                    number.toString(),
-                    x,
-                    y + labelPaint.textSize / 3f,
-                    labelPaint
+                    number.toString(), x, y + labelPaint.textSize / 3f, labelPaint
                 )
             }
 
+            drawCircle(
+                color = Color.White.copy(alpha = 0.18f),
+                radius = wheelRadius * 0.88f,
+                center = center,
+                style = Stroke(width = 2f)
+            )
             drawCircle(
                 color = Color.White.copy(alpha = 0.30f),
                 radius = wheelRadius,
                 center = center,
                 style = Stroke(width = 3f)
             )
-            drawCircle(
-                color = wheelCenterColor,
-                radius = wheelRadius * 0.48f,
-                center = center
-            )
-            drawCircle(
-                color = wheelAccentColor,
-                radius = wheelRadius * 0.41f,
-                center = center
-            )
+            drawCircle(color = wheelCenterColor, radius = wheelRadius * 0.48f, center = center)
+            drawCircle(color = wheelAccentColor, radius = wheelRadius * 0.41f, center = center)
 
             val ballRadians = ballAngle.value * PI / 180.0
-            val ballRadius = wheelRadius * 0.88f
+            val ballRadius = wheelRadius * ballRadiusFraction.value
             val ballCenter = Offset(
                 center.x + cos(ballRadians).toFloat() * ballRadius,
                 center.y + sin(ballRadians).toFloat() * ballRadius
@@ -469,11 +479,7 @@ private fun RouletteWheel(
                 radius = 9f,
                 center = ballCenter + Offset(2f, 3f)
             )
-            drawCircle(
-                color = Color.White,
-                radius = 8f,
-                center = ballCenter
-            )
+            drawCircle(color = Color.White, radius = 8f, center = ballCenter)
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
