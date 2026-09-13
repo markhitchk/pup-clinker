@@ -77,7 +77,8 @@ internal object PuppyCasinoTransactionEngine {
         wagerTreats: Long,
         featureAvailable: Boolean,
         acceptedAtMs: Long,
-        wagerPayload: String? = null
+        wagerPayload: String? = null,
+        chargeWager: Boolean = true
     ): PuppyCasinoTransactionResult {
         if (!featureAvailable) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.FEATURE_DISABLED)
@@ -94,7 +95,7 @@ internal object PuppyCasinoTransactionEngine {
         if (activeRound != null) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_ALREADY_ACTIVE)
         }
-        if (before.treats < wagerTreats) {
+        if (chargeWager && before.treats < wagerTreats) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.INSUFFICIENT_TREATS)
         }
         val persistedWagerPayload = wagerPayload?.trim()?.ifBlank { null }
@@ -112,7 +113,7 @@ internal object PuppyCasinoTransactionEngine {
         )
         return PuppyCasinoTransactionResult(
             success = true,
-            state = before.copy(treats = before.treats - wagerTreats),
+            state = if (chargeWager) before.copy(treats = before.treats - wagerTreats) else before,
             activeRound = round,
             completedRoundIds = completedRoundIds
         )
@@ -203,7 +204,8 @@ internal object PuppyCasinoTransactionEngine {
         before: V6GameState,
         activeRound: PuppyCasinoRound?,
         completedRoundIds: List<String>,
-        roundId: String
+        roundId: String,
+        creditPayout: Boolean = true
     ): PuppyCasinoTransactionResult {
         if (roundId in completedRoundIds) {
             return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
@@ -217,7 +219,11 @@ internal object PuppyCasinoTransactionEngine {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_ROUND_STATE)
         }
 
-        val nextTreats = checkedAdd(before.treats, round.payoutTreats)
+        val nextTreats = if (creditPayout) {
+            checkedAdd(before.treats, round.payoutTreats)
+        } else {
+            before.treats
+        }
             ?: return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.BALANCE_OVERFLOW)
         val profit = (round.payoutTreats - round.wagerTreats).coerceAtLeast(0L)
         val nextLifetime = checkedAdd(before.lifetimeTreats, profit)
