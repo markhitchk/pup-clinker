@@ -41,7 +41,9 @@ class PuppyBlackjackIntegrationContractTest {
         assertTrue(transactions.contains("before.treats < additionalWagerTreats"))
         assertTrue(transactions.contains("wagerTreats = totalWager"))
         assertTrue(transactions.contains("wagerPayload = payload"))
-        assertTrue(transactions.contains("state = before.copy(treats = before.treats - additionalWagerTreats)"))
+        assertTrue(transactions.contains("state = if (chargeAdditionalWager)"))
+        assertTrue(transactions.contains("before.copy(treats = before.treats - additionalWagerTreats)"))
+        assertTrue(transactions.contains("chargeAdditionalWager: Boolean = true"))
     }
 
     @Test
