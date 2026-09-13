@@ -46,11 +46,11 @@ internal fun PuppyOnboardingShell(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val horizontalPadding = if (preferViewportFit) 16.dp else 20.dp
-    val headerVerticalPadding = if (preferViewportFit) 4.dp else 8.dp
-    val bodyVerticalPadding = if (preferViewportFit) 2.dp else 4.dp
+    val headerVerticalPadding = if (preferViewportFit) 2.dp else 4.dp
+    val bodyVerticalPadding = if (preferViewportFit) 0.dp else 2.dp
     val footerSpacing = if (preferViewportFit) 8.dp else 16.dp
     val bodyBottomSpacing = if (preferViewportFit) 8.dp else 18.dp
-    val navigationVerticalPadding = if (preferViewportFit) 4.dp else 6.dp
+    val navigationVerticalPadding = if (preferViewportFit) 2.dp else 4.dp
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
