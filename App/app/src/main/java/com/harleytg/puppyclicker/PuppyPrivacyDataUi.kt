@@ -53,7 +53,7 @@ internal fun PuppyOnboardingPrivacy(
 
         PrivacyToggleCard(
             title = "Optional anonymous diagnostics",
-            detail = "Allow anonymous technical diagnostics to the Puppy Clicker support service. Reports may be relayed to the app’s Discord support diagnostics channel. No gameplay access is blocked when this is off.",
+            detail = "Allow anonymous technical diagnostics to be sent directly to Puppy Clicker's Discord support diagnostics channel using the encrypted webhook. No gameplay access is blocked when this is off.",
             checked = ui.anonymousDiagnosticsEnabled,
             onCheckedChange = {
                 PuppyUiPreferences.setAnonymousDiagnosticsEnabled(context, it)
@@ -64,7 +64,7 @@ internal fun PuppyOnboardingPrivacy(
 
         PrivacyToggleCard(
             title = "Optional crash reports",
-            detail = "Allow crash information to be sent to the Puppy Clicker support service and relayed to the app’s Discord support diagnostics channel. This is optional and defaults to off.",
+            detail = "Allow crash information to be sent directly to Puppy Clicker's Discord support diagnostics channel using the encrypted webhook. This is optional and defaults to off.",
             checked = ui.crashReportsEnabled,
             onCheckedChange = {
                 PuppyUiPreferences.setCrashReportsEnabled(context, it)
@@ -139,7 +139,7 @@ internal fun PuppyPrivacyDataSettings(ui: PuppyUiState) {
 
     PrivacyToggleCard(
         title = "Anonymous diagnostics",
-        detail = "Optional anonymous technical diagnostics sent to the support service and relayed to the app’s Discord support diagnostics channel. Turning this off withdraws consent for future uploads.",
+        detail = "Optional anonymous technical diagnostics sent directly to Puppy Clicker's Discord support diagnostics channel using the encrypted webhook. Turning this off withdraws consent for future uploads.",
         checked = ui.anonymousDiagnosticsEnabled,
         onCheckedChange = {
             PuppyUiPreferences.setAnonymousDiagnosticsEnabled(context, it)
@@ -151,7 +151,7 @@ internal fun PuppyPrivacyDataSettings(ui: PuppyUiState) {
 
     PrivacyToggleCard(
         title = "Crash reports",
-        detail = "Optional crash reporting sent to the support service and relayed to the app’s Discord support diagnostics channel. Turning this off withdraws consent for future crash-report uploads.",
+        detail = "Optional crash reporting sent directly to Puppy Clicker's Discord support diagnostics channel using the encrypted webhook. Turning this off withdraws consent for future crash-report uploads.",
         checked = ui.crashReportsEnabled,
         onCheckedChange = {
             PuppyUiPreferences.setCrashReportsEnabled(context, it)
