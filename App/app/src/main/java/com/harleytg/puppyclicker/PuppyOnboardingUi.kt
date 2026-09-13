@@ -46,13 +46,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     val animateUi = LocalPuppyAnimatedUi.current && !LocalPuppyReducedMotion.current
 
     var step by rememberSaveable {
-        mutableIntStateOf(
-            if (ui.setupComplete) {
-                ui.setupStep.coerceIn(0, 4)
-            } else {
-                PuppyOnboardingStep.WELCOME.persistedIndex
-            }
-        )
+        mutableIntStateOf(ui.setupStep.coerceIn(0, 5))
     }
     var selectedMethodName by rememberSaveable {
         mutableStateOf(PuppyPlayerSetupMethod.LOCAL.name)
@@ -112,6 +106,14 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                     session = session,
                     onSessionChange = ::updateSession,
                     onBack = { step = PuppyOnboardingStep.PLAYER_SETUP.persistedIndex },
+                    onComplete = { step = PuppyOnboardingStep.PRIVACY.persistedIndex }
+                )
+            }
+
+            PuppyOnboardingStep.PRIVACY.persistedIndex -> {
+                PuppyOnboardingPrivacy(
+                    ui = ui,
+                    onBack = { step = PuppyOnboardingStep.PERSONALIZE.persistedIndex },
                     onComplete = { step = PuppyOnboardingStep.NOTIFICATIONS.persistedIndex }
                 )
             }
@@ -119,7 +121,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
             PuppyOnboardingStep.NOTIFICATIONS.persistedIndex -> {
                 PuppyOnboardingNotifications(
                     ui = ui,
-                    onBack = { step = PuppyOnboardingStep.PERSONALIZE.persistedIndex },
+                    onBack = { step = PuppyOnboardingStep.PRIVACY.persistedIndex },
                     onComplete = { step = PuppyOnboardingStep.READY.persistedIndex }
                 )
             }
