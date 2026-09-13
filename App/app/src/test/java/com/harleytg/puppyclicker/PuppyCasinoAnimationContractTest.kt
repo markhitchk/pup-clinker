@@ -16,6 +16,9 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(slots.contains("revealRoundId = round.roundId"))
         assertTrue(slots.contains("repeat(ticks)"))
         assertTrue(slots.contains("PuppySlotSymbol.entries"))
+        assertTrue(slots.contains("AnimatedContent("))
+        assertTrue(slots.contains("slideInVertically("))
+        assertTrue(slots.contains("slideOutVertically("))
         assertTrue(slots.contains("visibleEmoji = emoji"))
         assertTrue(slots.contains("delay(if (state.animationsEnabled) 1_900 else 250)"))
     }
@@ -29,6 +32,9 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(roulette.contains("drawArc("))
         assertTrue(roulette.contains("val wheelRotation = remember { Animatable(0f) }"))
         assertTrue(roulette.contains("val ballAngle = remember { Animatable(-90f) }"))
+        assertTrue(roulette.contains("val ballRadiusFraction = remember { Animatable(0.93f) }"))
+        assertTrue(roulette.contains("ballCruiseTarget"))
+        assertTrue(roulette.contains("ballRadiusFraction.animateTo("))
         assertTrue(roulette.contains("ballTarget"))
         assertTrue(roulette.contains("outcome?.winningNumber"))
         assertTrue(roulette.contains("delay(if (state.animationsEnabled) 2_600 else 250)"))
@@ -40,7 +46,9 @@ class PuppyCasinoAnimationContractTest {
 
         assertTrue(blackjack.contains("val reveal = remember { Animatable(1f) }"))
         assertTrue(blackjack.contains("dealDelayMs = index * 90L"))
+        assertTrue(blackjack.contains("translationX = (1f - reveal.value) * 26f"))
         assertTrue(blackjack.contains("translationY = (1f - reveal.value) * -34f"))
+        assertTrue(blackjack.contains("rotationY = (1f - reveal.value) * 90f"))
         assertTrue(blackjack.contains("scaleX = 0.72f + (0.28f * reveal.value)"))
         assertTrue(blackjack.contains("animationToken = id.toString() + \":\" + hidden"))
     }
