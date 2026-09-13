@@ -320,17 +320,19 @@ internal object PuppyBlackjackEngine {
         val splitAces = PuppyBlackjackCard(source.cards[0]).rank == 1
         val additional = source.wagerTreats
 
+        val firstCards = listOf(source.cards[0], draw(deck))
+        val secondCards = listOf(source.cards[1], draw(deck))
         val first = PuppyBlackjackHand(
-            cards = listOf(source.cards[0], draw(deck)),
+            cards = firstCards,
             wagerTreats = source.wagerTreats,
-            stood = splitAces,
+            stood = splitAces || handValue(firstCards).total >= 21,
             fromSplit = true,
             splitAces = splitAces
         )
         val second = PuppyBlackjackHand(
-            cards = listOf(source.cards[1], draw(deck)),
+            cards = secondCards,
             wagerTreats = source.wagerTreats,
-            stood = splitAces,
+            stood = splitAces || handValue(secondCards).total >= 21,
             fromSplit = true,
             splitAces = splitAces
         )
@@ -346,7 +348,7 @@ internal object PuppyBlackjackEngine {
         )
 
         return success(
-            state = if (splitAces) advanceOrResolve(splitState) else splitState,
+            state = if (first.stood) advanceOrResolve(splitState) else splitState,
             additionalWagerTreats = additional
         )
     }
