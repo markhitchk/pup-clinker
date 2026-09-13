@@ -41,6 +41,8 @@ internal fun PuppyCasinoHub(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
+    val rewardLedger by vm.casinoRewardLedger.collectAsStateWithLifecycle()
+    val lastTicketReward by vm.lastCasinoTicketReward.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableStateOf("hub") }
 
     if (page == "slots") {
@@ -165,27 +167,10 @@ internal fun PuppyCasinoHub(
 
         Spacer(Modifier.height(16.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(Modifier.padding(14.dp)) {
-                Text("🐶 Casino Rewards", fontWeight = FontWeight.Black)
-                Text(
-                    "Casino puppy rewards will map only to verified existing roster IDs. The casino will never create a second puppy inventory.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Upgrade Ticket drops will use the existing Ticket rarities and inventory limits.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        CasinoRewardsCard(
+            ledger = rewardLedger,
+            lastReward = lastTicketReward
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -376,3 +361,100 @@ private fun CasinoRecoveryCard(
         }
     }
 }
+
+
+@Composable
+private fun CasinoRewardsCard(
+    ledger: PuppyCasinoRewardLedger,
+    lastReward: PuppyCasinoTicketReward?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("🎟️ Casino Upgrade Tickets", fontWeight = FontWeight.Black)
+            Text(
+                "Profitable settled rounds can drop at most 1 existing Upgrade Ticket.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(Modifier.height(7.dp))
+
+            Row(Modifier.fillMaxWidth()) {
+                Text("Daily casino cap", modifier = Modifier.weight(1f))
+                Text(
+                    ledger.dailyTicketAwards.toString() + " / " +
+                        PuppyCasinoRewardEngine.MAX_DAILY_CASINO_TICKETS,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Row(Modifier.fillMaxWidth()) {
+                Text("Inventory cap", modifier = Modifier.weight(1f))
+                Text(
+                    PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY.toString() +
+                        " / rarity",
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Row(Modifier.fillMaxWidth()) {
+                Text("Rarity weights", modifier = Modifier.weight(1f))
+                Text("60 / 25 / 10 / 4 / 1", fontWeight = FontWeight.Black)
+            }
+
+            Spacer(Modifier.height(7.dp))
+
+            Text(
+                "Drop chance: <2× profit return 5% · 2× 10% · 5× 20% · " +
+                    "20× 35% · 100×+ guaranteed.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Each settled round is evaluated once. Restarting or replaying settlement cannot reroll the Ticket.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            lastReward?.let { reward ->
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+                ) {
+                    Text(
+                        casinoRewardLabel(reward),
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Casino puppy rewards remain separate from this milestone and will map only to verified existing roster IDs.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun casinoRewardLabel(reward: PuppyCasinoTicketReward): String =
+    when (reward.status) {
+        PuppyCasinoRewardStatus.AWARDED ->
+            "Ticket awarded: " +
+                (reward.rarity?.emoji ?: "🎟️") + " " +
+                (reward.rarity?.displayName ?: "Upgrade Ticket")
+        PuppyCasinoRewardStatus.NO_DROP -> "No Ticket dropped this round."
+        PuppyCasinoRewardStatus.NOT_ELIGIBLE -> "No Ticket: the round did not finish with a profit."
+        PuppyCasinoRewardStatus.DAILY_CAP_REACHED -> "No Ticket: daily casino Ticket cap reached."
+        PuppyCasinoRewardStatus.INVENTORY_CAP_REACHED ->
+            "No Ticket: " + (reward.rarity?.displayName ?: "rarity") + " inventory is full."
+        PuppyCasinoRewardStatus.ALREADY_EVALUATED -> "Reward already evaluated for this round."
+    }
