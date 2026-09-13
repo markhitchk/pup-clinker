@@ -176,6 +176,84 @@ internal object PuppyCasinoPuppyRewardEngine {
     }
 
     /**
+     * Used only for an explicitly committed Lucky Pup Wheel puppy segment.
+     * The wheel still respects the same eligible pool, persistence ledger,
+     * one-per-day cap, and duplicate-round protection as normal casino drops.
+     */
+    fun applyGuaranteedUnlock(
+        before: V6GameState,
+        settledRound: PuppyCasinoRound,
+        styleId: String,
+        ledger: PuppyCasinoPuppyRewardLedger,
+        todayEpochDay: Long = LocalDate.now().toEpochDay()
+    ): PuppyCasinoPuppyRewardApplication {
+        val normalized = normalizeDay(ledger, todayEpochDay)
+        if (settledRound.roundId in normalized.evaluatedRoundIds) {
+            return PuppyCasinoPuppyRewardApplication(
+                state = before,
+                ledger = normalized,
+                reward = PuppyCasinoPuppyReward(
+                    PuppyCasinoPuppyRewardStatus.ALREADY_EVALUATED
+                )
+            )
+        }
+
+        val evaluated = appendEvaluated(normalized.evaluatedRoundIds, settledRound.roundId)
+        if (styleId !in eligibleStyleIds) {
+            return PuppyCasinoPuppyRewardApplication(
+                state = before,
+                ledger = normalized.copy(evaluatedRoundIds = evaluated),
+                reward = PuppyCasinoPuppyReward(
+                    status = PuppyCasinoPuppyRewardStatus.NOT_ELIGIBLE,
+                    styleId = styleId
+                )
+            )
+        }
+        if (normalized.dailyPuppyUnlocks >= MAX_DAILY_CASINO_PUPPIES) {
+            return PuppyCasinoPuppyRewardApplication(
+                state = before,
+                ledger = normalized.copy(evaluatedRoundIds = evaluated),
+                reward = PuppyCasinoPuppyReward(
+                    status = PuppyCasinoPuppyRewardStatus.DAILY_CAP_REACHED,
+                    styleId = styleId,
+                    dropChanceBasisPoints = 10_000
+                )
+            )
+        }
+        if (styleId in before.unlockedPuppies) {
+            val allOwned = eligibleStyleIds.all { it in before.unlockedPuppies }
+            return PuppyCasinoPuppyRewardApplication(
+                state = before,
+                ledger = normalized.copy(evaluatedRoundIds = evaluated),
+                reward = PuppyCasinoPuppyReward(
+                    status = if (allOwned) {
+                        PuppyCasinoPuppyRewardStatus.ALL_ELIGIBLE_OWNED
+                    } else {
+                        PuppyCasinoPuppyRewardStatus.NO_DROP
+                    },
+                    styleId = styleId,
+                    dropChanceBasisPoints = 10_000
+                )
+            )
+        }
+
+        return PuppyCasinoPuppyRewardApplication(
+            state = before.copy(
+                unlockedPuppies = before.unlockedPuppies + styleId
+            ),
+            ledger = normalized.copy(
+                evaluatedRoundIds = evaluated,
+                dailyPuppyUnlocks = normalized.dailyPuppyUnlocks + 1
+            ),
+            reward = PuppyCasinoPuppyReward(
+                status = PuppyCasinoPuppyRewardStatus.UNLOCKED,
+                styleId = styleId,
+                dropChanceBasisPoints = 10_000
+            )
+        )
+    }
+
+    /**
      * Casino puppy drops are intentionally much rarer than Ticket drops.
      *
      * Profitable total return:
