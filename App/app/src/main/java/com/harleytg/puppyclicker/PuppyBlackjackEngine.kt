@@ -541,15 +541,15 @@ internal object PuppyBlackjackStateCodec {
         put("schemaVersion", SCHEMA_VERSION)
         put("game", PuppyCasinoGame.BLACKJACK.name)
         put("remainingDeck", JSONArray().apply {
-            state.remainingDeck.forEach(::put)
+            state.remainingDeck.forEach { put(it) }
         })
         put("dealerCards", JSONArray().apply {
-            state.dealerCards.forEach(::put)
+            state.dealerCards.forEach { put(it) }
         })
         put("hands", JSONArray().apply {
             state.hands.forEach { hand ->
                 put(JSONObject().apply {
-                    put("cards", JSONArray().apply { hand.cards.forEach(::put) })
+                    put("cards", JSONArray().apply { hand.cards.forEach { put(it) } })
                     put("wagerTreats", hand.wagerTreats)
                     put("stood", hand.stood)
                     put("doubled", hand.doubled)
