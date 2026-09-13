@@ -23,4 +23,8 @@ Anonymous diagnostics currently send only the event name, app version/code, Andr
 
 Crash reports additionally send the crashing thread name, exception class, a bounded exception message, and a bounded stack trace.
 
-The client intentionally does not add usernames, birthdays, Discord identities, Treat balances, save contents, or a persistent device identifier.
+A separate **Include account identity in support reports** toggle is OFF by default. When the player explicitly enables it, reports may additionally include the Puppy Clicker username, public Player ID, Friend Code, linked Discord display name/username, and Discord user ID.
+
+OAuth tokens, birthdays, Treat balances, save contents, Android ID, IMEI, advertising ID, phone number, and other device identifiers are not included.
+
+Discord messages are branded as **Puppy Clicker Support** and use the public `assets/logos/puppy_clicker.png` logo as the webhook avatar/embed icon.
