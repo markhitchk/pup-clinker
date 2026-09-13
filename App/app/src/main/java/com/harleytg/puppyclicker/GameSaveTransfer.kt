@@ -57,7 +57,10 @@ internal object GameSaveTransfer {
         require(password.length >= 8) { "Backup password must be at least 8 characters" }
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         val mainStore = SecurePreferenceCodec.encode(mainPrefs)
-        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
+        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(
+            store = mainStore,
+            disallowedActiveRoundIds = disallowedCasinoRoundIds
+        )
         require(casinoValidation.valid) {
             "Casino save validation failed: " +
                 (casinoValidation.message ?: "invalid Casino data")
@@ -95,6 +98,11 @@ internal object GameSaveTransfer {
         }
         // A malformed current round is intentionally allowed through this gate:
         // importing a known-good backup is the supported non-destructive repair path.
+        val consumedCasinoRoundIds = buildSet {
+            addAll(PuppyCasinoPersistence.loadCompletedRoundIds(currentMainPrefs))
+            addAll(PuppyCasinoRewardPersistence.load(currentMainPrefs).evaluatedRoundIds)
+            addAll(PuppyCasinoPuppyRewardPersistence.load(currentMainPrefs).evaluatedRoundIds)
+        }
         val preserveIncompleteSetup = !PuppyUiPreferences.current(context).setupComplete
         val bytes = readBounded(context, uri)
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
@@ -116,7 +124,11 @@ internal object GameSaveTransfer {
             val identity = payload.optJSONObject("identity")
                 ?: error("Encrypted save is missing player identity")
             validateImportedIdentity(context, identity)
-            restoreStores(context, payload.getJSONObject("stores"))
+            restoreStores(
+                context = context,
+                stores = payload.getJSONObject("stores"),
+                disallowedCasinoRoundIds = consumedCasinoRoundIds
+            )
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
         }
 
@@ -168,7 +180,11 @@ internal object GameSaveTransfer {
         }
     }
 
-    private fun restoreStores(context: Context, stores: JSONObject) {
+    private fun restoreStores(
+        context: Context,
+        stores: JSONObject,
+        disallowedCasinoRoundIds: Set<String> = emptySet()
+    ) {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
             ?: error("Save does not contain the main game store")
         val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
@@ -195,7 +211,17 @@ internal object GameSaveTransfer {
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         if (version >= 2 && root.has("stores")) {
             val stores = root.getJSONObject("stores")
-            restoreStores(context, stores)
+            val currentPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+            val disallowedCasinoRoundIds = buildSet {
+                addAll(PuppyCasinoPersistence.loadCompletedRoundIds(currentPrefs))
+                addAll(PuppyCasinoRewardPersistence.load(currentPrefs).evaluatedRoundIds)
+                addAll(PuppyCasinoPuppyRewardPersistence.load(currentPrefs).evaluatedRoundIds)
+            }
+            restoreStores(
+                context = context,
+                stores = stores,
+                disallowedCasinoRoundIds = disallowedCasinoRoundIds
+            )
         } else {
             val legacyValues = root.optJSONObject("values")
                 ?: error("Legacy save is missing values")
