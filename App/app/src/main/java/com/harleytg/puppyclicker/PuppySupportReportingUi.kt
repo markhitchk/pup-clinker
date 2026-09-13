@@ -65,11 +65,11 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
         Column(Modifier.padding(14.dp)) {
             Text("🐾 Tier 1 Support", fontWeight = FontWeight.Black)
             Text(
-                "Reports use Puppy Clicker's existing support subsystem. When the support relay is configured, reports can be delivered to the Tier 1 Discord inbox.",
+                "Reports use Puppy Clicker's existing support subsystem and submit to the Tier 1 Discord inbox. The relay is preferred when configured; encrypted direct Discord delivery is the fallback.",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Prepared does not mean submitted. Submission is confirmed only after the relay reports a successful Discord delivery.",
+                "Prepared does not mean submitted. Submission is confirmed only after Discord delivery succeeds.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 5.dp)
@@ -253,18 +253,18 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
                                 val detail = result.statusCode?.let { "HTTP $it" }
                                     ?: result.error
                                     ?: "unknown error"
-                                "Support relay unavailable ($detail). Use Copy or Share."
+                                "Discord support delivery failed ($detail). Use Copy or Share."
                             }
                         }
                     },
-                    enabled = !submitting && PuppySupportReporting.isRelayConfigured(),
+                    enabled = !submitting && PuppySupportReporting.isSubmissionConfigured(),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         when {
                             submitting -> "Submitting…"
-                            PuppySupportReporting.isRelayConfigured() -> "Submit to Tier 1 Support"
-                            else -> "Support Relay Not Configured"
+                            PuppySupportReporting.isSubmissionConfigured() -> "Submit to Tier 1 Support"
+                            else -> "Discord Support Not Configured"
                         }
                     )
                 }
