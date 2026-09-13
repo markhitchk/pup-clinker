@@ -101,7 +101,7 @@ android {
         targetSdk = 35
         versionCode = 25
         versionName = "1.7.12"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
         buildConfigField(
             "String",
             "PUPPY_SUPPORT_RELAY_URL",
