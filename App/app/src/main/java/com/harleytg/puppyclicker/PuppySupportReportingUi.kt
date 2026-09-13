@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,6 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun PuppySupportReportSettings(ui: PuppyUiState) {
@@ -44,6 +48,8 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
     var includeDiagnostics by rememberSaveable { mutableStateOf(false) }
     var prepared by remember { mutableStateOf<PuppyPreparedSupportReport?>(null) }
     var status by rememberSaveable { mutableStateOf<String?>(null) }
+    var submitting by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val selectedType = runCatching { PuppySupportReportType.valueOf(typeName) }
         .getOrDefault(PuppySupportReportType.BUG)
@@ -59,11 +65,11 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
         Column(Modifier.padding(14.dp)) {
             Text("🐾 Tier 1 Support", fontWeight = FontWeight.Black)
             Text(
-                "Reports use Puppy Clicker's existing support subsystem. With no user-report API configured, reports are prepared locally and handed to Android Share.",
+                "Reports use Puppy Clicker's existing support subsystem. When the support relay is configured, reports can be delivered to the Tier 1 Discord inbox.",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Prepared does not mean submitted. Puppy Clicker cannot confirm delivery without a support API acknowledgement.",
+                "Prepared does not mean submitted. Submission is confirmed only after the relay reports a successful Discord delivery.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 5.dp)
@@ -227,10 +233,41 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "No server-side ticket exists until a future support API accepts and acknowledges the report.",
+                    "Use Submit to send through Puppy Clicker's support relay. Copy/Share remain available as fallback delivery.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        submitting = true
+                        status = "Submitting report…"
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                PuppySupportReporting.submitPreparedReport(context, report)
+                            }
+                            submitting = false
+                            status = if (result.success) {
+                                "Submitted to Tier 1 support · ${report.reportId}"
+                            } else {
+                                val detail = result.statusCode?.let { "HTTP $it" }
+                                    ?: result.error
+                                    ?: "unknown error"
+                                "Support relay unavailable ($detail). Use Copy or Share."
+                            }
+                        }
+                    },
+                    enabled = !submitting && PuppySupportReporting.isRelayConfigured(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        when {
+                            submitting -> "Submitting…"
+                            PuppySupportReporting.isRelayConfigured() -> "Submit to Tier 1 Support"
+                            else -> "Support Relay Not Configured"
+                        }
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -245,11 +282,10 @@ internal fun PuppySupportReportSettings(ui: PuppyUiState) {
                     ) {
                         Text("Copy")
                     }
-                    Button(
+                    OutlinedButton(
                         onClick = {
                             PuppySupportReporting.sharePreparedReport(context, report)
-                            status =
-                                "Android Share opened. Puppy Clicker cannot confirm delivery without an API."
+                            status = "Android Share opened."
                         },
                         modifier = Modifier.weight(1f)
                     ) {
