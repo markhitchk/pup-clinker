@@ -78,8 +78,11 @@ class PuppyCasinoPersistenceContractTest {
     }
 
     @Test
-    fun casinoFallbackFlagShipsDisabled() {
+    fun casinoFallbackFlagsShipReleased() {
         val flags = source("PuppyFeatureFlags.kt")
-        assertTrue(flags.contains("\"puppy_casino\", true, false, \"coming_soon\""))
+        assertTrue(flags.contains("\"puppy_casino\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_slots\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_roulette\", true, true, \"released\""))
+        assertTrue(flags.contains("\"casino_blackjack\", true, true, \"released\""))
     }
 }
