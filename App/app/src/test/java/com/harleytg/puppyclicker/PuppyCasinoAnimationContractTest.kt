@@ -67,16 +67,45 @@ class PuppyCasinoAnimationContractTest {
     }
 
     @Test
+    fun newGamesUseRequiredPhysicalInteractions() {
+        val plinko = source("PuppyPlinkoUi.kt")
+        val scratchers = source("PuppyScratchersUi.kt")
+        val luckyWheel = source("PuppyLuckyWheelUi.kt")
+
+        assertTrue(plinko.contains("PlinkoBoard("))
+        assertTrue(plinko.contains("progress.animateTo("))
+        assertTrue(plinko.contains("delay(if (state.animationsEnabled) 2_200 else 250)"))
+
+        assertTrue(scratchers.contains("detectDragGestures("))
+        assertTrue(scratchers.contains("REVEAL_THRESHOLD"))
+        assertTrue(scratchers.contains("revealAll = revealed"))
+
+        assertTrue(luckyWheel.contains("LuckyWheelBoard("))
+        assertTrue(luckyWheel.contains("rotation.animateTo("))
+        assertTrue(luckyWheel.contains("PUP UNLOCK"))
+        assertTrue(luckyWheel.contains("delay(if (state.animationsEnabled) 2_650 else 250)"))
+    }
+
+    @Test
     fun animationsNeverGenerateCasinoOutcomeInUi() {
         val slots = source("PuppySlotsUi.kt")
         val roulette = source("PuppyRouletteUi.kt")
         val blackjack = source("PuppyBlackjackUi.kt")
+        val plinko = source("PuppyPlinkoUi.kt")
+        val scratchers = source("PuppyScratchersUi.kt")
+        val luckyWheel = source("PuppyLuckyWheelUi.kt")
 
         assertFalse(slots.contains("SecureRandom"))
         assertFalse(roulette.contains("SecureRandom"))
         assertFalse(blackjack.contains("SecureRandom"))
+        assertFalse(plinko.contains("SecureRandom"))
+        assertFalse(scratchers.contains("SecureRandom"))
+        assertFalse(luckyWheel.contains("SecureRandom"))
         assertTrue(slots.contains("vm.startSlotsSpin(wager)"))
         assertTrue(roulette.contains("vm.startRouletteSpin("))
         assertTrue(blackjack.contains("vm.startBlackjackRound(wager)"))
+        assertTrue(plinko.contains("vm.startPlinkoDrop(wager)"))
+        assertTrue(scratchers.contains("vm.startScratcher(wager)"))
+        assertTrue(luckyWheel.contains("vm.startLuckyPupWheel(wager)"))
     }
 }
