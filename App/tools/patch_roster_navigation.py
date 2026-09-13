@@ -153,6 +153,15 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 }
 
             }
+
+            PuppyDeveloperCheatOverlay(
+                state = state,
+                vm = vm,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 8.dp)
+                    .widthIn(max = 360.dp)
+            )
         }
     }
 }
