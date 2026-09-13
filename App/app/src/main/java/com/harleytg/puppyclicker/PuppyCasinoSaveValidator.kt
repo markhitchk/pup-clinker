@@ -45,22 +45,67 @@ internal object PuppyCasinoSaveValidator {
         val types = runCatching { store.getJSONObject("types") }.getOrNull()
             ?: return invalid("Save main store is missing preference types")
 
+        val completedIds = readOptionalString(
+            values = values,
+            types = types,
+            key = PuppyCasinoPersistence.COMPLETED_ROUND_IDS_KEY
+        )?.let { raw ->
+            PuppyCasinoPersistence.decodeCompletedIdsForValidation(raw)
+                ?: return invalid("Casino completed-round history is malformed")
+        } ?: emptyList()
+
+        val ticketLedger = readOptionalString(
+            values = values,
+            types = types,
+            key = PuppyCasinoRewardPersistence.LEDGER_KEY
+        )?.let { raw ->
+            PuppyCasinoRewardPersistence.decodeForValidation(raw)
+                ?: return invalid("Casino Ticket reward ledger is malformed")
+        } ?: PuppyCasinoRewardLedger()
+
+        val puppyLedger = readOptionalString(
+            values = values,
+            types = types,
+            key = PuppyCasinoPuppyRewardPersistence.LEDGER_KEY
+        )?.let { raw ->
+            PuppyCasinoPuppyRewardPersistence.decodeForValidation(raw)
+                ?: return invalid("Casino puppy reward ledger is malformed")
+        } ?: PuppyCasinoPuppyRewardLedger()
+
         if (!values.has(PuppyCasinoPersistence.ACTIVE_ROUND_KEY)) {
             return PuppyCasinoSaveValidation(valid = true)
         }
 
-        if (
-            !types.has(PuppyCasinoPersistence.ACTIVE_ROUND_KEY) ||
-            types.optString(PuppyCasinoPersistence.ACTIVE_ROUND_KEY) != "string"
-        ) {
-            return invalid("Casino active round has the wrong save type")
-        }
+        val raw = readOptionalString(
+            values = values,
+            types = types,
+            key = PuppyCasinoPersistence.ACTIVE_ROUND_KEY
+        ) ?: return invalid("Casino active round has the wrong save type")
 
-        val raw = values.optString(PuppyCasinoPersistence.ACTIVE_ROUND_KEY, "")
         val round = PuppyCasinoPersistence.decodeRoundForValidation(raw)
             ?: return invalid("Casino active round is malformed")
 
+        if (round.roundId in completedIds) {
+            return invalid("Casino active round is already marked completed")
+        }
+        if (round.roundId in ticketLedger.evaluatedRoundIds) {
+            return invalid("Casino active round already consumed its Ticket reward event")
+        }
+        if (round.roundId in puppyLedger.evaluatedRoundIds) {
+            return invalid("Casino active round already consumed its puppy reward event")
+        }
+
         return validateActiveRound(round)
+    }
+
+    private fun readOptionalString(
+        values: JSONObject,
+        types: JSONObject,
+        key: String
+    ): String? {
+        if (!values.has(key)) return null
+        if (!types.has(key) || types.optString(key) != "string") return null
+        return values.optString(key, "")
     }
 
     private fun validateSlots(round: PuppyCasinoRound): PuppyCasinoSaveValidation {
