@@ -76,9 +76,13 @@ internal fun PuppyCasinoHub(
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
     val blackjackFlag = flags["casino_blackjack"] ?: PuppyFeatureFlags.flag("casino_blackjack")
-    val slotsCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.SLOTS, flags)
-    val rouletteCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.ROULETTE, flags)
-    val blackjackCanStart = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.BLACKJACK, flags)
+    val recoveryHealthy = recoveryIssue == null
+    val slotsCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.SLOTS, flags)
+    val rouletteCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.ROULETTE, flags)
+    val blackjackCanStart = recoveryHealthy &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.BLACKJACK, flags)
 
     Column(
         modifier = Modifier
