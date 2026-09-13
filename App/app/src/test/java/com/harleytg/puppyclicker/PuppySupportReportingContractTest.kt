@@ -98,4 +98,50 @@ class PuppySupportReportingContractTest {
         assertTrue(privacy.contains("Include account identity in support reports"))
         assertTrue(privacy.contains("Turning this off withdraws consent"))
     }
+    @Test
+    fun tierOneReportsReuseExistingSupportServiceAndPrivacyConsent() {
+        val reporting = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
+        )
+        val ui = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
+        )
+
+        assertTrue(reporting.contains("fun prepareUserReport("))
+        assertTrue(reporting.contains("fun sharePreparedReport("))
+        assertTrue(reporting.contains("PuppyUiPreferences.current(app)"))
+        assertTrue(reporting.contains("ui.supportIdentityEnabled"))
+        assertTrue(reporting.contains("ui.anonymousDiagnosticsEnabled"))
+        assertTrue(reporting.contains("PuppyDebugLog.redactForConsole"))
+        assertTrue(ui.contains("PuppySupportReporting.prepareUserReport("))
+        assertTrue(ui.contains("PuppySupportReporting.sharePreparedReport("))
+    }
+
+    @Test
+    fun tierOneReportsStayLocalUntilAndroidShare() {
+        val reporting = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
+        )
+
+        assertTrue(reporting.contains("Intent.ACTION_SEND"))
+        assertTrue(reporting.contains("PC-RPT-"))
+        assertTrue(reporting.contains("does not have a user-report API"))
+        assertTrue(reporting.contains("Android Share does not confirm delivery"))
+    }
+
+    @Test
+    fun settingsUseDedicatedSupportUiInsteadOfParallelSubsystem() {
+        val settings = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt"
+        )
+        val ui = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
+        )
+
+        assertTrue(settings.contains("SettingsDestination.SUPPORT"))
+        assertTrue(settings.contains("PuppySupportReportSettings(ui)"))
+        assertTrue(ui.contains("internal fun PuppySupportReportSettings(ui: PuppyUiState)"))
+        assertFalse(settings.contains("PuppyUserReportSettings"))
+    }
+
 }
