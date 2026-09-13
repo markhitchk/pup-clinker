@@ -1,0 +1,37 @@
+package com.harleytg.puppyclicker
+
+import java.io.File
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PuppyPrivacyDataContractTest {
+    private fun source(name: String): String =
+        File("src/main/java/com/harleytg/puppyclicker/$name").readText()
+
+    @Test
+    fun onboardingExplainsOptionalConsentAndSeparatesNotificationPermission() {
+        val privacy = source("PuppyPrivacyDataUi.kt")
+        val onboarding = source("PuppyOnboardingUi.kt")
+
+        assertTrue(onboarding.contains("PuppyOnboardingStep.PRIVACY"))
+        assertTrue(onboarding.contains("PuppyOnboardingPrivacy"))
+        assertTrue(privacy.contains("Optional anonymous diagnostics"))
+        assertTrue(privacy.contains("Optional crash reports"))
+        assertTrue(privacy.contains("OFF by default"))
+        assertTrue(privacy.contains("Android notification permission is requested only there"))
+        assertTrue(privacy.contains("Turning off optional telemetry does not disable local protection"))
+    }
+
+    @Test
+    fun privacyControlsAreAvailableFromSettingsAndSupportWithdrawal() {
+        val settings = source("PuppySettingsUi.kt")
+        val privacy = source("PuppyPrivacyDataUi.kt")
+
+        assertTrue(settings.contains("SettingsDestination.PRIVACY"))
+        assertTrue(settings.contains("Privacy & Data"))
+        assertTrue(settings.contains("PuppyPrivacyDataSettings(ui)"))
+        assertTrue(privacy.contains("setAnonymousDiagnosticsEnabled"))
+        assertTrue(privacy.contains("setCrashReportsEnabled"))
+        assertTrue(privacy.contains("withdraws consent"))
+    }
+}
