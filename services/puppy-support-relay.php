@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
+const PUPPY_APP_NAME = 'Puppy Clicker';
+const PUPPY_APP_LOGO_URL = 'https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/puppy_clicker.png';
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['ok' => false, 'error' => 'method_not_allowed']);
@@ -82,6 +85,37 @@ $fields = [
     ['name' => 'Timestamp', 'value' => $timestamp !== '' ? $timestamp : 'unknown', 'inline' => false],
 ];
 
+$username = $clean($data['username'] ?? '', 64);
+$playerId = $clean($data['player_id'] ?? '', 96);
+$friendCode = $clean($data['friend_code'] ?? '', 64);
+$discordUserId = $clean($data['discord_user_id'] ?? '', 32);
+$discordUsername = $clean($data['discord_username'] ?? '', 64);
+$discordDisplayName = $clean($data['discord_display_name'] ?? '', 96);
+
+if ($username !== '') {
+    $fields[] = ['name' => 'Puppy Clicker User', 'value' => $username, 'inline' => true];
+}
+if ($playerId !== '') {
+    $fields[] = ['name' => 'Player ID', 'value' => $playerId, 'inline' => true];
+}
+if ($friendCode !== '') {
+    $fields[] = ['name' => 'Friend Code', 'value' => $friendCode, 'inline' => true];
+}
+if ($discordUsername !== '' || $discordDisplayName !== '' || $discordUserId !== '') {
+    $discordValue = $discordDisplayName !== '' ? $discordDisplayName : $discordUsername;
+    if ($discordUsername !== '' && $discordUsername !== $discordValue) {
+        $discordValue .= ' (@' . $discordUsername . ')';
+    }
+    if ($discordUserId !== '') {
+        $discordValue .= ($discordValue !== '' ? "\n" : '') . 'ID: ' . $discordUserId;
+    }
+    $fields[] = [
+        'name' => 'Discord Identity',
+        'value' => $discordValue !== '' ? $discordValue : 'Linked Discord account',
+        'inline' => false
+    ];
+}
+
 if ($kind === 'telemetry') {
     $event = $clean($data['event'] ?? 'unknown', 64);
     $title = '📊 Puppy Clicker Anonymous Diagnostics';
@@ -112,9 +146,15 @@ if ($kind === 'telemetry') {
 }
 
 $discordPayload = json_encode([
-    'username' => $username,
+    'username' => PUPPY_APP_NAME . ' Support',
+    'avatar_url' => PUPPY_APP_LOGO_URL,
     'allowed_mentions' => ['parse' => []],
     'embeds' => [[
+        'author' => [
+            'name' => PUPPY_APP_NAME,
+            'icon_url' => PUPPY_APP_LOGO_URL
+        ],
+        'thumbnail' => ['url' => PUPPY_APP_LOGO_URL],
         'title' => $title,
         'description' => $description,
         'fields' => $fields,
