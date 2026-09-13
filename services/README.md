@@ -8,8 +8,9 @@ Deploy `puppy-support-relay.php` behind HTTPS and configure these server environ
 
 - `PUPPY_DISCORD_TELEMETRY_WEBHOOK`
 - `PUPPY_DISCORD_CRASH_WEBHOOK`
+- `PUPPY_DISCORD_USER_REPORT_WEBHOOK`
 
-The two webhook URLs may target the same Discord support channel. Keep both values server-side; do not place them in Android resources, BuildConfig, feature flags, or source control.
+The webhook URLs may target the same Discord support channel, but using a dedicated Tier 1 user-report channel is recommended. Keep both values server-side; do not place them in Android resources, BuildConfig, feature flags, or source control.
 
 Configure the Android build with the public relay URL:
 
@@ -22,6 +23,10 @@ For GitHub Actions, create the repository variable `PUPPY_SUPPORT_RELAY_URL`. Th
 Anonymous diagnostics currently send only the event name, app version/code, Android SDK level, package name, and timestamp.
 
 Crash reports additionally send the crashing thread name, exception class, a bounded exception message, and a bounded stack trace.
+
+Manual Tier 1 user reports use the same Android support subsystem and relay. The app sends a local report ID, category, subject, bounded report body, app version/code, Android SDK, and package name. Optional identity and sanitized diagnostics are included only when the existing Privacy & Data consent settings allow them.
+
+A manual report is shown as **Submitted** only after the relay returns a successful Discord delivery response. If the relay is unavailable, the report stays local and Copy/Android Share remain available as fallback delivery.
 
 A separate **Include account identity in support reports** toggle is OFF by default. When the player explicitly enables it, reports may additionally include the Puppy Clicker username, public Player ID, Friend Code, linked Discord display name/username, and Discord user ID.
 
