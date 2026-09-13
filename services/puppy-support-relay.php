@@ -91,7 +91,7 @@ if ($kind === 'telemetry') {
     $exception = $clean($data['exception'] ?? 'Unknown exception', 240);
     $message = $clean($data['message'] ?? '', 600);
     $thread = $clean($data['thread'] ?? '', 120);
-    $stack = $clean($data['stack'] ?? '', 3500);
+    $stack = $clean($data['stack'] ?? '', 900);
 
     $title = '🐛 Puppy Clicker Crash Report';
     $description = '**' . ($exception !== '' ? $exception : 'Unknown exception') . '**';
