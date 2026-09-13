@@ -167,8 +167,13 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<V6GameState> = _state.asStateFlow()
 
-    private val _casinoRound = MutableStateFlow(PuppyCasinoPersistence.loadActiveRound(prefs))
+    private val initialCasinoInspection = PuppyCasinoPersistence.inspectActiveRound(prefs)
+    private val _casinoRound = MutableStateFlow(initialCasinoInspection.round)
     internal val casinoRound: StateFlow<PuppyCasinoRound?> = _casinoRound.asStateFlow()
+
+    private val _casinoRecoveryIssue = MutableStateFlow(initialCasinoInspection.issue)
+    internal val casinoRecoveryIssue: StateFlow<String?> =
+        _casinoRecoveryIssue.asStateFlow()
 
     private val _casinoRewardLedger = MutableStateFlow(PuppyCasinoRewardPersistence.load(prefs))
     internal val casinoRewardLedger: StateFlow<PuppyCasinoRewardLedger> =
@@ -222,6 +227,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     ): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        if (_casinoRecoveryIssue.value != null) {
+            return PuppyCasinoTransactionResult(
+                success = false,
+                state = current,
+                activeRound = _casinoRound.value,
+                completedRoundIds = completed,
+                failure = PuppyCasinoTransactionFailure.CORRUPT_SAVE
+            )
+        }
         val roundId = PuppyCasinoRoundIds.newId()
         val flagSnapshot = PuppyFeatureFlags.flags.value
         val result = PuppyCasinoTransactionEngine.acceptWager(
@@ -1176,7 +1190,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
         _state.value = loadState()
-        _casinoRound.value = PuppyCasinoPersistence.loadActiveRound(prefs)
+        val casinoInspection = PuppyCasinoPersistence.inspectActiveRound(prefs)
+        _casinoRound.value = casinoInspection.round
+        _casinoRecoveryIssue.value = casinoInspection.issue
         _casinoRewardLedger.value = PuppyCasinoRewardPersistence.load(prefs)
         _lastCasinoTicketReward.value = null
         _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardPersistence.load(prefs)
@@ -1193,6 +1209,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
         _casinoRound.value = null
+        _casinoRecoveryIssue.value = null
         _casinoRewardLedger.value = PuppyCasinoRewardLedger()
         _lastCasinoTicketReward.value = null
         _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardLedger()
