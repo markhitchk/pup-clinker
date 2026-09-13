@@ -51,6 +51,14 @@ internal fun PuppyCasinoHub(
         )
         return
     }
+    if (page == "roulette") {
+        PuppyRouletteScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
     val casinoFlag = flags["puppy_casino"] ?: PuppyFeatureFlags.flag("puppy_casino")
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
@@ -132,7 +140,8 @@ internal fun PuppyCasinoHub(
             emoji = "🎡",
             title = "Puppy Roulette",
             detail = "Single-zero table with red/black, odd/even, halves, and recorded bets before the spin.",
-            flag = rouletteFlag
+            flag = rouletteFlag,
+            onOpen = { page = "roulette" }
         )
 
         Spacer(Modifier.height(8.dp))
