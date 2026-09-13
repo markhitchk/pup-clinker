@@ -45,6 +45,18 @@ internal object PuppyCasinoSaveValidator {
         val types = runCatching { store.getJSONObject("types") }.getOrNull()
             ?: return invalid("Save main store is missing preference types")
 
+        val stringKeys = listOf(
+            PuppyCasinoPersistence.COMPLETED_ROUND_IDS_KEY,
+            PuppyCasinoRewardPersistence.LEDGER_KEY,
+            PuppyCasinoPuppyRewardPersistence.LEDGER_KEY,
+            PuppyCasinoPersistence.ACTIVE_ROUND_KEY
+        )
+        stringKeys.forEach { key ->
+            if (values.has(key) && types.optString(key) != "string") {
+                return invalid("Casino preference '$key' has the wrong save type")
+            }
+        }
+
         val completedIds = readOptionalString(
             values = values,
             types = types,
