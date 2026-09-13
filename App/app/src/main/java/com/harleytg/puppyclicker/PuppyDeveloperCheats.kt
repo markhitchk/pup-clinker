@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -303,7 +304,7 @@ internal fun PuppyDeveloperCheatsSettings(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val session by PuppyDeveloperCheatsSession.state.collectAsStateWithLifecycle()
-    var pin by rememberSaveable { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
     var status by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmActivation by rememberSaveable { mutableStateOf(false) }
 
@@ -485,6 +486,10 @@ internal fun PuppyDeveloperCheatOverlay(
                 )
                 Text(
                     "Flags ${enabledFlags}/${flags.size} enabled",
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    "Casino games: Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel",
                     style = MaterialTheme.typography.labelSmall
                 )
                 Text(
