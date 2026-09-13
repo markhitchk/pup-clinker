@@ -39,7 +39,10 @@ internal object PuppyCasinoSaveValidator {
      * Validates a typed SharedPreferences store before GameSaveTransfer replaces
      * the device's current save. Missing Casino keys are valid pre-Casino saves.
      */
-    fun validateTransferMainStore(store: JSONObject): PuppyCasinoSaveValidation {
+    fun validateTransferMainStore(
+        store: JSONObject,
+        disallowedActiveRoundIds: Set<String> = emptySet()
+    ): PuppyCasinoSaveValidation {
         val values = runCatching { store.getJSONObject("values") }.getOrNull()
             ?: return invalid("Save main store is missing preference values")
         val types = runCatching { store.getJSONObject("types") }.getOrNull()
@@ -99,6 +102,9 @@ internal object PuppyCasinoSaveValidator {
 
         if (round.roundId in completedIds) {
             return invalid("Casino active round is already marked completed")
+        }
+        if (round.roundId in disallowedActiveRoundIds) {
+            return invalid("Casino active round was already consumed on this device")
         }
         if (round.roundId in ticketLedger.evaluatedRoundIds) {
             return invalid("Casino active round already consumed its Ticket reward event")
