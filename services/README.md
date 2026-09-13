@@ -8,9 +8,22 @@ Deploy `puppy-support-relay.php` behind HTTPS and configure these server environ
 
 - `PUPPY_DISCORD_TELEMETRY_WEBHOOK`
 - `PUPPY_DISCORD_CRASH_WEBHOOK`
-- `PUPPY_DISCORD_USER_REPORT_WEBHOOK`
+- `PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC`
+- `PUPPY_SUPPORT_WEBHOOK_KEY_B64`
 
-The webhook URLs may target the same Discord support channel, but using a dedicated Tier 1 user-report channel is recommended. Keep both values server-side; do not place them in Android resources, BuildConfig, feature flags, or source control.
+Tier 1 user reports use an AES-256-GCM encrypted webhook value. The encrypted value format is:
+
+```
+v1:<base64 12-byte IV>:<base64 16-byte GCM tag>:<base64 ciphertext>
+```
+
+Generate a fresh encrypted value with:
+
+```bash
+php services/encrypt-support-webhook.php
+```
+
+Store the encrypted blob and 32-byte key only as server secrets/environment variables. Never place the plaintext webhook, encrypted blob, or key in Android resources, BuildConfig, feature flags, or source control. A dedicated Tier 1 user-report Discord channel is recommended.
 
 Configure the Android build with the public relay URL:
 
