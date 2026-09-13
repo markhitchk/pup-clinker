@@ -15,6 +15,9 @@ internal object PuppyCasinoFeaturePolicy {
         PuppyCasinoGame.SLOTS -> "casino_slots"
         PuppyCasinoGame.ROULETTE -> "casino_roulette"
         PuppyCasinoGame.BLACKJACK -> "casino_blackjack"
+        PuppyCasinoGame.PLINKO -> "casino_plinko"
+        PuppyCasinoGame.SCRATCHERS -> "casino_scratchers"
+        PuppyCasinoGame.LUCKY_WHEEL -> "casino_lucky_wheel"
     }
 
     fun canStartNewRound(
