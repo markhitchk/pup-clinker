@@ -23,6 +23,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val compactRosterSettingsPatch = rootProject.file("tools/patch_compact_roster_settings.py")
     val puppyCodeV2Patch = rootProject.file("tools/patch_puppy_codes_v2.py")
     val mainUiRevampPatch = rootProject.file("tools/patch_main_ui_revamp.py")
+    val compactViewportPatch = rootProject.file("tools/patch_compact_viewport.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -37,7 +38,8 @@ tasks.named("generateProtectedPuppySources").configure {
         puppyExchangePatch,
         compactRosterSettingsPatch,
         puppyCodeV2Patch,
-        mainUiRevampPatch
+        mainUiRevampPatch,
+        compactViewportPatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -94,6 +96,10 @@ tasks.named("generateProtectedPuppySources").configure {
         // disrupt Exchange, Settings/onboarding, compact roster, or live Puppy Code behavior.
         project.exec {
             commandLine("python3", mainUiRevampPatch.absolutePath, generatedSourceRoot)
+        }
+        // Last-pass viewport fitment: remove extra app padding without removing system-bar safety.
+        project.exec {
+            commandLine("python3", compactViewportPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
