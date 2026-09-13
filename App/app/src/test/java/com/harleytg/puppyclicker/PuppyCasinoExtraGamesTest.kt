@@ -98,8 +98,9 @@ class PuppyCasinoExtraGamesTest {
             payoutTreats = 0L,
             outcomeCommittedAtMs = 4_100L
         )
-        val before = V6GameState(
-            unlockedPuppies = DEFAULT_V6_PUPPIES - styleId
+        val defaults = V6GameState()
+        val before = defaults.copy(
+            unlockedPuppies = defaults.unlockedPuppies - styleId
         )
 
         val applied = PuppyCasinoPuppyRewardEngine.applyGuaranteedUnlock(
@@ -126,7 +127,7 @@ class PuppyCasinoExtraGamesTest {
     }
 
     @Test
-    fun luckyWheelReplacesUnavailablePupSliceWithTreatRefund() {
+    fun luckyWheelRefundPrizeReturnsTheAcceptedWager() {
         val outcome = PuppyLuckyWheelEngine.outcomeFor(
             wagerTreats = 100L,
             prize = LuckyPupWheelPrize.REFUND,
