@@ -145,8 +145,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 state = state,
                 vm = vm,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 8.dp)
+                    .align(Alignment.TopCenter)
                     .widthIn(max = 280.dp)
             )
         }
