@@ -168,7 +168,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     val state: StateFlow<V6GameState> = _state.asStateFlow()
 
     private val _casinoRound = MutableStateFlow(PuppyCasinoPersistence.loadActiveRound(prefs))
-    val casinoRound: StateFlow<PuppyCasinoRound?> = _casinoRound.asStateFlow()
+    internal val casinoRound: StateFlow<PuppyCasinoRound?> = _casinoRound.asStateFlow()
 
     init {
         rollDailyDayIfNeeded()
@@ -197,13 +197,13 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
-    fun beginCasinoRound(
+    internal fun beginCasinoRound(
         game: PuppyCasinoGame,
-        wagerTreats: Long,
-        roundId: String = PuppyCasinoRoundIds.newId()
+        wagerTreats: Long
     ): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val roundId = PuppyCasinoRoundIds.newId()
         val result = PuppyCasinoTransactionEngine.acceptWager(
             before = current,
             activeRound = _casinoRound.value,
@@ -218,7 +218,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
-    fun commitCasinoOutcome(
+    internal fun commitCasinoOutcome(
         roundId: String,
         outcomePayload: String,
         payoutTreats: Long
@@ -238,7 +238,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
-    fun settleCasinoRound(roundId: String): PuppyCasinoTransactionResult {
+    internal fun settleCasinoRound(roundId: String): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
         val result = PuppyCasinoTransactionEngine.settle(
@@ -251,7 +251,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
-    fun refundCasinoRound(roundId: String): PuppyCasinoTransactionResult {
+    internal fun refundCasinoRound(roundId: String): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
         val result = PuppyCasinoTransactionEngine.refund(
@@ -714,6 +714,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setHapticsEnabled(value: Boolean) { _state.update { it.copy(hapticsEnabled = value) }; saveState() }
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
+
+    /** Reload state after an authenticated portable-save import without recreating the Activity. */
+    fun reloadImportedSave() {
+        recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+        _state.value = loadState()
+        _casinoRound.value = PuppyCasinoPersistence.loadActiveRound(prefs)
+    }
 
     /**
      * Stops this ViewModel from writing its old in-memory state after "Delete Local Save Data".
