@@ -160,7 +160,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 6.dp, end = 8.dp)
-                    .widthIn(max = 360.dp)
+                    .widthIn(max = 280.dp)
             )
         }
     }
