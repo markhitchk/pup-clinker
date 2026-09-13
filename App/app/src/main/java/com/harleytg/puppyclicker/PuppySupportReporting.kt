@@ -253,14 +253,11 @@ internal object PuppySupportReporting {
             )
         }
 
-        val app = context.applicationContext
-        val ui = PuppyUiPreferences.current(app)
         val payload = basePayload("user_report")
             .put("report_id", report.reportId)
             .put("report_type", report.type.label)
             .put("subject", report.subject)
             .put("body", report.body.take(6_000))
-        appendSupportIdentity(app, payload, ui)
         return post(payload)
     }
 
