@@ -83,6 +83,29 @@ class PuppyCasinoSaveMigrationTest {
     }
 
     @Test
+    fun activeRoundConsumedOnCurrentDeviceCannotBeReplayedFromBackup() {
+        val round = PuppyCasinoRound(
+            roundId = "round_replayed_backup1",
+            game = PuppyCasinoGame.SLOTS,
+            wagerTreats = 100L,
+            state = PuppyCasinoRoundState.WAGER_ACCEPTED,
+            acceptedAtMs = 1_000L
+        )
+        val store = typedStore(
+            mapOf(
+                PuppyCasinoPersistence.ACTIVE_ROUND_KEY to encodedRound(round)
+            )
+        )
+
+        val validation = PuppyCasinoSaveValidator.validateTransferMainStore(
+            store = store,
+            disallowedActiveRoundIds = setOf(round.roundId)
+        )
+
+        assertFalse(validation.valid)
+    }
+
+    @Test
     fun activeRoundAlreadyInCompletedHistoryIsRejected() {
         val round = PuppyCasinoRound(
             roundId = "round_duplicate_migrate1",
