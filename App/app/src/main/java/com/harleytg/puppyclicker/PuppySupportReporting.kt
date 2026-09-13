@@ -12,8 +12,13 @@ import java.security.SecureRandom
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Base64
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -69,6 +74,14 @@ internal object PuppySupportReporting {
     private const val KEY_LAST_PREPARED_REPORT_TIME = "last_prepared_report_time"
     private const val MAX_REPORT_DIAGNOSTIC_ENTRIES = 30
     private const val MAX_REPORT_DIAGNOSTIC_MESSAGE_CHARS = 300
+    private const val DIRECT_SUPPORT_IV_B64 = "mM16rdsma5ahLLsk"
+    private const val DIRECT_SUPPORT_CIPHER_B64 =
+        "IAjSrBvcYRZJV82Cn3NoUqzkqCkILQZc/If418xZYamjOlvN4BllM6rOOFN9z7w/hItK/CfBYPZFhSIAe2uTwOInRSSw8NzYhYVmTZPM17gM6/W9a2vcgvfvLuOmcwTsd05Er2R5+20cv/aGrKD+to1wS24GVspqq2nDp9yxjrY9kP6SYx95hSY="
+    private const val DIRECT_SUPPORT_KEY_MASK_A =
+        "a388d111547a364c35f359b4e1319e8c0e4c6f1ecb5244c3d92246eb75c82118"
+    private const val DIRECT_SUPPORT_KEY_MASK_B =
+        "86b6947496e6b3d33ea01edda2a36752ace78709e4c484ee5d632d1e177ed3f4"
+    private const val DIRECT_SUPPORT_AAD = "puppy-clicker-direct-support-v1"
 
     private val initialized = AtomicBoolean(false)
     private val reportRandom = SecureRandom()
@@ -242,23 +255,149 @@ internal object PuppySupportReporting {
 
     fun isRelayConfigured(): Boolean = isConfigured()
 
+    fun isSubmissionConfigured(): Boolean =
+        isConfigured() || decryptDirectDiscordWebhook() != null
+
     fun submitPreparedReport(
         context: Context,
         report: PuppyPreparedSupportReport
     ): PuppySupportDeliveryResult {
-        if (!isConfigured()) {
-            return PuppySupportDeliveryResult(
-                success = false,
-                error = "support_relay_not_configured"
-            )
-        }
-
         val payload = basePayload("user_report")
             .put("report_id", report.reportId)
             .put("report_type", report.type.label)
             .put("subject", report.subject)
             .put("body", report.body.take(6_000))
-        return post(payload)
+
+        if (isConfigured()) {
+            val relayResult = post(payload)
+            if (relayResult.success) return relayResult
+            PuppyDebugLog.w(
+                TAG,
+                "Support relay unavailable; trying encrypted direct Discord fallback"
+            )
+        }
+
+        return postDirectDiscord(report)
+    }
+
+    private fun postDirectDiscord(
+        report: PuppyPreparedSupportReport
+    ): PuppySupportDeliveryResult {
+        val webhook = decryptDirectDiscordWebhook()
+            ?: return PuppySupportDeliveryResult(
+                success = false,
+                error = "discord_destination_unavailable"
+            )
+
+        val fields = JSONArray()
+            .put(
+                JSONObject()
+                    .put("name", "Report ID")
+                    .put("value", report.reportId)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Category")
+                    .put("value", report.type.label)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Status")
+                    .put("value", "🟡 New · Tier 1")
+                    .put("inline", true)
+            )
+
+        val embed = JSONObject()
+            .put("title", "🐾 Puppy Clicker Tier 1 User Report")
+            .put("description", report.body.take(3_800))
+            .put("fields", fields)
+            .put(
+                "footer",
+                JSONObject().put(
+                    "text",
+                    "Puppy Clicker Tier 1 Support · Direct encrypted fallback"
+                )
+            )
+
+        val discordPayload = JSONObject()
+            .put("username", "Puppy Clicker Support")
+            .put(
+                "avatar_url",
+                "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/puppy_clicker.png"
+            )
+            .put(
+                "allowed_mentions",
+                JSONObject().put("parse", JSONArray())
+            )
+            .put("embeds", JSONArray().put(embed))
+
+        val connection = (URL(webhook).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = READ_TIMEOUT_MS
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", "PuppyClicker/${BuildConfig.VERSION_NAME}")
+        }
+
+        return try {
+            connection.outputStream.use { output ->
+                output.write(discordPayload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val code = connection.responseCode
+            if (code in 200..299) {
+                PuppySupportDeliveryResult(
+                    success = true,
+                    statusCode = code
+                )
+            } else {
+                PuppyDebugLog.w(TAG, "Direct Discord support delivery returned HTTP $code")
+                PuppySupportDeliveryResult(
+                    success = false,
+                    statusCode = code,
+                    error = "discord_delivery_rejected"
+                )
+            }
+        } catch (error: Exception) {
+            PuppyDebugLog.w(TAG, "Direct Discord support delivery failed", error)
+            PuppySupportDeliveryResult(
+                success = false,
+                error = "discord_delivery_unavailable"
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun decryptDirectDiscordWebhook(): String? = runCatching {
+        val maskA = hexToBytes(DIRECT_SUPPORT_KEY_MASK_A)
+        val maskB = hexToBytes(DIRECT_SUPPORT_KEY_MASK_B)
+        require(maskA.size == 32 && maskB.size == 32)
+        val key = ByteArray(32) { index ->
+            (maskA[index].toInt() xor maskB[index].toInt()).toByte()
+        }
+        val iv = Base64.getDecoder().decode(DIRECT_SUPPORT_IV_B64)
+        val encrypted = Base64.getDecoder().decode(DIRECT_SUPPORT_CIPHER_B64)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(key, "AES"),
+            GCMParameterSpec(128, iv)
+        )
+        cipher.updateAAD(DIRECT_SUPPORT_AAD.toByteArray(Charsets.UTF_8))
+        val plaintext = cipher.doFinal(encrypted).toString(Charsets.UTF_8)
+        require(plaintext.startsWith("https://discord.com/"))
+        plaintext
+    }.getOrNull()
+
+    private fun hexToBytes(value: String): ByteArray {
+        require(value.length % 2 == 0)
+        return ByteArray(value.length / 2) { index ->
+            value.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+        }
     }
 
     private fun newReportId(): String {
