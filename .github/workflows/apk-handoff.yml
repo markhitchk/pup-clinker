@@ -1,0 +1,47 @@
+name: APK Handoff Build
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build unsigned release APK
+        working-directory: App
+        env:
+          PUPPY_SUPPORT_RELAY_URL: ${{ vars.PUPPY_SUPPORT_RELAY_URL }}
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+
+      - name: Upload unsigned APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-current-unsigned
+          path: App/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 3
