@@ -29,6 +29,31 @@ class PuppyCasinoPersistenceContractTest {
     }
 
     @Test
+    fun settlementPersistsTreatsTicketsAndRewardLedgerInOneCommit() {
+        val viewModel = source("PuppyClickerV6ViewModel.kt")
+
+        assertTrue(viewModel.contains(".putLong(KEY_TREATS, result.state.treats)"))
+        assertTrue(viewModel.contains(".putLong(KEY_TOTAL_TICKETS_FOUND, result.state.totalTicketsFound)"))
+        assertTrue(viewModel.contains("TicketRarity.entries.forEach { rarity ->"))
+        assertTrue(viewModel.contains("PuppyCasinoRewardPersistence.write(editor, it)"))
+        assertTrue(viewModel.contains("if (!editor.commit())"))
+        assertTrue(viewModel.contains("_casinoRewardLedger.value = it"))
+    }
+
+    @Test
+    fun completedSettlementEvaluatesRewardBeforePersisting() {
+        val viewModel = source("PuppyClickerV6ViewModel.kt")
+
+        val settle = viewModel.indexOf("PuppyCasinoTransactionEngine.settle(")
+        val reward = viewModel.indexOf("PuppyCasinoRewardEngine.apply(", settle)
+        val persist = viewModel.indexOf("val persisted = persistCasinoMutation(", reward)
+
+        assertTrue(settle >= 0)
+        assertTrue(reward > settle)
+        assertTrue(persist > reward)
+    }
+
+    @Test
     fun newRoundsRespectFeatureFlagButRecoveryPathsDoNot() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
         val transactions = source("PuppyCasinoTransactions.kt")
