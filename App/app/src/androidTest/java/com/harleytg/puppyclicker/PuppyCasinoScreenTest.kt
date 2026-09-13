@@ -35,6 +35,15 @@ class PuppyCasinoScreenTest {
     }
 
     @Test
+    fun supportReportingInitializesSafelyWithoutConfiguredRelay() {
+        PuppyUiPreferences.setAnonymousDiagnosticsEnabled(app, true)
+        PuppyUiPreferences.setCrashReportsEnabled(app, true)
+
+        PuppySupportReporting.initialize(app)
+        PuppySupportReporting.reportTelemetry(app, "instrumentation_smoke")
+    }
+
+    @Test
     fun casinoFirstEntryWarnsAboutSimulatedGambling() {
         PuppyUiPreferences.setCasinoDisclaimerHidden(app, false)
         val vm = PuppyClickerV6ViewModel(app)
