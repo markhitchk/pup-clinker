@@ -90,8 +90,14 @@ internal fun PuppyPlinkoScreen(
     }
 
     val display = recoveredOutcome ?: lastOutcome
-    val dropping = revealRoundId != null && revealFinishedRoundId != revealRoundId
-    val showResult = display != null && !dropping
+    val showResult =
+        display != null &&
+            revealRoundId != null &&
+            revealFinishedRoundId == revealRoundId
+    val dropping =
+        display != null &&
+            !showResult &&
+            plinkoRound?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED
 
     Column(
         modifier = Modifier
@@ -124,7 +130,7 @@ internal fun PuppyPlinkoScreen(
                 Spacer(Modifier.height(6.dp))
                 PlinkoBoard(
                     outcome = display,
-                    dropKey = revealRoundId,
+                    dropKey = plinkoRound?.roundId ?: revealRoundId,
                     animationsEnabled = state.animationsEnabled
                 )
                 Text(
