@@ -31,10 +31,16 @@ class PuppyCasinoRewardUiContractTest {
     }
 
     @Test
-    fun puppyRewardsRemainDeferredToVerifiedRosterMilestone() {
+    fun puppyRewardsUseExistingRosterOwnershipAndShowVerifiedPool() {
         val hub = source("PuppyCasinoHub.kt")
+        val rewards = source("PuppyCasinoPuppyRewards.kt")
 
-        assertTrue(hub.contains("Casino puppy rewards remain separate from this milestone"))
-        assertTrue(hub.contains("verified existing roster IDs"))
+        assertTrue(hub.contains("Casino Puppy Rewards"))
+        assertTrue(hub.contains("existing Roster"))
+        assertTrue(hub.contains("eligibleStyles"))
+        assertTrue(hub.contains("Reserved: seasonal, developer, secret, tribute, and branded special puppies"))
+        assertTrue(rewards.contains("unlockedPuppies = before.unlockedPuppies + styleId"))
+        assertTrue(rewards.contains("V6_PUPPY_STYLES.associateBy"))
+        assertTrue(rewards.contains("require(styles.all { it.redeemOnly })"))
     }
 }
