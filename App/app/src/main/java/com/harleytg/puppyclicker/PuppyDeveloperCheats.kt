@@ -15,8 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -68,7 +66,7 @@ internal object PuppyDeveloperCheatsSession {
     fun activate() {
         mutableState.value = PuppyDeveloperCheatSessionState(
             active = true,
-            overlayExpanded = true
+            overlayExpanded = false
         )
         PuppyDebugLog.w(
             "DeveloperCheats",
@@ -441,134 +439,143 @@ internal fun PuppyDeveloperCheatOverlay(
     if (!session.active) return
 
     val casinoRound by vm.casinoRound.collectAsStateWithLifecycle()
-    val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
-    val enabledFlags = flags.values.count { it.visible && it.enabled }
     val nextCasinoPuppy = PuppyCasinoPuppyRewardEngine.eligibleStyleIds
         .firstOrNull { it !in state.unlockedPuppies }
 
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
-    ) {
-        Column(Modifier.padding(9.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+    if (!session.overlayExpanded) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f),
+            tonalElevation = 1.dp,
+            shadowElevation = 2.dp
+        ) {
+            TextButton(
+                onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(true) },
+                modifier = Modifier.padding(horizontal = 2.dp)
             ) {
                 Text(
-                    "🛠 DEV · WINNINGS VOID",
+                    "🛠 DEV · VOID",
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+        return
+    }
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+        tonalElevation = 1.dp,
+        shadowElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "🛠 DEV · VOID",
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelMedium
                 )
                 TextButton(
-                    onClick = {
-                        PuppyDeveloperCheatsSession.setOverlayExpanded(
-                            !session.overlayExpanded
-                        )
-                    }
+                    onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(false) }
                 ) {
-                    Text(if (session.overlayExpanded) "−" else "+")
+                    Text("−")
                 }
             }
 
-            if (session.overlayExpanded) {
-                Text(
-                    "Treats ${state.treats} · Tickets ${state.ticketsOwned}",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    "Puppy ${state.puppyStyle} · Care ${state.careScore}% · Bond ${state.bond}",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    "Flags ${enabledFlags}/${flags.size} enabled",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    "Casino games: Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel",
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    casinoRound?.let {
-                        "Casino ${it.game.name} · ${it.roundId.take(18)} · wager ${it.wagerTreats} · payout ${it.payoutTreats}"
-                    } ?: "Casino idle",
-                    style = MaterialTheme.typography.labelSmall
-                )
+            Text(
+                "T ${state.treats} · 🎟 ${state.ticketsOwned} · " +
+                    (casinoRound?.let { it.game.name } ?: "Casino idle"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
+            )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { vm.developerAddTreats(1_000L) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+1K") }
-                    OutlinedButton(
-                        onClick = { vm.developerAddTreats(10_000L) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+10K") }
-                    OutlinedButton(
-                        onClick = { vm.developerFillCare() },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Care") }
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                TextButton(
+                    onClick = { vm.developerAddTreats(1_000L) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("+1K") }
+                TextButton(
+                    onClick = { vm.developerAddTreats(10_000L) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("+10K") }
+                TextButton(
+                    onClick = { vm.developerFillCare() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Care") }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    TicketRarity.entries.forEach { rarity ->
-                        TextButton(
-                            onClick = { vm.developerAddTicket(rarity) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(rarity.emoji)
-                        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                TicketRarity.entries.forEach { rarity ->
+                    TextButton(
+                        onClick = { vm.developerAddTicket(rarity) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(rarity.emoji)
                     }
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { vm.developerAddSkillPoints(10) },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("+10 SP") }
-                    OutlinedButton(
-                        onClick = { vm.developerClearPupEyeCooldown() },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("PupEye") }
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                TextButton(
+                    onClick = { vm.developerAddSkillPoints(10) },
+                    modifier = Modifier.weight(1f)
+                ) { Text("+10 SP") }
+                TextButton(
+                    onClick = { vm.developerClearPupEyeCooldown() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("PupEye") }
+            }
 
-                OutlinedButton(
-                    enabled = nextCasinoPuppy != null,
-                    onClick = {
-                        nextCasinoPuppy?.let(vm::developerUnlockPuppy)
-                    },
+            if (nextCasinoPuppy != null) {
+                TextButton(
+                    onClick = { vm.developerUnlockPuppy(nextCasinoPuppy) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        nextCasinoPuppy?.let {
-                            "Unlock casino puppy: " +
-                                (DynamicPuppyRoster.style(it)?.name ?: it)
-                        } ?: "All casino puppies unlocked"
+                        "🐶 Unlock " +
+                            (DynamicPuppyRoster.style(nextCasinoPuppy)?.name ?: nextCasinoPuppy),
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
+            }
 
-                Button(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(false) }
+                ) {
+                    Text("Hide")
+                }
+                TextButton(
                     onClick = {
                         PuppyDeveloperCheatsSession.disable()
                         vm.clearDeveloperCheatOverrides()
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    }
                 ) {
-                    Text("Disable Cheats")
+                    Text(
+                        "Disable",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
