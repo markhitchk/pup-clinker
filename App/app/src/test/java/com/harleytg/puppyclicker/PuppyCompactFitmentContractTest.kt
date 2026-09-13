@@ -11,7 +11,7 @@ class PuppyCompactFitmentContractTest {
 
     @Test
     fun generatedShellDoesNotDoubleApplySafeDrawingInsets() {
-        val patch = File("../../tools/patch_roster_navigation.py").readText()
+        val patch = File("../tools/patch_roster_navigation.py").readText()
 
         assertTrue(patch.contains(".padding(padding)"))
         assertFalse(
@@ -40,8 +40,8 @@ class PuppyCompactFitmentContractTest {
             assertTrue(name + " should remove extra bottom padding", source.contains("bottom = 0.dp"))
         }
 
-        val finalPatch = File("../../tools/patch_compact_viewport.py").readText()
-        val buildWiring = File("../../tools/seasonal.gradle.kts").readText()
+        val finalPatch = File("../tools/patch_compact_viewport.py").readText()
+        val buildWiring = File("../tools/seasonal.gradle.kts").readText()
         assertTrue(finalPatch.contains("top = 2.dp"))
         assertTrue(finalPatch.contains("bottom = 0.dp"))
         assertTrue(buildWiring.contains("compactViewportPatch"))
