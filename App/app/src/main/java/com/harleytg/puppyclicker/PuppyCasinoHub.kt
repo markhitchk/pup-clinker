@@ -161,7 +161,7 @@ internal fun PuppyCasinoHub(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Rewards", fontWeight = FontWeight.Bold)
@@ -317,7 +317,7 @@ internal fun PuppyCasinoHub(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
