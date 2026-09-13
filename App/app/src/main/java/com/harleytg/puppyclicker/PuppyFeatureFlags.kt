@@ -106,6 +106,18 @@ internal object PuppyFeatureFlags {
         "casino_blackjack" to PuppyFeatureFlag(
             "casino_blackjack", true, true, "released", null,
             "Puppy Blackjack", "CPU blackjack with multiplayer planned later."
+        ),
+        "casino_plinko" to PuppyFeatureFlag(
+            "casino_plinko", true, true, "released", null,
+            "Pup Plinko", "Eight-row Treat Plinko with committed bounce paths."
+        ),
+        "casino_scratchers" to PuppyFeatureFlag(
+            "casino_scratchers", true, true, "released", null,
+            "Pup Scratchers", "Touch-driven scratch cards with committed prizes."
+        ),
+        "casino_lucky_wheel" to PuppyFeatureFlag(
+            "casino_lucky_wheel", true, true, "released", null,
+            "Lucky Pup Wheel", "Prize wheel with Treat rewards and eligible puppy unlocks."
         )
     )
 
