@@ -74,12 +74,6 @@ fun protectPuppyAsset(assetId: String, plain: ByteArray): ByteArray {
     return "PCP1".toByteArray(Charsets.US_ASCII) + nonce + encrypted
 }
 
-fun buildConfigQuoted(value: String?): String =
-    "\"" + (value ?: "")
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"") + "\""
-
-val supportRelayUrl = System.getenv("PUPPY_SUPPORT_RELAY_URL")
 val signingStoreFilePath = System.getenv("PUPPY_SIGNING_STORE_FILE")
 val signingStorePassword = System.getenv("PUPPY_SIGNING_STORE_PASSWORD")
 val signingKeyAlias = System.getenv("PUPPY_SIGNING_KEY_ALIAS")
@@ -102,11 +96,6 @@ android {
         versionCode = 26
         versionName = "1.7.13"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
-        buildConfigField(
-            "String",
-            "PUPPY_SUPPORT_RELAY_URL",
-            buildConfigQuoted(supportRelayUrl)
-        )
     }
 
     signingConfigs {
