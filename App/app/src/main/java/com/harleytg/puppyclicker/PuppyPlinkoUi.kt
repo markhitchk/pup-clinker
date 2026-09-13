@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
 @Composable
@@ -52,13 +53,15 @@ internal fun PuppyPlinkoScreen(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
+    val recoveryIssue by vm.casinoRecoveryIssue.collectAsStateWithLifecycle()
     var wager by rememberSaveable { mutableLongStateOf(PuppyPlinkoEngine.wagerPresets.first()) }
     var lastOutcome by remember { mutableStateOf<PuppyPlinkoOutcome?>(null) }
     var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var revealFinishedRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val canPlayFeature = PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.PLINKO, flags)
+    val canPlayFeature = recoveryIssue == null &&
+        PuppyCasinoFeaturePolicy.canStartNewRound(PuppyCasinoGame.PLINKO, flags)
     val plinkoRound = activeRound?.takeIf { it.game == PuppyCasinoGame.PLINKO }
     val recoveredOutcome = remember(plinkoRound?.outcomePayload, plinkoRound?.wagerTreats) {
         plinkoRound
