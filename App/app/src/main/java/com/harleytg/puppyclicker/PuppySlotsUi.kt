@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -181,7 +182,8 @@ internal fun PuppySlotsScreen(
                 ) {
                     repeat(PuppySlotsEngine.REEL_COUNT) { index ->
                         SlotReel(
-                            emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?"
+                            emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?",
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -329,9 +331,12 @@ internal fun PuppySlotsScreen(
 }
 
 @Composable
-private fun SlotReel(emoji: String) {
+private fun SlotReel(
+    emoji: String,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier.weight(1f).height(92.dp),
+        modifier = modifier.height(92.dp),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
