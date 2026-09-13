@@ -323,8 +323,10 @@ internal object PuppyCasinoPersistence {
     fun loadCompletedRoundIds(prefs: SharedPreferences): List<String> =
         decodeCompletedIds(prefs.getString(COMPLETED_ROUND_IDS_KEY, null))
 
-    internal fun decodeCompletedIdsForValidation(raw: String?): List<String>? =
-        decodeCompletedIdsStrict(raw)
+    internal fun decodeCompletedIdsForValidation(raw: String?): List<String>? {
+        if (raw.isNullOrBlank()) return null
+        return decodeCompletedIdsStrict(raw)
+    }
 
     fun write(
         editor: SharedPreferences.Editor,
