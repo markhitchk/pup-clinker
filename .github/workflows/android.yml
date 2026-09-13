@@ -52,6 +52,17 @@ jobs:
       - name: Compile Android instrumentation tests
         run: gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 
+      - name: Build unsigned release for local signing handoff
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+
+      - name: Upload unsigned release for local signing handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-unsigned-local-signing
+          path: App/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Run Android instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
