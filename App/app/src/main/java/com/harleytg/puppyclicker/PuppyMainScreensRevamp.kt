@@ -333,7 +333,7 @@ internal fun PuppyRevampedShopScreen(state: V6GameState, vm: PuppyClickerV6ViewM
     var redeemOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         PuppyMainPageHeader("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
         Spacer(Modifier.height(14.dp))
@@ -401,7 +401,7 @@ internal fun PuppyRevampedRewardsScreen(
     val dailyGiftClaimed = state.lastDailyClaimDay == today
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         PuppyMainPageHeader("Rewards", "Daily goals, adventures and permanent progression.")
         Spacer(Modifier.height(14.dp))
