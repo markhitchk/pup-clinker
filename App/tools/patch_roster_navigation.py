@@ -213,7 +213,7 @@ private fun V6CareAndDaily(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
+            .padding(start = 14.dp, top = 2.dp, end = 14.dp, bottom = 0.dp)
     ) {
         V6Header("Pup Care", "Care for and bond with your active puppy.")
         Spacer(Modifier.height(14.dp))
@@ -241,7 +241,7 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var shopTab by rememberSaveable { mutableIntStateOf(0) }
     var redeemOpen by rememberSaveable { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 18.dp, top = 2.dp, end = 18.dp, bottom = 0.dp)) {
         V6Header("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
         Spacer(Modifier.height(12.dp))
         V6Wallet(state)
