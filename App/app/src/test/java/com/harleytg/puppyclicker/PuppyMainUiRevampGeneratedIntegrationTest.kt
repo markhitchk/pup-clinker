@@ -23,9 +23,11 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(source.contains("V6Tab.SHOP -> PuppyRevampedShopScreen(state, vm)"))
         assertTrue(source.contains("V6Tab.REWARDS -> PuppyRewardsHub("))
 
-        // Exchange and Settings remain internal destinations rather than stealing a bottom tab.
+        // Exchange, Settings, and Casino remain internal destinations rather than stealing a bottom tab.
         assertTrue(source.contains("PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)"))
         assertTrue(source.contains("PuppyInternalDestination.EXCHANGE -> PuppyExchangeScreen("))
+        assertTrue(source.contains("PuppyInternalDestination.CASINO -> PuppyCasinoHub("))
+        assertTrue(source.contains("onOpenCasino = { internalDestination = PuppyInternalDestination.CASINO }"))
     }
 
     @Test
