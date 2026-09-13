@@ -55,8 +55,15 @@ internal object GameSaveTransfer {
 
     fun export(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
         require(password.length >= 8) { "Backup password must be at least 8 characters" }
+        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        val mainStore = SecurePreferenceCodec.encode(mainPrefs)
+        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
+        require(casinoValidation.valid) {
+            "Casino save validation failed: " +
+                (casinoValidation.message ?: "invalid Casino data")
+        }
         val stores = JSONObject().apply {
-            put(MAIN_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)))
+            put(MAIN_PREFS, mainStore)
             put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
         }
         val payload = JSONObject().apply {
@@ -81,6 +88,13 @@ internal object GameSaveTransfer {
     }
 
     fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
+        val currentMainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        val currentCasino = PuppyCasinoPersistence.inspectActiveRound(currentMainPrefs)
+        require(currentCasino.round == null) {
+            "Finish the current Casino round before importing another save."
+        }
+        // A malformed current round is intentionally allowed through this gate:
+        // importing a known-good backup is the supported non-destructive repair path.
         val preserveIncompleteSetup = !PuppyUiPreferences.current(context).setupComplete
         val bytes = readBounded(context, uri)
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
