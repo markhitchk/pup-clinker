@@ -296,6 +296,9 @@ internal object PuppyCasinoPersistence {
     fun loadCompletedRoundIds(prefs: SharedPreferences): List<String> =
         decodeCompletedIds(prefs.getString(COMPLETED_ROUND_IDS_KEY, null))
 
+    internal fun decodeCompletedIdsForValidation(raw: String?): List<String>? =
+        decodeCompletedIdsStrict(raw)
+
     fun write(
         editor: SharedPreferences.Editor,
         activeRound: PuppyCasinoRound?,
@@ -366,21 +369,27 @@ internal object PuppyCasinoPersistence {
         }
     }.toString()
 
-    private fun decodeCompletedIds(raw: String?): List<String> {
+    private fun decodeCompletedIds(raw: String?): List<String> =
+        decodeCompletedIdsStrict(raw) ?: emptyList()
+
+    private fun decodeCompletedIdsStrict(raw: String?): List<String>? {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching {
             val array = JSONArray(raw)
-            buildList {
+            val result = buildList {
                 for (index in 0 until array.length()) {
-                    val id = array.optString(index, "")
-                    if (
-                        PuppyCasinoTransactionEngine.isValidRoundId(id) &&
-                        id !in this
-                    ) {
-                        add(id)
+                    val id = array.getString(index)
+                    if (!PuppyCasinoTransactionEngine.isValidRoundId(id)) {
+                        return@runCatching null
                     }
+                    if (id in this) return@runCatching null
+                    add(id)
                 }
-            }.takeLast(PuppyCasinoTransactionEngine.MAX_COMPLETED_ROUND_IDS)
-        }.getOrDefault(emptyList())
+            }
+            if (result.size > PuppyCasinoTransactionEngine.MAX_COMPLETED_ROUND_IDS) {
+                return@runCatching null
+            }
+            result
+        }.getOrNull()
     }
 }
