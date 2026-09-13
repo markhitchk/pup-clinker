@@ -106,6 +106,27 @@ class PuppyBlackjackEngineTest {
     }
 
     @Test
+    fun splitHandDealtTwentyOneAutoAdvancesAndSurvivesCodec() {
+        val initial = PuppyBlackjackEngine.newRoundFromDeck(
+            100L,
+            deckWithPrefix(9, 4, 22, 8, 0, 1, 2)
+        )
+
+        val split = PuppyBlackjackEngine.split(initial)
+
+        assertTrue(split.success)
+        assertTrue(split.state.hands[0].stood)
+        assertEquals(21, PuppyBlackjackEngine.handValue(split.state.hands[0].cards).total)
+        assertEquals(1, split.state.activeHandIndex)
+        assertEquals(
+            split.state,
+            PuppyBlackjackStateCodec.decodeAndValidate(
+                PuppyBlackjackStateCodec.encode(split.state)
+            )
+        )
+    }
+
+    @Test
     fun splitAcesReceiveOneCardEachAndCannotBeResplit() {
         val initial = PuppyBlackjackEngine.newRoundFromDeck(
             100L,
