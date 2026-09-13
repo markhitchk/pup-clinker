@@ -28,9 +28,11 @@ class PuppyCasinoHubContractTest {
         assertTrue(source.contains("Puppy Blackjack"))
         assertTrue(source.contains("onOpen = { page = \"slots\" }"))
         assertTrue(source.contains("onOpen = { page = \"roulette\" }"))
+        assertTrue(source.contains("onOpen = { page = \"blackjack\" }"))
         assertFalse(source.contains("beginCasinoRound("))
         assertFalse(source.contains("startSlotsSpin("))
         assertFalse(source.contains("startRouletteSpin("))
+        assertFalse(source.contains("startBlackjackRound("))
     }
 
     @Test
