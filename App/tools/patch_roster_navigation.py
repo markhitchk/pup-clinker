@@ -118,7 +118,6 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     )
                 )
                 .padding(padding)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             val internal = internalDestination
             if (internal != null) {
@@ -171,28 +170,28 @@ private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .height(56.dp)
-                    .padding(horizontal = 12.dp),
+                    .height(48.dp)
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
                     contentDescription = "Puppy Clicker logo",
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(32.dp),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(Modifier.width(9.dp))
                 Text(
                     "Puppy Clicker",
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
                     maxLines = 1
                 )
                 IconButton(
                     onClick = onOpenSettings,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(40.dp)
                         .semantics { contentDescription = "Open settings" }
                 ) {
                     Text("⚙️", fontSize = 22.sp)
@@ -210,7 +209,12 @@ private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
         "@Composable\nprivate fun V6CarePanel",
         '''@Composable
 private fun V6CareAndDaily(state: V6GameState, vm: PuppyClickerV6ViewModel) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+    ) {
         V6Header("Pup Care", "Care for and bond with your active puppy.")
         Spacer(Modifier.height(14.dp))
         V6CarePanel(state, vm)
