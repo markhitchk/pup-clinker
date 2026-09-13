@@ -16,9 +16,11 @@ class PuppyCasinoSaveTransferContractTest {
         assertTrue(transfer.contains("private const val PAYLOAD_VERSION = 3"))
         assertTrue(
             transfer.contains(
-                "SecurePreferenceCodec.encode(context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE))"
+                "val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)"
             )
         )
+        assertTrue(transfer.contains("val mainStore = SecurePreferenceCodec.encode(mainPrefs)"))
+        assertTrue(transfer.contains("put(MAIN_PREFS, mainStore)"))
     }
 
     @Test
