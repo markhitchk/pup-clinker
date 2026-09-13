@@ -84,6 +84,7 @@ class PuppySupportReportingContractTest {
 
         assertTrue(relay.contains("PUPPY_DISCORD_TELEMETRY_WEBHOOK"))
         assertTrue(relay.contains("PUPPY_DISCORD_CRASH_WEBHOOK"))
+        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK"))
         assertTrue(relay.contains("allowed_mentions"))
         assertFalse(relay.contains("/api/webhooks/154"))
     }
@@ -118,15 +119,28 @@ class PuppySupportReportingContractTest {
     }
 
     @Test
-    fun tierOneReportsStayLocalUntilAndroidShare() {
+    fun tierOneReportsUseRelayAcknowledgementAndKeepShareFallback() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
+        )
+        val ui = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
+        )
+        val relay = source(
+            "../../services/puppy-support-relay.php"
         )
 
         assertTrue(reporting.contains("Intent.ACTION_SEND"))
         assertTrue(reporting.contains("PC-RPT-"))
-        assertTrue(reporting.contains("does not have a user-report API"))
-        assertTrue(reporting.contains("Android Share does not confirm delivery"))
+        assertTrue(reporting.contains("fun submitPreparedReport("))
+        assertTrue(reporting.contains(".put(\"kind\", kind)"))
+        assertTrue(reporting.contains(".put(\"report_id\", report.reportId)"))
+        assertTrue(ui.contains("Submit to Tier 1 Support"))
+        assertTrue(ui.contains("Submitted to Tier 1 support"))
+        assertTrue(ui.contains("Support relay unavailable"))
+        assertTrue(relay.contains("'user_report'"))
+        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK"))
+        assertTrue(relay.contains("Puppy Clicker Tier 1 User Report"))
     }
 
     @Test
