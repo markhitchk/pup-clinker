@@ -49,6 +49,7 @@ internal object PuppySupportReporting {
 
         val payload = basePayload("telemetry")
             .put("event", safeEvent)
+        appendSupportIdentity(app, payload, ui)
 
         Thread(
             { post(payload) },
@@ -80,6 +81,7 @@ internal object PuppySupportReporting {
                             "stack",
                             throwable.stackTraceToString().take(MAX_STACK_CHARS)
                         )
+                    appendSupportIdentity(context, payload, ui)
                     postCrashWithDeadline(payload)
                 }
             }.onFailure {
@@ -112,6 +114,26 @@ internal object PuppySupportReporting {
             .put("app_version_code", BuildConfig.VERSION_CODE)
             .put("android_sdk", Build.VERSION.SDK_INT)
             .put("package", BuildConfig.APPLICATION_ID)
+
+    private fun appendSupportIdentity(
+        context: Context,
+        payload: JSONObject,
+        ui: PuppyUiState
+    ) {
+        if (!ui.supportIdentityEnabled) return
+
+        payload
+            .put("username", PuppyPlayerIdentity.username(context))
+            .put("player_id", PuppyPlayerIdentity.publicPlayerId(context))
+            .put("friend_code", PuppyPlayerIdentity.publicFriendCode(context))
+
+        DiscordSignupAuth.account(context)?.let { account ->
+            payload
+                .put("discord_user_id", account.id)
+                .put("discord_username", account.username)
+                .put("discord_display_name", account.displayName)
+        }
+    }
 
     private fun isConfigured(): Boolean =
         BuildConfig.PUPPY_SUPPORT_RELAY_URL.startsWith("https://")
