@@ -28,7 +28,7 @@ internal data class PuppyRouletteBet(
 ) {
     init {
         when (type) {
-            PuppyRouletteBetType.STRAIGHT -> require(number in 0..36)
+            PuppyRouletteBetType.STRAIGHT -> require(number != null && number in 0..36)
             else -> require(number == null)
         }
     }
@@ -86,7 +86,7 @@ internal object PuppyRouletteEngine {
             wagerTreats % WAGER_INCREMENT_TREATS == 0L
 
     fun isValidBet(bet: PuppyRouletteBet): Boolean = when (bet.type) {
-        PuppyRouletteBetType.STRAIGHT -> bet.number in 0..36
+        PuppyRouletteBetType.STRAIGHT -> bet.number != null && bet.number in 0..36
         else -> bet.number == null
     }
 
