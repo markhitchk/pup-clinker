@@ -358,6 +358,224 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
+    internal fun startBlackjackRound(wagerTreats: Long): PuppyBlackjackCommandResult {
+        if (!PuppyBlackjackEngine.isValidInitialWager(wagerTreats)) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.INVALID_WAGER
+            )
+        }
+
+        val blackjackState = runCatching {
+            PuppyBlackjackEngine.newRound(wagerTreats)
+        }.getOrElse {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+        }
+
+        val accepted = beginCasinoRound(
+            game = PuppyCasinoGame.BLACKJACK,
+            wagerTreats = wagerTreats,
+            wagerPayload = PuppyBlackjackStateCodec.encode(blackjackState)
+        )
+        if (!accepted.success) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.TRANSACTION_REJECTED,
+                transactionFailure = accepted.failure
+            )
+        }
+
+        val roundId = accepted.activeRound?.roundId
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.TRANSACTION_REJECTED
+            )
+
+        return if (blackjackState.complete) {
+            commitCompletedBlackjack(roundId, blackjackState)
+        } else {
+            PuppyBlackjackCommandResult(
+                success = true,
+                roundId = roundId,
+                state = blackjackState
+            )
+        }
+    }
+
+    @Synchronized
+    internal fun blackjackHit(): PuppyBlackjackCommandResult =
+        runBlackjackAction(PuppyBlackjackEngine::hit)
+
+    @Synchronized
+    internal fun blackjackStand(): PuppyBlackjackCommandResult =
+        runBlackjackAction(PuppyBlackjackEngine::stand)
+
+    @Synchronized
+    internal fun blackjackDouble(): PuppyBlackjackCommandResult =
+        runBlackjackAction(PuppyBlackjackEngine::doubleDown)
+
+    @Synchronized
+    internal fun blackjackSplit(): PuppyBlackjackCommandResult =
+        runBlackjackAction(PuppyBlackjackEngine::split)
+
+    @Synchronized
+    internal fun finalizePendingBlackjackRound(): PuppyBlackjackCommandResult {
+        val round = _casinoRound.value
+            ?.takeIf {
+                it.game == PuppyCasinoGame.BLACKJACK &&
+                    it.state == PuppyCasinoRoundState.WAGER_ACCEPTED
+            }
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+
+        val blackjackState = PuppyBlackjackStateCodec.decodeAndValidate(round.wagerPayload)
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = round.roundId,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+
+        if (!blackjackState.complete) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = round.roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.ACTION_NOT_ALLOWED
+            )
+        }
+
+        return commitCompletedBlackjack(round.roundId, blackjackState)
+    }
+
+    private fun runBlackjackAction(
+        action: (PuppyBlackjackState) -> PuppyBlackjackActionResult
+    ): PuppyBlackjackCommandResult {
+        val round = _casinoRound.value
+            ?.takeIf {
+                it.game == PuppyCasinoGame.BLACKJACK &&
+                    it.state == PuppyCasinoRoundState.WAGER_ACCEPTED
+            }
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+
+        val blackjackState = PuppyBlackjackStateCodec.decodeAndValidate(round.wagerPayload)
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = round.roundId,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+
+        val actionResult = action(blackjackState)
+        if (!actionResult.success) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = round.roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.ACTION_NOT_ALLOWED,
+                actionError = actionResult.error
+            )
+        }
+
+        val current = _state.value
+        val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val persisted = PuppyCasinoTransactionEngine.updateAcceptedRound(
+            before = current,
+            activeRound = round,
+            completedRoundIds = completed,
+            roundId = round.roundId,
+            wagerPayload = PuppyBlackjackStateCodec.encode(actionResult.state),
+            additionalWagerTreats = actionResult.additionalWagerTreats
+        )
+        val saved = persistCasinoMutation(current, completed, persisted)
+        if (!saved.success) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = round.roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.TRANSACTION_REJECTED,
+                transactionFailure = saved.failure
+            )
+        }
+
+        return if (actionResult.state.complete) {
+            commitCompletedBlackjack(round.roundId, actionResult.state)
+        } else {
+            PuppyBlackjackCommandResult(
+                success = true,
+                roundId = round.roundId,
+                state = actionResult.state
+            )
+        }
+    }
+
+    private fun commitCompletedBlackjack(
+        roundId: String,
+        blackjackState: PuppyBlackjackState
+    ): PuppyBlackjackCommandResult {
+        val round = _casinoRound.value
+            ?.takeIf { it.roundId == roundId && it.game == PuppyCasinoGame.BLACKJACK }
+            ?: return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+
+        if (
+            !blackjackState.complete ||
+            PuppyBlackjackEngine.totalWager(blackjackState) != round.wagerTreats
+        ) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+        }
+
+        val outcome = runCatching {
+            PuppyBlackjackEngine.outcome(blackjackState)
+        }.getOrElse {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = roundId,
+                state = blackjackState,
+                failure = PuppyBlackjackCommandFailure.INVALID_SAVED_STATE
+            )
+        }
+
+        val committed = commitCasinoOutcome(
+            roundId = roundId,
+            outcomePayload = PuppyBlackjackOutcomeCodec.encode(outcome),
+            payoutTreats = outcome.totalPayoutTreats
+        )
+        if (!committed.success) {
+            return PuppyBlackjackCommandResult(
+                success = false,
+                roundId = roundId,
+                state = blackjackState,
+                outcome = outcome,
+                failure = PuppyBlackjackCommandFailure.OUTCOME_COMMIT_FAILED,
+                transactionFailure = committed.failure
+            )
+        }
+
+        return PuppyBlackjackCommandResult(
+            success = true,
+            roundId = roundId,
+            state = blackjackState,
+            outcome = outcome
+        )
+    }
+
+    @Synchronized
     internal fun commitCasinoOutcome(
         roundId: String,
         outcomePayload: String,
@@ -400,7 +618,16 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                         )?.takeIf { it.payoutTreats == active.payoutTreats } != null
                 }
 
-                PuppyCasinoGame.BLACKJACK -> true
+                PuppyCasinoGame.BLACKJACK -> {
+                    val blackjackState = PuppyBlackjackStateCodec.decodeAndValidate(active.wagerPayload)
+                    blackjackState != null &&
+                        blackjackState.complete &&
+                        PuppyBlackjackEngine.totalWager(blackjackState) == active.wagerTreats &&
+                        PuppyBlackjackOutcomeCodec.decodeAndValidate(
+                            raw = active.outcomePayload,
+                            state = blackjackState
+                        )?.takeIf { it.totalPayoutTreats == active.payoutTreats } != null
+                }
             }
             if (!validOutcome) {
                 return PuppyCasinoTransactionResult(
