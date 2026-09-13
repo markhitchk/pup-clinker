@@ -57,10 +57,8 @@ internal object GameSaveTransfer {
         require(password.length >= 8) { "Backup password must be at least 8 characters" }
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         val mainStore = SecurePreferenceCodec.encode(mainPrefs)
-        val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(
-            store = mainStore,
-            disallowedActiveRoundIds = disallowedCasinoRoundIds
-        )
+        val casinoValidation =
+            PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
         require(casinoValidation.valid) {
             "Casino save validation failed: " +
                 (casinoValidation.message ?: "invalid Casino data")
