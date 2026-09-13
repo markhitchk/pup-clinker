@@ -106,6 +106,7 @@ private enum class SettingsDestination {
     TRANSFER,
     APPEARANCE,
     NOTIFICATIONS,
+    PRIVACY,
     GAMEPLAY,
     DATA,
     ROSTER,
@@ -181,6 +182,14 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             onBack = { open(SettingsDestination.HOME) }
         ) {
             NotificationSettings()
+        }
+
+        SettingsDestination.PRIVACY -> SettingsSubpage(
+            title = "Privacy & Data",
+            subtitle = "Optional diagnostics, crash reporting, network use, and PupEye privacy.",
+            onBack = { open(SettingsDestination.HOME) }
+        ) {
+            PuppyPrivacyDataSettings(ui)
         }
 
         SettingsDestination.GAMEPLAY -> SettingsSubpage(
@@ -392,6 +401,14 @@ private fun SettingsHome(
         SettingsGroup("Notifications") {
             SettingsNavRow("🔔", "Notification Settings", "In-game alerts, updates, and more") {
                 onOpen(SettingsDestination.NOTIFICATIONS)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        SettingsGroup("Privacy & Data") {
+            SettingsNavRow("🛡", "Privacy & Data", "Diagnostics consent, crash reports, network use, and PupEye") {
+                onOpen(SettingsDestination.PRIVACY)
             }
         }
 
