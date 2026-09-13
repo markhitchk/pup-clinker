@@ -1,0 +1,64 @@
+package com.harleytg.puppyclicker
+
+import java.io.File
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PuppySlotsIntegrationContractTest {
+    private fun source(name: String): String =
+        File("src/main/java/com/harleytg/puppyclicker/" + name).readText()
+
+    @Test
+    fun viewModelCommitsOutcomeBeforeUiSettlement() {
+        val viewModel = source("PuppyClickerV6ViewModel.kt")
+
+        val accept = viewModel.indexOf("val accepted = beginCasinoRound(")
+        val generate = viewModel.indexOf("PuppySlotsEngine.randomSpin(wagerTreats)")
+        val commit = viewModel.indexOf("val committed = commitCasinoOutcome(")
+
+        assertTrue(accept >= 0)
+        assertTrue(generate > accept)
+        assertTrue(commit > generate)
+        assertTrue(viewModel.contains("PuppySlotsOutcomeCodec.encode(outcome)"))
+        assertTrue(viewModel.contains("payoutTreats = outcome.payoutTreats"))
+    }
+
+    @Test
+    fun slotsRequireUmbrellaAndGameFeatureFlags() {
+        val viewModel = source("PuppyClickerV6ViewModel.kt")
+
+        assertTrue(viewModel.contains("PuppyFeatureFlags.flag(\"puppy_casino\").isAvailable()"))
+        assertTrue(viewModel.contains("PuppyFeatureFlags.flag(\"casino_slots\").isAvailable()"))
+        assertTrue(viewModel.contains("&& gameAvailable"))
+    }
+
+    @Test
+    fun settlementRevalidatesPersistedSlotsPayload() {
+        val viewModel = source("PuppyClickerV6ViewModel.kt")
+
+        assertTrue(viewModel.contains("PuppySlotsOutcomeCodec.decodeAndValidate("))
+        assertTrue(viewModel.contains("it.payoutTreats == active.payoutTreats"))
+        assertTrue(viewModel.contains("failure = PuppyCasinoTransactionFailure.INVALID_OUTCOME"))
+    }
+
+    @Test
+    fun slotsUiNeverCallsRawCasinoRoundApis() {
+        val ui = source("PuppySlotsUi.kt")
+
+        assertTrue(ui.contains("vm.startSlotsSpin(wager)"))
+        assertFalse(ui.contains("vm.beginCasinoRound("))
+        assertFalse(ui.contains("vm.commitCasinoOutcome("))
+    }
+
+    @Test
+    fun slotsUiPublishesRulesWeightsAndTotalReturnMeaning() {
+        val ui = source("PuppySlotsUi.kt")
+
+        assertTrue(ui.contains("Published payout table"))
+        assertTrue(ui.contains("Published reel weights"))
+        assertTrue(ui.contains("total Treat return, including the original wager"))
+        assertTrue(ui.contains("The Ticket symbol is visual in Slots; this engine pays Treats only."))
+        assertTrue(ui.contains("PUBLISHED_RTP_PERCENT"))
+    }
+}
