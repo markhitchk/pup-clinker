@@ -1,5 +1,13 @@
 package com.harleytg.puppyclicker
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,7 +123,7 @@ internal fun PuppySlotsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -353,13 +361,14 @@ private fun SlotReel(
         }
 
         val symbols = PuppySlotSymbol.entries
-        val ticks = 18 + (reelIndex * 4)
+        val ticks = 14 + (reelIndex * 4)
         repeat(ticks) { tick ->
             visibleEmoji = symbols[(tick + reelIndex * 2) % symbols.size].emoji
-            delay(42L + reelIndex * 10L)
+            delay(65L + reelIndex * 5L)
         }
         visibleEmoji = emoji
     }
+
     Surface(
         modifier = modifier.height(92.dp),
         shape = RoundedCornerShape(18.dp),
@@ -367,11 +376,25 @@ private fun SlotReel(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                visibleEmoji,
-                fontSize = 42.sp,
-                textAlign = TextAlign.Center
-            )
+            AnimatedContent(
+                targetState = visibleEmoji,
+                transitionSpec = {
+                    (
+                        slideInVertically(
+                            animationSpec = tween(75, easing = FastOutSlowInEasing)
+                        ) { height -> -height } +
+                            fadeIn(animationSpec = tween(55))
+                    ).togetherWith(
+                        slideOutVertically(
+                            animationSpec = tween(75, easing = FastOutSlowInEasing)
+                        ) { height -> height } +
+                            fadeOut(animationSpec = tween(55))
+                    )
+                },
+                label = "slot_reel_" + reelIndex
+            ) { symbol ->
+                Text(symbol, fontSize = 42.sp, textAlign = TextAlign.Center)
+            }
         }
     }
 }
