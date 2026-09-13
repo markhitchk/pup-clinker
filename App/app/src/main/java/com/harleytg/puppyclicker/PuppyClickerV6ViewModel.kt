@@ -167,6 +167,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private val _state = MutableStateFlow(loadState())
     val state: StateFlow<V6GameState> = _state.asStateFlow()
 
+    private val _casinoRound = MutableStateFlow(PuppyCasinoPersistence.loadActiveRound(prefs))
+    val casinoRound: StateFlow<PuppyCasinoRound?> = _casinoRound.asStateFlow()
+
     init {
         rollDailyDayIfNeeded()
         consumeClaimedAfkReward()
@@ -191,6 +194,73 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 if (seconds % 5 == 0) saveState()
             }
         }
+    }
+
+    @Synchronized
+    fun beginCasinoRound(
+        game: PuppyCasinoGame,
+        wagerTreats: Long,
+        roundId: String = PuppyCasinoRoundIds.newId()
+    ): PuppyCasinoTransactionResult {
+        val current = _state.value
+        val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val result = PuppyCasinoTransactionEngine.acceptWager(
+            before = current,
+            activeRound = _casinoRound.value,
+            completedRoundIds = completed,
+            roundId = roundId,
+            game = game,
+            wagerTreats = wagerTreats,
+            featureAvailable = PuppyFeatureFlags.flag("puppy_casino").isAvailable(),
+            acceptedAtMs = System.currentTimeMillis()
+        )
+        return persistCasinoMutation(current, completed, result)
+    }
+
+    @Synchronized
+    fun commitCasinoOutcome(
+        roundId: String,
+        outcomePayload: String,
+        payoutTreats: Long
+    ): PuppyCasinoTransactionResult {
+        val current = _state.value
+        val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val result = PuppyCasinoTransactionEngine.commitOutcome(
+            before = current,
+            activeRound = _casinoRound.value,
+            completedRoundIds = completed,
+            roundId = roundId,
+            outcomePayload = outcomePayload,
+            payoutTreats = payoutTreats,
+            committedAtMs = System.currentTimeMillis()
+        )
+        return persistCasinoMutation(current, completed, result)
+    }
+
+    @Synchronized
+    fun settleCasinoRound(roundId: String): PuppyCasinoTransactionResult {
+        val current = _state.value
+        val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val result = PuppyCasinoTransactionEngine.settle(
+            before = current,
+            activeRound = _casinoRound.value,
+            completedRoundIds = completed,
+            roundId = roundId
+        )
+        return persistCasinoMutation(current, completed, result)
+    }
+
+    @Synchronized
+    fun refundCasinoRound(roundId: String): PuppyCasinoTransactionResult {
+        val current = _state.value
+        val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        val result = PuppyCasinoTransactionEngine.refund(
+            before = current,
+            activeRound = _casinoRound.value,
+            completedRoundIds = completed,
+            roundId = roundId
+        )
+        return persistCasinoMutation(current, completed, result)
     }
 
     fun tapPuppy() {
@@ -485,6 +555,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun prestige() {
+        if (_casinoRound.value != null) return
         val current = _state.value
         val gained = current.prestigePointsAvailable
         if (gained <= 0) return
@@ -653,11 +724,13 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         recentTapTimes.clear()
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
+        _casinoRound.value = null
         _state.value = V6GameState()
     }
 
     /** Full non-prestige reset. Special code collection and settings stay protected. */
     fun resetRunWithoutPrestige() {
+        if (_casinoRound.value != null) return
         val keep = _state.value
         prefs.edit().apply {
             V5_UPGRADES.forEach { remove("upgrade_${it.id}") }
@@ -754,6 +827,36 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 lifetimeTreats = safeAdd(it.lifetimeTreats, amount)
             )
         }
+    }
+
+    private fun persistCasinoMutation(
+        before: V6GameState,
+        completedBefore: List<String>,
+        result: PuppyCasinoTransactionResult
+    ): PuppyCasinoTransactionResult {
+        if (!result.success) return result
+
+        val editor = prefs.edit()
+            .putLong(KEY_TREATS, result.state.treats)
+            .putLong(KEY_LIFETIME, result.state.lifetimeTreats)
+        PuppyCasinoPersistence.write(
+            editor = editor,
+            activeRound = result.activeRound,
+            completedRoundIds = result.completedRoundIds
+        )
+        if (!editor.commit()) {
+            return PuppyCasinoTransactionResult(
+                success = false,
+                state = before,
+                activeRound = _casinoRound.value,
+                completedRoundIds = completedBefore,
+                failure = PuppyCasinoTransactionFailure.PERSISTENCE_FAILED
+            )
+        }
+
+        _state.value = result.state
+        _casinoRound.value = result.activeRound
+        return result
     }
 
     private fun loadState(): V6GameState {
