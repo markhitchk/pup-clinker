@@ -71,6 +71,17 @@ internal fun PuppyOnboardingPrivacy(
             }
         )
 
+        Spacer(Modifier.height(8.dp))
+
+        PrivacyToggleCard(
+            title = "Include account identity in support reports",
+            detail = "Optional. When enabled, support reports may include your Puppy Clicker username, public Player ID, Friend Code, and linked Discord display name/username and Discord user ID. OAuth tokens, birthday, save data, and Treat balances are never included.",
+            checked = ui.supportIdentityEnabled,
+            onCheckedChange = {
+                PuppyUiPreferences.setSupportIdentityEnabled(context, it)
+            }
+        )
+
         Spacer(Modifier.height(12.dp))
 
         PrivacyInfoCard(
@@ -144,6 +155,18 @@ internal fun PuppyPrivacyDataSettings(ui: PuppyUiState) {
         checked = ui.crashReportsEnabled,
         onCheckedChange = {
             PuppyUiPreferences.setCrashReportsEnabled(context, it)
+            PuppyUiPreferences.markPrivacyConsentReviewed(context)
+        }
+    )
+
+    Spacer(Modifier.height(8.dp))
+
+    PrivacyToggleCard(
+        title = "Include account identity in support reports",
+        detail = "Optional. Adds your Puppy Clicker username, public Player ID, Friend Code, and linked Discord identity to support embeds. Turning this off returns future reports to anonymous diagnostics.",
+        checked = ui.supportIdentityEnabled,
+        onCheckedChange = {
+            PuppyUiPreferences.setSupportIdentityEnabled(context, it)
             PuppyUiPreferences.markPrivacyConsentReviewed(context)
         }
     )
