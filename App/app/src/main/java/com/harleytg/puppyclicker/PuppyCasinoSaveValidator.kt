@@ -32,6 +32,9 @@ internal object PuppyCasinoSaveValidator {
             PuppyCasinoGame.SLOTS -> validateSlots(round)
             PuppyCasinoGame.ROULETTE -> validateRoulette(round)
             PuppyCasinoGame.BLACKJACK -> validateBlackjack(round)
+            PuppyCasinoGame.PLINKO -> validatePlinko(round)
+            PuppyCasinoGame.SCRATCHERS -> validateScratchers(round)
+            PuppyCasinoGame.LUCKY_WHEEL -> validateLuckyWheel(round)
         }
     }
 
@@ -207,6 +210,75 @@ internal object PuppyCasinoSaveValidator {
 
         if (outcome.totalPayoutTreats != round.payoutTreats) {
             return invalid("Blackjack payout does not match the committed outcome")
+        }
+        return PuppyCasinoSaveValidation(valid = true)
+    }
+
+    private fun validatePlinko(round: PuppyCasinoRound): PuppyCasinoSaveValidation {
+        if (!PuppyPlinkoEngine.isValidWager(round.wagerTreats)) {
+            return invalid("Plinko wager is outside the supported range")
+        }
+        if (round.wagerPayload != null) {
+            return invalid("Plinko round contains unexpected wager data")
+        }
+        if (round.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
+            if (round.payoutTreats != 0L || round.outcomeCommittedAtMs != 0L) {
+                return invalid("Accepted Plinko round contains committed payout data")
+            }
+            return PuppyCasinoSaveValidation(valid = true)
+        }
+        val outcome = PuppyPlinkoOutcomeCodec.decodeAndValidate(
+            raw = round.outcomePayload,
+            wagerTreats = round.wagerTreats
+        ) ?: return invalid("Plinko outcome failed validation")
+        if (outcome.payoutTreats != round.payoutTreats) {
+            return invalid("Plinko payout does not match the committed outcome")
+        }
+        return PuppyCasinoSaveValidation(valid = true)
+    }
+
+    private fun validateScratchers(round: PuppyCasinoRound): PuppyCasinoSaveValidation {
+        if (!PuppyScratchersEngine.isValidWager(round.wagerTreats)) {
+            return invalid("Scratcher cost is outside the supported range")
+        }
+        if (round.wagerPayload != null) {
+            return invalid("Scratcher round contains unexpected wager data")
+        }
+        if (round.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
+            if (round.payoutTreats != 0L || round.outcomeCommittedAtMs != 0L) {
+                return invalid("Accepted Scratcher round contains committed payout data")
+            }
+            return PuppyCasinoSaveValidation(valid = true)
+        }
+        val outcome = PuppyScratcherOutcomeCodec.decodeAndValidate(
+            raw = round.outcomePayload,
+            wagerTreats = round.wagerTreats
+        ) ?: return invalid("Scratcher outcome failed validation")
+        if (outcome.payoutTreats != round.payoutTreats) {
+            return invalid("Scratcher payout does not match the committed outcome")
+        }
+        return PuppyCasinoSaveValidation(valid = true)
+    }
+
+    private fun validateLuckyWheel(round: PuppyCasinoRound): PuppyCasinoSaveValidation {
+        if (!PuppyLuckyWheelEngine.isValidWager(round.wagerTreats)) {
+            return invalid("Lucky Pup Wheel wager is outside the supported range")
+        }
+        if (round.wagerPayload != null) {
+            return invalid("Lucky Pup Wheel round contains unexpected wager data")
+        }
+        if (round.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
+            if (round.payoutTreats != 0L || round.outcomeCommittedAtMs != 0L) {
+                return invalid("Accepted Lucky Pup Wheel round contains committed payout data")
+            }
+            return PuppyCasinoSaveValidation(valid = true)
+        }
+        val outcome = LuckyPupWheelOutcomeCodec.decodeAndValidate(
+            raw = round.outcomePayload,
+            wagerTreats = round.wagerTreats
+        ) ?: return invalid("Lucky Pup Wheel outcome failed validation")
+        if (outcome.payoutTreats != round.payoutTreats) {
+            return invalid("Lucky Pup Wheel payout does not match the committed outcome")
         }
         return PuppyCasinoSaveValidation(valid = true)
     }
