@@ -68,7 +68,7 @@ class PuppyCasinoScreenTest {
     }
 
     @Test
-    fun casinoHubRendersAllThreeGamesAndRewardSystems() {
+    fun casinoHubRendersAllSixGamesAndRewardSystems() {
         val vm = PuppyClickerV6ViewModel(app)
 
         composeRule.setContent {
@@ -88,6 +88,9 @@ class PuppyCasinoScreenTest {
         composeRule.onNodeWithText("Puppy Slots").assertExists()
         composeRule.onNodeWithText("Puppy Roulette").assertExists()
         composeRule.onNodeWithText("Puppy Blackjack").assertExists()
+        composeRule.onNodeWithText("Pup Plinko").assertExists()
+        composeRule.onNodeWithText("Pup Scratchers").assertExists()
+        composeRule.onNodeWithText("Lucky Pup Wheel").assertExists()
         composeRule.onNodeWithText("🎟️ Casino Upgrade Tickets").assertExists()
         composeRule.onNodeWithText("🐶 Casino Puppy Rewards").assertExists()
     }
