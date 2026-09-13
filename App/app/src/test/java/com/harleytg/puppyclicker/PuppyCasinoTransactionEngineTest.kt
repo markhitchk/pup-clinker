@@ -52,6 +52,61 @@ class PuppyCasinoTransactionEngineTest {
     }
 
     @Test
+    fun activeRoundUpdateCanAtomicallyAddWagerAndPayload() {
+        val before = V6GameState(treats = 900, lifetimeTreats = 5_000)
+        val active = PuppyCasinoRound(
+            roundId = roundId,
+            game = PuppyCasinoGame.BLACKJACK,
+            wagerTreats = 100,
+            state = PuppyCasinoRoundState.WAGER_ACCEPTED,
+            acceptedAtMs = 1000,
+            wagerPayload = "{\"step\":1}"
+        )
+
+        val updated = PuppyCasinoTransactionEngine.updateAcceptedRound(
+            before = before,
+            activeRound = active,
+            completedRoundIds = emptyList(),
+            roundId = roundId,
+            wagerPayload = "{\"step\":2}",
+            additionalWagerTreats = 100
+        )
+
+        assertTrue(updated.success)
+        assertEquals(800L, updated.state.treats)
+        assertEquals(200L, updated.activeRound?.wagerTreats)
+        assertEquals("{\"step\":2}", updated.activeRound?.wagerPayload)
+        assertEquals(5_000L, updated.state.lifetimeTreats)
+    }
+
+    @Test
+    fun activeRoundUpdateRejectsExtraWagerWithoutFunds() {
+        val before = V6GameState(treats = 50)
+        val active = PuppyCasinoRound(
+            roundId = roundId,
+            game = PuppyCasinoGame.BLACKJACK,
+            wagerTreats = 100,
+            state = PuppyCasinoRoundState.WAGER_ACCEPTED,
+            acceptedAtMs = 1000,
+            wagerPayload = "{\"step\":1}"
+        )
+
+        val updated = PuppyCasinoTransactionEngine.updateAcceptedRound(
+            before = before,
+            activeRound = active,
+            completedRoundIds = emptyList(),
+            roundId = roundId,
+            wagerPayload = "{\"step\":2}",
+            additionalWagerTreats = 100
+        )
+
+        assertFalse(updated.success)
+        assertEquals(PuppyCasinoTransactionFailure.INSUFFICIENT_TREATS, updated.failure)
+        assertEquals(before, updated.state)
+        assertEquals(active, updated.activeRound)
+    }
+
+    @Test
     fun outcomeIsCommittedBeforeSettlementAndDoesNotChangeBalance() {
         val afterWager = V6GameState(treats = 900, lifetimeTreats = 5_000)
         val active = PuppyCasinoRound(
