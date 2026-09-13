@@ -60,6 +60,7 @@ internal fun PuppySlotsScreen(
     var wager by rememberSaveable { mutableLongStateOf(100L) }
     var lastOutcomePayload by rememberSaveable { mutableStateOf<String?>(null) }
     var lastOutcomeWager by rememberSaveable { mutableLongStateOf(0L) }
+    var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
     val slotsRound = activeRound?.takeIf { it.game == PuppyCasinoGame.SLOTS }
@@ -93,7 +94,8 @@ internal fun PuppySlotsScreen(
 
         lastOutcomePayload = round.outcomePayload
         lastOutcomeWager = round.wagerTreats
-        delay(900)
+        revealRoundId = round.roundId
+        delay(if (state.animationsEnabled) 1_900 else 250)
 
         val settled = vm.settleCasinoRound(round.roundId)
         if (!settled.success) {
@@ -113,7 +115,7 @@ internal fun PuppySlotsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
@@ -184,6 +186,9 @@ internal fun PuppySlotsScreen(
                     repeat(PuppySlotsEngine.REEL_COUNT) { index ->
                         SlotReel(
                             emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?",
+                            spinKey = revealRoundId,
+                            reelIndex = index,
+                            animationsEnabled = state.animationsEnabled,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -327,15 +332,34 @@ internal fun PuppySlotsScreen(
         Spacer(Modifier.height(16.dp))
         SlotsWeightTable()
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
 @Composable
 private fun SlotReel(
     emoji: String,
+    spinKey: String?,
+    reelIndex: Int,
+    animationsEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    var visibleEmoji by remember { mutableStateOf(emoji) }
+
+    LaunchedEffect(spinKey, emoji, animationsEnabled) {
+        if (spinKey == null || !animationsEnabled || emoji == "?") {
+            visibleEmoji = emoji
+            return@LaunchedEffect
+        }
+
+        val symbols = PuppySlotSymbol.entries
+        val ticks = 18 + (reelIndex * 4)
+        repeat(ticks) { tick ->
+            visibleEmoji = symbols[(tick + reelIndex * 2) % symbols.size].emoji
+            delay(42L + reelIndex * 10L)
+        }
+        visibleEmoji = emoji
+    }
     Surface(
         modifier = modifier.height(92.dp),
         shape = RoundedCornerShape(18.dp),
@@ -344,7 +368,7 @@ private fun SlotReel(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                emoji,
+                visibleEmoji,
                 fontSize = 42.sp,
                 textAlign = TextAlign.Center
             )
