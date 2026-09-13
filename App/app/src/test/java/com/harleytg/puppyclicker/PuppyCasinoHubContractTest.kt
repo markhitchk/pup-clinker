@@ -36,21 +36,28 @@ class PuppyCasinoHubContractTest {
     }
 
     @Test
-    fun interruptedRoundsCanRecoverWithoutStartingANewRound() {
+    fun interruptedRoundsUseSharedRecoveryPolicyWithoutStartingANewRound() {
         val source = source("PuppyCasinoHub.kt")
+        val policy = source("PuppyCasinoFeaturePolicy.kt")
 
         assertTrue(source.contains("Interrupted casino round"))
+        assertTrue(source.contains("PuppyCasinoFeaturePolicy.recoveryAction(round)"))
         assertTrue(source.contains("vm.refundCasinoRound(round.roundId)"))
         assertTrue(source.contains("vm.settleCasinoRound(round.roundId)"))
+        assertTrue(source.contains("Resume Blackjack Hand"))
+        assertTrue(policy.contains("SETTLE_COMMITTED_OUTCOME"))
     }
 
     @Test
-    fun puppyRewardsReuseVerifiedRosterOwnership() {
+    fun casinoRewardsReuseExistingTicketAndRosterOwnership() {
         val source = source("PuppyCasinoHub.kt")
+        val puppyRewards = source("PuppyCasinoPuppyRewards.kt")
 
-        assertTrue(source.contains("verified existing roster IDs"))
-        assertTrue(source.contains("never create a second puppy inventory"))
-        assertTrue(source.contains("existing Ticket rarities and inventory limits"))
+        assertTrue(source.contains("Casino Upgrade Tickets"))
+        assertTrue(source.contains("Casino Puppy Rewards"))
+        assertTrue(source.contains("existing Roster"))
+        assertTrue(puppyRewards.contains("unlockedPuppies = before.unlockedPuppies + styleId"))
+        assertFalse(puppyRewards.contains("casinoPuppyInventory"))
     }
 
     @Test
