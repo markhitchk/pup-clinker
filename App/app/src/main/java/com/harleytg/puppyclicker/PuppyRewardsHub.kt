@@ -12,11 +12,13 @@ import androidx.compose.runtime.Composable
 internal fun PuppyRewardsHub(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
-    onOpenPrestige: () -> Unit
+    onOpenPrestige: () -> Unit,
+    onOpenCasino: () -> Unit
 ) {
     PuppyRevampedRewardsScreen(
         state = state,
         vm = vm,
-        onOpenPrestige = onOpenPrestige
+        onOpenPrestige = onOpenPrestige,
+        onOpenCasino = onOpenCasino
     )
 }
