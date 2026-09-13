@@ -1522,6 +1522,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
      * Activity/task teardown normally calls onCleared(), which otherwise saves the state again.
      */
     fun prepareForFullLocalDataErase() {
+        PuppyDeveloperCheatsSession.disable()
         suppressPersistence = true
         recentTapTimes.clear()
         suspicionHits = 0
