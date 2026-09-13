@@ -270,7 +270,7 @@ private fun SettingsHome(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         Text(
             "Settings",
@@ -453,7 +453,7 @@ private fun SettingsHome(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -468,7 +468,7 @@ private fun SettingsSubpage(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
         TextButton(
             onClick = onBack,
@@ -488,7 +488,7 @@ private fun SettingsSubpage(
         )
         Spacer(Modifier.height(14.dp))
         content()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
