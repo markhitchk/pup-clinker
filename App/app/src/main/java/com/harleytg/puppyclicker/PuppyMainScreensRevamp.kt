@@ -380,7 +380,8 @@ internal fun PuppyRevampedShopScreen(state: V6GameState, vm: PuppyClickerV6ViewM
 internal fun PuppyRevampedRewardsScreen(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
-    onOpenPrestige: () -> Unit
+    onOpenPrestige: () -> Unit,
+    onOpenCasino: () -> Unit
 ) {
     val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
     val todayDate = LocalDate.now()
@@ -527,6 +528,32 @@ internal fun PuppyRevampedRewardsScreen(
         }
 
         Spacer(Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("🎰", fontSize = 30.sp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Puppy Casino", fontWeight = FontWeight.Black)
+                    Text("Treat wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Hub available now · games unlock only after engine validation.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(onClick = onOpenCasino) { Text("Open") }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
