@@ -13,21 +13,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +43,8 @@ internal fun PuppyCasinoHub(
     vm: PuppyClickerV6ViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
     val recoveryIssue by vm.casinoRecoveryIssue.collectAsStateWithLifecycle()
@@ -47,6 +53,73 @@ internal fun PuppyCasinoHub(
     val puppyRewardLedger by vm.casinoPuppyRewardLedger.collectAsStateWithLifecycle()
     val lastPuppyReward by vm.lastCasinoPuppyReward.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableStateOf("hub") }
+    var casinoWarningAcceptedForVisit by rememberSaveable { mutableStateOf(false) }
+    var dontShowCasinoWarningAgain by rememberSaveable { mutableStateOf(false) }
+    var reportedCasinoOpen by rememberSaveable { mutableStateOf(false) }
+
+    val showCasinoWarning =
+        !ui.casinoDisclaimerHidden && !casinoWarningAcceptedForVisit
+
+    if (showCasinoWarning) {
+        AlertDialog(
+            onDismissRequest = onBack,
+            title = {
+                Text(
+                    "Puppy Casino — Simulated Gambling",
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "This area contains simulated casino-style games, including slots, roulette, and blackjack."
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "No real money is used, no prizes have real-world cash value, and nothing can be cashed out."
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "By continuing, you acknowledge that this content is for entertainment only."
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = dontShowCasinoWarningAgain,
+                            onCheckedChange = { dontShowCasinoWarningAgain = it }
+                        )
+                        Text("Don’t show again")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (dontShowCasinoWarningAgain) {
+                            PuppyUiPreferences.setCasinoDisclaimerHidden(context, true)
+                        }
+                        casinoWarningAcceptedForVisit = true
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onBack) {
+                    Text("Go Back")
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(showCasinoWarning, page) {
+        if (!showCasinoWarning && page == "hub" && !reportedCasinoOpen) {
+            reportedCasinoOpen = true
+            PuppySupportReporting.reportTelemetry(context, "casino_open")
+        }
+    }
 
     if (page == "slots") {
         PuppySlotsScreen(
@@ -103,6 +176,12 @@ internal fun PuppyCasinoHub(
             "Treat-based games using your existing Puppy Clicker economy.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Simulated gambling • No real-money wagering or cash prizes.",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
 
         Spacer(Modifier.height(14.dp))
