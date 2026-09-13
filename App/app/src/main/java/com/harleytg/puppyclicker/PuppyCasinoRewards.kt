@@ -119,7 +119,7 @@ internal object PuppyCasinoRewardEngine {
             state = before.copy(
                 ticketInventory = nextInventory,
                 lastTicketDrop = rarity,
-                ticketDropSerial = before.ticketDropSerial + 1L,
+                ticketDropSerial = safeIncrement(before.ticketDropSerial),
                 totalTicketsFound = safeIncrement(before.totalTicketsFound)
             ),
             ledger = normalizedLedger.copy(
