@@ -25,12 +25,16 @@ class PuppySlotsIntegrationContractTest {
     }
 
     @Test
-    fun slotsRequireUmbrellaAndGameFeatureFlags() {
+    fun slotsRequireCentralizedUmbrellaAndGameFeaturePolicy() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
+        val ui = source("PuppySlotsUi.kt")
+        val policy = source("PuppyCasinoFeaturePolicy.kt")
 
-        assertTrue(viewModel.contains("PuppyFeatureFlags.flag(\"puppy_casino\").isAvailable()"))
-        assertTrue(viewModel.contains("PuppyFeatureFlags.flag(\"casino_slots\").isAvailable()"))
-        assertTrue(viewModel.contains("&& gameAvailable"))
+        assertTrue(viewModel.contains("val flagSnapshot = PuppyFeatureFlags.flags.value"))
+        assertTrue(viewModel.contains("PuppyCasinoFeaturePolicy.canStartNewRound("))
+        assertTrue(ui.contains("PuppyCasinoFeaturePolicy.canStartNewRound("))
+        assertTrue(policy.contains("\"puppy_casino\""))
+        assertTrue(policy.contains("\"casino_slots\""))
     }
 
     @Test
