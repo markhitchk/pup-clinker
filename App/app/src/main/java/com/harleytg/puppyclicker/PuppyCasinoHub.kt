@@ -23,6 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +41,16 @@ internal fun PuppyCasinoHub(
 ) {
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val activeRound by vm.casinoRound.collectAsStateWithLifecycle()
+    var page by rememberSaveable { mutableStateOf("hub") }
+
+    if (page == "slots") {
+        PuppySlotsScreen(
+            state = state,
+            vm = vm,
+            onBack = { page = "hub" }
+        )
+        return
+    }
     val casinoFlag = flags["puppy_casino"] ?: PuppyFeatureFlags.flag("puppy_casino")
     val slotsFlag = flags["casino_slots"] ?: PuppyFeatureFlags.flag("casino_slots")
     val rouletteFlag = flags["casino_roulette"] ?: PuppyFeatureFlags.flag("casino_roulette")
@@ -109,7 +122,8 @@ internal fun PuppyCasinoHub(
             emoji = "🎰",
             title = "Puppy Slots",
             detail = "Weighted symbols, published payout table, and committed outcomes before animations.",
-            flag = slotsFlag
+            flag = slotsFlag,
+            onOpen = { page = "slots" }
         )
 
         Spacer(Modifier.height(8.dp))
@@ -217,7 +231,8 @@ private fun CasinoGameCard(
     emoji: String,
     title: String,
     detail: String,
-    flag: PuppyFeatureFlag
+    flag: PuppyFeatureFlag,
+    onOpen: (() -> Unit)? = null
 ) {
     val available = flag.isAvailable()
 
@@ -259,10 +274,17 @@ private fun CasinoGameCard(
                 )
             }
             OutlinedButton(
-                onClick = {},
-                enabled = false
+                onClick = { onOpen?.invoke() },
+                enabled = onOpen != null
             ) {
-                Text(if (available) "Not Ready" else "Locked")
+                Text(
+                    when {
+                        onOpen != null && available -> "Play"
+                        onOpen != null -> "View"
+                        available -> "Not Ready"
+                        else -> "Locked"
+                    }
+                )
             }
         }
     }
