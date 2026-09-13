@@ -8,3 +8,4 @@
 26 Flurry = v2_flurry
 27 HarleyTG Puppy = v2_harleytg
 28 Dev Pup = v2_dev_pup
+29 Rory = v2_rory

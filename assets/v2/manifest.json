@@ -1,6 +1,6 @@
 {
   "roster": "V2",
-  "count": 10,
+  "count": 11,
   "puppies": [
     {
       "number": 19,
@@ -61,6 +61,12 @@
       "name": "Dev Pup",
       "asset_id": "v2_dev_pup",
       "file": "v2_dev_pup.png"
+    },
+    {
+      "number": 29,
+      "name": "Rory",
+      "asset_id": "v2_rory",
+      "file": "v2_rory.png"
     }
   ]
 }
