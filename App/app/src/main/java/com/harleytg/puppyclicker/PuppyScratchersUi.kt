@@ -123,7 +123,8 @@ internal fun PuppyScratchersScreen(
                 ScratcherCard(
                     outcome = display,
                     scratched = scratched,
-                    enabled = round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED && !revealed
+                    enabled = round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED && !revealed,
+                    revealAll = revealed
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -230,7 +231,8 @@ internal fun PuppyScratchersScreen(
 private fun ScratcherCard(
     outcome: PuppyScratcherOutcome?,
     scratched: MutableList<Int>,
-    enabled: Boolean
+    enabled: Boolean,
+    revealAll: Boolean
 ) {
     val columns = 12
     val rows = 5
@@ -260,7 +262,7 @@ private fun ScratcherCard(
             }
         }
 
-        Canvas(
+        if (!revealAll) Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(enabled, outcome) {
