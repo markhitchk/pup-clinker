@@ -34,8 +34,6 @@ jobs:
 
       - name: Build unsigned release APK
         working-directory: App
-        env:
-          PUPPY_SUPPORT_RELAY_URL: ${{ vars.PUPPY_SUPPORT_RELAY_URL }}
         run: gradle --no-daemon :app:assembleRelease --stacktrace
 
       - name: Upload unsigned APK
