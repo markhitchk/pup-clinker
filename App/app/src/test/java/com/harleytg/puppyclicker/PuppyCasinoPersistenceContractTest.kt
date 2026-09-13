@@ -19,6 +19,16 @@ class PuppyCasinoPersistenceContractTest {
     }
 
     @Test
+    fun wagerContextIsStoredInsideTheSameRoundLedger() {
+        val transactions = source("PuppyCasinoTransactions.kt")
+
+        assertTrue(transactions.contains("val wagerPayload: String? = null"))
+        assertTrue(transactions.contains("wagerPayload = persistedWagerPayload"))
+        assertTrue(transactions.contains("round.wagerPayload?.let { put(\"wagerPayload\", it) }"))
+        assertTrue(transactions.contains("wagerPayload = wagerPayload"))
+    }
+
+    @Test
     fun newRoundsRespectFeatureFlagButRecoveryPathsDoNot() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
         val transactions = source("PuppyCasinoTransactions.kt")
