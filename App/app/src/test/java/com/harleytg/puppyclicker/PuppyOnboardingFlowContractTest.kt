@@ -7,18 +7,22 @@ import org.junit.Test
 
 class PuppyOnboardingFlowContractTest {
     @Test
-    fun flowRoutesExactlyFiveFocusedSteps() {
+    fun flowRoutesExactlySixFocusedSteps() {
         val source = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyOnboardingUi.kt"
         ).readText()
+        val shell = File(
+            "src/main/java/com/harleytg/puppyclicker/PuppyOnboardingShell.kt"
+        ).readText()
 
-        assertTrue(source.contains("coerceIn(0, 4)"))
+        assertTrue(source.contains("coerceIn(0, 5)"))
         assertTrue(source.contains("PuppyOnboardingPlayerSetup("))
         assertTrue(source.contains("PuppyOnboardingPersonalize("))
+        assertTrue(source.contains("PuppyOnboardingPrivacy("))
         assertTrue(source.contains("PuppyOnboardingNotifications("))
         assertTrue(source.contains("PuppyOnboardingReady("))
-        assertFalse(source.contains("repeat(6)"))
-        assertFalse(source.contains("Step " + "$" + "{step + 1} of 6"))
+        assertTrue(shell.contains("repeat(6)"))
+        assertTrue(shell.contains("\" of 6\""))
     }
 
     @Test
