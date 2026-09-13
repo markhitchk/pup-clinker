@@ -132,6 +132,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     )
                 )
                 .padding(padding)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             when (tab) {
                 V6Tab.PLAY -> V6Play(state, vm)
@@ -175,7 +176,7 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 
     Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
         V6Header("Puppy Clicker", "${state.puppyName} · ${state.mood}")
@@ -257,12 +258,7 @@ private fun V6Play(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 @Composable
 private fun V6CareAndDaily(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var page by rememberSaveable { mutableIntStateOf(0) }
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         V6Header("Pup Care", "Care, bond, daily rewards and adventures.")
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,12 +415,7 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var redeemOpen by rememberSaveable { mutableStateOf(false) }
     var pupsOpen by rememberSaveable { mutableStateOf(false) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         V6Header("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
         Spacer(Modifier.height(12.dp))
         V6Wallet(state)
@@ -585,12 +576,7 @@ private fun V6RedeemDialog(vm: PuppyClickerV6ViewModel, close: () -> Unit) {
 @Composable
 private fun V6Pups(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var renameOpen by rememberSaveable { mutableStateOf(false) }
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         V6Header("Puppy Collection", "V1 classics and V2 puppies in one collection.")
         Spacer(Modifier.height(14.dp))
         Text("Unlocked ${state.unlockedPuppies.count { it in V6_PUPPY_IDS }} / ${V6_PUPPY_STYLES.size}", fontWeight = FontWeight.Bold)
@@ -667,12 +653,7 @@ private fun V6PuppyRosterSection(
 private fun V6Prestige(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var prestigeConfirm by rememberSaveable { mutableStateOf(false) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
         V6Header("Prestige", "Permanent progression and skill points.")
         Spacer(Modifier.height(14.dp))
         V6PrestigeCenter(state, vm, onPrestige = { prestigeConfirm = true })
