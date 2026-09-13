@@ -99,8 +99,8 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "1.7.12"
+        versionCode = 26
+        versionName = "1.7.13"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
         buildConfigField(
             "String",
