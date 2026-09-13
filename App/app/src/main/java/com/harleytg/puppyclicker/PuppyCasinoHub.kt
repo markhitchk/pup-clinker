@@ -255,6 +255,10 @@ private fun CasinoGameCard(
     canStart: Boolean,
     onOpen: (() -> Unit)? = null
 ) {
+    val statusLabel =
+        if (canStart) flag.statusLabel()
+        else if (flag.isAvailable()) "Casino Unavailable"
+        else flag.statusLabel()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -283,7 +287,7 @@ private fun CasinoGameCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    flag.statusLabel(),
+                    statusLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (canStart) {
