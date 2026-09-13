@@ -92,19 +92,19 @@ internal object PuppyFeatureFlags {
             "Save Restore", "Import an existing encrypted .pupsave file."
         ),
         "puppy_casino" to PuppyFeatureFlag(
-            "puppy_casino", true, false, "coming_soon", null,
+            "puppy_casino", true, true, "released", null,
             "Puppy Casino", "Treat-wager casino games backed by the existing Puppy Clicker economy."
         ),
         "casino_slots" to PuppyFeatureFlag(
-            "casino_slots", true, false, "coming_soon", null,
+            "casino_slots", true, true, "released", null,
             "Puppy Slots", "Weighted slot engine and published payout table."
         ),
         "casino_roulette" to PuppyFeatureFlag(
-            "casino_roulette", true, false, "coming_soon", null,
+            "casino_roulette", true, true, "released", null,
             "Puppy Roulette", "Single-zero roulette using Treat wagers."
         ),
         "casino_blackjack" to PuppyFeatureFlag(
-            "casino_blackjack", true, false, "coming_soon", null,
+            "casino_blackjack", true, true, "released", null,
             "Puppy Blackjack", "CPU blackjack with multiplayer planned later."
         )
     )
