@@ -115,13 +115,13 @@ internal object PuppyCasinoTransactionEngine {
         payoutTreats: Long,
         committedAtMs: Long
     ): PuppyCasinoTransactionResult {
+        if (roundId in completedRoundIds) {
+            return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
+        }
         val round = activeRound
             ?: return failure(before, null, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_NOT_FOUND)
         if (round.roundId != roundId) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_MISMATCH)
-        }
-        if (roundId in completedRoundIds) {
-            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
         }
         if (round.state != PuppyCasinoRoundState.WAGER_ACCEPTED) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_ROUND_STATE)
@@ -150,13 +150,13 @@ internal object PuppyCasinoTransactionEngine {
         completedRoundIds: List<String>,
         roundId: String
     ): PuppyCasinoTransactionResult {
+        if (roundId in completedRoundIds) {
+            return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
+        }
         val round = activeRound
             ?: return failure(before, null, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_NOT_FOUND)
         if (round.roundId != roundId) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_MISMATCH)
-        }
-        if (roundId in completedRoundIds) {
-            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
         }
         if (round.state != PuppyCasinoRoundState.OUTCOME_COMMITTED || round.outcomePayload.isNullOrBlank()) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_ROUND_STATE)
@@ -185,13 +185,13 @@ internal object PuppyCasinoTransactionEngine {
         completedRoundIds: List<String>,
         roundId: String
     ): PuppyCasinoTransactionResult {
+        if (roundId in completedRoundIds) {
+            return failure(before, activeRound, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
+        }
         val round = activeRound
             ?: return failure(before, null, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_NOT_FOUND)
         if (round.roundId != roundId) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.ROUND_MISMATCH)
-        }
-        if (roundId in completedRoundIds) {
-            return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.DUPLICATE_ROUND)
         }
         if (round.state != PuppyCasinoRoundState.WAGER_ACCEPTED) {
             return failure(before, round, completedRoundIds, PuppyCasinoTransactionFailure.INVALID_ROUND_STATE)
