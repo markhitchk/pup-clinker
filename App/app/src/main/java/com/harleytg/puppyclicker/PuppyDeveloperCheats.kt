@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -442,140 +444,164 @@ internal fun PuppyDeveloperCheatOverlay(
     val nextCasinoPuppy = PuppyCasinoPuppyRewardEngine.eligibleStyleIds
         .firstOrNull { it !in state.unlockedPuppies }
 
-    if (!session.overlayExpanded) {
+    fun dragHandleModifier(): Modifier = Modifier.pointerInput(session.overlayExpanded) {
+        var dragDistance = 0f
+        detectVerticalDragGestures(
+            onDragStart = { dragDistance = 0f },
+            onVerticalDrag = { _, dragAmount ->
+                dragDistance += dragAmount
+            },
+            onDragEnd = {
+                when {
+                    dragDistance > 24f ->
+                        PuppyDeveloperCheatsSession.setOverlayExpanded(true)
+                    dragDistance < -24f ->
+                        PuppyDeveloperCheatsSession.setOverlayExpanded(false)
+                }
+            }
+        )
+    }
+
+    /*
+     * Only the pull tab and the actual cheat buttons install pointer handlers.
+     * The outer Column and translucent panel background are intentionally passive,
+     * so taps on transparent/non-control areas continue to the game underneath.
+     */
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Surface(
-            modifier = modifier,
-            shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f),
+            shape = RoundedCornerShape(
+                topStart = 0.dp,
+                topEnd = 0.dp,
+                bottomStart = 13.dp,
+                bottomEnd = 13.dp
+            ),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f),
             tonalElevation = 1.dp,
             shadowElevation = 2.dp
         ) {
             TextButton(
-                onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(true) },
-                modifier = Modifier.padding(horizontal = 2.dp)
+                onClick = {
+                    PuppyDeveloperCheatsSession.setOverlayExpanded(
+                        !session.overlayExpanded
+                    )
+                },
+                modifier = dragHandleModifier()
+                    .padding(horizontal = 4.dp)
             ) {
                 Text(
-                    "🛠 DEV · VOID",
+                    if (session.overlayExpanded) "📂 DEV · VOID ︿" else "📁 DEV · VOID ﹀",
                     fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.labelMedium
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
-        return
-    }
 
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
-        tonalElevation = 1.dp,
-        shadowElevation = 3.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+        if (!session.overlayExpanded) return@Column
+
+        Surface(
+            modifier = Modifier
+                .width(272.dp)
+                .padding(top = 2.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.48f),
+            tonalElevation = 0.dp,
+            shadowElevation = 2.dp
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
                 Text(
-                    "🛠 DEV · VOID",
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.labelMedium
+                    "T ${state.treats} · 🎟 ${state.ticketsOwned} · " +
+                        (casinoRound?.let { it.game.name } ?: "Casino idle"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f)
                 )
-                TextButton(
-                    onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(false) }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text("−")
-                }
-            }
-
-            Text(
-                "T ${state.treats} · 🎟 ${state.ticketsOwned} · " +
-                    (casinoRound?.let { it.game.name } ?: "Casino idle"),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                TextButton(
-                    onClick = { vm.developerAddTreats(1_000L) },
-                    modifier = Modifier.weight(1f)
-                ) { Text("+1K") }
-                TextButton(
-                    onClick = { vm.developerAddTreats(10_000L) },
-                    modifier = Modifier.weight(1f)
-                ) { Text("+10K") }
-                TextButton(
-                    onClick = { vm.developerFillCare() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Care") }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                TicketRarity.entries.forEach { rarity ->
                     TextButton(
-                        onClick = { vm.developerAddTicket(rarity) },
+                        onClick = { vm.developerAddTreats(1_000L) },
                         modifier = Modifier.weight(1f)
+                    ) { Text("+1K") }
+                    TextButton(
+                        onClick = { vm.developerAddTreats(10_000L) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("+10K") }
+                    TextButton(
+                        onClick = { vm.developerFillCare() },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Care") }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    TicketRarity.entries.forEach { rarity ->
+                        TextButton(
+                            onClick = { vm.developerAddTicket(rarity) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(rarity.emoji)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    TextButton(
+                        onClick = { vm.developerAddSkillPoints(10) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("+10 SP") }
+                    TextButton(
+                        onClick = { vm.developerClearPupEyeCooldown() },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("PupEye") }
+                }
+
+                if (nextCasinoPuppy != null) {
+                    TextButton(
+                        onClick = { vm.developerUnlockPuppy(nextCasinoPuppy) },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(rarity.emoji)
+                        Text(
+                            "🐶 Unlock " +
+                                (DynamicPuppyRoster.style(nextCasinoPuppy)?.name ?: nextCasinoPuppy),
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                TextButton(
-                    onClick = { vm.developerAddSkillPoints(10) },
-                    modifier = Modifier.weight(1f)
-                ) { Text("+10 SP") }
-                TextButton(
-                    onClick = { vm.developerClearPupEyeCooldown() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("PupEye") }
-            }
-
-            if (nextCasinoPuppy != null) {
-                TextButton(
-                    onClick = { vm.developerUnlockPuppy(nextCasinoPuppy) },
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "🐶 Unlock " +
-                            (DynamicPuppyRoster.style(nextCasinoPuppy)?.name ?: nextCasinoPuppy),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(
-                    onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(false) }
-                ) {
-                    Text("Hide")
-                }
-                TextButton(
-                    onClick = {
-                        PuppyDeveloperCheatsSession.disable()
-                        vm.clearDeveloperCheatOverrides()
+                    TextButton(
+                        onClick = { PuppyDeveloperCheatsSession.setOverlayExpanded(false) }
+                    ) {
+                        Text("Fold")
                     }
-                ) {
-                    Text(
-                        "Disable",
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
+                    TextButton(
+                        onClick = {
+                            PuppyDeveloperCheatsSession.disable()
+                            vm.clearDeveloperCheatOverrides()
+                        }
+                    ) {
+                        Text(
+                            "Disable",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
