@@ -31,7 +31,7 @@ class CompactRosterPatchTest(unittest.TestCase):
             patched,
         )
         self.assertIn(
-            ".padding(\n                horizontal = if (compactRoster) 12.dp else 16.dp,\n                vertical = if (compactRoster) 2.dp else 4.dp\n            )",
+            ".padding(\n                start = if (compactRoster) 12.dp else 16.dp,\n                top = 2.dp,\n                end = if (compactRoster) 12.dp else 16.dp,\n                bottom = 0.dp\n            )",
             patched,
         )
         self.assertIn("compact = compactRoster", patched)
