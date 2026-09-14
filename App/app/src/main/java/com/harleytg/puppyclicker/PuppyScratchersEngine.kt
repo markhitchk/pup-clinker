@@ -17,6 +17,24 @@ internal enum class PuppyScratcherPrize(
     JACKPOT("💎", "Jackpot", 1, 2_000)
 }
 
+internal data class PuppyScratcherCardType(
+    val id: String,
+    val emoji: String,
+    val name: String,
+    val shortName: String,
+    val tagline: String,
+    val costTreats: Long,
+    val odds: Map<PuppyScratcherPrize, Int>
+) {
+    init {
+        require(odds.keys.containsAll(PuppyScratcherPrize.entries))
+        require(odds.values.sum() == 100)
+        require(odds.values.all { it >= 0 })
+    }
+
+    fun weightFor(prize: PuppyScratcherPrize): Int = odds[prize] ?: 0
+}
+
 internal data class PuppyScratcherOutcome(
     val prize: PuppyScratcherPrize,
     val symbols: List<String>,
@@ -43,23 +61,125 @@ internal object PuppyScratchersEngine {
     const val MAX_WAGER_TREATS = 100_000L
     const val WAGER_INCREMENT_TREATS = 20L
     const val PUBLISHED_RTP_PERCENT = "91%"
-    const val REVEAL_THRESHOLD = 0.55f
+    const val REVEAL_THRESHOLD = 0.68f
 
-    val wagerPresets: List<Long> = listOf(20L, 100L, 500L, 2_500L)
+    private val legacyOdds = mapOf(
+        PuppyScratcherPrize.NO_PRIZE to 60,
+        PuppyScratcherPrize.REFUND to 22,
+        PuppyScratcherPrize.DOUBLE to 12,
+        PuppyScratcherPrize.BIG_WIN to 5,
+        PuppyScratcherPrize.JACKPOT to 1
+    )
+
+    val cardTypes: List<PuppyScratcherCardType> = listOf(
+        PuppyScratcherCardType(
+            id = "pup_scratch",
+            emoji = "🐾",
+            name = "Pup Scratch",
+            shortName = "Pup",
+            tagline = "The classic Puppy Casino scratcher.",
+            costTreats = 20L,
+            odds = legacyOdds
+        ),
+        PuppyScratcherCardType(
+            id = "bone_bonanza",
+            emoji = "🦴",
+            name = "Bone Bonanza",
+            shortName = "Bone",
+            tagline = "More double-Treat hits with a lean prize table.",
+            costTreats = 100L,
+            odds = mapOf(
+                PuppyScratcherPrize.NO_PRIZE to 58,
+                PuppyScratcherPrize.REFUND to 14,
+                PuppyScratcherPrize.DOUBLE to 26,
+                PuppyScratcherPrize.BIG_WIN to 1,
+                PuppyScratcherPrize.JACKPOT to 1
+            )
+        ),
+        PuppyScratcherCardType(
+            id = "lucky_fetch",
+            emoji = "🎾",
+            name = "Lucky Fetch",
+            shortName = "Fetch",
+            tagline = "A balanced mid-tier card for bigger Treat stacks.",
+            costTreats = 500L,
+            odds = mapOf(
+                PuppyScratcherPrize.NO_PRIZE to 55,
+                PuppyScratcherPrize.REFUND to 20,
+                PuppyScratcherPrize.DOUBLE to 23,
+                PuppyScratcherPrize.BIG_WIN to 1,
+                PuppyScratcherPrize.JACKPOT to 1
+            )
+        ),
+        PuppyScratcherCardType(
+            id = "golden_paw",
+            emoji = "🌟",
+            name = "Golden Paw",
+            shortName = "Gold",
+            tagline = "Higher stakes with more refund protection.",
+            costTreats = 2_500L,
+            odds = mapOf(
+                PuppyScratcherPrize.NO_PRIZE to 52,
+                PuppyScratcherPrize.REFUND to 26,
+                PuppyScratcherPrize.DOUBLE to 20,
+                PuppyScratcherPrize.BIG_WIN to 1,
+                PuppyScratcherPrize.JACKPOT to 1
+            )
+        ),
+        PuppyScratcherCardType(
+            id = "casino_scratch",
+            emoji = "🎰",
+            name = "Casino Scratch",
+            shortName = "Casino",
+            tagline = "A high-stakes card with a boosted jackpot chance.",
+            costTreats = 10_000L,
+            odds = mapOf(
+                PuppyScratcherPrize.NO_PRIZE to 58,
+                PuppyScratcherPrize.REFUND to 32,
+                PuppyScratcherPrize.DOUBLE to 7,
+                PuppyScratcherPrize.BIG_WIN to 1,
+                PuppyScratcherPrize.JACKPOT to 2
+            )
+        ),
+        PuppyScratcherCardType(
+            id = "ultra_pup",
+            emoji = "💎",
+            name = "Ultra Pup",
+            shortName = "Ultra",
+            tagline = "The premium scratcher with more big-win and jackpot hits.",
+            costTreats = 25_000L,
+            odds = mapOf(
+                PuppyScratcherPrize.NO_PRIZE to 60,
+                PuppyScratcherPrize.REFUND to 31,
+                PuppyScratcherPrize.DOUBLE to 5,
+                PuppyScratcherPrize.BIG_WIN to 2,
+                PuppyScratcherPrize.JACKPOT to 2
+            )
+        )
+    )
+
+    val wagerPresets: List<Long> = cardTypes.map { it.costTreats }
 
     fun isValidWager(wagerTreats: Long): Boolean =
         wagerTreats in MIN_WAGER_TREATS..MAX_WAGER_TREATS &&
             wagerTreats % WAGER_INCREMENT_TREATS == 0L
+
+    fun cardForWager(wagerTreats: Long): PuppyScratcherCardType? =
+        cardTypes.firstOrNull { it.costTreats == wagerTreats }
+
+    fun oddsFor(wagerTreats: Long): Map<PuppyScratcherPrize, Int> =
+        cardForWager(wagerTreats)?.odds ?: legacyOdds
 
     fun randomCard(
         wagerTreats: Long,
         random: SecureRandom = SecureRandom()
     ): PuppyScratcherOutcome {
         require(isValidWager(wagerTreats))
+        val odds = oddsFor(wagerTreats)
         val roll = random.nextInt(100)
         var cursor = 0
         val prize = PuppyScratcherPrize.entries.first { candidate ->
-            cursor += candidate.weightPercent
+            cursor += odds[candidate] ?: 0
             roll < cursor
         }
         val symbols = if (prize == PuppyScratcherPrize.NO_PRIZE) {
