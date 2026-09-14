@@ -82,7 +82,11 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(scratchers.contains("Pup Coin"))
         assertTrue(scratchers.contains("speedBoost"))
         assertTrue(scratchers.contains("coinRotation"))
-        assertTrue(scratchers.contains("SCRATCH_COLUMNS = 32"))
+        assertTrue(scratchers.contains("contentAlignment = Alignment.TopStart"))
+        assertTrue(scratchers.contains("markSegment("))
+        assertTrue(scratchers.contains("change.uptimeMillis"))
+        assertTrue(scratchers.contains("coinRadiusPx *"))
+        assertTrue(scratchers.contains("SCRATCH_COLUMNS = 48"))
 
         assertTrue(luckyWheel.contains("LuckyWheelBoard("))
         assertTrue(luckyWheel.contains("rotation.animateTo("))
