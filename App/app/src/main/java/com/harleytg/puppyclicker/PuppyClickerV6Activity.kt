@@ -2,6 +2,7 @@ package com.harleytg.puppyclicker
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -92,16 +93,45 @@ private enum class V6Tab(val label: String, val emoji: String) {
     PLAY("Play", "🐾"), CARE("Care", "💖"), SHOP("Shop", "🛍️"), PRESTIGE("Prestige", "⭐"), SETTINGS("Settings", "⚙️")
 }
 
+private data class PuppyHeaderActions(
+    val onOpenNotifications: () -> Unit = {},
+    val onOpenSettings: () -> Unit = {},
+    val hasUnreadNotification: Boolean = false
+)
+
+private val LocalPuppyHeaderActions = staticCompositionLocalOf { PuppyHeaderActions() }
+
 @Composable
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val state by vm.state.collectAsStateWithLifecycle()
-    val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
+    val uiPreferences by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
+    val updateNotice by PuppyNotificationCenter.updateNotice.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+    var notificationsOpen by rememberSaveable { mutableStateOf(false) }
 
     if (!uiPreferences.setupComplete) {
         PuppyOnboardingFlow(vm)
         return
     }
+
+    LaunchedEffect(Unit) {
+        PuppyNotificationCenter.loadCachedUpdate(context)
+        PuppyNotificationCenter.refreshUpdateStatus(context)
+    }
+
+    val headerActions = PuppyHeaderActions(
+        onOpenNotifications = {
+            notificationsOpen = true
+            PuppyNotificationCenter.markUpdateRead(context)
+            scope.launch {
+                PuppyNotificationCenter.refreshUpdateStatus(context, force = true)
+            }
+        },
+        onOpenSettings = { tab = V6Tab.SETTINGS },
+        hasUnreadNotification = updateNotice?.unread == true
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -133,15 +163,33 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 )
                 .padding(padding)
         ) {
-            when (tab) {
-                V6Tab.PLAY -> V6Play(state, vm)
-                V6Tab.CARE -> V6CareAndDaily(state, vm)
-                V6Tab.SHOP -> V6Shop(state, vm)
-                V6Tab.PRESTIGE -> V6Prestige(state, vm)
-                V6Tab.SETTINGS -> V6Settings(state, vm)
+            CompositionLocalProvider(LocalPuppyHeaderActions provides headerActions) {
+                when (tab) {
+                    V6Tab.PLAY -> V6Play(state, vm)
+                    V6Tab.CARE -> V6CareAndDaily(state, vm)
+                    V6Tab.SHOP -> V6Shop(state, vm)
+                    V6Tab.PRESTIGE -> V6Prestige(state, vm)
+                    V6Tab.SETTINGS -> V6Settings(state, vm)
+                }
             }
 
         }
+    }
+
+    if (notificationsOpen) {
+        PuppyNotificationsDialog(
+            update = updateNotice,
+            onDismiss = { notificationsOpen = false },
+            onRefresh = {
+                scope.launch {
+                    PuppyNotificationCenter.refreshUpdateStatus(context, force = true)
+                }
+            },
+            onUpdate = {
+                val url = updateNotice?.apkUrl ?: updateNotice?.releaseUrl
+                if (!url.isNullOrBlank()) openPuppyUrl(context, url)
+            }
+        )
     }
 }
 
@@ -930,13 +978,154 @@ private fun v6FurDescription(styleId: String): String = when (styleId) {
 
 @Composable
 private fun V6Header(title: String, subtitle: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo), null, Modifier.size(50.dp), contentScale = ContentScale.Fit)
+    val actions = LocalPuppyHeaderActions.current
+
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
+            null,
+            Modifier.size(50.dp),
+            contentScale = ContentScale.Fit
+        )
         Spacer(Modifier.width(10.dp))
-        Column {
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
         }
+        Spacer(Modifier.width(8.dp))
+        Box {
+            OutlinedIconButton(
+                onClick = actions.onOpenNotifications,
+                modifier = Modifier.size(42.dp)
+            ) {
+                Text("🔔", fontSize = 19.sp)
+            }
+            if (actions.hasUnreadNotification) {
+                Badge(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(10.dp)
+                )
+            }
+        }
+        Spacer(Modifier.width(7.dp))
+        OutlinedIconButton(
+            onClick = actions.onOpenSettings,
+            modifier = Modifier.size(42.dp)
+        ) {
+            Text("⚙️", fontSize = 19.sp)
+        }
+    }
+}
+
+@Composable
+private fun PuppyNotificationsDialog(
+    update: PuppyReleaseUpdate?,
+    onDismiss: () -> Unit,
+    onRefresh: () -> Unit,
+    onUpdate: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Notifications", fontWeight = FontWeight.Black) },
+        text = {
+            Column {
+                if (update == null) {
+                    Text(
+                        "You're all caught up. No Puppy Clicker update is currently available.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                    ) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(
+                                "Update available",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Black
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                update.releaseName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black
+                            )
+                            if (update.versionName.isNotBlank()) {
+                                Text(
+                                    "Version ${update.versionName} · Build ${update.versionCode}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    "Build ${update.versionCode}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (update.notes.isNotBlank()) {
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    update.notes.take(1_400),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onRefresh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Check for updates")
+                }
+            }
+        },
+        confirmButton = {
+            if (update != null) {
+                Button(onClick = onUpdate) {
+                    Text(if (update.apkUrl != null) "Update" else "Open release")
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Done")
+                }
+            }
+        },
+        dismissButton = {
+            if (update != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("Later")
+                }
+            }
+        }
+    )
+}
+
+private fun openPuppyUrl(context: Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
     }
 }
 
