@@ -113,7 +113,7 @@ internal object PuppyFeatureFlags {
         ),
         "casino_scratchers" to PuppyFeatureFlag(
             "casino_scratchers", true, true, "released", null,
-            "Pup Scratchers", "Touch-driven scratch cards with committed prizes."
+            "Pup Scratchers", "Six committed-prize scratch cards with weighted Pup Coin physics."
         ),
         "casino_lucky_wheel" to PuppyFeatureFlag(
             "casino_lucky_wheel", true, true, "released", null,
