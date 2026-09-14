@@ -251,11 +251,6 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             PuppyDeveloperOptions(
                 onOpenConsole = { developerConsoleOpen = true }
             )
-            Spacer(Modifier.height(16.dp))
-            PuppyDeveloperCheatsSettings(
-                state = state,
-                vm = vm
-            )
         }
 
         SettingsDestination.ABOUT -> SettingsSubpage(
