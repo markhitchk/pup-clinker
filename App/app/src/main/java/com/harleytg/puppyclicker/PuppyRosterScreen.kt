@@ -73,6 +73,7 @@ internal fun PuppyRosterScreen(
     var sort by rememberSaveable { mutableStateOf(RosterSort.UNLOCKED_FIRST) }
     var sortOpen by remember { mutableStateOf(false) }
     var inspectedId by rememberSaveable { mutableStateOf<String?>(state.puppyStyle) }
+    var previewId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmUseId by rememberSaveable { mutableStateOf<String?>(null) }
     var unlockInfoId by rememberSaveable { mutableStateOf<String?>(null) }
     var renameOpen by rememberSaveable { mutableStateOf(false) }
@@ -307,6 +308,7 @@ internal fun PuppyRosterScreen(
                         inspected = card.asset.style.id == inspectedId,
                         retryToken = retryTokens[card.asset.style.id] ?: 0,
                         onInspect = { inspectedId = card.asset.style.id },
+                        onPreview = { previewId = card.asset.style.id },
                         onToggleFavorite = { vm.toggleFavoritePuppy(card.asset.style.id) },
                         onRetryArtwork = {
                             val id = card.asset.style.id
@@ -315,6 +317,16 @@ internal fun PuppyRosterScreen(
                     )
                 }
             }
+        }
+    }
+
+    previewId?.let { id ->
+        assets.firstOrNull { it.style.id == id }?.let { asset ->
+            PuppyPreviewDialog(
+                asset = asset,
+                unlocked = id in state.unlockedPuppies,
+                onDismiss = { previewId = null }
+            )
         }
     }
 
@@ -490,6 +502,7 @@ private fun PuppyRosterCard(
     inspected: Boolean,
     retryToken: Int,
     onInspect: () -> Unit,
+    onPreview: () -> Unit,
     onToggleFavorite: () -> Unit,
     onRetryArtwork: () -> Unit
 ) {
@@ -512,13 +525,19 @@ private fun PuppyRosterCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(Modifier.height(4.dp))
-                StreamedPuppyPortrait(
-                    styleId = card.asset.style.id,
-                    size = 68.dp,
-                    unlocked = card.unlocked,
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    retryToken = retryToken
-                )
+                Box(
+                    modifier = Modifier
+                        .clickable(onClick = onPreview)
+                        .semantics { contentDescription = "Preview ${card.asset.style.name}" }
+                ) {
+                    StreamedPuppyPortrait(
+                        styleId = card.asset.style.id,
+                        size = 68.dp,
+                        unlocked = card.unlocked,
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        retryToken = retryToken
+                    )
+                }
                 Spacer(Modifier.height(5.dp))
                 Text(
                     card.asset.style.name,
@@ -583,6 +602,63 @@ private fun PuppyRosterCard(
             ) { Text("↻", fontSize = 14.sp) }
         }
     }
+}
+
+@Composable
+private fun PuppyPreviewDialog(
+    asset: PuppyRosterAsset,
+    unlocked: Boolean,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                asset.style.name,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                StreamedPuppyPortrait(
+                    styleId = asset.style.id,
+                    size = 220.dp,
+                    unlocked = unlocked,
+                    background = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    asset.assetId,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(5.dp))
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                ) {
+                    Text(
+                        asset.groupTitle,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (unlocked) "Unlocked" else "🔒 Locked",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
 }
 
 @Composable
