@@ -236,12 +236,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 failure = PuppyCasinoTransactionFailure.CORRUPT_SAVE
             )
         }
-        val developerTest = PuppyDeveloperCheatsSession.isActive()
-        val roundId = if (developerTest) {
-            PuppyDeveloperCheatsSession.newTestRoundId()
-        } else {
-            PuppyCasinoRoundIds.newId()
-        }
+        val roundId = PuppyCasinoRoundIds.newId()
         val flagSnapshot = PuppyFeatureFlags.flags.value
         val result = PuppyCasinoTransactionEngine.acceptWager(
             before = current,
@@ -255,8 +250,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 flags = flagSnapshot
             ),
             acceptedAtMs = System.currentTimeMillis(),
-            wagerPayload = wagerPayload,
-            chargeWager = !developerTest
+            wagerPayload = wagerPayload
         )
         return persistCasinoMutation(current, completed, result)
     }
@@ -710,8 +704,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             completedRoundIds = completed,
             roundId = round.roundId,
             wagerPayload = PuppyBlackjackStateCodec.encode(actionResult.state),
-            additionalWagerTreats = actionResult.additionalWagerTreats,
-            chargeAdditionalWager = !PuppyDeveloperCheatsSession.isTestRoundId(round.roundId)
+            additionalWagerTreats = actionResult.additionalWagerTreats
         )
         val saved = persistCasinoMutation(current, completed, persisted)
         if (!saved.success) {
@@ -820,7 +813,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
         val active = _casinoRound.value
-        val developerTest = PuppyDeveloperCheatsSession.isTestRoundId(active?.roundId)
 
         if (active?.roundId == roundId && active.state == PuppyCasinoRoundState.OUTCOME_COMMITTED) {
             val validOutcome = when (active.game) {
@@ -883,18 +875,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             before = current,
             activeRound = active,
             completedRoundIds = completed,
-            roundId = roundId,
-            creditPayout = !developerTest
+            roundId = roundId
         )
-        if (!result.success || active == null || developerTest) {
-            if (developerTest && result.success) {
-                _lastCasinoTicketReward.value = null
-                _lastCasinoPuppyReward.value = null
-                PuppyDebugLog.i(
-                    "DeveloperCheats",
-                    "DEV casino round settled with wager and all winnings void."
-                )
-            }
+        if (!result.success || active == null) {
             return persistCasinoMutation(current, completed, result)
         }
 
@@ -966,8 +949,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             before = current,
             activeRound = active,
             completedRoundIds = completed,
-            roundId = roundId,
-            refundWager = !PuppyDeveloperCheatsSession.isTestRoundId(roundId)
+            roundId = roundId
         )
         return persistCasinoMutation(current, completed, result)
     }
@@ -1414,84 +1396,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         return true
     }
 
-    internal fun developerAddTreats(amount: Long) {
-        if (!PuppyDeveloperCheatsSession.isActive() || amount <= 0L) return
-        _state.update {
-            it.copy(
-                treats = safeAdd(it.treats, amount),
-                lifetimeTreats = safeAdd(it.lifetimeTreats, amount)
-            )
-        }
-        saveState()
-    }
-
-    internal fun developerAddTicket(rarity: TicketRarity, amount: Int = 1) {
-        if (!PuppyDeveloperCheatsSession.isActive() || amount <= 0) return
-        val current = _state.value
-        val owned = current.ticketInventory[rarity] ?: 0
-        val granted = amount.coerceAtMost(
-            (PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY - owned).coerceAtLeast(0)
-        )
-        if (granted <= 0) return
-        val next = current.ticketInventory.toMutableMap().apply {
-            this[rarity] = owned + granted
-        }
-        _state.value = current.copy(
-            ticketInventory = next,
-            lastTicketDrop = rarity,
-            ticketDropSerial = safeAdd(current.ticketDropSerial, 1L),
-            totalTicketsFound = safeAdd(current.totalTicketsFound, granted.toLong())
-        )
-        saveState()
-    }
-
-    internal fun developerFillCare() {
-        if (!PuppyDeveloperCheatsSession.isActive()) return
-        _state.update {
-            it.copy(
-                happiness = 100,
-                fullness = 100,
-                energy = 100,
-                cleanliness = 100,
-                bond = 100
-            )
-        }
-        saveState()
-    }
-
-    internal fun developerAddSkillPoints(amount: Int) {
-        if (!PuppyDeveloperCheatsSession.isActive() || amount <= 0) return
-        _state.update {
-            it.copy(skillPoints = (it.skillPoints.toLong() + amount.toLong())
-                .coerceAtMost(Int.MAX_VALUE.toLong())
-                .toInt())
-        }
-        saveState()
-    }
-
-    internal fun developerClearPupEyeCooldown() {
-        if (!PuppyDeveloperCheatsSession.isActive()) return
-        recentTapTimes.clear()
-        suspicionHits = 0
-        suspicionWindowStartedMs = 0L
-        _state.update { it.copy(pupEyeStrikes = 0, cooldownUntilMs = 0L) }
-        saveState()
-    }
-
-    internal fun developerUnlockPuppy(styleId: String) {
-        if (!PuppyDeveloperCheatsSession.isActive()) return
-        if (!DynamicPuppyRoster.isKnown(styleId) && styleId !in V6_PUPPY_IDS) return
-        _state.update { current ->
-            current.copy(unlockedPuppies = current.unlockedPuppies + styleId)
-        }
-        saveState()
-    }
-
-    internal fun clearDeveloperCheatOverrides() {
-        _lastCasinoTicketReward.value = null
-        _lastCasinoPuppyReward.value = null
-    }
-
     fun setAccessory(value: String) {
         if (value !in ACCESSORIES) return
         _state.update { it.copy(accessory = value) }
@@ -1522,7 +1426,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
      * Activity/task teardown normally calls onCleared(), which otherwise saves the state again.
      */
     fun prepareForFullLocalDataErase() {
-        PuppyDeveloperCheatsSession.disable()
         suppressPersistence = true
         recentTapTimes.clear()
         suspicionHits = 0
