@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Final generated-source integration for Puppy Clicker's hidden Developer Console."""
 from pathlib import Path
+import re
 import sys
 
 
@@ -178,7 +179,11 @@ def route_android_logs(root: Path) -> int:
             continue
         patched = source
         for method in ("v", "d", "i", "w", "e"):
-            patched = patched.replace(f"Log.{method}(", f"PuppyDebugLog.{method}(")
+            patched = re.sub(
+                rf"(?<![A-Za-z0-9_])Log\.{method}\(",
+                f"PuppyDebugLog.{method}(",
+                patched,
+            )
         if patched != source:
             path.write_text(patched)
             routed_files += 1
