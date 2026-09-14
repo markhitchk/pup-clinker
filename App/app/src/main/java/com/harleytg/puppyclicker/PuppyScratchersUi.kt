@@ -31,7 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -87,7 +87,7 @@ internal fun PuppyScratchersScreen(
         ?: PuppyScratchersEngine.cardTypes.first()
     val displayCard = round?.let { PuppyScratchersEngine.cardForWager(it.wagerTreats) }
         ?: selectedCard
-    val scratched = remember(round?.roundId) { mutableStateListOf<Int>() }
+    val scratched = remember(round?.roundId) { mutableStateMapOf<Int, Boolean>() }
     val scratchProgress = scratched.size.toFloat() / SCRATCH_CELL_COUNT.toFloat()
 
     LaunchedEffect(round?.roundId) {
@@ -306,7 +306,7 @@ internal fun PuppyScratchersScreen(
 private fun ScratcherCard(
     card: PuppyScratcherCardType,
     outcome: PuppyScratcherOutcome?,
-    scratched: MutableList<Int>,
+    scratched: MutableMap<Int, Boolean>,
     enabled: Boolean,
     revealAll: Boolean
 ) {
@@ -387,7 +387,7 @@ private fun ScratcherCard(
                                     val dy = centerY - position.y
                                     if ((dx * dx) + (dy * dy) <= radiusSquared) {
                                         val index = row * SCRATCH_COLUMNS + col
-                                        if (index !in scratched) scratched.add(index)
+                                        if (index !in scratched) scratched[index] = true
                                     }
                                 }
                             }
