@@ -22,7 +22,21 @@ import java.net.URL
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+
+internal data class PuppyReleaseUpdate(
+    val versionCode: Int,
+    val versionName: String,
+    val releaseName: String,
+    val notes: String,
+    val releaseUrl: String,
+    val apkUrl: String?,
+    val unread: Boolean
+)
 
 internal object PuppyNotificationCenter {
     private const val CHANNEL_REWARDS = "puppy_rewards_v1"
@@ -43,10 +57,20 @@ internal object PuppyNotificationCenter {
     private const val KEY_PARK_READY_AT = "park_ready_at"
     private const val KEY_UPDATE_VERSION = "update_version"
     private const val KEY_UPDATE_CHECKED_AT = "update_checked_at"
+    private const val KEY_CACHED_UPDATE_VERSION = "cached_update_version"
+    private const val KEY_CACHED_UPDATE_NAME = "cached_update_name"
+    private const val KEY_CACHED_UPDATE_RELEASE_NAME = "cached_update_release_name"
+    private const val KEY_CACHED_UPDATE_NOTES = "cached_update_notes"
+    private const val KEY_CACHED_UPDATE_URL = "cached_update_url"
+    private const val KEY_CACHED_UPDATE_APK_URL = "cached_update_apk_url"
+    private const val KEY_CACHED_UPDATE_UNREAD = "cached_update_unread"
 
     private const val UPDATE_CHECK_INTERVAL_MS = 6L * 60L * 60L * 1000L
-    private const val REMOTE_BUILD =
-        "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/App/app/build.gradle.kts"
+    private const val LATEST_RELEASE_API =
+        "https://api.github.com/repos/markhitchk/pup-clinker/releases/latest"
+
+    private val _updateNotice = MutableStateFlow<PuppyReleaseUpdate?>(null)
+    val updateNotice: StateFlow<PuppyReleaseUpdate?> = _updateNotice.asStateFlow()
 
     fun createChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -140,6 +164,64 @@ internal object PuppyNotificationCenter {
             .cancel(NOTIFY_UPDATE)
     }
 
+    fun loadCachedUpdate(context: Context) {
+        _updateNotice.value = readCachedUpdate(context.applicationContext)
+    }
+
+    fun markUpdateRead(context: Context) {
+        val app = context.applicationContext
+        app.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CACHED_UPDATE_UNREAD, false)
+            .apply()
+        _updateNotice.value = _updateNotice.value?.copy(unread = false)
+    }
+
+    suspend fun refreshUpdateStatus(
+        context: Context,
+        force: Boolean = false
+    ): PuppyReleaseUpdate? {
+        val app = context.applicationContext
+        val delivery = app.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val lastChecked = delivery.getLong(KEY_UPDATE_CHECKED_AT, 0L)
+
+        if (!force && now - lastChecked in 0 until UPDATE_CHECK_INTERVAL_MS) {
+            return readCachedUpdate(app).also { _updateNotice.value = it }
+        }
+
+        delivery.edit().putLong(KEY_UPDATE_CHECKED_AT, now).apply()
+
+        val release = withContext(Dispatchers.IO) {
+            fetchLatestRelease()
+        } ?: return readCachedUpdate(app).also { _updateNotice.value = it }
+
+        if (release.versionCode <= BuildConfig.VERSION_CODE) {
+            clearCachedUpdate(app)
+            cancelAppUpdate(app)
+            return null
+        }
+
+        val previousVersion = delivery.getInt(KEY_CACHED_UPDATE_VERSION, 0)
+        val wasUnread = delivery.getBoolean(KEY_CACHED_UPDATE_UNREAD, false)
+        val update = release.copy(
+            unread = previousVersion != release.versionCode || wasUnread
+        )
+
+        delivery.edit()
+            .putInt(KEY_CACHED_UPDATE_VERSION, update.versionCode)
+            .putString(KEY_CACHED_UPDATE_NAME, update.versionName)
+            .putString(KEY_CACHED_UPDATE_RELEASE_NAME, update.releaseName)
+            .putString(KEY_CACHED_UPDATE_NOTES, update.notes)
+            .putString(KEY_CACHED_UPDATE_URL, update.releaseUrl)
+            .putString(KEY_CACHED_UPDATE_APK_URL, update.apkUrl.orEmpty())
+            .putBoolean(KEY_CACHED_UPDATE_UNREAD, update.unread)
+            .apply()
+
+        _updateNotice.value = update
+        return update
+    }
+
     internal fun notifyRosterUpdated(
         context: Context,
         addedNames: List<String>,
@@ -188,12 +270,13 @@ internal object PuppyNotificationCenter {
             DynamicPuppyRoster.refreshIfDue(app)
         }
 
+        val ui = PuppyUiPreferences.current(app)
+        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
+
         if (PuppyAppRuntime.isForeground || !canNotify(app)) return
 
-        val ui = PuppyUiPreferences.current(app)
         if (ui.dailyRewardNotifications) postDailyRewardIfAvailable(app) else cancelDailyReward(app)
         if (ui.gameEventNotifications) postParkEventIfReady(app) else cancelParkReady(app)
-        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
     }
 
     internal fun postParkEventIfReady(context: Context) {
@@ -245,44 +328,131 @@ internal object PuppyNotificationCenter {
     }
 
     private suspend fun checkForAppUpdate(context: Context) {
+        val update = refreshUpdateStatus(context) ?: return
+        if (PuppyAppRuntime.isForeground || !canNotify(context)) return
+
         val delivery = context.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
-        val now = System.currentTimeMillis()
-        val lastChecked = delivery.getLong(KEY_UPDATE_CHECKED_AT, 0L)
-        if (now - lastChecked in 0 until UPDATE_CHECK_INTERVAL_MS) return
-
-        delivery.edit().putLong(KEY_UPDATE_CHECKED_AT, now).apply()
-        val remoteVersion = withContext(Dispatchers.IO) {
-            runCatching {
-                val connection = URL(REMOTE_BUILD).openConnection() as HttpURLConnection
-                try {
-                    connection.connectTimeout = 7_000
-                    connection.readTimeout = 8_000
-                    connection.instanceFollowRedirects = true
-                    connection.setRequestProperty("User-Agent", "PuppyClicker-Android")
-                    if (connection.responseCode !in 200..299) return@runCatching null
-                    val text = connection.inputStream.bufferedReader().use { it.readText() }
-                    Regex("""versionCode\s*=\s*(\d+)""")
-                        .find(text)
-                        ?.groupValues
-                        ?.getOrNull(1)
-                        ?.toIntOrNull()
-                } finally {
-                    connection.disconnect()
-                }
-            }.getOrNull()
-        } ?: return
-
-        if (remoteVersion <= BuildConfig.VERSION_CODE) return
-        if (delivery.getInt(KEY_UPDATE_VERSION, 0) == remoteVersion) return
+        if (delivery.getInt(KEY_UPDATE_VERSION, 0) == update.versionCode) return
 
         post(
             context = context,
             channel = CHANNEL_UPDATES,
             id = NOTIFY_UPDATE,
             title = "Puppy Clicker update available",
-            text = "A newer Puppy Clicker build is available."
+            text = buildString {
+                append(update.releaseName)
+                if (update.versionName.isNotBlank()) {
+                    append(" · ")
+                    append(update.versionName)
+                }
+            }
         )
-        delivery.edit().putInt(KEY_UPDATE_VERSION, remoteVersion).apply()
+        delivery.edit().putInt(KEY_UPDATE_VERSION, update.versionCode).apply()
+    }
+
+    private fun readCachedUpdate(context: Context): PuppyReleaseUpdate? {
+        val delivery = context.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
+        val versionCode = delivery.getInt(KEY_CACHED_UPDATE_VERSION, 0)
+        if (versionCode <= BuildConfig.VERSION_CODE) return null
+
+        val releaseUrl = delivery.getString(KEY_CACHED_UPDATE_URL, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        return PuppyReleaseUpdate(
+            versionCode = versionCode,
+            versionName = delivery.getString(KEY_CACHED_UPDATE_NAME, "").orEmpty(),
+            releaseName = delivery.getString(KEY_CACHED_UPDATE_RELEASE_NAME, "Puppy Clicker update").orEmpty(),
+            notes = delivery.getString(KEY_CACHED_UPDATE_NOTES, "").orEmpty(),
+            releaseUrl = releaseUrl,
+            apkUrl = delivery.getString(KEY_CACHED_UPDATE_APK_URL, "")
+                .orEmpty()
+                .takeIf { it.isNotBlank() },
+            unread = delivery.getBoolean(KEY_CACHED_UPDATE_UNREAD, false)
+        )
+    }
+
+    private fun clearCachedUpdate(context: Context) {
+        context.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_CACHED_UPDATE_VERSION)
+            .remove(KEY_CACHED_UPDATE_NAME)
+            .remove(KEY_CACHED_UPDATE_RELEASE_NAME)
+            .remove(KEY_CACHED_UPDATE_NOTES)
+            .remove(KEY_CACHED_UPDATE_URL)
+            .remove(KEY_CACHED_UPDATE_APK_URL)
+            .remove(KEY_CACHED_UPDATE_UNREAD)
+            .apply()
+        _updateNotice.value = null
+    }
+
+    private fun fetchLatestRelease(): PuppyReleaseUpdate? {
+        return runCatching {
+            val connection = URL(LATEST_RELEASE_API).openConnection() as HttpURLConnection
+            try {
+                connection.connectTimeout = 7_000
+                connection.readTimeout = 8_000
+                connection.instanceFollowRedirects = true
+                connection.setRequestProperty("User-Agent", "PuppyClicker-Android")
+                connection.setRequestProperty("Accept", "application/vnd.github+json")
+
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) return@runCatching null
+                if (responseCode !in 200..299) return@runCatching null
+
+                val json = connection.inputStream.bufferedReader().use { it.readText() }
+                parseLatestRelease(json)
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrNull()
+    }
+
+    internal fun parseLatestRelease(json: String): PuppyReleaseUpdate? {
+        val release = JSONObject(json)
+        if (release.optBoolean("draft", false) || release.optBoolean("prerelease", false)) {
+            return null
+        }
+
+        val notes = release.optString("body", "")
+        val versionCode = Regex(
+            """(?im)^\s*[-*]?\s*(?:version\s*code|versionCode|build)\s*[:=]\s*(\d+)\s*$"""
+        ).find(notes)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?: return null
+
+        val tag = release.optString("tag_name", "").trim()
+        val versionName = tag.removePrefix("v").removePrefix("V")
+        val releaseUrl = release.optString("html_url", "").trim()
+        if (releaseUrl.isBlank()) return null
+
+        val assets = release.optJSONArray("assets")
+        var apkUrl: String? = null
+        if (assets != null) {
+            for (index in 0 until assets.length()) {
+                val asset = assets.optJSONObject(index) ?: continue
+                val name = asset.optString("name", "")
+                if (!name.endsWith(".apk", ignoreCase = true)) continue
+                apkUrl = asset.optString("browser_download_url", "")
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+                if (apkUrl != null) break
+            }
+        }
+
+        return PuppyReleaseUpdate(
+            versionCode = versionCode,
+            versionName = versionName,
+            releaseName = release.optString("name", "")
+                .trim()
+                .ifBlank { if (versionName.isBlank()) "Puppy Clicker update" else "Puppy Clicker $versionName" },
+            notes = notes.trim(),
+            releaseUrl = releaseUrl,
+            apkUrl = apkUrl,
+            unread = false
+        )
     }
 
     private fun post(
