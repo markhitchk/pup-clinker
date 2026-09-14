@@ -141,13 +141,6 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 V6Tab.SETTINGS -> V6Settings(state, vm)
             }
 
-            PuppyDeveloperCheatOverlay(
-                state = state,
-                vm = vm,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .widthIn(max = 280.dp)
-            )
         }
     }
 }
