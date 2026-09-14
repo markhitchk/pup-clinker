@@ -59,6 +59,24 @@ class PuppyCasinoExtraGamesTest {
     }
 
     @Test
+    fun scratcherLineupShipsSixCardsWithBalancedPublishedRtp() {
+        assertEquals(6, PuppyScratchersEngine.cardTypes.size)
+        assertEquals(
+            listOf(20L, 100L, 500L, 2_500L, 10_000L, 25_000L),
+            PuppyScratchersEngine.wagerPresets
+        )
+
+        PuppyScratchersEngine.cardTypes.forEach { card ->
+            assertEquals(100, card.odds.values.sum())
+            val expectedReturnHundredths = PuppyScratcherPrize.entries.sumOf { prize ->
+                card.weightFor(prize) * prize.multiplierHundredths
+            } / 100
+            assertEquals(91, expectedReturnHundredths)
+        }
+        assertEquals(0.68f, PuppyScratchersEngine.REVEAL_THRESHOLD)
+    }
+
+    @Test
     fun luckyWheelPuppyOutcomeUsesExistingCasinoEligibleStyleId() {
         val styleId = PuppyCasinoPuppyRewardEngine.eligibleStyleIds.first()
         val outcome = PuppyLuckyWheelEngine.outcomeFor(
