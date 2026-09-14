@@ -9,14 +9,17 @@ class PuppySupportReportingContractTest {
     private fun source(path: String): String = File(path).readText()
 
     @Test
-    fun androidClientUsesNeutralRelayAndNeverEmbedsDiscordWebhook() {
+    fun androidClientUsesEncryptedDiscordWebhookOnly() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
         val gradle = source("build.gradle.kts")
 
-        assertTrue(reporting.contains("BuildConfig.PUPPY_SUPPORT_RELAY_URL"))
-        assertTrue(gradle.contains("PUPPY_SUPPORT_RELAY_URL"))
+        assertTrue(reporting.contains("DIRECT_SUPPORT_CIPHER_B64"))
+        assertTrue(reporting.contains("AES/GCM/NoPadding"))
+        assertTrue(reporting.contains("postEncryptedDiscordPayload"))
+        assertFalse(reporting.contains("PUPPY_SUPPORT_RELAY_URL"))
+        assertFalse(gradle.contains("PUPPY_SUPPORT_RELAY_URL"))
         assertFalse(reporting.contains("discord.com/api/webhooks/"))
     }
 
@@ -27,7 +30,7 @@ class PuppySupportReportingContractTest {
         )
 
         assertTrue(reporting.contains("if (!ui.anonymousDiagnosticsEnabled) return"))
-        assertTrue(reporting.contains("if (ui.crashReportsEnabled && isConfigured())"))
+        assertTrue(reporting.contains("if (ui.crashReportsEnabled && isSubmissionConfigured())"))
     }
 
     @Test
@@ -62,43 +65,27 @@ class PuppySupportReportingContractTest {
     }
 
     @Test
-    fun serverRelayBrandsDiscordEmbedsWithPuppyClickerLogoAndName() {
-        val relay = source(
-            "../../services/puppy-support-relay.php"
+    fun encryptedDiscordDeliveryKeepsPuppyClickerBranding() {
+        val reporting = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
 
-        assertTrue(relay.contains("PUPPY_APP_NAME = 'Puppy Clicker'"))
-        assertTrue(relay.contains("assets/logos/puppy_clicker.png"))
-        assertTrue(relay.contains("'avatar_url' => PUPPY_APP_LOGO_URL"))
-        assertTrue(relay.contains("'icon_url' => PUPPY_APP_LOGO_URL"))
-        assertTrue(relay.contains("'thumbnail' => ['url' => PUPPY_APP_LOGO_URL]"))
-        assertTrue(relay.contains("'Puppy Clicker User'"))
-        assertTrue(relay.contains("'Discord Identity'"))
+        assertTrue(reporting.contains("Puppy Clicker Support"))
+        assertTrue(reporting.contains("Puppy Clicker Tier 1 User Report"))
+        assertTrue(reporting.contains("Puppy Clicker Anonymous Diagnostics"))
+        assertTrue(reporting.contains("Puppy Clicker Crash Report"))
+        assertTrue(reporting.contains("assets/logos/puppy_clicker.png"))
+        assertTrue(reporting.contains("allowed_mentions"))
     }
 
     @Test
-    fun serverRelayKeepsDiscordCredentialsInEnvironmentOnly() {
-        val relay = source(
-            "../../services/puppy-support-relay.php"
-        )
-
-        assertTrue(relay.contains("PUPPY_DISCORD_TELEMETRY_WEBHOOK"))
-        assertTrue(relay.contains("PUPPY_DISCORD_CRASH_WEBHOOK"))
-        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
-        assertTrue(relay.contains("PUPPY_SUPPORT_WEBHOOK_KEY_B64"))
-        assertTrue(relay.contains("openssl_decrypt"))
-        assertTrue(relay.contains("aes-256-gcm"))
-        assertTrue(relay.contains("allowed_mentions"))
-        assertFalse(relay.contains("/api/webhooks/154"))
-    }
-
-    @Test
-    fun privacyUiDisclosesSupportDiscordRelay() {
+    fun privacyUiDisclosesEncryptedDiscordSupport() {
         val privacy = source(
             "src/main/java/com/harleytg/puppyclicker/PuppyPrivacyDataUi.kt"
         )
 
         assertTrue(privacy.contains("Discord support diagnostics channel"))
+        assertTrue(privacy.contains("encrypted webhook"))
         assertTrue(privacy.contains("Include account identity in support reports"))
         assertTrue(privacy.contains("Turning this off withdraws consent"))
     }
@@ -129,21 +116,16 @@ class PuppySupportReportingContractTest {
         val ui = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
         )
-        val relay = source(
-            "../../services/puppy-support-relay.php"
-        )
-
         assertTrue(reporting.contains("Intent.ACTION_SEND"))
         assertTrue(reporting.contains("PC-RPT-"))
         assertTrue(reporting.contains("fun submitPreparedReport("))
         assertTrue(reporting.contains(".put(\"kind\", kind)"))
         assertTrue(reporting.contains(".put(\"report_id\", report.reportId)"))
+        assertTrue(reporting.contains("return postEncryptedDiscordPayload(payload)"))
         assertTrue(ui.contains("Submit to Tier 1 Support"))
         assertTrue(ui.contains("Submitted to Tier 1 support"))
         assertTrue(ui.contains("Discord support delivery failed"))
-        assertTrue(relay.contains("'user_report'"))
-        assertTrue(relay.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
-        assertTrue(relay.contains("Puppy Clicker Tier 1 User Report"))
+        assertTrue(ui.contains("encrypted webhook"))
     }
 
     @Test
@@ -162,21 +144,7 @@ class PuppySupportReportingContractTest {
     }
 
     @Test
-    fun tierOneWebhookEncryptionHelperKeepsPlaintextOutOfSource() {
-        val helper = source(
-            "../../services/encrypt-support-webhook.php"
-        )
-
-        assertTrue(helper.contains("random_bytes(32)"))
-        assertTrue(helper.contains("random_bytes(12)"))
-        assertTrue(helper.contains("aes-256-gcm"))
-        assertTrue(helper.contains("PUPPY_DISCORD_USER_REPORT_WEBHOOK_ENC"))
-        assertTrue(helper.contains("PUPPY_SUPPORT_WEBHOOK_KEY_B64"))
-        assertFalse(helper.contains("/api/webhooks/154"))
-    }
-
-    @Test
-    fun directDiscordFallbackUsesEncryptedCredentialMaterial() {
+    fun encryptedDiscordOnlyUsesEncryptedCredentialMaterial() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
@@ -186,7 +154,9 @@ class PuppySupportReportingContractTest {
         assertTrue(reporting.contains("DIRECT_SUPPORT_KEY_MASK_B"))
         assertTrue(reporting.contains("AES/GCM/NoPadding"))
         assertTrue(reporting.contains("GCMParameterSpec"))
-        assertTrue(reporting.contains("postDirectDiscord(report)"))
+        assertTrue(reporting.contains("postEncryptedDiscordPayload(payload)"))
+        assertFalse(reporting.contains("support_relay"))
+        assertFalse(reporting.contains("BuildConfig.PUPPY_SUPPORT_RELAY_URL"))
         assertTrue(reporting.contains("isSubmissionConfigured()"))
         assertFalse(reporting.contains("DLmnhlRVxf_qNfdUgTZkEeHrqhrTDrnoUg6usiPjFSgr3NRGkh5RcB6y-9du1L88bTNA"))
     }
