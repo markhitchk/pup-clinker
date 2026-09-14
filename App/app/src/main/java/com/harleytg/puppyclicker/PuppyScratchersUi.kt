@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -51,11 +52,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-private const val SCRATCH_COLUMNS = 32
-private const val SCRATCH_ROWS = 14
+private const val SCRATCH_COLUMNS = 48
+private const val SCRATCH_ROWS = 20
 private const val SCRATCH_CELL_COUNT = SCRATCH_COLUMNS * SCRATCH_ROWS
 
 @Composable
@@ -310,9 +312,10 @@ private fun ScratcherCard(
 ) {
     var coinPosition by remember(outcome) { mutableStateOf<Offset?>(null) }
     var coinRotation by remember(outcome) { mutableStateOf(0f) }
+    var lastPointerTimeMillis by remember(outcome) { mutableLongStateOf(0L) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
-    val coinDiameter = 54.dp
+    val coinDiameter = 56.dp
     val coinRadiusPx = with(density) { coinDiameter.toPx() / 2f }
 
     Box(
@@ -320,7 +323,7 @@ private fun ScratcherCard(
             .fillMaxWidth()
             .height(176.dp)
             .onSizeChanged { cardSize = it },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopStart
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -349,11 +352,32 @@ private fun ScratcherCard(
                     .pointerInput(enabled, outcome) {
                         if (!enabled || outcome == null) return@pointerInput
 
-                        fun mark(position: Offset, speed: Float) {
+                        fun clampCoin(position: Offset): Offset {
+                            val minX = coinRadiusPx
+                            val minY = coinRadiusPx
+                            val maxX = (size.width.toFloat() - coinRadiusPx).coerceAtLeast(minX)
+                            val maxY = (size.height.toFloat() - coinRadiusPx).coerceAtLeast(minY)
+                            return Offset(
+                                x = position.x.coerceIn(minX, maxX),
+                                y = position.y.coerceIn(minY, maxY)
+                            )
+                        }
+
+                        fun scratchRadius(speedPxPerMs: Float): Float {
                             val cellW = size.width.toFloat() / SCRATCH_COLUMNS.toFloat()
                             val cellH = size.height.toFloat() / SCRATCH_ROWS.toFloat()
-                            val speedBoost = (speed / 38f).coerceIn(0f, 1.6f)
-                            val radius = minOf(cellW, cellH) * (1.65f + speedBoost)
+                            val speedBoost = (speedPxPerMs / 2.4f).coerceIn(0f, 1f)
+                            return maxOf(
+                                minOf(cellW, cellH) * 1.45f,
+                                coinRadiusPx * (0.34f + (speedBoost * 0.10f))
+                            )
+                        }
+
+                        fun markPoint(position: Offset, speedPxPerMs: Float) {
+                            val cellW = size.width.toFloat() / SCRATCH_COLUMNS.toFloat()
+                            val cellH = size.height.toFloat() / SCRATCH_ROWS.toFloat()
+                            val radius = scratchRadius(speedPxPerMs)
+                            val radiusSquared = radius * radius
 
                             for (row in 0 until SCRATCH_ROWS) {
                                 for (col in 0 until SCRATCH_COLUMNS) {
@@ -361,7 +385,7 @@ private fun ScratcherCard(
                                     val centerY = (row + 0.5f) * cellH
                                     val dx = centerX - position.x
                                     val dy = centerY - position.y
-                                    if ((dx * dx) + (dy * dy) <= radius * radius) {
+                                    if ((dx * dx) + (dy * dy) <= radiusSquared) {
                                         val index = row * SCRATCH_COLUMNS + col
                                         if (index !in scratched) scratched.add(index)
                                     }
@@ -369,33 +393,76 @@ private fun ScratcherCard(
                             }
                         }
 
+                        fun markSegment(from: Offset, to: Offset, speedPxPerMs: Float) {
+                            val dx = to.x - from.x
+                            val dy = to.y - from.y
+                            val distance = sqrt((dx * dx) + (dy * dy))
+                            val spacing = maxOf(4f, scratchRadius(speedPxPerMs) * 0.42f)
+                            val steps = ceil(distance / spacing).toInt().coerceAtLeast(1)
+
+                            for (step in 1..steps) {
+                                val t = step.toFloat() / steps.toFloat()
+                                markPoint(
+                                    Offset(
+                                        x = from.x + (dx * t),
+                                        y = from.y + (dy * t)
+                                    ),
+                                    speedPxPerMs
+                                )
+                            }
+                        }
+
                         detectDragGestures(
                             onDragStart = { start ->
-                                coinPosition = start
-                                mark(start, 0f)
+                                val clampedStart = clampCoin(start)
+                                coinPosition = clampedStart
+                                coinRotation = 0f
+                                lastPointerTimeMillis = 0L
+                                markPoint(clampedStart, 0f)
                             },
                             onDragEnd = {
-                                coinRotation *= 0.35f
+                                coinRotation *= 0.28f
+                                lastPointerTimeMillis = 0L
                             },
                             onDragCancel = {
-                                coinRotation *= 0.35f
+                                coinRotation *= 0.28f
+                                lastPointerTimeMillis = 0L
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
-                                val target = change.position
+
+                                val target = clampCoin(change.position)
                                 val current = coinPosition ?: target
-                                val next = Offset(
-                                    x = current.x + ((target.x - current.x) * 0.56f),
-                                    y = current.y + ((target.y - current.y) * 0.56f)
-                                )
-                                val speed = sqrt(
+                                val dtMillis = if (lastPointerTimeMillis == 0L) {
+                                    16L
+                                } else {
+                                    (change.uptimeMillis - lastPointerTimeMillis).coerceIn(1L, 50L)
+                                }
+                                lastPointerTimeMillis = change.uptimeMillis
+
+                                val pointerDistance = sqrt(
                                     (dragAmount.x * dragAmount.x) +
                                         (dragAmount.y * dragAmount.y)
                                 )
+                                val speedPxPerMs = pointerDistance / dtMillis.toFloat()
+                                val follow = (0.68f + (speedPxPerMs / 12f))
+                                    .coerceIn(0.68f, 0.88f)
+                                val next = clampCoin(
+                                    Offset(
+                                        x = current.x + ((target.x - current.x) * follow),
+                                        y = current.y + ((target.y - current.y) * follow)
+                                    )
+                                )
+
                                 coinPosition = next
-                                coinRotation = (coinRotation + (dragAmount.x * 0.14f))
-                                    .coerceIn(-32f, 32f)
-                                mark(next, speed)
+                                coinRotation = (
+                                    (coinRotation * 0.82f) +
+                                        (dragAmount.x * 0.10f) +
+                                        (dragAmount.y * 0.02f)
+                                    ).coerceIn(-28f, 28f)
+
+                                // Scratch from the same filtered coin center that is rendered.
+                                markSegment(current, next, speedPxPerMs)
                             }
                         )
                     }
@@ -465,25 +532,64 @@ private fun PupCoin(
             .size(diameter)
             .graphicsLayer {
                 rotationZ = rotation
-                shadowElevation = 10f
+                shadowElevation = 12f
             },
         shape = CircleShape,
-        color = Color(0xFFFFD65A),
-        border = BorderStroke(3.dp, Color(0xFF8D6514)),
-        shadowElevation = 8.dp
+        color = Color.Transparent,
+        border = BorderStroke(2.dp, Color(0xFF7A5209)),
+        shadowElevation = 10.dp
     ) {
-        Column(
+        Box(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            contentAlignment = Alignment.Center
         ) {
-            Text("🐾", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "PUP",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF4C3500),
-                fontWeight = FontWeight.Black
-            )
+            Canvas(Modifier.fillMaxSize()) {
+                val outerRadius = size.minDimension / 2f
+                drawCircle(
+                    color = Color(0xFFFFE58A),
+                    radius = outerRadius
+                )
+                drawCircle(
+                    color = Color(0xFFFFC83D),
+                    radius = outerRadius * 0.88f
+                )
+                drawCircle(
+                    color = Color(0xFFFFD95F),
+                    radius = outerRadius * 0.72f
+                )
+                drawCircle(
+                    color = Color(0xFF9C6A10),
+                    radius = outerRadius * 0.63f,
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+
+                val highlightInset = outerRadius * 0.22f
+                drawArc(
+                    color = Color.White.copy(alpha = 0.42f),
+                    startAngle = 200f,
+                    sweepAngle = 86f,
+                    useCenter = false,
+                    topLeft = Offset(highlightInset, highlightInset),
+                    size = Size(
+                        width = size.width - (highlightInset * 2f),
+                        height = size.height - (highlightInset * 2f)
+                    ),
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("🐾", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "PUP",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF4C3500),
+                    fontWeight = FontWeight.Black
+                )
+            }
         }
     }
 }
