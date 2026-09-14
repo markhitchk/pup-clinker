@@ -60,16 +60,25 @@ def patch_activity(source: str) -> str:
         "@Composable\nprivate fun V6Play",
         '''@Composable
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val state by vm.state.collectAsStateWithLifecycle()
+    val updateNotice by PuppyNotificationCenter.updateNotice.collectAsStateWithLifecycle()
     var internalDestination by rememberSaveable { mutableStateOf<PuppyInternalDestination?>(null) }
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+    var notificationsOpen by rememberSaveable { mutableStateOf(false) }
     PuppyAttentionLifecycle()
-    val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
+    val uiPreferences by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     if (!uiPreferences.setupComplete) {
         PuppyOnboardingFlow(vm)
         return
     }
     SeasonalWelcomeGate(vm)
+
+    LaunchedEffect(Unit) {
+        PuppyNotificationCenter.loadCachedUpdate(context)
+        PuppyNotificationCenter.refreshUpdateStatus(context)
+    }
 
     BackHandler(enabled = internalDestination != null) {
         internalDestination = null
@@ -80,6 +89,14 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             PuppyFixedAppBar(
+                hasUnreadNotification = updateNotice?.unread == true,
+                onOpenNotifications = {
+                    notificationsOpen = true
+                    PuppyNotificationCenter.markUpdateRead(context)
+                    scope.launch {
+                        PuppyNotificationCenter.refreshUpdateStatus(context, force = true)
+                    }
+                },
                 onOpenSettings = { internalDestination = PuppyInternalDestination.SETTINGS }
             )
         },
@@ -156,10 +173,30 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
 
         }
     }
+
+    if (notificationsOpen) {
+        PuppyNotificationsDialog(
+            update = updateNotice,
+            onDismiss = { notificationsOpen = false },
+            onRefresh = {
+                scope.launch {
+                    PuppyNotificationCenter.refreshUpdateStatus(context, force = true)
+                }
+            },
+            onUpdate = {
+                val url = updateNotice?.apkUrl ?: updateNotice?.releaseUrl
+                if (!url.isNullOrBlank()) openPuppyUpdateUrl(context, url)
+            }
+        )
+    }
 }
 
 @Composable
-private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
+private fun PuppyFixedAppBar(
+    hasUnreadNotification: Boolean,
+    onOpenNotifications: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
     Column(Modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -189,14 +226,12 @@ private fun PuppyFixedAppBar(onOpenSettings: () -> Unit) {
                     fontWeight = FontWeight.Black,
                     maxLines = 1
                 )
-                IconButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .semantics { contentDescription = "Open settings" }
-                ) {
-                    Text("⚙️", fontSize = 22.sp)
-                }
+                PuppyUpdateBellButton(
+                    hasUnread = hasUnreadNotification,
+                    onClick = onOpenNotifications
+                )
+                Spacer(Modifier.width(7.dp))
+                PuppySettingsHeaderButton(onClick = onOpenSettings)
             }
         }
     }
