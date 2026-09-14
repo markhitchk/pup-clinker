@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#081116">
+  <meta name="description" content="Puppy Clicker Web — play, collect puppies, upgrade, and sync progress.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/logos/puppy_clicker.png">
+  <link rel="apple-touch-icon" href="./assets/logos/puppy_clicker.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Puppy Clicker Web</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="./assets/logos/puppy_clicker.png" alt="Puppy Clicker">
+        <div><strong>Puppy Clicker</strong><span>Web</span></div>
+      </div>
+      <button id="syncButton" class="sync-pill" type="button"><span id="syncDot"></span><span id="syncLabel">Local save</span></button>
+    </header>
+
+    <main id="app">
+      <section class="view active" data-view="play">
+        <div class="stats-grid">
+          <article class="stat-card"><span>Treats</span><strong id="treats">0</strong></article>
+          <article class="stat-card"><span>Per tap</span><strong id="clickPower">1</strong></article>
+          <article class="stat-card"><span>Per sec</span><strong id="autoPerSecond">0</strong></article>
+          <article class="stat-card"><span>Level</span><strong id="level">1</strong></article>
+        </div>
+
+        <article class="puppy-stage">
+          <div class="puppy-name-row">
+            <div><span class="eyebrow">Current puppy</span><h1 id="puppyName">Buddy</h1></div>
+            <span id="moodBadge" class="badge">Happy</span>
+          </div>
+          <button id="puppyButton" class="puppy-button" type="button" aria-label="Give puppy a treat">
+            <img id="puppyImage" src="./assets/v1/v1_classic.png" alt="Current puppy">
+            <span class="tap-ring"></span>
+          </button>
+          <button id="treatButton" class="primary-button" type="button">Give Treat <span id="tapGain">+1</span></button>
+          <p class="hint">Tap the puppy or button. Progress saves automatically in this browser.</p>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading"><div><span class="eyebrow">Care</span><h2>Keep your puppy happy</h2></div><strong id="careScore">100%</strong></div>
+          <div class="care-grid">
+            <button data-care="feed">🍖 Feed</button>
+            <button data-care="play">🎾 Play</button>
+            <button data-care="wash">🫧 Wash</button>
+            <button data-care="rest">💤 Rest</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" data-view="puppies">
+        <div class="section-heading"><div><span class="eyebrow">Collection</span><h1>Puppies</h1></div><span id="rosterCount" class="badge">0 unlocked</span></div>
+        <div id="rosterGrid" class="roster-grid"></div>
+      </section>
+
+      <section class="view" data-view="shop">
+        <div class="section-heading"><div><span class="eyebrow">Upgrades</span><h1>Puppy Shop</h1></div><span class="badge" id="shopTreats">0 Treats</span></div>
+        <div id="shopGrid" class="shop-grid"></div>
+      </section>
+
+      <section class="view" data-view="casino">
+        <div class="section-heading"><div><span class="eyebrow">Simulated only</span><h1>Puppy Casino</h1></div><span class="badge">No real money</span></div>
+        <div class="notice">Casino games use Treats only. Treats have no cash value and cannot be cashed out.</div>
+        <div class="casino-grid">
+          <article class="game-card">
+            <div class="game-icon">🎟️</div><h2>Pup Scratchers</h2><p>Scratch-style instant Treat game.</p>
+            <label>Wager <select id="scratchWager"><option>25</option><option selected>50</option><option>100</option><option>250</option></select></label>
+            <button id="scratchButton" class="primary-button">Scratch card</button><strong id="scratchResult">Ready</strong>
+          </article>
+          <article class="game-card">
+            <div class="game-icon">🎰</div><h2>Pup Slots</h2><p>Three-reel Treat slots.</p>
+            <div id="slotReels" class="reels">🐾 🦴 🐶</div>
+            <button id="slotsButton" class="primary-button">Spin · 25</button><strong id="slotsResult">Ready</strong>
+          </article>
+          <article class="game-card">
+            <div class="game-icon">🎡</div><h2>Pup Roulette</h2><p>Pick red, black, or green.</p>
+            <div class="choice-row"><button data-roulette="red">Red</button><button data-roulette="black">Black</button><button data-roulette="green">Green</button></div>
+            <strong id="rouletteResult">25 Treat wager</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" data-view="settings">
+        <div class="section-heading"><div><span class="eyebrow">Web + Android</span><h1>Save & Sync</h1></div><span id="revisionBadge" class="badge">Revision 0</span></div>
+        <article class="panel">
+          <h2>Local web save</h2>
+          <p>Uses a versioned Puppy Clicker cloud-save schema so Android and Web can exchange the same game progress.</p>
+          <div class="button-row"><button id="exportButton">Export JSON</button><label class="file-button">Import JSON<input id="importInput" type="file" accept="application/json"></label></div>
+        </article>
+        <article class="panel">
+          <h2>Cross-save API</h2>
+          <p>GitHub Pages hosts the game. A separate HTTPS API stores account saves. Enter that endpoint when the backend is ready.</p>
+          <label class="field">Save API endpoint<input id="cloudEndpoint" type="url" placeholder="https://save.example.com/v1/save"></label>
+          <div class="button-row"><button id="saveEndpointButton">Save endpoint</button><button id="cloudSyncButton" class="primary-button">Sync now</button></div>
+          <p id="cloudMessage" class="hint">Cloud backend not configured.</p>
+        </article>
+        <article class="panel">
+          <h2>Install</h2>
+          <p>Puppy Clicker Web is a PWA and works with GitHub Pages sub-path hosting.</p>
+          <button id="installButton" hidden>Install Puppy Clicker</button>
+        </article>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="active" data-nav="play"><span>🐾</span>Play</button>
+      <button data-nav="puppies"><span>🐶</span>Puppies</button>
+      <button data-nav="shop"><span>🛍️</span>Shop</button>
+      <button data-nav="casino"><span>🎰</span>Casino</button>
+      <button data-nav="settings"><span>⚙️</span>Settings</button>
+    </nav>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
