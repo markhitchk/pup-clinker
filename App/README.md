@@ -31,3 +31,22 @@ The canonical cross-platform artwork lives at [`../assets/`](../assets/). Existi
 ## Historical scripts
 
 Repository-wide workflow files remain under `../.github/workflows/`. Historical one-off patch scripts under `../.github/scripts/` were preserved unchanged. They use paths relative to the old Android project root, so run them from `App/` only after reviewing their historical version assumptions. They are not part of the normal build.
+
+
+## GitHub Releases app updates
+
+Puppy Clicker uses the repository's latest published GitHub Release as its app-update source. No project-owned update API is required.
+
+For the Android client to compare releases safely, include the APK as a Release asset and include the Android build number in the Release notes using one of these forms:
+
+```text
+Build: 27
+```
+
+or
+
+```text
+Version code: 27
+```
+
+The value must match `versionCode` in `app/build.gradle.kts`. The human-readable GitHub tag (for example `v1.8.0`) is used as the displayed version name; update eligibility is determined by the numeric build/version code. Drafts and prereleases are ignored by the latest-release update check.
