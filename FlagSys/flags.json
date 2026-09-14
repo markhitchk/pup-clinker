@@ -80,7 +80,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Pup Scratchers",
-      "description": "Touch-driven scratch cards with committed prizes."
+      "description": "Six committed-prize scratch cards with weighted Pup Coin physics."
     },
     "casino_lucky_wheel": {
       "visible": true,
