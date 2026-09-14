@@ -15,22 +15,25 @@ class PuppySupportReportingContractTest {
         )
         val gradle = source("build.gradle.kts")
 
-        assertTrue(reporting.contains("DIRECT_SUPPORT_CIPHER_B64"))
+        assertTrue(reporting.contains("USER_REPORT_WEBHOOK_CIPHER_B64"))
         assertTrue(reporting.contains("AES/GCM/NoPadding"))
-        assertTrue(reporting.contains("postEncryptedDiscordPayload"))
+        assertTrue(reporting.contains("postUserReportToDiscord"))
         assertFalse(reporting.contains("PUPPY_SUPPORT_RELAY_URL"))
         assertFalse(gradle.contains("PUPPY_SUPPORT_RELAY_URL"))
         assertFalse(reporting.contains("discord.com/api/webhooks/"))
     }
 
     @Test
-    fun telemetryAndCrashUploadsRemainSeparatelyConsentGated() {
+    fun supportWebhookIsNotUsedForTelemetryOrCrashReporting() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
 
         assertTrue(reporting.contains("if (!ui.anonymousDiagnosticsEnabled) return"))
-        assertTrue(reporting.contains("if (ui.crashReportsEnabled && isSubmissionConfigured())"))
+        assertTrue(reporting.contains("Local anonymous diagnostic:"))
+        assertTrue(reporting.contains("credential is never used for telemetry or crash reporting"))
+        assertFalse(reporting.contains("installCrashHandler"))
+        assertFalse(reporting.contains("Puppy Clicker Crash Handler"))
     }
 
     @Test
@@ -72,10 +75,10 @@ class PuppySupportReportingContractTest {
 
         assertTrue(reporting.contains("Puppy Clicker Support"))
         assertTrue(reporting.contains("Puppy Clicker Tier 1 User Report"))
-        assertTrue(reporting.contains("Puppy Clicker Anonymous Diagnostics"))
-        assertTrue(reporting.contains("Puppy Clicker Crash Report"))
+        assertTrue(reporting.contains("App Reporting & Support"))
         assertTrue(reporting.contains("assets/logos/puppy_clicker.png"))
         assertTrue(reporting.contains("allowed_mentions"))
+        assertFalse(reporting.contains("Puppy Clicker Crash Handler"))
     }
 
     @Test
@@ -84,10 +87,9 @@ class PuppySupportReportingContractTest {
             "src/main/java/com/harleytg/puppyclicker/PuppyPrivacyDataUi.kt"
         )
 
-        assertTrue(privacy.contains("Discord support diagnostics channel"))
-        assertTrue(privacy.contains("encrypted webhook"))
+        assertTrue(privacy.contains("app reporting/support Discord webhook is not used for telemetry"))
+        assertTrue(privacy.contains("app reporting/support Discord webhook is not used for crash reports"))
         assertTrue(privacy.contains("Include account identity in support reports"))
-        assertTrue(privacy.contains("Turning this off withdraws consent"))
     }
     @Test
     fun tierOneReportsReuseExistingSupportServiceAndPrivacyConsent() {
@@ -121,7 +123,7 @@ class PuppySupportReportingContractTest {
         assertTrue(reporting.contains("fun submitPreparedReport("))
         assertTrue(reporting.contains(".put(\"kind\", kind)"))
         assertTrue(reporting.contains(".put(\"report_id\", report.reportId)"))
-        assertTrue(reporting.contains("return postEncryptedDiscordPayload(payload)"))
+        assertTrue(reporting.contains("return postUserReportToDiscord(report)"))
         assertTrue(ui.contains("Submit to Tier 1 Support"))
         assertTrue(ui.contains("Submitted to Tier 1 support"))
         assertTrue(ui.contains("Discord support delivery failed"))
@@ -149,12 +151,14 @@ class PuppySupportReportingContractTest {
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"
         )
 
-        assertTrue(reporting.contains("DIRECT_SUPPORT_CIPHER_B64"))
-        assertTrue(reporting.contains("DIRECT_SUPPORT_KEY_MASK_A"))
-        assertTrue(reporting.contains("DIRECT_SUPPORT_KEY_MASK_B"))
+        assertTrue(reporting.contains("USER_REPORT_WEBHOOK_CIPHER_B64"))
+        assertTrue(reporting.contains("USER_REPORT_WEBHOOK_KEY_MASK_A"))
+        assertTrue(reporting.contains("USER_REPORT_WEBHOOK_KEY_MASK_B"))
         assertTrue(reporting.contains("AES/GCM/NoPadding"))
         assertTrue(reporting.contains("GCMParameterSpec"))
-        assertTrue(reporting.contains("postEncryptedDiscordPayload(payload)"))
+        assertTrue(reporting.contains("postUserReportToDiscord(report)"))
+        assertTrue(reporting.contains("decryptUserReportWebhook()"))
+        assertTrue(reporting.contains("USER_REPORT_WEBHOOK_AAD"))
         assertFalse(reporting.contains("support_relay"))
         assertFalse(reporting.contains("BuildConfig.PUPPY_SUPPORT_RELAY_URL"))
         assertTrue(reporting.contains("isSubmissionConfigured()"))
