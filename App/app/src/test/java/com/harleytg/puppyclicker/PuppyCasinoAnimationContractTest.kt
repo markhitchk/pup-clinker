@@ -70,6 +70,7 @@ class PuppyCasinoAnimationContractTest {
     fun newGamesUseRequiredPhysicalInteractions() {
         val plinko = source("PuppyPlinkoUi.kt")
         val scratchers = source("PuppyScratchersUi.kt")
+        val streamedCoin = source("StreamedPupCoin.kt")
         val luckyWheel = source("PuppyLuckyWheelUi.kt")
 
         assertTrue(plinko.contains("PlinkoBoard("))
@@ -87,6 +88,9 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(scratchers.contains("change.uptimeMillis"))
         assertTrue(scratchers.contains("coinRadiusPx *"))
         assertTrue(scratchers.contains("SCRATCH_COLUMNS = 48"))
+        assertTrue(scratchers.contains("streamedPupCoinPainter()"))
+        assertTrue(streamedCoin.contains("assets/pup_coin.png"))
+        assertTrue(streamedCoin.contains("PupCoinAssetStream"))
 
         assertTrue(luckyWheel.contains("LuckyWheelBoard("))
         assertTrue(luckyWheel.contains("rotation.animateTo("))
