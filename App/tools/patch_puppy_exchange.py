@@ -250,13 +250,14 @@ private fun SelectedPuppyPanel(
     source = replace_function(
         source,
         "@Composable\nprivate fun PuppyRosterCard(",
-        "@Composable\nprivate fun UsePuppyConfirmation(",
+        "@Composable\nprivate fun PuppyPreviewDialog(",
         '''@Composable
 private fun PuppyRosterCard(
     card: RosterCardModel,
     inspected: Boolean,
     retryToken: Int,
     onInspect: () -> Unit,
+    onPreview: () -> Unit,
     onToggleFavorite: () -> Unit,
     onRetryArtwork: () -> Unit
 ) {
@@ -280,13 +281,19 @@ private fun PuppyRosterCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(Modifier.height(if (compact) 2.dp else 4.dp))
-                StreamedPuppyPortrait(
-                    styleId = card.asset.style.id,
-                    size = if (compact) 58.dp else 68.dp,
-                    unlocked = card.unlocked,
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    retryToken = retryToken
-                )
+                Box(
+                    modifier = Modifier
+                        .clickable(onClick = onPreview)
+                        .semantics { contentDescription = "Preview ${card.asset.style.name}" }
+                ) {
+                    StreamedPuppyPortrait(
+                        styleId = card.asset.style.id,
+                        size = if (compact) 58.dp else 68.dp,
+                        unlocked = card.unlocked,
+                        background = MaterialTheme.colorScheme.surfaceVariant,
+                        retryToken = retryToken
+                    )
+                }
                 Spacer(Modifier.height(if (compact) 3.dp else 5.dp))
                 Text(
                     card.asset.style.name,
