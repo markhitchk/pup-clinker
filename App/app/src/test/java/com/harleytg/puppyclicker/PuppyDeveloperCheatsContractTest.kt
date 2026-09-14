@@ -10,35 +10,36 @@ class PuppyDeveloperCheatsContractTest {
         File("src/main/java/com/harleytg/puppyclicker/" + name).readText()
 
     @Test
-    fun casinoXrayIsRemovedFromShippedUi() {
-        val cheats = appSource("PuppyDeveloperCheats.kt")
+    fun removedCasinoInspectorHasNoRuntimeHooks() {
         val settings = appSource("PuppySettingsUi.kt")
         val activity = appSource("PuppyClickerV6Activity.kt")
+        val viewModel = appSource("PuppyClickerV6ViewModel.kt")
 
-        assertFalse(cheats.contains("Casino X-Ray"))
-        assertFalse(cheats.contains("X-RAY"))
-        assertFalse(cheats.contains("developerCasinoXrayLines"))
-        assertFalse(cheats.contains("PuppyDeveloperCheatOverlay"))
-        assertFalse(cheats.contains("PuppyDeveloperCheatsSettings"))
-        assertFalse(settings.contains("PuppyDeveloperCheatsSettings("))
-        assertFalse(activity.contains("PuppyDeveloperCheatOverlay("))
+        assertFalse(settings.contains("PuppyDeveloperCheatsSettings"))
+        assertFalse(activity.contains("PuppyDeveloperCheatOverlay"))
+        assertFalse(viewModel.contains("PuppyDeveloperCheatsSession"))
+        assertFalse(viewModel.contains("developerAddTreats"))
+        assertFalse(viewModel.contains("developerAddTicket"))
+        assertFalse(viewModel.contains("developerFillCare"))
+        assertFalse(viewModel.contains("developerAddSkillPoints"))
+        assertFalse(viewModel.contains("developerUnlockPuppy"))
+        assertFalse(viewModel.contains("clearDeveloperCheatOverrides"))
     }
 
     @Test
-    fun removedInspectorCannotActivateNewDeveloperCasinoRounds() {
-        val cheats = appSource("PuppyDeveloperCheats.kt")
+    fun casinoTransactionsAlwaysUseNormalRoundEconomy() {
+        val viewModel = appSource("PuppyClickerV6ViewModel.kt")
+        val transactions = appSource("PuppyCasinoTransactions.kt")
 
-        assertTrue(cheats.contains("fun isActive(): Boolean = false"))
-        assertFalse(cheats.contains("fun activate()"))
-        assertFalse(cheats.contains("fun disable()"))
-    }
+        assertTrue(viewModel.contains("val roundId = PuppyCasinoRoundIds.newId()"))
+        assertFalse(viewModel.contains("chargeWager = false"))
+        assertFalse(viewModel.contains("creditPayout = false"))
+        assertFalse(viewModel.contains("refundWager = false"))
+        assertFalse(viewModel.contains("chargeAdditionalWager = false"))
 
-    @Test
-    fun legacyDeveloperRoundPrefixRemainsRecognizedForSafeRecovery() {
-        val cheats = appSource("PuppyDeveloperCheats.kt")
-
-        assertTrue(cheats.contains("DEV_ROUND_PREFIX"))
-        assertTrue(cheats.contains("devtest_"))
-        assertTrue(cheats.contains("isTestRoundId"))
+        assertTrue(transactions.contains("chargeWager: Boolean = true"))
+        assertTrue(transactions.contains("creditPayout: Boolean = true"))
+        assertTrue(transactions.contains("refundWager: Boolean = true"))
+        assertTrue(transactions.contains("chargeAdditionalWager: Boolean = true"))
     }
 }
