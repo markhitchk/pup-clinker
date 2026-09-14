@@ -2,6 +2,7 @@ package com.harleytg.puppyclicker
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -521,6 +523,8 @@ private fun PupCoin(
     diameter: androidx.compose.ui.unit.Dp,
     rotation: Float
 ) {
+    val streamedPainter = streamedPupCoinPainter()
+
     Surface(
         modifier = Modifier
             .offset {
@@ -536,59 +540,73 @@ private fun PupCoin(
             },
         shape = CircleShape,
         color = Color.Transparent,
-        border = BorderStroke(2.dp, Color(0xFF7A5209)),
+        border = if (streamedPainter == null) {
+            BorderStroke(2.dp, Color(0xFF7A5209))
+        } else {
+            null
+        },
         shadowElevation = 10.dp
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val outerRadius = size.minDimension / 2f
-                drawCircle(
-                    color = Color(0xFFFFE58A),
-                    radius = outerRadius
-                )
-                drawCircle(
-                    color = Color(0xFFFFC83D),
-                    radius = outerRadius * 0.88f
-                )
-                drawCircle(
-                    color = Color(0xFFFFD95F),
-                    radius = outerRadius * 0.72f
-                )
-                drawCircle(
-                    color = Color(0xFF9C6A10),
-                    radius = outerRadius * 0.63f,
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
-
-                val highlightInset = outerRadius * 0.22f
-                drawArc(
-                    color = Color.White.copy(alpha = 0.42f),
-                    startAngle = 200f,
-                    sweepAngle = 86f,
-                    useCenter = false,
-                    topLeft = Offset(highlightInset, highlightInset),
-                    size = Size(
-                        width = size.width - (highlightInset * 2f),
-                        height = size.height - (highlightInset * 2f)
-                    ),
-                    style = Stroke(width = 2.dp.toPx())
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+        if (streamedPainter != null) {
+            Image(
+                painter = streamedPainter,
+                contentDescription = "Pup Coin",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            // Keep the scratcher usable before the streamed asset is available.
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Text("🐾", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "PUP",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF4C3500),
-                    fontWeight = FontWeight.Black
-                )
+                Canvas(Modifier.fillMaxSize()) {
+                    val outerRadius = size.minDimension / 2f
+                    drawCircle(
+                        color = Color(0xFFFFE58A),
+                        radius = outerRadius
+                    )
+                    drawCircle(
+                        color = Color(0xFFFFC83D),
+                        radius = outerRadius * 0.88f
+                    )
+                    drawCircle(
+                        color = Color(0xFFFFD95F),
+                        radius = outerRadius * 0.72f
+                    )
+                    drawCircle(
+                        color = Color(0xFF9C6A10),
+                        radius = outerRadius * 0.63f,
+                        style = Stroke(width = 1.5.dp.toPx())
+                    )
+
+                    val highlightInset = outerRadius * 0.22f
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.42f),
+                        startAngle = 200f,
+                        sweepAngle = 86f,
+                        useCenter = false,
+                        topLeft = Offset(highlightInset, highlightInset),
+                        size = Size(
+                            width = size.width - (highlightInset * 2f),
+                            height = size.height - (highlightInset * 2f)
+                        ),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("🐾", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "PUP",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF4C3500),
+                        fontWeight = FontWeight.Black
+                    )
+                }
             }
         }
     }
