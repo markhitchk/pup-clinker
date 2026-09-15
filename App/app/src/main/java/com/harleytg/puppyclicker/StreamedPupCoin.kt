@@ -64,8 +64,12 @@ internal fun streamedPupCoinPainter(): Painter? {
         }
     }
 
-    val loaded = bitmap ?: return null
-    return remember(loaded) { BitmapPainter(loaded.asImageBitmap()) }
+    val loaded = bitmap
+    return if (loaded != null) {
+        remember(loaded) { BitmapPainter(loaded.asImageBitmap()) }
+    } else {
+        streamedImageFallbackPainter()
+    }
 }
 
 internal object PupCoinAssetStream {

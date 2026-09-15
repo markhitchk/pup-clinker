@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -39,6 +38,7 @@ internal enum class RepoLogoAsset(
 }
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 internal fun streamedRepoLogoPainter(
     asset: RepoLogoAsset,
     @DrawableRes fallbackDrawable: Int
@@ -76,7 +76,7 @@ internal fun streamedRepoLogoPainter(
     return if (loaded != null) {
         remember(loaded) { BitmapPainter(loaded.asImageBitmap()) }
     } else {
-        painterResource(fallbackDrawable)
+        streamedImageFallbackPainter()
     }
 }
 

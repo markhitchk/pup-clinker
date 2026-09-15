@@ -87,7 +87,12 @@ internal fun StreamedPuppyPortrait(
                 contentScale = ContentScale.Fit
             )
         } else {
-            Text("🐶", fontSize = (size.value * 0.42f).sp)
+            Image(
+                painter = streamedImageFallbackPainter(),
+                contentDescription = "${style.name} image unavailable",
+                modifier = Modifier.size(size * 0.88f),
+                contentScale = ContentScale.Fit
+            )
         }
 
         if (!unlocked) {
