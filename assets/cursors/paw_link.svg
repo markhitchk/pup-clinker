@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<defs>
+  <linearGradient id="fur" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#FFD79B"/>
+    <stop offset="0.55" stop-color="#E9A85B"/>
+    <stop offset="1" stop-color="#C97A2B"/>
+  </linearGradient>
+  <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#4FDDFF"/>
+    <stop offset="1" stop-color="#00B8F0"/>
+  </linearGradient>
+  <filter id="shadow" x="-35%" y="-35%" width="170%" height="170%">
+    <feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#000000" flood-opacity=".52"/>
+  </filter>
+</defs><g filter="url(#shadow)" >
+    <path d="M17 11 C14 9 10 10 8 13 C6 16 7 21 11 23 C13 24 15 24 17 23 Z"
+      fill="url(#fur)" stroke="#0B0E11" stroke-width="3.4" stroke-linejoin="round"/>
+    <ellipse cx="24" cy="18" rx="6.3" ry="8.2" fill="url(#fur)" stroke="#0B0E11" stroke-width="3.4"/>
+    <ellipse cx="36" cy="16.5" rx="6.3" ry="8.2" fill="url(#fur)" stroke="#0B0E11" stroke-width="3.4"/>
+    <ellipse cx="47" cy="21" rx="6.1" ry="7.9" fill="url(#fur)" stroke="#0B0E11" stroke-width="3.4"/>
+    <path d="M17 47 C16 37 23 29 32 28 C41 28 48 36 47 45 C46 53 41 57 33 57 C25 57 18 54 17 47 Z"
+      fill="url(#fur)" stroke="#0B0E11" stroke-width="3.8" stroke-linejoin="round"/>
+    <ellipse cx="24" cy="18" rx="3.7" ry="4.8" fill="url(#pad)" stroke="#F8FCFF" stroke-width="1.2"/>
+    <ellipse cx="36" cy="16.5" rx="3.7" ry="4.8" fill="url(#pad)" stroke="#F8FCFF" stroke-width="1.2"/>
+    <ellipse cx="47" cy="21" rx="3.6" ry="4.6" fill="url(#pad)" stroke="#F8FCFF" stroke-width="1.2"/>
+    <path d="M22 46 C22 38 27 33 33 33 C39 33 44 39 43 46 C42 51 39 53 33 53 C27 53 23 51 22 46 Z"
+      fill="url(#pad)" stroke="#F8FCFF" stroke-width="1.35"/>
+    
+    <g transform="translate(31 36) rotate(-38)">
+      <rect x="0" y="0" width="16" height="8" rx="4" fill="none" stroke="#071014" stroke-width="3.2"/>
+      <rect x="11" y="0" width="16" height="8" rx="4" fill="none" stroke="#071014" stroke-width="3.2"/>
+      <path d="M8 4 H19" stroke="#F8FCFF" stroke-width="2.2" stroke-linecap="round"/>
+    </g>
+  
+  </g></svg>
