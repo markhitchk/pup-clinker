@@ -19,7 +19,7 @@ class PuppyNavigationModelTest {
     @Test
     fun secondaryToolsRemainInternalDestinations() {
         assertEquals(
-            listOf("Settings", "Prestige", "Puppy Exchange", "Puppy Casino"),
+            listOf("Settings", "Prestige", "Puppy Exchange", "Puppy Casino", "Puppy Gacha"),
             PuppyInternalDestination.entries.map { it.label }
         )
     }
