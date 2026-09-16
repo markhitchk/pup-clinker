@@ -24,6 +24,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val puppyCodeV2Patch = rootProject.file("tools/patch_puppy_codes_v2.py")
     val mainUiRevampPatch = rootProject.file("tools/patch_main_ui_revamp.py")
     val compactViewportPatch = rootProject.file("tools/patch_compact_viewport.py")
+    val puppyGachaPatch = rootProject.file("tools/patch_puppy_gacha.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -39,7 +40,8 @@ tasks.named("generateProtectedPuppySources").configure {
         compactRosterSettingsPatch,
         puppyCodeV2Patch,
         mainUiRevampPatch,
-        compactViewportPatch
+        compactViewportPatch,
+        puppyGachaPatch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -100,6 +102,10 @@ tasks.named("generateProtectedPuppySources").configure {
         // Last-pass viewport fitment: remove extra app padding without removing system-bar safety.
         project.exec {
             commandLine("python3", compactViewportPatch.absolutePath, generatedSourceRoot)
+        }
+        // Puppy Gacha runs last so generated navigation/economy hooks survive all legacy patches.
+        project.exec {
+            commandLine("python3", puppyGachaPatch.absolutePath, generatedSourceRoot)
         }
     }
 }
