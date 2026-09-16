@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -36,22 +37,25 @@ internal data class PuppyGachaPullResult(
     val puppyName: String? = null,
     val puppyEmoji: String = "🐶",
     val costTreats: Long = PuppyGachaEngine.COST_TREATS,
+    val isNewUnlock: Boolean = true,
     val failure: PuppyGachaFailure? = null
 )
 
 internal object PuppyGachaEngine {
     const val COST_TREATS = 2_500L
 
-    fun eligiblePuppies(
-        styles: List<PuppyStyle>,
-        unlocked: Set<String>
-    ): List<PuppyStyle> = styles
+    fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
         .asSequence()
         .distinctBy { it.id }
         .filter { !it.redeemOnly }
-        .filter { it.id !in unlocked }
         .sortedBy { it.id }
         .toList()
+
+    fun eligiblePuppies(
+        styles: List<PuppyStyle>,
+        unlocked: Set<String>
+    ): List<PuppyStyle> = allEligiblePuppies(styles)
+        .filter { it.id !in unlocked }
 
     internal fun select(candidates: List<PuppyStyle>, roll: Int): PuppyStyle? {
         if (candidates.isEmpty()) return null
@@ -67,9 +71,13 @@ internal fun PuppyGachaScreen(
 ) {
     val groups by DynamicPuppyRoster.groups.collectAsState()
     val allStyles = remember(groups) { groups.flatMap { it.puppies } }
-    val remaining = remember(allStyles, state.unlockedPuppies) {
-        PuppyGachaEngine.eligiblePuppies(allStyles, state.unlockedPuppies)
+    val eligible = remember(allStyles) {
+        PuppyGachaEngine.allEligiblePuppies(allStyles)
     }
+    val remaining = remember(eligible, state.unlockedPuppies) {
+        eligible.filter { it.id !in state.unlockedPuppies }
+    }
+    val collectionComplete = remaining.isEmpty() && eligible.isNotEmpty()
 
     var stage by rememberSaveable { mutableIntStateOf(0) }
     var result by remember { mutableStateOf<PuppyGachaPullResult?>(null) }
@@ -112,8 +120,9 @@ internal fun PuppyGachaScreen(
     Column(
         Modifier
             .fillMaxSize()
+            .clipToBounds()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 6.dp, end = 16.dp, bottom = 20.dp)
+            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 20.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -218,11 +227,40 @@ internal fun PuppyGachaScreen(
                         }
                     }
 
-                    remaining.isEmpty() -> {
+                    collectionComplete -> {
                         Text("🏆 Collection complete", fontWeight = FontWeight.Black, fontSize = 20.sp)
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "You already own every puppy currently eligible for Puppy Gacha. New eligible roster puppies will appear here automatically.",
+                            "You own every currently eligible puppy. Showcase capsules stay available so you can still use the machine and reveal popup.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                val pulled = vm.pullPuppyGacha(showcaseWhenComplete = true)
+                                result = pulled
+                                if (pulled.success) {
+                                    stage = 1
+                                    message = null
+                                } else {
+                                    stage = 0
+                                    message = "No eligible puppies are available right now."
+                                }
+                            },
+                            enabled = eligible.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            Text("Open Showcase Capsule · FREE")
+                        }
+                    }
+
+                    remaining.isEmpty() -> {
+                        Text("No Gacha puppies available", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "The live roster currently has no puppies eligible for Puppy Gacha.",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -301,7 +339,7 @@ internal fun PuppyGachaScreen(
                 Text("Capsule rules", fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "• Uses earned Treats only\n• Every pull is a new eligible puppy\n• Redeem-only and special locked puppies are excluded\n• No real-money purchase or cash-out",
+                    "• Paid capsules use earned Treats only\n• Paid pulls always unlock a new eligible puppy\n• Full collections get free showcase capsules\n• Redeem-only and special locked puppies are excluded\n• No real-money purchase or cash-out",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -342,7 +380,7 @@ private fun PuppyGachaRevealDialog(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "New puppy unlocked",
+                    if (pulled.isNewUnlock) "New puppy unlocked" else "Collection showcase",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -383,7 +421,8 @@ private fun PuppyGachaRevealDialog(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    "Added to your Puppy Roster.",
+                    if (pulled.isNewUnlock) "Added to your Puppy Roster."
+                    else "Already in your Puppy Roster · no Treats spent.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
