@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 internal enum class PuppyGachaFailure {
     NOT_ENOUGH_TREATS,
@@ -84,6 +85,29 @@ internal fun PuppyGachaScreen(
         animationSpec = spring(dampingRatio = 0.42f, stiffness = 380f),
         label = "gacha-capsule-rotation"
     )
+
+    if (stage == 2 && result?.success == true) {
+        val pulled = result!!
+        PuppyGachaRevealDialog(
+            pulled = pulled,
+            onUsePuppy = {
+                pulled.puppyId?.let(vm::setPuppyStyle)
+                stage = 0
+                result = null
+                message = null
+            },
+            onAnother = {
+                stage = 0
+                result = null
+                message = null
+            },
+            onClose = {
+                stage = 0
+                result = null
+                message = null
+            }
+        )
+    }
 
     Column(
         Modifier
@@ -171,52 +195,14 @@ internal fun PuppyGachaScreen(
             ) {
                 when {
                     stage == 2 && result?.success == true -> {
-                        val pulled = result!!
-                        Text("✨ Capsule opened!", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(12.dp))
-                        pulled.puppyId?.let { id ->
-                            StreamedPuppyPortrait(
-                                styleId = id,
-                                size = 170.dp,
-                                accessory = "None",
-                                unlocked = true,
-                                background = MaterialTheme.colorScheme.surface
-                            )
-                        }
-                        Spacer(Modifier.height(10.dp))
+                        Text("✨ Puppy revealed!", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            pulled.puppyEmoji + " " + (pulled.puppyName ?: "New Puppy"),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            "Added to your Puppy Roster.",
+                            "Your capsule opened in the puppy reveal popup.",
+                            textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.height(14.dp))
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { pulled.puppyId?.let(vm::setPuppyStyle) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Use Puppy")
-                            }
-                            Button(
-                                onClick = {
-                                    stage = 0
-                                    result = null
-                                    message = null
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Another")
-                            }
-                        }
                     }
 
                     stage == 1 && result?.success == true -> {
@@ -319,6 +305,114 @@ internal fun PuppyGachaScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PuppyGachaRevealDialog(
+    pulled: PuppyGachaPullResult,
+    onUsePuppy: () -> Unit,
+    onAnother: () -> Unit,
+    onClose: () -> Unit
+) {
+    Dialog(onDismissRequest = onClose) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.42f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "✨ CAPSULE OPENED! ✨",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "New puppy unlocked",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        pulled.puppyId?.let { id ->
+                            StreamedPuppyPortrait(
+                                styleId = id,
+                                size = 220.dp,
+                                accessory = "None",
+                                unlocked = true,
+                                background = MaterialTheme.colorScheme.surface
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    pulled.puppyEmoji + " " + (pulled.puppyName ?: "New Puppy"),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "Added to your Puppy Roster.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(18.dp))
+                Button(
+                    onClick = onUsePuppy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Use Puppy")
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onAnother,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Back to Gacha")
+                }
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onClose) {
+                    Text("Close")
+                }
             }
         }
     }
