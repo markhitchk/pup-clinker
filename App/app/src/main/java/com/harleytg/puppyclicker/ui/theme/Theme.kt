@@ -109,8 +109,16 @@ fun PuppyClickerTheme(content: @Composable () -> Unit) {
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography = Typography(),
-            content = content
-        )
+            typography = Typography()
+        ) {
+            val puppyPointerIcon = rememberPuppyPointerIcon()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerHoverIcon(puppyPointerIcon)
+            ) {
+                content()
+            }
+        }
     }
 }
