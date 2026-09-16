@@ -36,6 +36,16 @@ class PuppyGachaEngineTest {
         assertEquals(listOf(sunny.id), eligible.map { it.id })
     }
 
+
+    @Test
+    fun allEligiblePoolKeepsOwnedPuppiesForShowcaseButExcludesRedeemOnly() {
+        val eligible = PuppyGachaEngine.allEligiblePuppies(
+            styles = listOf(buddy, sunny, special, sunny)
+        )
+
+        assertEquals(listOf(buddy.id, sunny.id), eligible.map { it.id })
+    }
+
     @Test
     fun selectionAlwaysComesFromEligiblePool() {
         val candidates = listOf(buddy, sunny)
