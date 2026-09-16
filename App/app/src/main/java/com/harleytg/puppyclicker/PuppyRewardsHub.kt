@@ -13,12 +13,14 @@ internal fun PuppyRewardsHub(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
     onOpenPrestige: () -> Unit,
-    onOpenCasino: () -> Unit
+    onOpenCasino: () -> Unit,
+    onOpenGacha: () -> Unit
 ) {
     PuppyRevampedRewardsScreen(
         state = state,
         vm = vm,
         onOpenPrestige = onOpenPrestige,
-        onOpenCasino = onOpenCasino
+        onOpenCasino = onOpenCasino,
+        onOpenGacha = onOpenGacha
     )
 }
