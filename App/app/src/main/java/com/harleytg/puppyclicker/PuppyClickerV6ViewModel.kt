@@ -1310,6 +1310,48 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         saveState()
     }
 
+    @Synchronized
+    internal fun pullPuppyGacha(): PuppyGachaPullResult {
+        val current = _state.value
+        val candidates = PuppyGachaEngine.eligiblePuppies(
+            styles = DynamicPuppyRoster.groups.value.flatMap { it.puppies },
+            unlocked = current.unlockedPuppies
+        )
+        if (candidates.isEmpty()) {
+            return PuppyGachaPullResult(
+                success = false,
+                failure = PuppyGachaFailure.COLLECTION_COMPLETE
+            )
+        }
+        if (current.treats < PuppyGachaEngine.COST_TREATS) {
+            return PuppyGachaPullResult(
+                success = false,
+                failure = PuppyGachaFailure.NOT_ENOUGH_TREATS
+            )
+        }
+
+        val selected = PuppyGachaEngine.select(
+            candidates = candidates,
+            roll = Random.nextInt(candidates.size)
+        ) ?: return PuppyGachaPullResult(
+            success = false,
+            failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
+        )
+
+        _state.value = current.copy(
+            treats = current.treats - PuppyGachaEngine.COST_TREATS,
+            unlockedPuppies = current.unlockedPuppies + selected.id
+        )
+        saveState()
+
+        return PuppyGachaPullResult(
+            success = true,
+            puppyId = selected.id,
+            puppyName = selected.name,
+            puppyEmoji = selected.emoji
+        )
+    }
+
     fun setPuppyStyle(id: String) {
         val s = _state.value
         if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return
