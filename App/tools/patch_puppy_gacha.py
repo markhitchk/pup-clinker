@@ -14,7 +14,7 @@ def replace_once(source: str, old: str, new: str, label: str) -> str:
 
 
 def patch_view_model(source: str) -> str:
-    if "internal fun pullPuppyGacha(showcaseWhenComplete: Boolean = false)" in source:
+    if "internal fun pullPuppyGacha(payment: PuppyGachaPayment)" in source:
         return source
 
     anchor = "    fun setPuppyStyle(id: String) {"
@@ -22,39 +22,43 @@ def patch_view_model(source: str) -> str:
         raise RuntimeError("Puppy Gacha patch ViewModel anchor not found")
 
     method = """    @Synchronized
-    internal fun pullPuppyGacha(showcaseWhenComplete: Boolean = false): PuppyGachaPullResult {
+    internal fun pullPuppyGacha(payment: PuppyGachaPayment): PuppyGachaPullResult {
         val current = _state.value
         val styles = DynamicPuppyRoster.groups.value.flatMap { it.puppies }
-        val unownedCandidates = PuppyGachaEngine.eligiblePuppies(
+        val candidates = PuppyGachaEngine.pullPool(
             styles = styles,
             unlocked = current.unlockedPuppies
         )
-        val showcase = showcaseWhenComplete && unownedCandidates.isEmpty()
-        val candidates = if (showcase) {
-            PuppyGachaEngine.allEligiblePuppies(styles)
-                .filter { it.id in current.unlockedPuppies }
-        } else {
-            unownedCandidates
-        }
-
         if (candidates.isEmpty()) {
             return PuppyGachaPullResult(
                 success = false,
-                failure = if (showcaseWhenComplete) {
-                    PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
-                } else {
-                    PuppyGachaFailure.COLLECTION_COMPLETE
-                }
+                payment = payment,
+                failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
             )
         }
 
-        val cost = if (showcase) 0L else PuppyGachaEngine.COST_TREATS
-        if (current.treats < cost) {
-            return PuppyGachaPullResult(
-                success = false,
-                costTreats = cost,
-                failure = PuppyGachaFailure.NOT_ENOUGH_TREATS
-            )
+        val commonTickets = current.ticketInventory[TicketRarity.COMMON] ?: 0
+        when (payment) {
+            PuppyGachaPayment.TREATS -> {
+                if (current.treats < PuppyGachaEngine.COST_TREATS) {
+                    return PuppyGachaPullResult(
+                        success = false,
+                        costTreats = PuppyGachaEngine.COST_TREATS,
+                        payment = payment,
+                        failure = PuppyGachaFailure.NOT_ENOUGH_TREATS
+                    )
+                }
+            }
+            PuppyGachaPayment.COMMON_TICKET -> {
+                if (commonTickets < PuppyGachaEngine.COST_COMMON_TICKETS) {
+                    return PuppyGachaPullResult(
+                        success = false,
+                        costTickets = PuppyGachaEngine.COST_COMMON_TICKETS,
+                        payment = payment,
+                        failure = PuppyGachaFailure.NOT_ENOUGH_TICKETS
+                    )
+                }
+            }
         }
 
         val selected = PuppyGachaEngine.select(
@@ -62,23 +66,27 @@ def patch_view_model(source: str) -> str:
             roll = Random.nextInt(candidates.size)
         ) ?: return PuppyGachaPullResult(
             success = false,
-            costTreats = cost,
+            payment = payment,
             failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
         )
+        val isNewUnlock = selected.id !in current.unlockedPuppies
 
-        if (showcase) {
-            return PuppyGachaPullResult(
-                success = true,
-                puppyId = selected.id,
-                puppyName = selected.name,
-                puppyEmoji = selected.emoji,
-                costTreats = 0L,
-                isNewUnlock = false
+        val nextInventory = if (payment == PuppyGachaPayment.COMMON_TICKET) {
+            current.ticketInventory + (
+                TicketRarity.COMMON to
+                    (commonTickets - PuppyGachaEngine.COST_COMMON_TICKETS).coerceAtLeast(0)
             )
+        } else {
+            current.ticketInventory
         }
 
         _state.value = current.copy(
-            treats = current.treats - cost,
+            treats = if (payment == PuppyGachaPayment.TREATS) {
+                current.treats - PuppyGachaEngine.COST_TREATS
+            } else {
+                current.treats
+            },
+            ticketInventory = nextInventory,
             unlockedPuppies = current.unlockedPuppies + selected.id
         )
         saveState()
@@ -88,8 +96,18 @@ def patch_view_model(source: str) -> str:
             puppyId = selected.id,
             puppyName = selected.name,
             puppyEmoji = selected.emoji,
-            costTreats = cost,
-            isNewUnlock = true
+            costTreats = if (payment == PuppyGachaPayment.TREATS) {
+                PuppyGachaEngine.COST_TREATS
+            } else {
+                0L
+            },
+            costTickets = if (payment == PuppyGachaPayment.COMMON_TICKET) {
+                PuppyGachaEngine.COST_COMMON_TICKETS
+            } else {
+                0
+            },
+            payment = payment,
+            isNewUnlock = isNewUnlock
         )
     }
 
