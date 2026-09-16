@@ -38,12 +38,26 @@ class PuppyGachaEngineTest {
 
 
     @Test
-    fun allEligiblePoolKeepsOwnedPuppiesForShowcaseButExcludesRedeemOnly() {
+    fun allEligiblePoolKeepsOwnedPuppiesForCompletedCollectionPulls() {
         val eligible = PuppyGachaEngine.allEligiblePuppies(
             styles = listOf(buddy, sunny, special, sunny)
         )
 
         assertEquals(listOf(buddy.id, sunny.id), eligible.map { it.id })
+    }
+
+    @Test
+    fun pullPoolPrioritizesUnownedThenFallsBackToOwnedEligiblePuppies() {
+        val styles = listOf(buddy, sunny, special)
+
+        assertEquals(
+            listOf(sunny.id),
+            PuppyGachaEngine.pullPool(styles, setOf(buddy.id)).map { it.id }
+        )
+        assertEquals(
+            listOf(buddy.id, sunny.id),
+            PuppyGachaEngine.pullPool(styles, setOf(buddy.id, sunny.id)).map { it.id }
+        )
     }
 
     @Test
@@ -64,5 +78,6 @@ class PuppyGachaEngineTest {
     fun capsuleCostIsPositiveAndFixed() {
         assertTrue(PuppyGachaEngine.COST_TREATS > 0)
         assertEquals(2_500L, PuppyGachaEngine.COST_TREATS)
+        assertEquals(1, PuppyGachaEngine.COST_COMMON_TICKETS)
     }
 }
