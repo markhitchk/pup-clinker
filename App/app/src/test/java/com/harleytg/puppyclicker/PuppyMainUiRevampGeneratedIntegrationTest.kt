@@ -27,7 +27,9 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(source.contains("PuppyInternalDestination.SETTINGS -> V6Settings(state, vm)"))
         assertTrue(source.contains("PuppyInternalDestination.EXCHANGE -> PuppyExchangeScreen("))
         assertTrue(source.contains("PuppyInternalDestination.CASINO -> PuppyCasinoHub("))
+        assertTrue(source.contains("PuppyInternalDestination.GACHA -> PuppyGachaScreen("))
         assertTrue(source.contains("onOpenCasino = { internalDestination = PuppyInternalDestination.CASINO }"))
+        assertTrue(source.contains("onOpenGacha = { internalDestination = PuppyInternalDestination.GACHA }"))
     }
 
     @Test
