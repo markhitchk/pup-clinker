@@ -130,7 +130,7 @@ internal fun PuppyGachaScreen(
                 Column(Modifier.weight(1f)) {
                     Text("Treat balance", fontWeight = FontWeight.Black)
                     Text(
-                        formatNumber(state.treats),
+                        state.treats.toString(),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black
                     )
