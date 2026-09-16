@@ -25,9 +25,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
+internal enum class PuppyGachaPayment {
+    TREATS,
+    COMMON_TICKET
+}
+
 internal enum class PuppyGachaFailure {
     NOT_ENOUGH_TREATS,
-    COLLECTION_COMPLETE,
+    NOT_ENOUGH_TICKETS,
     NO_ELIGIBLE_PUPPIES
 }
 
@@ -36,13 +41,16 @@ internal data class PuppyGachaPullResult(
     val puppyId: String? = null,
     val puppyName: String? = null,
     val puppyEmoji: String = "🐶",
-    val costTreats: Long = PuppyGachaEngine.COST_TREATS,
+    val costTreats: Long = 0L,
+    val costTickets: Int = 0,
+    val payment: PuppyGachaPayment = PuppyGachaPayment.TREATS,
     val isNewUnlock: Boolean = true,
     val failure: PuppyGachaFailure? = null
 )
 
 internal object PuppyGachaEngine {
     const val COST_TREATS = 2_500L
+    const val COST_COMMON_TICKETS = 1
 
     fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
         .asSequence()
@@ -56,6 +64,18 @@ internal object PuppyGachaEngine {
         unlocked: Set<String>
     ): List<PuppyStyle> = allEligiblePuppies(styles)
         .filter { it.id !in unlocked }
+
+    fun pullPool(
+        styles: List<PuppyStyle>,
+        unlocked: Set<String>
+    ): List<PuppyStyle> {
+        val unowned = eligiblePuppies(styles, unlocked)
+        return if (unowned.isNotEmpty()) {
+            unowned
+        } else {
+            allEligiblePuppies(styles).filter { it.id in unlocked }
+        }
+    }
 
     internal fun select(candidates: List<PuppyStyle>, roll: Int): PuppyStyle? {
         if (candidates.isEmpty()) return null
@@ -71,20 +91,30 @@ internal fun PuppyGachaScreen(
 ) {
     val groups by DynamicPuppyRoster.groups.collectAsState()
     val allStyles = remember(groups) { groups.flatMap { it.puppies } }
-    val eligible = remember(allStyles) {
-        PuppyGachaEngine.allEligiblePuppies(allStyles)
-    }
+    val eligible = remember(allStyles) { PuppyGachaEngine.allEligiblePuppies(allStyles) }
     val remaining = remember(eligible, state.unlockedPuppies) {
         eligible.filter { it.id !in state.unlockedPuppies }
     }
-    val collectionComplete = remaining.isEmpty() && eligible.isNotEmpty()
+    val commonTickets = state.ticketInventory[TicketRarity.COMMON] ?: 0
 
     var stage by rememberSaveable { mutableIntStateOf(0) }
+    var paymentIndex by rememberSaveable { mutableIntStateOf(0) }
     var result by remember { mutableStateOf<PuppyGachaPullResult?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
+    val payment = if (paymentIndex == 0) {
+        PuppyGachaPayment.TREATS
+    } else {
+        PuppyGachaPayment.COMMON_TICKET
+    }
+    val canAfford = when (payment) {
+        PuppyGachaPayment.TREATS -> state.treats >= PuppyGachaEngine.COST_TREATS
+        PuppyGachaPayment.COMMON_TICKET ->
+            commonTickets >= PuppyGachaEngine.COST_COMMON_TICKETS
+    }
+
     val machineScale by animateFloatAsState(
-        targetValue = if (stage == 1) 1.04f else 1f,
+        targetValue = if (stage == 1) 1.025f else 1f,
         animationSpec = spring(dampingRatio = 0.55f, stiffness = 420f),
         label = "gacha-machine-scale"
     )
@@ -122,75 +152,68 @@ internal fun PuppyGachaScreen(
             .fillMaxSize()
             .clipToBounds()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 20.dp)
+            .padding(start = 14.dp, top = 8.dp, end = 14.dp, bottom = 28.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = onBack) { Text("← Back") }
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.height(42.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+            ) {
+                Text("← Back")
+            }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     "Puppy Gacha",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black
                 )
                 Text(
-                    "Capsule machine · collect a new puppy every pull.",
+                    "Capsules reveal roster puppies.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.32f)
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(14.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("🍪", fontSize = 30.sp)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Treat balance", fontWeight = FontWeight.Black)
-                    Text(
-                        state.treats.toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        PuppyGachaEngine.COST_TREATS.toString() + " Treats",
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        "per capsule",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                PuppyGachaBalance(
+                    icon = "🍪",
+                    label = "Treats",
+                    value = state.treats.toString(),
+                    modifier = Modifier.weight(1f)
+                )
+                VerticalDivider(
+                    modifier = Modifier.height(42.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                PuppyGachaBalance(
+                    icon = "🎟️",
+                    label = "Common tickets",
+                    value = commonTickets.toString(),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        PuppyGachaMachine(
-            stage = stage,
-            scale = machineScale,
-            capsuleRotation = capsuleRotation
-        )
-
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth().animateContentSize(),
@@ -198,126 +221,126 @@ internal fun PuppyGachaScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Column(
-                Modifier.fillMaxWidth().padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                when {
-                    stage == 2 && result?.success == true -> {
-                        Text("✨ Puppy revealed!", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "Your capsule opened in the puppy reveal popup.",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                if (stage == 1 && result?.success == true) {
+                    Text(
+                        "Capsule ready",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Open it to reveal the puppy.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { stage = 2 },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text("Open Capsule")
                     }
+                } else {
+                    Text("Pay with", fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (payment == PuppyGachaPayment.TREATS) {
+                            Button(
+                                onClick = { paymentIndex = 0 },
+                                modifier = Modifier.weight(1f).height(42.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("🍪 2,500 Treats", maxLines = 1)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { paymentIndex = 0 },
+                                modifier = Modifier.weight(1f).height(42.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("🍪 2,500 Treats", maxLines = 1)
+                            }
+                        }
 
-                    stage == 1 && result?.success == true -> {
-                        Text("A capsule dropped!", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(8.dp))
-                        PuppyClosedCapsule(Modifier.size(126.dp).rotate(capsuleRotation))
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { stage = 2 },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Open Capsule")
+                        if (payment == PuppyGachaPayment.COMMON_TICKET) {
+                            Button(
+                                onClick = { paymentIndex = 1 },
+                                modifier = Modifier.weight(1f).height(42.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("🎟️ 1 Ticket", maxLines = 1)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { paymentIndex = 1 },
+                                modifier = Modifier.weight(1f).height(42.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("🎟️ 1 Ticket", maxLines = 1)
+                            }
                         }
                     }
 
-                    collectionComplete -> {
-                        Text("🏆 Collection complete", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "You own every currently eligible puppy. Showcase capsules stay available so you can still use the machine and reveal popup.",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                val pulled = vm.pullPuppyGacha(showcaseWhenComplete = true)
-                                result = pulled
-                                if (pulled.success) {
-                                    stage = 1
-                                    message = null
-                                } else {
-                                    stage = 0
-                                    message = "No eligible puppies are available right now."
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        when {
+                            eligible.isEmpty() -> "No puppies are currently eligible for Gacha."
+                            remaining.isEmpty() ->
+                                "Collection complete · pulls can reveal an owned eligible puppy."
+                            remaining.size == 1 -> "1 new puppy remains · new puppies are guaranteed first."
+                            else -> remaining.size.toString() + " new puppies remain · new puppies are guaranteed first."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    val buttonText = when (payment) {
+                        PuppyGachaPayment.TREATS -> "Dispense · 2,500 Treats"
+                        PuppyGachaPayment.COMMON_TICKET -> "Dispense · 1 Common Ticket"
+                    }
+                    Button(
+                        onClick = {
+                            val pulled = vm.pullPuppyGacha(payment)
+                            result = pulled
+                            if (pulled.success) {
+                                stage = 1
+                                message = null
+                            } else {
+                                stage = 0
+                                message = when (pulled.failure) {
+                                    PuppyGachaFailure.NOT_ENOUGH_TREATS ->
+                                        "You need " + PuppyGachaEngine.COST_TREATS + " Treats."
+                                    PuppyGachaFailure.NOT_ENOUGH_TICKETS ->
+                                        "You need " + PuppyGachaEngine.COST_COMMON_TICKETS + " Common Ticket."
+                                    PuppyGachaFailure.NO_ELIGIBLE_PUPPIES ->
+                                        "No eligible puppies are available right now."
+                                    null -> "The capsule machine could not complete the pull."
                                 }
-                            },
-                            enabled = eligible.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(18.dp)
-                        ) {
-                            Text("Open Showcase Capsule · FREE")
-                        }
-                    }
-
-                    remaining.isEmpty() -> {
-                        Text("No Gacha puppies available", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "The live roster currently has no puppies eligible for Puppy Gacha.",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    else -> {
-                        Text(
-                            remaining.size.toString() + " puppies still available",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 18.sp
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "Every successful capsule unlocks one puppy you do not already own. There are no duplicate pulls.",
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                val pulled = vm.pullPuppyGacha()
-                                result = pulled
-                                if (pulled.success) {
-                                    stage = 1
-                                    message = null
-                                } else {
-                                    stage = 0
-                                    message = when (pulled.failure) {
-                                        PuppyGachaFailure.NOT_ENOUGH_TREATS ->
-                                            "You need " + PuppyGachaEngine.COST_TREATS + " Treats for a capsule."
-                                        PuppyGachaFailure.COLLECTION_COMPLETE,
-                                        PuppyGachaFailure.NO_ELIGIBLE_PUPPIES ->
-                                            "No eligible puppies are available right now."
-                                        null -> "The capsule machine could not complete the pull."
-                                    }
-                                }
-                            },
-                            enabled = state.treats >= PuppyGachaEngine.COST_TREATS,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(18.dp)
-                        ) {
-                            Text("Dispense Capsule · " + PuppyGachaEngine.COST_TREATS + " Treats")
-                        }
+                            }
+                        },
+                        enabled = eligible.isNotEmpty() && canAfford,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(buttonText)
                     }
                 }
 
                 message?.let {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.errorContainer
                     ) {
                         Text(
                             it,
-                            modifier = Modifier.padding(10.dp),
+                            modifier = Modifier.padding(9.dp),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -327,23 +350,42 @@ internal fun PuppyGachaScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.22f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Capsule rules", fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "• Paid capsules use earned Treats only\n• Paid pulls always unlock a new eligible puppy\n• Full collections get free showcase capsules\n• Redeem-only and special locked puppies are excluded\n• No real-money purchase or cash-out",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        PuppyGachaMachine(
+            stage = stage,
+            scale = machineScale,
+            capsuleRotation = capsuleRotation
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            "Redeem-only and special locked puppies are excluded. Gacha uses earned in-game Treats or Common Upgrade Tickets only; no real money or cash-out.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun PuppyGachaBalance(
+    icon: String,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(icon, fontSize = 24.sp)
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -357,19 +399,13 @@ private fun PuppyGachaRevealDialog(
 ) {
     Dialog(onDismissRequest = onClose) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+            modifier = Modifier.fillMaxWidth().animateContentSize(),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.42f))
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -378,33 +414,27 @@ private fun PuppyGachaRevealDialog(
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(6.dp))
                 Text(
-                    if (pulled.isNewUnlock) "New puppy unlocked" else "Collection showcase",
+                    if (pulled.isNewUnlock) "New puppy unlocked" else "Puppy revealed",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(22.dp),
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant
-                    )
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 18.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         pulled.puppyId?.let { id ->
                             StreamedPuppyPortrait(
                                 styleId = id,
-                                size = 220.dp,
+                                size = 190.dp,
                                 accessory = "None",
                                 unlocked = true,
                                 background = MaterialTheme.colorScheme.surface
@@ -413,45 +443,38 @@ private fun PuppyGachaRevealDialog(
                     }
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    pulled.puppyEmoji + " " + (pulled.puppyName ?: "New Puppy"),
+                    pulled.puppyEmoji + " " + (pulled.puppyName ?: "Puppy"),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center
                 )
                 Text(
                     if (pulled.isNewUnlock) "Added to your Puppy Roster."
-                    else "Already in your Puppy Roster · no Treats spent.",
+                    else "Already in your Puppy Roster.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onUsePuppy,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("Use Puppy")
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(7.dp))
                 OutlinedButton(
                     onClick = onAnother,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("Back to Gacha")
+                    Text("Another Capsule")
                 }
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onClose) {
-                    Text("Close")
-                }
+                TextButton(onClick = onClose) { Text("Close") }
             }
         }
     }
@@ -465,22 +488,19 @@ private fun PuppyGachaMachine(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().scale(scale),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(18.dp),
+            Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("PUPPY GACHA", fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-            Spacer(Modifier.height(12.dp))
-
             Surface(
-                modifier = Modifier.fillMaxWidth().height(180.dp),
-                shape = RoundedCornerShape(26.dp),
+                modifier = Modifier.fillMaxWidth().height(128.dp),
+                shape = RoundedCornerShape(22.dp),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                 border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
             ) {
@@ -496,43 +516,43 @@ private fun PuppyGachaMachine(
                             )
                         )
                 ) {
-                    PuppyMiniCapsule(Modifier.align(Alignment.TopStart).padding(22.dp))
-                    PuppyMiniCapsule(Modifier.align(Alignment.TopCenter).padding(top = 30.dp))
-                    PuppyMiniCapsule(Modifier.align(Alignment.TopEnd).padding(24.dp))
-                    PuppyMiniCapsule(Modifier.align(Alignment.CenterStart).padding(36.dp))
-                    PuppyMiniCapsule(Modifier.align(Alignment.Center))
-                    PuppyMiniCapsule(Modifier.align(Alignment.CenterEnd).padding(38.dp))
-                    Text("🐾", modifier = Modifier.align(Alignment.Center), fontSize = 42.sp)
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface)
-            ) {
-                Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        if (stage == 1) "↻" else "●",
-                        fontSize = 30.sp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    PuppyMiniCapsule(Modifier.align(Alignment.TopStart).padding(15.dp))
+                    PuppyMiniCapsule(Modifier.align(Alignment.TopCenter).padding(top = 18.dp))
+                    PuppyMiniCapsule(Modifier.align(Alignment.TopEnd).padding(16.dp))
+                    PuppyMiniCapsule(Modifier.align(Alignment.BottomStart).padding(18.dp))
+                    PuppyMiniCapsule(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+                    PuppyMiniCapsule(Modifier.align(Alignment.BottomEnd).padding(19.dp))
+                    Text("🐾", modifier = Modifier.align(Alignment.Center), fontSize = 34.sp)
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
             Surface(
-                modifier = Modifier.fillMaxWidth(0.62f).height(54.dp),
-                shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                border = BorderStroke(3.dp, MaterialTheme.colorScheme.surface)
+            ) {
+                Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        if (stage == 1) "↻" else "●",
+                        fontSize = 24.sp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.56f).height(44.dp),
+                shape = RoundedCornerShape(bottomStart = 17.dp, bottomEnd = 17.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (stage == 1) {
-                        PuppyClosedCapsule(Modifier.size(42.dp).rotate(capsuleRotation))
+                        PuppyClosedCapsule(Modifier.size(36.dp).rotate(capsuleRotation))
                     } else {
                         Text(
                             "CAPSULE",
@@ -549,13 +569,13 @@ private fun PuppyGachaMachine(
 @Composable
 private fun PuppyMiniCapsule(modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.size(42.dp),
+        modifier = modifier.size(34.dp),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.primaryContainer,
         border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text("🐾", fontSize = 15.sp)
+            Text("🐾", fontSize = 12.sp)
         }
     }
 }
@@ -581,7 +601,7 @@ private fun PuppyClosedCapsule(modifier: Modifier = Modifier) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text("🐾", fontSize = 38.sp)
+            Text("🐾", fontSize = 30.sp)
         }
     }
 }
