@@ -1311,23 +1311,43 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     @Synchronized
-    internal fun pullPuppyGacha(): PuppyGachaPullResult {
+    internal fun pullPuppyGacha(payment: PuppyGachaPayment): PuppyGachaPullResult {
         val current = _state.value
-        val candidates = PuppyGachaEngine.eligiblePuppies(
-            styles = DynamicPuppyRoster.groups.value.flatMap { it.puppies },
+        val styles = DynamicPuppyRoster.groups.value.flatMap { it.puppies }
+        val candidates = PuppyGachaEngine.pullPool(
+            styles = styles,
             unlocked = current.unlockedPuppies
         )
         if (candidates.isEmpty()) {
             return PuppyGachaPullResult(
                 success = false,
-                failure = PuppyGachaFailure.COLLECTION_COMPLETE
+                payment = payment,
+                failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
             )
         }
-        if (current.treats < PuppyGachaEngine.COST_TREATS) {
-            return PuppyGachaPullResult(
-                success = false,
-                failure = PuppyGachaFailure.NOT_ENOUGH_TREATS
-            )
+
+        val commonTickets = current.ticketInventory[TicketRarity.COMMON] ?: 0
+        when (payment) {
+            PuppyGachaPayment.TREATS -> {
+                if (current.treats < PuppyGachaEngine.COST_TREATS) {
+                    return PuppyGachaPullResult(
+                        success = false,
+                        costTreats = PuppyGachaEngine.COST_TREATS,
+                        payment = payment,
+                        failure = PuppyGachaFailure.NOT_ENOUGH_TREATS
+                    )
+                }
+            }
+            PuppyGachaPayment.COMMON_TICKET -> {
+                if (commonTickets < PuppyGachaEngine.COST_COMMON_TICKETS) {
+                    return PuppyGachaPullResult(
+                        success = false,
+                        costTickets = PuppyGachaEngine.COST_COMMON_TICKETS,
+                        payment = payment,
+                        failure = PuppyGachaFailure.NOT_ENOUGH_TICKETS
+                    )
+                }
+            }
         }
 
         val selected = PuppyGachaEngine.select(
@@ -1335,11 +1355,27 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             roll = Random.nextInt(candidates.size)
         ) ?: return PuppyGachaPullResult(
             success = false,
+            payment = payment,
             failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
         )
+        val isNewUnlock = selected.id !in current.unlockedPuppies
+
+        val nextInventory = if (payment == PuppyGachaPayment.COMMON_TICKET) {
+            current.ticketInventory + (
+                TicketRarity.COMMON to
+                    (commonTickets - PuppyGachaEngine.COST_COMMON_TICKETS).coerceAtLeast(0)
+            )
+        } else {
+            current.ticketInventory
+        }
 
         _state.value = current.copy(
-            treats = current.treats - PuppyGachaEngine.COST_TREATS,
+            treats = if (payment == PuppyGachaPayment.TREATS) {
+                current.treats - PuppyGachaEngine.COST_TREATS
+            } else {
+                current.treats
+            },
+            ticketInventory = nextInventory,
             unlockedPuppies = current.unlockedPuppies + selected.id
         )
         saveState()
@@ -1348,7 +1384,19 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             success = true,
             puppyId = selected.id,
             puppyName = selected.name,
-            puppyEmoji = selected.emoji
+            puppyEmoji = selected.emoji,
+            costTreats = if (payment == PuppyGachaPayment.TREATS) {
+                PuppyGachaEngine.COST_TREATS
+            } else {
+                0L
+            },
+            costTickets = if (payment == PuppyGachaPayment.COMMON_TICKET) {
+                PuppyGachaEngine.COST_COMMON_TICKETS
+            } else {
+                0
+            },
+            payment = payment,
+            isNewUnlock = isNewUnlock
         )
     }
 
