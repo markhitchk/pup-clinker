@@ -381,7 +381,8 @@ internal fun PuppyRevampedRewardsScreen(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
     onOpenPrestige: () -> Unit,
-    onOpenCasino: () -> Unit
+    onOpenCasino: () -> Unit,
+    onOpenGacha: () -> Unit
 ) {
     val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
     val casinoFlags by PuppyFeatureFlags.flags.collectAsState()
@@ -536,6 +537,35 @@ internal fun PuppyRevampedRewardsScreen(
         }
 
         Spacer(Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("🫧", fontSize = 30.sp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Puppy Gacha", fontWeight = FontWeight.Black)
+                    Text(
+                        "Capsule machine · guaranteed new eligible puppy",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "Uses earned Treats only · separate from Puppy Casino",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(onClick = onOpenGacha) { Text("Open") }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
 
         if (showCasinoEntry) {
             Card(
