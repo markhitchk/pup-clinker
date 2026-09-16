@@ -12,5 +12,5 @@ enum class PuppyInternalDestination(val label: String) {
     SETTINGS("Settings"),
     PRESTIGE("Prestige"),
     EXCHANGE("Puppy Exchange"),
-    CASINO("Puppy Casino")
+    CASINO("Puppy Casino"),\n    GACHA("Puppy Gacha")
 }
