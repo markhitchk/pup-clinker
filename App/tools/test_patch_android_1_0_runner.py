@@ -80,7 +80,7 @@ fun appearance() {
 @Composable
 private fun SettingsHome() {
     val context = LocalContext.current
-    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    val showDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
 }
 
 @Composable
@@ -97,9 +97,18 @@ private fun ProfileSettings(
 }
 
 @Composable
-private fun DiscordSettings() {}
+private fun DiscordSettings() {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    if (officialDeveloper) {
+        Unit
+    }
+}
 '''
-        patched = patch_settings(source)
+        try:
+            patched = patch_settings(source)
+        except RuntimeError as exc:
+            self.fail(f"profile settings patch should tolerate another developer identity state: {exc}")
 
         settings_home = patched.index("private fun SettingsHome()")
         profile = patched.index("private fun ProfileSettings(")
@@ -107,6 +116,7 @@ private fun DiscordSettings() {}
         self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
         self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
         self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
+        self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[discord:])
 
 
 if __name__ == "__main__":
