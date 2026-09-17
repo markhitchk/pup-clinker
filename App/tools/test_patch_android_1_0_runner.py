@@ -7,7 +7,7 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from patch_android_1_0_runner import pre_normalize
+from patch_android_1_0_runner import patch_settings_compat, pre_normalize
 from patch_android_1_0_completion import patch_settings
 
 
@@ -105,6 +105,69 @@ private fun DiscordSettings() {}
         profile = patched.index("private fun ProfileSettings(")
         discord = patched.index("private fun DiscordSettings()")
         self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
+        self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
+        self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
+
+    def test_settings_compat_targets_profile_when_other_developer_anchor_is_outside_home(self) -> None:
+        source = '''enum class SettingsDestination {
+    DEVELOPER,
+    ABOUT
+}
+
+fun router() {
+        SettingsDestination.ABOUT -> SettingsSubpage(
+            title = "About Puppy Clicker",
+}
+
+fun advanced() {
+            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
+                onOpen(SettingsDestination.ABOUT)
+            }
+}
+
+fun appearance() {
+    SettingsLabel("INTERFACE")
+    InlineSwitch("Animated UI",
+}
+
+@Composable
+private fun SettingsHome() {
+    val context = LocalContext.current
+    val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
+    val showDeveloper = developer.unlocked || PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+}
+
+@Composable
+private fun AccountIdentityHelper() {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    Text(if (officialDeveloper) "Developer" else "Local")
+}
+
+@Composable
+private fun ProfileSettings(
+    vm: PuppyClickerV6ViewModel,
+    ui: PuppyUiState
+) {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+            if (officialDeveloper) {
+                StatusLine("Account", "HarleyTG Developer / Owner")
+                StatusLine("Studio", "Harley's Studios")
+            }
+}
+
+@Composable
+private fun DiscordSettings() {}
+'''
+        patched = patch_settings_compat(source)
+
+        home = patched.index("private fun SettingsHome()")
+        helper = patched.index("private fun AccountIdentityHelper()")
+        profile = patched.index("private fun ProfileSettings(")
+        discord = patched.index("private fun DiscordSettings()")
+        self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[home:profile])
+        self.assertIn("val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)", patched[helper:profile])
         self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
         self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
 
