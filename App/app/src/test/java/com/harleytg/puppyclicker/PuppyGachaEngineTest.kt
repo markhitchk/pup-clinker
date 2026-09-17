@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// Contract: legacy redeemOnly is not itself a Gacha exclusion; only explicit specials are excluded.
 class PuppyGachaEngineTest {
     private val buddy = PuppyStyle(
         id = "buddy_test",
@@ -18,45 +19,91 @@ class PuppyGachaEngineTest {
         emoji = "☀️",
         description = "Another eligible test puppy."
     )
-    private val special = PuppyStyle(
-        id = "special_test",
-        name = "Special Test",
-        emoji = "⭐",
-        description = "Redeem-only test puppy.",
+    private val legacyRedeemOnlyNormal = PuppyStyle(
+        id = "aurora",
+        name = "Aurora",
+        emoji = "🌌",
+        description = "Normal roster puppy using the legacy redeem-only flag.",
+        redeemOnly = true
+    )
+    private val developerExclusive = PuppyStyle(
+        id = "dev_pup",
+        name = "Dev Pup",
+        emoji = "🛠️",
+        description = "Developer-only puppy.",
+        redeemOnly = true
+    )
+    private val seasonalExclusive = PuppyStyle(
+        id = "halloween",
+        name = "Pumpkin Pup",
+        emoji = "🎃",
+        description = "Seasonal event puppy.",
+        redeemOnly = true
+    )
+    private val codeExclusive = PuppyStyle(
+        id = "secret_snoot",
+        name = "Secret Snoot",
+        emoji = "🤫",
+        description = "Code-only puppy.",
         redeemOnly = true
     )
 
     @Test
-    fun eligiblePoolExcludesOwnedAndRedeemOnlyPuppies() {
-        val eligible = PuppyGachaEngine.eligiblePuppies(
-            styles = listOf(buddy, sunny, special, sunny),
-            unlocked = setOf(buddy.id)
+    fun normalLegacyRedeemOnlyPuppiesRemainGachaEligible() {
+        val eligible = PuppyGachaEngine.allEligiblePuppies(
+            styles = listOf(buddy, legacyRedeemOnlyNormal, sunny)
         )
 
-        assertEquals(listOf(sunny.id), eligible.map { it.id })
+        assertEquals(
+            listOf(legacyRedeemOnlyNormal.id, buddy.id, sunny.id),
+            eligible.map { it.id }
+        )
     }
 
-
     @Test
-    fun allEligiblePoolKeepsOwnedPuppiesForCompletedCollectionPulls() {
+    fun trueSpecialExclusivesStayOutOfGacha() {
         val eligible = PuppyGachaEngine.allEligiblePuppies(
-            styles = listOf(buddy, sunny, special, sunny)
+            styles = listOf(
+                buddy,
+                developerExclusive,
+                seasonalExclusive,
+                codeExclusive,
+                sunny
+            )
         )
 
         assertEquals(listOf(buddy.id, sunny.id), eligible.map { it.id })
     }
 
     @Test
-    fun pullPoolPrioritizesUnownedThenFallsBackToOwnedEligiblePuppies() {
-        val styles = listOf(buddy, sunny, special)
+    fun eligiblePoolExcludesOwnedButKeepsUnownedNormalRedeemOnlyPuppies() {
+        val eligible = PuppyGachaEngine.eligiblePuppies(
+            styles = listOf(buddy, legacyRedeemOnlyNormal, sunny, sunny),
+            unlocked = setOf(buddy.id)
+        )
 
         assertEquals(
-            listOf(sunny.id),
-            PuppyGachaEngine.pullPool(styles, setOf(buddy.id)).map { it.id }
+            listOf(legacyRedeemOnlyNormal.id, sunny.id),
+            eligible.map { it.id }
         )
-        assertEquals(
-            listOf(buddy.id, sunny.id),
-            PuppyGachaEngine.pullPool(styles, setOf(buddy.id, sunny.id)).map { it.id }
+    }
+
+    @Test
+    fun pullPoolReturnsEmptyOnlyWhenEveryNormalEligiblePuppyIsOwned() {
+        val styles = listOf(
+            buddy,
+            legacyRedeemOnlyNormal,
+            sunny,
+            developerExclusive,
+            seasonalExclusive,
+            codeExclusive
+        )
+
+        assertTrue(
+            PuppyGachaEngine.pullPool(
+                styles,
+                setOf(buddy.id, legacyRedeemOnlyNormal.id, sunny.id)
+            ).isEmpty()
         )
     }
 

@@ -39,7 +39,7 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
     @Test
     fun legacyOwnershipIsMarkedSettledWithoutRetroactiveXp() {
         val vm = generated("PuppyClickerV6ViewModel.kt")
-        assertTrue(vm.contains("unlocked.mapTo(linkedSetOf()) { \"puppy:$it\" }"))
+        assertTrue(vm.contains("unlocked.mapTo(linkedSetOf()) { \"puppy:${'$'}it\" }"))
     }
 
     @Test
@@ -63,7 +63,9 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
         val roster = generated("PuppyRosterScreen.kt")
         val activity = generated("PuppyClickerV6Activity.kt")
         val settings = generated("PuppySettingsUi.kt")
-        assertTrue(main.contains("PuppyAchievementsV6.statuses"))
+        assertFalse(main.contains("PuppyAchievementsV6.statuses"))
+        assertTrue(settings.contains("PuppyAchievementsV6.statuses"))
+        assertTrue(settings.contains("PuppyPlayerProgressCard(gameState)"))
         assertTrue(roster.contains("PuppyViewerDialog("))
         assertTrue(activity.contains("PuppyNotificationInboxDialog("))
         assertTrue(activity.contains("PuppyNotificationHistory.unreadCount"))

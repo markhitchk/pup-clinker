@@ -15,26 +15,35 @@ _ORIGINAL_PATCH_SETTINGS = core.patch_settings
 
 
 def patch_settings_compat(source: str) -> str:
-    """Disambiguate compact SettingsHome identity state from ProfileSettings badge state."""
+    """Keep the legacy profile badge patch scoped to ProfileSettings."""
     anchor = "    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)\n"
     if source.count(anchor) <= 1:
         return _ORIGINAL_PATCH_SETTINGS(source)
 
-    home_start = source.find("private fun SettingsHome(")
-    profile_start = source.find("private fun ProfileSettings(", home_start)
-    if home_start < 0 or profile_start < 0:
-        raise RuntimeError("Android 1.0 runner: SettingsHome/ProfileSettings boundary not found")
+    profile_start = source.find("private fun ProfileSettings(")
+    profile_end = source.find("private fun DiscordSettings(", profile_start)
+    if profile_start < 0 or profile_end < 0:
+        raise RuntimeError("Android 1.0 runner: ProfileSettings/DiscordSettings boundary not found")
 
-    home = source[home_start:profile_start]
-    if anchor not in home:
-        raise RuntimeError("Android 1.0 runner: duplicate developer anchor is not in SettingsHome")
-    home = home.replace("officialDeveloper", "homeOfficialDeveloper")
-    normalized = source[:home_start] + home + source[profile_start:]
-    return _ORIGINAL_PATCH_SETTINGS(normalized)
+    profile = source[profile_start:profile_end]
+    if profile.count(anchor) != 1:
+        raise RuntimeError("Android 1.0 runner: profile developer anchor is not unique")
+
+    compat_anchor = "    val __android10OfficialDeveloperCompat = PuppyPlayerIdentity.isHarleyTgDeveloper(context)\n"
+    if compat_anchor in source:
+        raise RuntimeError("Android 1.0 runner: developer compatibility sentinel already present")
+
+    normalized = (
+        source[:profile_start].replace(anchor, compat_anchor)
+        + profile
+        + source[profile_end:].replace(anchor, compat_anchor)
+    )
+    patched = _ORIGINAL_PATCH_SETTINGS(normalized)
+    return patched.replace(compat_anchor, anchor)
 
 
 # The core patch is intentionally strict. Route Settings through this compatibility shim so the
-# already-generated compact account card cannot collide with the ProfileSettings badge anchor.
+# profile entitlement patch stays unambiguous when other Settings pages use the same identity flag.
 core.patch_settings = patch_settings_compat
 
 
@@ -176,16 +185,87 @@ def post_fix(root: Path) -> None:
     if settlement_load_old in source:
         source = source.replace(settlement_load_old, settlement_load_new, 1)
 
-    # The core patch's compact park/daily compatibility insertion can sit next to the multiline
-    # per-puppy Bond insertion. Keep only the multiline authoritative map update.
+    # Make the per-puppy Bond map authoritative. The core compatibility layer still emits a mutable
+    # global Bond mirror; remove that mirror and expose Bond as a computed property of the active pup.
+    source = source.replace(
+        "    val bond: Int = 10,\n    val bondByPuppyId: Map<String, Int> = emptyMap(),",
+        "    val bondByPuppyId: Map<String, Int> = emptyMap(),",
+        1,
+    )
+    level_anchor = '''    val level: Int
+        get() = PuppyProgression.levelForXp(playerXp)'''
+    bond_getter = '''    val bond: Int
+        get() = PuppyProgression.bondFor(bondByPuppyId, puppyStyle)
+
+'''
+    if bond_getter not in source:
+        if level_anchor not in source:
+            raise RuntimeError("Android 1.0 runner: XP level getter not found for Bond getter")
+        source = source.replace(level_anchor, bond_getter + level_anchor, 1)
+
+    # The core patch can duplicate Park's compact Bond update next to its multiline update. Keep the
+    # multiline map mutation. Daily reward has only the compact map mutation, so keep that map entry.
     source = source.replace(
         "            bondByPuppyId = PuppyProgression.withBondDelta(s.bondByPuppyId, s.puppyStyle, 3),\n            bond = (s.bond + 3).coerceAtMost(100),",
         "            bond = (s.bond + 3).coerceAtMost(100),",
     )
     source = source.replace(
         "            bondByPuppyId = PuppyProgression.withBondDelta(s.bondByPuppyId, s.puppyStyle, 1),\n            bond = (s.bond + 1).coerceAtMost(100)",
-        "            bond = (s.bond + 1).coerceAtMost(100)",
+        "            bondByPuppyId = PuppyProgression.withBondDelta(s.bondByPuppyId, s.puppyStyle, 1)",
     )
+
+    # All Care/Park mutations now update the per-puppy map directly; the computed Bond getter means
+    # copy(bond = ...) is both unnecessary and invalid.
+    for delta in (1, 2, 3):
+        source = source.replace(
+            f"            bond = (s.bond + {delta}).coerceAtMost(100),\n",
+            "",
+        )
+        source = source.replace(
+            f"            bond = (s.bond + {delta}).coerceAtMost(100)\n",
+            "",
+        )
+
+    # Switching puppies only changes the canonical active ID; Bond follows from bondByPuppyId.
+    source = source.replace(
+        '''            puppyStyle = nextStyle,
+            bond = PuppyProgression.bondFor(current.bondByPuppyId, nextStyle)''',
+        '''            puppyStyle = nextStyle''',
+    )
+    source = source.replace(
+        '''        _state.value = s.copy(
+            puppyStyle = id,
+            bond = PuppyProgression.bondFor(s.bondByPuppyId, id)
+        )''',
+        '''        _state.value = s.copy(puppyStyle = id)''',
+        1,
+    )
+
+    # Load the migrated Bond map once; the active Bond is derived from it instead of being stored twice.
+    load_bond_mirror = '''            bond = PuppyProgression.bondFor(
+                PuppyProgressionStore.migrateBondMap(
+                    existingRaw = prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null),
+                    activePuppyId = style,
+                    legacyBond = prefs.getInt(KEY_BOND, 10)
+                ),
+                style
+            ),
+'''
+    source = source.replace(load_bond_mirror, "", 1)
+
+    # A non-prestige reset clears run/economy state but must preserve all durable 1.0 progression.
+    reset_anchor = '''            redeemedCodeIds = keep.redeemedCodeIds,
+            hapticsEnabled = keep.hapticsEnabled,'''
+    reset_progression = '''            redeemedCodeIds = keep.redeemedCodeIds,
+            bondByPuppyId = keep.bondByPuppyId,
+            playerXp = keep.playerXp,
+            achievementRewardedIds = keep.achievementRewardedIds,
+            xpSettlementIds = keep.xpSettlementIds,
+            releaseClaimIds = keep.releaseClaimIds,
+            profileBadgeIds = keep.profileBadgeIds,
+            hapticsEnabled = keep.hapticsEnabled,'''
+    if reset_anchor in source:
+        source = source.replace(reset_anchor, reset_progression, 1)
 
     # Casino progression must read the original transaction result before constructing its copy.
     source = source.replace(

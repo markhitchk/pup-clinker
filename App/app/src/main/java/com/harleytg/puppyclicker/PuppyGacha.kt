@@ -57,10 +57,21 @@ internal object PuppyGachaEngine {
     const val COST_TREATS = 2_500L
     const val COST_COMMON_TICKETS = 1
 
+    private val SPECIAL_EXCLUSIVE_IDS = setOf(
+        "dev_pup",
+        "v2_dev_pup",
+        "secret_snoot",
+        "classic_forever"
+    )
+
+    internal fun isGachaEligible(style: PuppyStyle): Boolean =
+        style.id !in SPECIAL_EXCLUSIVE_IDS &&
+            !SeasonalPuppyEvents.isSeasonal(style.id)
+
     fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
         .asSequence()
         .distinctBy { it.id }
-        .filter { !it.redeemOnly }
+        .filter(::isGachaEligible)
         .sortedBy { it.id }
         .toList()
 
@@ -73,14 +84,7 @@ internal object PuppyGachaEngine {
     fun pullPool(
         styles: List<PuppyStyle>,
         unlocked: Set<String>
-    ): List<PuppyStyle> {
-        val unowned = eligiblePuppies(styles, unlocked)
-        return if (unowned.isNotEmpty()) {
-            unowned
-        } else {
-            allEligiblePuppies(styles).filter { it.id in unlocked }
-        }
-    }
+    ): List<PuppyStyle> = eligiblePuppies(styles, unlocked)
 
     internal fun select(candidates: List<PuppyStyle>, roll: Int): PuppyStyle? {
         if (candidates.isEmpty()) return null
@@ -249,7 +253,7 @@ internal fun PuppyGachaScreen(
             when {
                 eligible.isEmpty() -> "No puppies are currently eligible for Gacha."
                 remaining.isEmpty() ->
-                    "Collection complete · future pulls reveal an owned eligible puppy."
+                    "Collection complete · no unowned Gacha puppies remain."
                 remaining.size == 1 -> "1 new puppy remains · new puppies are guaranteed first."
                 else -> remaining.size.toString() + " new puppies remain · new puppies are guaranteed first."
             },
@@ -267,7 +271,7 @@ internal fun PuppyGachaScreen(
         ) {
             Button(
                 onClick = { startPull(PuppyGachaPayment.TREATS) },
-                enabled = eligible.isNotEmpty() &&
+                enabled = remaining.isNotEmpty() &&
                     state.treats >= PuppyGachaEngine.COST_TREATS &&
                     stage == 0,
                 modifier = Modifier.weight(1f).height(58.dp),
@@ -282,7 +286,7 @@ internal fun PuppyGachaScreen(
 
             Button(
                 onClick = { startPull(PuppyGachaPayment.COMMON_TICKET) },
-                enabled = eligible.isNotEmpty() &&
+                enabled = remaining.isNotEmpty() &&
                     commonTickets >= PuppyGachaEngine.COST_COMMON_TICKETS &&
                     stage == 0,
                 modifier = Modifier.weight(1f).height(58.dp),

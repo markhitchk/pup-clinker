@@ -8,7 +8,7 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 from patch_android_1_0_runner import pre_normalize
-from patch_android_1_0_completion import patch_settings
+from patch_android_1_0_completion import patch_main_screens, patch_settings
 
 
 VM_RELATIVE = Path("com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt")
@@ -55,8 +55,10 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
             self.assertNotIn("safeAdd(it.treats, amount)", normalized)
             self.assertNotIn("safeAdd(it.lifetimeTreats, amount)", normalized)
 
-    def test_settings_badge_state_is_scoped_to_profile_settings(self) -> None:
-        source = '''enum class SettingsDestination {
+    def test_settings_badge_and_progression_are_scoped_to_profile_settings(self) -> None:
+        source = '''import androidx.compose.material3.HorizontalDivider
+
+enum class SettingsDestination {
     DEVELOPER,
     ABOUT
 }
@@ -80,7 +82,7 @@ fun appearance() {
 @Composable
 private fun SettingsHome() {
     val context = LocalContext.current
-    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    val showDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
 }
 
 @Composable
@@ -94,12 +96,25 @@ private fun ProfileSettings(
                 StatusLine("Account", "HarleyTG Developer / Owner")
                 StatusLine("Studio", "Harley's Studios")
             }
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
 }
 
 @Composable
-private fun DiscordSettings() {}
+private fun DiscordSettings() {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    if (officialDeveloper) {
+        Unit
+    }
+}
 '''
-        patched = patch_settings(source)
+        try:
+            patched = patch_settings(source)
+        except RuntimeError as exc:
+            self.fail(f"profile settings patch should tolerate another developer identity state: {exc}")
 
         settings_home = patched.index("private fun SettingsHome()")
         profile = patched.index("private fun ProfileSettings(")
@@ -107,6 +122,30 @@ private fun DiscordSettings() {}
         self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
         self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
         self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
+        self.assertIn("PuppyPlayerProgressCard(gameState)", patched[profile:discord])
+        self.assertIn("PuppyAchievementsSection(gameState)", patched[profile:discord])
+        self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[discord:])
+
+    def test_rewards_patch_does_not_add_player_progression_sections(self) -> None:
+        source = '''@Composable
+internal fun PuppyRevampedRewardsScreen(state: V6GameState) {
+    Column {
+        Spacer(Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
+            ),
+        ) {}
+    }
+}
+'''
+        patched = patch_main_screens(source)
+        self.assertNotIn("PuppyPlayerProgressCard(state)", patched)
+        self.assertNotIn("PuppyAchievementsSection(state)", patched)
+        self.assertNotIn("PuppyAchievementsV6.statuses", patched)
 
 
 if __name__ == "__main__":
