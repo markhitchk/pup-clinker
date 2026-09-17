@@ -119,18 +119,20 @@ def pre_normalize(root: Path) -> None:
     source = source[:afk_start] + afk + source[afk_end:]
 
     # Puppy Code schema-2 replaces the legacy synchronous redeem function before this patch runs.
-    # The core transform still has one legacy ownership-XP anchor. Feed that anchor a comment-only
-    # sentinel, then attach XP to the real RewardGrantEngine path in post_fix().
+    # The core transform still has one legacy ownership-XP anchor. Feed that exact anchor through
+    # a comment-only sentinel, then attach XP to the real RewardGrantEngine path in post_fix().
     if "fun redeemCode(rawCode: String, onResult: (V6RedeemOutcome) -> Unit)" in source:
         prestige = source.find("    fun prestige() {")
         if prestige < 0:
             raise RuntimeError("Android 1.0 runner: prestige insertion point not found")
-        sentinel = SCHEMA2_SENTINEL_START + '''    fun redeemCode(code: String): V6RedeemOutcome {
-        val result = PuppyCodeRedemption.redeem(code, _state.value.unlockedPuppies)
-        if (result.success) {
-            _state.update { it.copy(unlockedPuppies = it.unlockedPuppies + result.unlockedPuppyId) }
-        }
-        return result
+        sentinel = SCHEMA2_SENTINEL_START + '''    fun redeemCodeCompatibility(): V6RedeemOutcome {
+        val s = _state.value
+        val reward = LocalRedeemCodes.find("")!!
+        _state.value = s.copy(
+            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        )
+        saveState()
+        return V6RedeemOutcome(true, reward.message)
     }
 ''' + SCHEMA2_SENTINEL_END
         source = source[:prestige] + sentinel + source[prestige:]
