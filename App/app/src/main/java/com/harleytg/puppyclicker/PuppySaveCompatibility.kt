@@ -43,7 +43,10 @@ internal object PuppySaveCompatibility {
         "afk_background_at_v6",
         "afk_pending_treats_v6",
         "afk_away_ms_v6",
-        "afk_claim_ready_v6"
+        "afk_claim_ready_v6",
+        "player_xp_v1",
+        "afk_pending_start_v1",
+        "afk_pending_end_v1"
     )
 
     private val booleanKeys = setOf(
@@ -57,13 +60,22 @@ internal object PuppySaveCompatibility {
     private val stringKeys = setOf(
         "puppy_name",
         "puppy_style",
-        "accessory"
+        "accessory",
+        "bond_by_puppy_v1",
+        "performance_preset_v1",
+        "afk_pending_settlement_id_v1",
+        "afk_claim_settlement_id_v1",
+        "afk_last_settled_id_v1"
     )
 
     private val stringSetKeys = setOf(
         "unlocked_puppies",
         "daily_tasks_v5",
-        "redeemed_code_ids"
+        "redeemed_code_ids",
+        "achievement_rewarded_v1",
+        "xp_settlements_v1",
+        "release_claim_ids_v1",
+        "profile_badge_ids_v1"
     )
 
     fun normalizeMainSave(prefs: SharedPreferences): Boolean {

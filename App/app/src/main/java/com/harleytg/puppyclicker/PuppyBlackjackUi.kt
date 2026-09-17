@@ -6,20 +6,25 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -31,14 +36,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -48,7 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
-private val BlackjackTableGreen = Color(0xFF0E5B3A)
+private val BlackjackTableGreen = Color(0xFF0E6A46)
+private val BlackjackTableDeep = Color(0xFF073D2C)
 private val BlackjackCardRed = Color(0xFFC5323D)
 
 @Composable
@@ -178,69 +185,13 @@ internal fun PuppyBlackjackScreen(
 
         Spacer(Modifier.height(12.dp))
         BlackjackWalletCard(state)
-
         Spacer(Modifier.height(12.dp))
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = BlackjackTableGreen,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-        ) {
-            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Text(
-                    "Dealer",
-                    color = Color.White,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(6.dp))
-                BlackjackCardRow(
-                    cards = displayState?.dealerCards.orEmpty(),
-                    hideAfterFirst = displayState?.complete == false,
-                    animationsEnabled = state.animationsEnabled
-                )
-
-                if (displayState != null && displayState.complete) {
-                    val dealerValue = PuppyBlackjackEngine.handValue(displayState.dealerCards)
-                    Text(
-                        "Dealer total: " + dealerValue.total,
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "Your hand" + if (displayState != null && displayState.hands.size > 1) {
-                        "s"
-                    } else {
-                        ""
-                    },
-                    color = Color.White,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(6.dp))
-
-                if (displayState == null) {
-                    Text(
-                        "Start a round to deal cards.",
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-                } else {
-                    displayState.hands.forEachIndexed { index, hand ->
-                        if (index > 0) Spacer(Modifier.height(10.dp))
-                        BlackjackHandCard(
-                            index = index,
-                            hand = hand,
-                            active = !displayState.complete &&
-                                index == displayState.activeHandIndex,
-                            outcome = displayOutcome?.hands?.getOrNull(index),
-                            animationsEnabled = state.animationsEnabled
-                        )
-                    }
-                }
-            }
-        }
+        BlackjackCartoonTable(
+            displayState = displayState,
+            displayOutcome = displayOutcome,
+            animationsEnabled = state.animationsEnabled
+        )
 
         message?.let { text ->
             Spacer(Modifier.height(10.dp))
@@ -340,8 +291,167 @@ internal fun PuppyBlackjackScreen(
 
         Spacer(Modifier.height(16.dp))
         BlackjackRulesCard()
-
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable
+private fun BlackjackCartoonTable(
+    displayState: PuppyBlackjackState?,
+    displayOutcome: PuppyBlackjackOutcome?,
+    animationsEnabled: Boolean
+) {
+    val palette = puppyCasinoCartoonPalette()
+    CartoonStageFrame(
+        modifier = Modifier.fillMaxWidth(),
+        accent = palette.gold,
+        background = Brush.verticalGradient(
+            listOf(
+                palette.woodLight,
+                palette.woodMid,
+                palette.woodDark
+            )
+        ),
+        corner = 30.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 18.dp, end = 12.dp, bottom = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("🐶", fontSize = 36.sp)
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = palette.cream,
+                border = BorderStroke(2.dp, palette.gold),
+                shadowElevation = 5.dp
+            ) {
+                Text(
+                    "🐾  PUPPY BLACKJACK  🐾",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
+                    color = palette.woodDark,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                color = BlackjackTableGreen,
+                border = BorderStroke(3.dp, palette.gold.copy(alpha = 0.75f)),
+                shadowElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.07f),
+                                    BlackjackTableGreen,
+                                    BlackjackTableDeep
+                                )
+                            )
+                        )
+                        .padding(15.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = palette.woodDark,
+                            border = BorderStroke(2.dp, palette.woodLight),
+                            shadowElevation = 3.dp
+                        ) {
+                            Text(
+                                "🐾 DEALER",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                color = palette.cream,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Surface(
+                            modifier = Modifier.size(width = 58.dp, height = 42.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF183A5C),
+                            border = BorderStroke(2.dp, palette.gold.copy(alpha = 0.65f)),
+                            shadowElevation = 4.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("🂠", color = Color.White, fontSize = 23.sp)
+                                Text("🐾", color = Color.White.copy(alpha = 0.65f), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    BlackjackCardRow(
+                        cards = displayState?.dealerCards.orEmpty(),
+                        hideAfterFirst = displayState?.complete == false,
+                        animationsEnabled = animationsEnabled
+                    )
+
+                    if (displayState != null && displayState.complete) {
+                        val dealerValue = PuppyBlackjackEngine.handValue(displayState.dealerCards)
+                        Text(
+                            "Dealer total: " + dealerValue.total,
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        "BLACKJACK",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = palette.gold.copy(alpha = 0.72f),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "GOOD PUPPIES WIN MORE TREATS",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White.copy(alpha = 0.50f),
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = palette.cream,
+                        border = BorderStroke(2.dp, palette.gold),
+                        shadowElevation = 3.dp
+                    ) {
+                        Text(
+                            "🐾 YOUR HAND 🐾",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            color = palette.woodDark,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(Modifier.height(7.dp))
+
+                    if (displayState == null) {
+                        Text(
+                            "Start a round to deal cards.",
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    } else {
+                        displayState.hands.forEachIndexed { index, hand ->
+                            if (index > 0) Spacer(Modifier.height(10.dp))
+                            BlackjackHandCard(
+                                index = index,
+                                hand = hand,
+                                active = !displayState.complete && index == displayState.activeHandIndex,
+                                outcome = displayOutcome?.hands?.getOrNull(index),
+                                animationsEnabled = animationsEnabled
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -356,20 +466,31 @@ private fun BlackjackActionPanel(
     onSplit: () -> Unit
 ) {
     val activeValue = activeHand?.let { PuppyBlackjackEngine.handValue(it.cards) }
+    val palette = puppyCasinoCartoonPalette()
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = tween(260)),
-        shape = RoundedCornerShape(20.dp),
-        color = BlackjackTableGreen.copy(alpha = 0.96f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
+        shape = RoundedCornerShape(24.dp),
+        color = palette.woodMid,
+        border = BorderStroke(3.dp, palette.woodLight),
+        shadowElevation = 7.dp
     ) {
-        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.08f), palette.woodMid, palette.woodDark.copy(alpha = 0.88f))
+                    )
+                )
+                .padding(12.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "YOUR TURN",
-                        color = Color.White,
+                        "🐾 YOUR TURN",
+                        color = palette.cream,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black
                     )
@@ -397,29 +518,25 @@ private fun BlackjackActionPanel(
                 Button(
                     onClick = onHit,
                     enabled = PuppyBlackjackEngine.canHit(roundState),
-                    modifier = Modifier.weight(1f).height(58.dp)
+                    modifier = Modifier.weight(1f).height(58.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("＋ HIT", fontWeight = FontWeight.Black)
-                        Text(
-                            "Take a card",
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        Text("🐾 + HIT", fontWeight = FontWeight.Black)
+                        Text("Take a card", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                OutlinedButton(
+                Button(
                     onClick = onStand,
                     enabled = PuppyBlackjackEngine.canStand(roundState),
                     modifier = Modifier.weight(1f).height(58.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.55f))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25A45A)),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("■ STAND", color = Color.White, fontWeight = FontWeight.Black)
-                        Text(
-                            "Hold hand",
-                            color = Color.White.copy(alpha = 0.80f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                        Text("■ STAND", fontWeight = FontWeight.Black)
+                        Text("Hold hand", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -430,32 +547,36 @@ private fun BlackjackActionPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                Button(
                     onClick = onDouble,
                     enabled =
                         PuppyBlackjackEngine.canDouble(roundState) &&
                             activeHand != null &&
                             treats >= activeHand.wagerTreats,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2A20A)),
+                    shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text("2× DOUBLE", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("2× DOUBLE", fontWeight = FontWeight.Bold)
                 }
-                OutlinedButton(
+                Button(
                     onClick = onSplit,
                     enabled =
                         PuppyBlackjackEngine.canSplit(roundState) &&
                             activeHand != null &&
                             treats >= activeHand.wagerTreats,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B49E8)),
+                    shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text("⇄ SPLIT", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("⇄ SPLIT", fontWeight = FontWeight.Bold)
                 }
             }
 
             Text(
                 "Hit adds a card. Stand locks this hand. Double adds one card and stands.",
                 modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
-                color = Color.White.copy(alpha = 0.72f),
+                color = Color.White.copy(alpha = 0.78f),
                 style = MaterialTheme.typography.labelSmall,
                 textAlign = TextAlign.Center
             )
@@ -467,9 +588,10 @@ private fun BlackjackActionPanel(
 private fun BlackjackWalletCard(state: V6GameState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -485,12 +607,19 @@ private fun BlackjackWalletCard(state: V6GameState) {
                     fontWeight = FontWeight.Black
                 )
             }
-            Text(
-                "CPU Dealer",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+            ) {
+                Text(
+                    "CPU Dealer",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -505,7 +634,7 @@ private fun BlackjackCardRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         cards.forEachIndexed { index, id ->
             val hidden = hideAfterFirst && index > 0
@@ -528,8 +657,7 @@ private fun BlackjackPlayingCard(
     animationsEnabled: Boolean,
     dealDelayMs: Long
 ) {
-    val red = card != null &&
-        card.suit in setOf(PuppyBlackjackSuit.DIAMONDS, PuppyBlackjackSuit.HEARTS)
+    val red = card != null && card.suit in setOf(PuppyBlackjackSuit.DIAMONDS, PuppyBlackjackSuit.HEARTS)
     val reveal = remember { Animatable(1f) }
 
     LaunchedEffect(animationToken, animationsEnabled) {
@@ -539,48 +667,68 @@ private fun BlackjackPlayingCard(
         }
         reveal.snapTo(0f)
         delay(dealDelayMs)
-        reveal.animateTo(
-            1f,
-            animationSpec = tween(420, easing = FastOutSlowInEasing)
-        )
+        reveal.animateTo(1f, animationSpec = tween(420, easing = FastOutSlowInEasing))
     }
 
     Surface(
         modifier = Modifier
-            .width(54.dp)
-            .height(72.dp)
+            .width(58.dp)
+            .height(78.dp)
             .graphicsLayer {
                 alpha = reveal.value
                 translationX = (1f - reveal.value) * 42f
                 translationY = (1f - reveal.value) * -46f
                 rotationY = (1f - reveal.value) * 105f
                 rotationZ = (1f - reveal.value) * -7f
-                shadowElevation = 2f + (8f * reveal.value)
+                shadowElevation = 2f + (9f * reveal.value)
                 scaleX = 0.68f + (0.32f * reveal.value)
                 scaleY = 0.80f + (0.20f * reveal.value)
             },
-        shape = RoundedCornerShape(10.dp),
-        color = if (card == null) MaterialTheme.colorScheme.primary else Color.White,
-        border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.2f))
+        shape = RoundedCornerShape(11.dp),
+        color = if (card == null) Color(0xFF278FD8) else Color(0xFFFFFDF8),
+        border = BorderStroke(2.dp, if (card == null) Color.White.copy(alpha = 0.55f) else Color.Black.copy(alpha = 0.18f)),
+        shadowElevation = 4.dp
     ) {
-        Column(
-            modifier = Modifier.padding(6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    if (card == null) {
+                        Brush.verticalGradient(listOf(Color(0xFF5CB7F2), Color(0xFF1977C8)))
+                    } else {
+                        Brush.verticalGradient(listOf(Color.White, Color(0xFFFFF9EE)))
+                    }
+                ),
+            contentAlignment = Alignment.Center
         ) {
             if (card == null) {
-                Text("🐾", fontSize = 24.sp, color = Color.White)
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.30f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("🐾", fontSize = 19.sp, color = Color.White)
+                    }
+                }
             } else {
-                Text(
-                    card.rankLabel,
-                    fontWeight = FontWeight.Black,
-                    color = if (red) BlackjackCardRed else Color.Black
-                )
-                Text(
-                    card.suit.symbol,
-                    fontSize = 20.sp,
-                    color = if (red) BlackjackCardRed else Color.Black
-                )
+                Column(
+                    modifier = Modifier.padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        card.rankLabel,
+                        fontWeight = FontWeight.Black,
+                        color = if (red) BlackjackCardRed else Color.Black
+                    )
+                    Text(
+                        card.suit.symbol,
+                        fontSize = 22.sp,
+                        color = if (red) BlackjackCardRed else Color.Black
+                    )
+                }
             }
         }
     }
@@ -600,6 +748,7 @@ private fun BlackjackHandCard(
         animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "blackjack_active_hand_scale"
     )
+    val palette = puppyCasinoCartoonPalette()
 
     Surface(
         modifier = Modifier
@@ -609,14 +758,15 @@ private fun BlackjackHandCard(
                 scaleY = activeScale
             }
             .animateContentSize(animationSpec = tween(260)),
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = if (active) 0.18f else 0.09f),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = if (active) 0.15f else 0.08f),
         border = BorderStroke(
-            if (active) 2.dp else 1.dp,
-            Color.White.copy(alpha = if (active) 0.8f else 0.22f)
-        )
+            if (active) 3.dp else 1.dp,
+            if (active) palette.gold else Color.White.copy(alpha = 0.20f)
+        ),
+        shadowElevation = if (active) 4.dp else 0.dp
     ) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(11.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Hand " + (index + 1),
@@ -638,13 +788,12 @@ private fun BlackjackHandCard(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Total " + value.total +
-                    if (value.soft) " · soft" else "",
-                color = Color.White
+                "Total " + value.total + if (value.soft) " · soft" else "",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
             val status = when {
-                outcome != null ->
-                    outcome.result.name + " · " + outcome.payoutTreats + " returned"
+                outcome != null -> outcome.result.name + " · " + outcome.payoutTreats + " returned"
                 hand.splitAces -> "Split aces · one card only"
                 hand.doubled -> "Doubled"
                 hand.stood -> "Standing"

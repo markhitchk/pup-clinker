@@ -7,7 +7,7 @@ TOOLS_DIR = Path(__file__).resolve().parent
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from patch_android_1_0_runner import pre_normalize
+from patch_android_1_0_runner import patch_settings_compat, pre_normalize
 from patch_android_1_0_completion import patch_settings
 
 
@@ -54,6 +54,98 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
             self.assertIn("lifetimeTreats = safeAdd(s.lifetimeTreats, amount)", normalized)
             self.assertNotIn("safeAdd(it.treats, amount)", normalized)
             self.assertNotIn("safeAdd(it.lifetimeTreats, amount)", normalized)
+
+    def test_schema2_normalization_supplies_legacy_redeem_anchor_for_core_patch(self) -> None:
+        source = '''class PuppyClickerV6ViewModel {
+    fun tapPuppy() {
+        val nextTaps = 1L
+    }
+
+    fun buyCookieUpgrade() = Unit
+
+    private fun consumeClaimedAfkReward() {
+        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
+        if (amount <= 0L) return
+        prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
+        _state.update {
+            it.copy(
+                treats = safeAdd(it.treats, amount),
+                lifetimeTreats = safeAdd(it.lifetimeTreats, amount),
+                afkLastClaimed = amount
+            )
+        }
+        saveState()
+    }
+
+    private fun rollDailyDayIfNeeded() = Unit
+
+    fun redeemCode(rawCode: String, onResult: (V6RedeemOutcome) -> Unit) {
+        onResult(V6RedeemOutcome(false, rawCode))
+    }
+
+    fun prestige() {
+    }
+}
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vm = root / VM_RELATIVE
+            vm.parent.mkdir(parents=True)
+            vm.write_text(source, encoding="utf-8")
+
+            pre_normalize(root)
+
+            normalized = vm.read_text(encoding="utf-8")
+            expected = '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        )
+        saveState()
+        return V6RedeemOutcome(true, reward.message)'''
+            self.assertIn(expected, normalized)
+
+    def test_gift_normalization_supplies_legacy_gift_anchor_for_core_patch(self) -> None:
+        source = '''class PuppyClickerV6ViewModel {
+    fun tapPuppy() {
+        val nextTaps = 1L
+    }
+
+    fun buyCookieUpgrade() = Unit
+
+    private fun consumeClaimedAfkReward() {
+        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
+        if (amount <= 0L) return
+        prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
+        _state.update {
+            it.copy(
+                treats = safeAdd(it.treats, amount),
+                lifetimeTreats = safeAdd(it.lifetimeTreats, amount),
+                afkLastClaimed = amount
+            )
+        }
+        saveState()
+    }
+
+    private fun rollDailyDayIfNeeded() = Unit
+
+    fun receiveExchangePuppy(puppyId: String): Boolean {
+        return false
+    }
+
+    fun applyExchangeTrade() {
+    }
+}
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vm = root / VM_RELATIVE
+            vm.parent.mkdir(parents=True)
+            vm.write_text(source, encoding="utf-8")
+
+            pre_normalize(root)
+
+            normalized = vm.read_text(encoding="utf-8")
+            expected = '''        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
+        saveState()'''
+            self.assertIn(expected, normalized)
 
     def test_settings_badge_state_is_scoped_to_profile_settings(self) -> None:
         source = '''enum class SettingsDestination {
@@ -105,6 +197,69 @@ private fun DiscordSettings() {}
         profile = patched.index("private fun ProfileSettings(")
         discord = patched.index("private fun DiscordSettings()")
         self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
+        self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
+        self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
+
+    def test_settings_compat_targets_profile_when_other_developer_anchor_is_outside_home(self) -> None:
+        source = '''enum class SettingsDestination {
+    DEVELOPER,
+    ABOUT
+}
+
+fun router() {
+        SettingsDestination.ABOUT -> SettingsSubpage(
+            title = "About Puppy Clicker",
+}
+
+fun advanced() {
+            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
+                onOpen(SettingsDestination.ABOUT)
+            }
+}
+
+fun appearance() {
+    SettingsLabel("INTERFACE")
+    InlineSwitch("Animated UI",
+}
+
+@Composable
+private fun SettingsHome() {
+    val context = LocalContext.current
+    val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
+    val showDeveloper = developer.unlocked || PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+}
+
+@Composable
+private fun AccountIdentityHelper() {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    Text(if (officialDeveloper) "Developer" else "Local")
+}
+
+@Composable
+private fun ProfileSettings(
+    vm: PuppyClickerV6ViewModel,
+    ui: PuppyUiState
+) {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+            if (officialDeveloper) {
+                StatusLine("Account", "HarleyTG Developer / Owner")
+                StatusLine("Studio", "Harley's Studios")
+            }
+}
+
+@Composable
+private fun DiscordSettings() {}
+'''
+        patched = patch_settings_compat(source)
+
+        home = patched.index("private fun SettingsHome()")
+        helper = patched.index("private fun AccountIdentityHelper()")
+        profile = patched.index("private fun ProfileSettings(")
+        discord = patched.index("private fun DiscordSettings()")
+        self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[home:profile])
+        self.assertIn("val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)", patched[helper:profile])
         self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
         self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
 
