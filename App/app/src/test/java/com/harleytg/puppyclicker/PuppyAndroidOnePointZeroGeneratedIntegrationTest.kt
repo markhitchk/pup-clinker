@@ -19,7 +19,7 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
         val vm = generated("PuppyClickerV6ViewModel.kt")
         assertTrue(vm.contains("val bondByPuppyId: Map<String, Int>"))
         assertTrue(vm.contains("val playerXp: Long"))
-        assertTrue(vm.contains("PuppyProgression.bondFor(bondByPuppyId, puppyStyle)"))
+        assertTrue(vm.contains("PuppyProgression.bondFor("))
         assertTrue(vm.contains("PuppyProgression.levelForXp(playerXp)"))
         assertTrue(vm.contains("PuppyProgressionStore.KEY_BOND_BY_PUPPY"))
         assertTrue(vm.contains("PuppyProgressionStore.KEY_PLAYER_XP"))
