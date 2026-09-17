@@ -24,6 +24,20 @@ def pre_normalize(root: Path) -> None:
     tap = tap.replace("nextTaps", "nextTotalTaps")
     source = source[:tap_start] + tap + source[tap_end:]
 
+    # The current V6 AFK consumer uses the implicit `it` lambda name; the 1.0 hardening transform
+    # intentionally matches a named state variable so the settlement rewrite stays narrow.
+    afk_start = source.find("    private fun consumeClaimedAfkReward()")
+    afk_end = source.find("    private fun rollDailyDayIfNeeded()", afk_start)
+    if afk_start < 0 or afk_end < 0:
+        raise RuntimeError("Android 1.0 runner: AFK consume section not found")
+    afk = source[afk_start:afk_end]
+    afk = afk.replace(
+        "        _state.update {\n            it.copy(",
+        "        _state.update { s ->\n            s.copy(",
+        1,
+    )
+    source = source[:afk_start] + afk + source[afk_end:]
+
     # Puppy Code schema-2 replaces the legacy synchronous redeem function before this patch runs.
     # The core transform still has one legacy ownership-XP anchor. Feed that anchor a comment-only
     # sentinel, then attach XP to the real RewardGrantEngine path in post_fix().
