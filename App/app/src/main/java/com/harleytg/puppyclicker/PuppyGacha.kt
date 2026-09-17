@@ -57,10 +57,21 @@ internal object PuppyGachaEngine {
     const val COST_TREATS = 2_500L
     const val COST_COMMON_TICKETS = 1
 
+    private val SPECIAL_EXCLUSIVE_IDS = setOf(
+        "dev_pup",
+        "v2_dev_pup",
+        "secret_snoot",
+        "classic_forever"
+    )
+
+    internal fun isGachaEligible(style: PuppyStyle): Boolean =
+        style.id !in SPECIAL_EXCLUSIVE_IDS &&
+            !SeasonalPuppyEvents.isSeasonal(style.id)
+
     fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
         .asSequence()
         .distinctBy { it.id }
-        .filter { !it.redeemOnly }
+        .filter(::isGachaEligible)
         .sortedBy { it.id }
         .toList()
 
