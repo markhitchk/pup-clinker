@@ -48,6 +48,12 @@ def pre_normalize(root: Path) -> None:
         "        _state.update { s ->\n            s.copy(",
         1,
     )
+    afk = afk.replace("safeAdd(it.treats, amount)", "safeAdd(s.treats, amount)", 1)
+    afk = afk.replace(
+        "safeAdd(it.lifetimeTreats, amount)",
+        "safeAdd(s.lifetimeTreats, amount)",
+        1,
+    )
     source = source[:afk_start] + afk + source[afk_end:]
 
     # Puppy Code schema-2 replaces the legacy synchronous redeem function before this patch runs.
