@@ -11,6 +11,32 @@ SCHEMA2_SENTINEL_END = "ANDROID_1_0_SCHEMA2_SENTINEL_END */\n"
 GIFT_SENTINEL_START = "/* ANDROID_1_0_GIFT_SENTINEL\n"
 GIFT_SENTINEL_END = "ANDROID_1_0_GIFT_SENTINEL_END */\n"
 
+_ORIGINAL_PATCH_SETTINGS = core.patch_settings
+
+
+def patch_settings_compat(source: str) -> str:
+    """Disambiguate compact SettingsHome identity state from ProfileSettings badge state."""
+    anchor = "    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)\n"
+    if source.count(anchor) <= 1:
+        return _ORIGINAL_PATCH_SETTINGS(source)
+
+    home_start = source.find("private fun SettingsHome(")
+    profile_start = source.find("private fun ProfileSettings(", home_start)
+    if home_start < 0 or profile_start < 0:
+        raise RuntimeError("Android 1.0 runner: SettingsHome/ProfileSettings boundary not found")
+
+    home = source[home_start:profile_start]
+    if anchor not in home:
+        raise RuntimeError("Android 1.0 runner: duplicate developer anchor is not in SettingsHome")
+    home = home.replace("officialDeveloper", "homeOfficialDeveloper")
+    normalized = source[:home_start] + home + source[profile_start:]
+    return _ORIGINAL_PATCH_SETTINGS(normalized)
+
+
+# The core patch is intentionally strict. Route Settings through this compatibility shim so the
+# already-generated compact account card cannot collide with the ProfileSettings badge anchor.
+core.patch_settings = patch_settings_compat
+
 
 def remove_sentinel(source: str, start_marker: str, end_marker: str, label: str) -> str:
     start = source.find(start_marker)
