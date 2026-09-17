@@ -287,6 +287,7 @@ private fun LuckyWheelBoard(
         Color(0xFF24B8D5)
     )
     val palette = puppyCasinoCartoonPalette()
+    val primary = MaterialTheme.colorScheme.primary
     val paint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
@@ -323,7 +324,7 @@ private fun LuckyWheelBoard(
                 center = Offset(center.x + 3f, center.y + 7f)
             )
             drawCircle(palette.woodLight, outerRadius, center)
-            drawCircle(MaterialTheme.colorScheme.primary, outerRadius * 0.93f, center)
+            drawCircle(primary, outerRadius * 0.93f, center)
             drawCircle(Color.White.copy(alpha = 0.20f), outerRadius * 0.87f, center, style = Stroke(4f))
 
             var cursor = -90f
@@ -365,7 +366,7 @@ private fun LuckyWheelBoard(
             }
 
             drawCircle(palette.shadow.copy(alpha = 0.28f), rimRadius * 0.31f, Offset(center.x + 2f, center.y + 4f))
-            drawCircle(MaterialTheme.colorScheme.primary, rimRadius * 0.30f, center)
+            drawCircle(primary, rimRadius * 0.30f, center)
             drawCircle(Color.White.copy(alpha = 0.26f), rimRadius * 0.26f, center, style = Stroke(3f))
         }
 
