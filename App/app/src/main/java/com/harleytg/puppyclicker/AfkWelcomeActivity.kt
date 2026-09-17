@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,7 +40,8 @@ class AfkWelcomeActivity : ComponentActivity() {
 
         val prefs = getSharedPreferences(PuppyClickerV5ViewModel.PREFS_NAME, MODE_PRIVATE)
         val pending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
-        val awayMs = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
+        val awayMs = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+            .coerceIn(0L, PuppyAfkPolicy.MAX_AWAY_MS)
 
         if (pending <= 0L) {
             finish()
@@ -52,30 +52,56 @@ class AfkWelcomeActivity : ComponentActivity() {
             PuppyClickerTheme {
                 BackHandler(enabled = true) { /* Reward stays until collected. */ }
                 AfkWelcomeScreen(
-                    reward = pending,
+                    reward = pending.coerceAtMost(7_000L),
                     awayMs = awayMs,
                     onCollect = {
                         val latestReward = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                            .coerceIn(0L, 7_000L)
+                        val latestAway = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                            .coerceIn(0L, PuppyAfkPolicy.MAX_AWAY_MS)
+                        val pendingId = prefs.getString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, null)
+                            ?.takeIf { it.isNotBlank() }
+                            ?: "afk-legacy:$latestReward:$latestAway"
+                        val lastSettledId = prefs.getString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, null)
+                        val existingClaim = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
                             .coerceAtLeast(0L)
-                        if (latestReward > 0L) {
-                            val existingClaim = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
-                                .coerceAtLeast(0L)
-                            val combined = safeAdd(existingClaim, latestReward)
-                            prefs.edit()
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
-                                .putLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, combined)
-                                .apply()
+                        val existingClaimId = prefs.getString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, null)
+
+                        when {
+                            latestReward <= 0L -> finish()
+                            pendingId == lastSettledId -> {
+                                prefs.edit()
+                                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_START)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_END)
+                                    .commit()
+                                finish()
+                            }
+                            existingClaim > 0L && existingClaimId != pendingId -> {
+                                // Keep this pending settlement intact until the already-staged claim
+                                // is consumed by V6. This avoids combining two settlement identities.
+                                finish()
+                            }
+                            else -> {
+                                val committed = prefs.edit()
+                                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, latestReward)
+                                    .putString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, pendingId)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_START)
+                                    .remove(PuppyAfkPolicy.KEY_PENDING_END)
+                                    .commit()
+                                if (committed) finish()
+                            }
                         }
-                        finish()
                     }
                 )
             }
         }
     }
-
-    private fun safeAdd(a: Long, b: Long): Long =
-        if (b > 0L && a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
 }
 
 @Composable
@@ -126,7 +152,7 @@ private fun AfkWelcomeScreen(
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    "Buddy kept a tiny treat stash while you were away.",
+                    "Your puppy kept a tiny treat stash while you were away.",
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -159,7 +185,7 @@ private fun AfkWelcomeScreen(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Slow kennel rate: 1,000 treats every 24 hours · pro-rated by time away",
+                    "Slow kennel rate: 1,000 treats every 24 hours · maximum 7 days",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
