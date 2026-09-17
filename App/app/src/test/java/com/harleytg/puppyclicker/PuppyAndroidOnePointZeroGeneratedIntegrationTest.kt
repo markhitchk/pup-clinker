@@ -39,7 +39,7 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
     @Test
     fun legacyOwnershipIsMarkedSettledWithoutRetroactiveXp() {
         val vm = generated("PuppyClickerV6ViewModel.kt")
-        assertTrue(vm.contains("unlocked.mapTo(linkedSetOf()) { \"puppy:$it\" }"))
+        assertTrue(vm.contains("unlocked.mapTo(linkedSetOf()) { \"puppy:${'$'}it\" }"))
     }
 
     @Test
