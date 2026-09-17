@@ -59,12 +59,12 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("remote feature flags") { PuppyFeatureFlags.initialize(this) }
         startupSafely("monthly rewards stream") { PuppyMonthlyRewards.initialize(this) }
         startupSafely("redeem code stream") { StreamedRedeemCodes.initialize(this) }
+        startupSafely("notification history") { PuppyNotificationHistory.initialize(this) }
         startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
 
         // If Android killed the process while it was in the background, the timestamp survives
-        // and is converted into a pending reward here. A malformed legacy value is ignored here;
-        // the ViewModel contains its own compatibility reads for gameplay state.
+        // and is converted into a pending bounded settlement here.
         startupSafely("AFK reward preparation") { prepareAfkReward(System.currentTimeMillis()) }
         startupSafely("initial PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
     }
@@ -129,25 +129,52 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
 
         val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-        if (backgroundAt <= 0L || now <= backgroundAt) return
+        if (backgroundAt <= 0L) return
 
-        val awayMs = now - backgroundAt
-        val fullDays = awayMs / DAY_MS
-        val remainder = awayMs % DAY_MS
-        val earned = safeAdd(
-            safeMultiply(fullDays, AFK_TREATS_PER_DAY),
-            safeMultiply(remainder, AFK_TREATS_PER_DAY) / DAY_MS
-        )
+        val existingPending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+            .coerceIn(0L, 7_000L)
+        if (existingPending > 0L) {
+            val existingAway = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                .coerceIn(0L, PuppyAfkPolicy.MAX_AWAY_MS)
+            val existingId = prefs.getString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, null)
+                ?.takeIf { it.isNotBlank() }
+                ?: "afk-legacy:$existingPending:$existingAway"
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, existingPending)
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, existingAway)
+                .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, existingId)
+                .apply()
+            return
+        }
 
-        val existingPending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L).coerceAtLeast(0L)
-        val existingAway = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L).coerceAtLeast(0L)
+        val settlement = PuppyAfkPolicy.prepare(backgroundAt, now)
+        if (settlement == null) {
+            // Backward/invalid clocks do not create rewards or leave an interval that can be
+            // replayed indefinitely on each foreground transition.
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .apply()
+            return
+        }
 
-        prefs.edit()
+        val lastSettledId = prefs.getString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, null)
+        if (settlement.settlementId == lastSettledId) {
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .apply()
+            return
+        }
+
+        val committed = prefs.edit()
             .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, safeAdd(existingPending, earned))
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, safeAdd(existingAway, awayMs))
-            .apply()
-        PupEyeSaveGuard.seal(this, prefs)
+            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, settlement.earnedTreats)
+            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, settlement.creditedAwayMs)
+            .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, settlement.settlementId)
+            .putLong(PuppyAfkPolicy.KEY_PENDING_START, settlement.startedAtMs)
+            .putLong(PuppyAfkPolicy.KEY_PENDING_END, settlement.endedAtMs)
+            .commit()
+        if (committed) PupEyeSaveGuard.seal(this, prefs)
     }
 
     private fun maybeShowWelcome(activity: Activity) {
@@ -172,15 +199,6 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
     }
 
-    private fun safeAdd(a: Long, b: Long): Long =
-        if (b > 0L && a > Long.MAX_VALUE - b) Long.MAX_VALUE else a + b
-
-    private fun safeMultiply(a: Long, b: Long): Long = when {
-        a <= 0L || b <= 0L -> 0L
-        a > Long.MAX_VALUE / b -> Long.MAX_VALUE
-        else -> a * b
-    }
-
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
     override fun onActivityResumed(activity: Activity) = Unit
     override fun onActivityPaused(activity: Activity) = Unit
@@ -188,8 +206,8 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
     companion object {
         private const val TAG = "PuppyClickerStartup"
-        const val AFK_TREATS_PER_DAY = 1_000L
-        const val DAY_MS = 24L * 60L * 60L * 1_000L
+        const val AFK_TREATS_PER_DAY = PuppyAfkPolicy.TREATS_PER_DAY
+        const val DAY_MS = PuppyAfkPolicy.DAY_MS
         private const val EXTERNAL_SAVE_DEBOUNCE_MS = 300L
     }
 }
