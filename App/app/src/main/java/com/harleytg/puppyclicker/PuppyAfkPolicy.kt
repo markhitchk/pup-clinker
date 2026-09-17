@@ -13,6 +13,12 @@ internal object PuppyAfkPolicy {
     const val MAX_AWAY_MS = 7L * DAY_MS
     const val TREATS_PER_DAY = 1_000L
 
+    const val KEY_PENDING_SETTLEMENT_ID = "afk_pending_settlement_id_v1"
+    const val KEY_PENDING_START = "afk_pending_start_v1"
+    const val KEY_PENDING_END = "afk_pending_end_v1"
+    const val KEY_CLAIM_SETTLEMENT_ID = "afk_claim_settlement_id_v1"
+    const val KEY_LAST_SETTLED_ID = "afk_last_settled_id_v1"
+
     fun prepare(backgroundAtMs: Long, nowMs: Long): PuppyAfkSettlement? {
         if (backgroundAtMs <= 0L || nowMs <= backgroundAtMs) return null
         val rawAway = nowMs - backgroundAtMs
