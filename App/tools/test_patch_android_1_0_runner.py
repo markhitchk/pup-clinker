@@ -55,6 +55,52 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
             self.assertNotIn("safeAdd(it.treats, amount)", normalized)
             self.assertNotIn("safeAdd(it.lifetimeTreats, amount)", normalized)
 
+    def test_schema2_normalization_supplies_legacy_redeem_anchor_for_core_patch(self) -> None:
+        source = '''class PuppyClickerV6ViewModel {
+    fun tapPuppy() {
+        val nextTaps = 1L
+    }
+
+    fun buyCookieUpgrade() = Unit
+
+    private fun consumeClaimedAfkReward() {
+        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
+        if (amount <= 0L) return
+        prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
+        _state.update {
+            it.copy(
+                treats = safeAdd(it.treats, amount),
+                lifetimeTreats = safeAdd(it.lifetimeTreats, amount),
+                afkLastClaimed = amount
+            )
+        }
+        saveState()
+    }
+
+    private fun rollDailyDayIfNeeded() = Unit
+
+    fun redeemCode(rawCode: String, onResult: (V6RedeemOutcome) -> Unit) {
+        onResult(V6RedeemOutcome(false, rawCode))
+    }
+
+    fun prestige() = Unit
+}
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vm = root / VM_RELATIVE
+            vm.parent.mkdir(parents=True)
+            vm.write_text(source, encoding="utf-8")
+
+            pre_normalize(root)
+
+            normalized = vm.read_text(encoding="utf-8")
+            expected = '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        )
+        saveState()
+        return V6RedeemOutcome(true, reward.message)'''
+            self.assertIn(expected, normalized)
+
     def test_settings_badge_state_is_scoped_to_profile_settings(self) -> None:
         source = '''enum class SettingsDestination {
     DEVELOPER,
