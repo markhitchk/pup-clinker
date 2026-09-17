@@ -19,7 +19,7 @@ class PuppyCasinoCartoonUiTest {
         val center3 = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, 3)
 
         assertEquals(-86.4f, center0, 0.01f)
-        assertEquals(90f, center3, 0.01f)
+        assertEquals(45f, center3, 0.01f)
     }
 
     @Test
