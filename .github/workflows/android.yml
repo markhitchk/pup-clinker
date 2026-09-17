@@ -45,6 +45,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Compile canonical Kotlin UI before generated-source patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app/build/generated/protected-puppies/source
+          mkdir -p app/build/generated/protected-puppies/source
+          cp -R app/src/main/java/. app/build/generated/protected-puppies/source/
+          gradle --no-daemon :app:compileDebugKotlin -x :app:generateProtectedPuppySources --stacktrace
+
       - name: Run JVM regression tests
         run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
 
