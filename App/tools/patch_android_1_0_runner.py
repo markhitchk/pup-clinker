@@ -15,26 +15,35 @@ _ORIGINAL_PATCH_SETTINGS = core.patch_settings
 
 
 def patch_settings_compat(source: str) -> str:
-    """Disambiguate compact SettingsHome identity state from ProfileSettings badge state."""
+    """Keep the legacy profile badge patch scoped to ProfileSettings."""
     anchor = "    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)\n"
     if source.count(anchor) <= 1:
         return _ORIGINAL_PATCH_SETTINGS(source)
 
-    home_start = source.find("private fun SettingsHome(")
-    profile_start = source.find("private fun ProfileSettings(", home_start)
-    if home_start < 0 or profile_start < 0:
-        raise RuntimeError("Android 1.0 runner: SettingsHome/ProfileSettings boundary not found")
+    profile_start = source.find("private fun ProfileSettings(")
+    profile_end = source.find("private fun DiscordSettings(", profile_start)
+    if profile_start < 0 or profile_end < 0:
+        raise RuntimeError("Android 1.0 runner: ProfileSettings/DiscordSettings boundary not found")
 
-    home = source[home_start:profile_start]
-    if anchor not in home:
-        raise RuntimeError("Android 1.0 runner: duplicate developer anchor is not in SettingsHome")
-    home = home.replace("officialDeveloper", "homeOfficialDeveloper")
-    normalized = source[:home_start] + home + source[profile_start:]
-    return _ORIGINAL_PATCH_SETTINGS(normalized)
+    profile = source[profile_start:profile_end]
+    if profile.count(anchor) != 1:
+        raise RuntimeError("Android 1.0 runner: profile developer anchor is not unique")
+
+    compat_anchor = "    val __android10OfficialDeveloperCompat = PuppyPlayerIdentity.isHarleyTgDeveloper(context)\n"
+    if compat_anchor in source:
+        raise RuntimeError("Android 1.0 runner: developer compatibility sentinel already present")
+
+    normalized = (
+        source[:profile_start].replace(anchor, compat_anchor)
+        + profile
+        + source[profile_end:].replace(anchor, compat_anchor)
+    )
+    patched = _ORIGINAL_PATCH_SETTINGS(normalized)
+    return patched.replace(compat_anchor, anchor)
 
 
 # The core patch is intentionally strict. Route Settings through this compatibility shim so the
-# already-generated compact account card cannot collide with the ProfileSettings badge anchor.
+# profile entitlement patch stays unambiguous when other Settings pages use the same identity flag.
 core.patch_settings = patch_settings_compat
 
 
