@@ -33,7 +33,28 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
         assertTrue(vm.contains("PuppyXpEvent.DAILY_TASK"))
         assertTrue(vm.contains("PuppyXpEvent.NEW_PUPPY"))
         assertTrue(vm.contains("PuppyXpEvent.ACHIEVEMENT"))
-        assertTrue(vm.contains("unlockPuppyWithProgression"))
+        assertTrue(vm.contains("awardNewPuppyXp"))
+    }
+
+    @Test
+    fun legacyOwnershipIsMarkedSettledWithoutRetroactiveXp() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        assertTrue(vm.contains("unlocked.mapTo(linkedSetOf()) { \"puppy:$it\" }"))
+    }
+
+    @Test
+    fun nonPrestigeResetPreservesOnePointZeroProgression() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        val start = vm.indexOf("fun resetRunWithoutPrestige()")
+        val end = vm.indexOf("private fun consumeClaimedAfkReward()", start)
+        assertTrue(start >= 0 && end > start)
+        val reset = vm.substring(start, end)
+        assertTrue(reset.contains("bondByPuppyId = keep.bondByPuppyId"))
+        assertTrue(reset.contains("playerXp = keep.playerXp"))
+        assertTrue(reset.contains("achievementRewardedIds = keep.achievementRewardedIds"))
+        assertTrue(reset.contains("xpSettlementIds = keep.xpSettlementIds"))
+        assertTrue(reset.contains("releaseClaimIds = keep.releaseClaimIds"))
+        assertTrue(reset.contains("profileBadgeIds = keep.profileBadgeIds"))
     }
 
     @Test
