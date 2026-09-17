@@ -56,7 +56,9 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
             self.assertNotIn("safeAdd(it.lifetimeTreats, amount)", normalized)
 
     def test_settings_badge_and_progression_are_scoped_to_profile_settings(self) -> None:
-        source = '''enum class SettingsDestination {
+        source = '''import androidx.compose.material3.HorizontalDivider
+
+enum class SettingsDestination {
     DEVELOPER,
     ABOUT
 }
