@@ -1,0 +1,73 @@
+name: Apply Gacha eligibility fix once
+
+on:
+  push:
+    branches:
+      - chatgpt/fix-gacha-profile-play-rewards-20260917
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/fix-gacha-profile-play-rewards-20260917
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact Gacha eligibility transformation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('App/app/src/main/java/com/harleytg/puppyclicker/PuppyGacha.kt')
+          source = path.read_text(encoding='utf-8')
+          old = '''internal object PuppyGachaEngine {
+              const val COST_TREATS = 2_500L
+              const val COST_COMMON_TICKETS = 1
+
+              fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
+                  .asSequence()
+                  .distinctBy { it.id }
+                  .filter { !it.redeemOnly }
+                  .sortedBy { it.id }
+                  .toList()
+          '''
+          new = '''internal object PuppyGachaEngine {
+              const val COST_TREATS = 2_500L
+              const val COST_COMMON_TICKETS = 1
+
+              private val SPECIAL_EXCLUSIVE_IDS = setOf(
+                  "dev_pup",
+                  "v2_dev_pup",
+                  "secret_snoot",
+                  "classic_forever"
+              )
+
+              internal fun isGachaEligible(style: PuppyStyle): Boolean =
+                  style.id !in SPECIAL_EXCLUSIVE_IDS &&
+                      !SeasonalPuppyEvents.isSeasonal(style.id)
+
+              fun allEligiblePuppies(styles: List<PuppyStyle>): List<PuppyStyle> = styles
+                  .asSequence()
+                  .distinctBy { it.id }
+                  .filter(::isGachaEligible)
+                  .sortedBy { it.id }
+                  .toList()
+          '''
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one Gacha eligibility anchor, found {source.count(old)}')
+          path.write_text(source.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Remove one-time workflow and commit fix
+        run: |
+          rm .github/workflows/apply-gacha-eligibility-fix-once.yml
+          git config user.name "markhitchk"
+          git config user.email "mark.hitchk@gmail.com"
+          git add -A
+          git commit -m "fix: unlock normal roster puppies through gacha"
+          git push origin HEAD:chatgpt/fix-gacha-profile-play-rewards-20260917
