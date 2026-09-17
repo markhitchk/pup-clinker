@@ -1,0 +1,68 @@
+package com.harleytg.puppyclicker
+
+import java.io.File
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
+    private fun generated(name: String): String {
+        val relative = "generated/protected-puppies/source/com/harleytg/puppyclicker/$name"
+        val file = listOf(File("app/build/$relative"), File("build/$relative"))
+            .firstOrNull(File::isFile)
+            ?: error("Generated $name was not found")
+        return file.readText()
+    }
+
+    @Test
+    fun v6StateUsesPerPuppyBondAndExplicitXp() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        assertTrue(vm.contains("val bondByPuppyId: Map<String, Int>"))
+        assertTrue(vm.contains("val playerXp: Long"))
+        assertTrue(vm.contains("PuppyProgression.bondFor(bondByPuppyId, puppyStyle)"))
+        assertTrue(vm.contains("PuppyProgression.levelForXp(playerXp)"))
+        assertTrue(vm.contains("PuppyProgressionStore.KEY_BOND_BY_PUPPY"))
+        assertTrue(vm.contains("PuppyProgressionStore.KEY_PLAYER_XP"))
+    }
+
+    @Test
+    fun v6ProgressionAwardsAreWiredToRealActions() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        assertTrue(vm.contains("PuppyXpEvent.MANUAL_TAP"))
+        assertTrue(vm.contains("PuppyXpEvent.CARE_ACTION"))
+        assertTrue(vm.contains("PuppyXpEvent.DAILY_TASK"))
+        assertTrue(vm.contains("PuppyXpEvent.NEW_PUPPY"))
+        assertTrue(vm.contains("PuppyXpEvent.ACHIEVEMENT"))
+        assertTrue(vm.contains("unlockPuppyWithProgression"))
+    }
+
+    @Test
+    fun currentUiIncludesAchievementsViewerInboxAndReleaseHub() {
+        val main = generated("PuppyMainScreensRevamp.kt")
+        val roster = generated("PuppyRosterScreen.kt")
+        val activity = generated("PuppyClickerV6Activity.kt")
+        val settings = generated("PuppySettingsUi.kt")
+        assertTrue(main.contains("PuppyAchievementsV6.statuses"))
+        assertTrue(roster.contains("PuppyViewerDialog("))
+        assertTrue(activity.contains("PuppyNotificationInboxDialog("))
+        assertTrue(activity.contains("PuppyNotificationHistory.unreadCount"))
+        assertTrue(settings.contains("PuppyReleaseHubScreen("))
+        assertTrue(settings.contains("PuppyPerformancePreset"))
+    }
+
+    @Test
+    fun existingInternalRoutesRemainPresent() {
+        val activity = generated("PuppyClickerV6Activity.kt")
+        assertTrue(activity.contains("PuppyInternalDestination.GACHA -> PuppyGachaScreen("))
+        assertTrue(activity.contains("PuppyInternalDestination.CASINO -> PuppyCasinoHub("))
+        assertTrue(activity.contains("PuppyInternalDestination.EXCHANGE -> PuppyExchangeScreen("))
+    }
+
+    @Test
+    fun offlineModeIsNotIntroduced() {
+        val activity = generated("PuppyClickerV6Activity.kt")
+        val settings = generated("PuppySettingsUi.kt")
+        assertFalse(activity.contains("Offline Mode"))
+        assertFalse(settings.contains("Offline Mode"))
+    }
+}
