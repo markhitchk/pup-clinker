@@ -139,14 +139,15 @@ def pre_normalize(root: Path) -> None:
 
     # The 1.0 ownership-XP patch also expects the old synchronous friend-gift claim body. The
     # Exchange patch replaces it with RewardGrantEngine before this runner executes. Use a
-    # comment-only compatibility sentinel and wire XP into the real gift path in post_fix().
+    # comment-only compatibility sentinel containing the exact legacy anchor, then wire XP into
+    # the real gift path in post_fix().
     if "fun claimIncomingGift(" in source and "RewardGrantEngine.grantIncomingGift" in source:
         park = source.find("    fun parkVisit()")
         if park < 0:
             raise RuntimeError("Android 1.0 runner: parkVisit insertion point not found")
-        gift_sentinel = GIFT_SENTINEL_START + '''    fun claimGift(asset: PuppyRosterAsset): Boolean {
+        gift_sentinel = GIFT_SENTINEL_START + '''    fun claimGift(puppyId: String): Boolean {
         val current = _state.value
-        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
+        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
         saveState()
         return true
     }
