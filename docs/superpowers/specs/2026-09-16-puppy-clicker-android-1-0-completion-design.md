@@ -84,7 +84,7 @@ Persist a map keyed by canonical puppy asset/style ID:
 - `bondByPuppyId: Map<String, Int>`
 - Valid range: `0..100`
 - Existing active-puppy Bond migrates to the currently selected puppy.
-- Puppies without stored Bond start from the current default Bond baseline used by the app.
+- Puppies without stored Bond start at `10`, matching the current V6 default Bond baseline.
 
 Every Bond mutation requires an explicit target puppy ID. Care actions apply to the currently selected puppy.
 
@@ -98,9 +98,9 @@ Bond uses lightweight milestone tiers rather than a second complex RPG system:
 - 70-89: Best Friend
 - 90-100: Forever Friend
 
-Milestones can unlock presentation rewards such as profile labels, small celebratory effects, and achievement progress. They must not create a second currency or destabilize Treat production.
+Milestones unlock presentation state only in 1.0: milestone label, milestone celebration when newly crossed, and achievement progress. They do not add Treat multipliers, currencies, or hidden production bonuses.
 
-The existing care-score bonus remains governed by existing care rules. Bond milestones must not silently stack major economy multipliers.
+The existing care-score bonus remains governed by existing care rules.
 
 ### UI
 
@@ -110,35 +110,37 @@ Show Bond for the selected puppy in Care and Puppy Viewer. Roster grid cards rem
 
 ### Current state
 
-V6 currently derives player level from lifetime Treats.
+V6 currently derives player level from lifetime Treats using a square-root progression curve.
 
 ### 1.0 model
 
-Promote progression to an explicit XP model while maintaining compatibility with existing players.
+Promote progression to an explicit XP model while preserving the existing visible level for established players at migration time.
 
 Persist:
 
 - `playerXp: Long`
-- `playerLevel: Int` may remain derived from XP and does not need duplicate persistence if derivation is deterministic.
+- Player level is derived, not separately authoritative.
 
-Migration seeds XP from the player's existing lifetime-Treat progression so established players do not return to level 1.
+Migration seeds `playerXp` from non-negative `lifetimeTreats`. The 1.0 level formula remains compatible with the current curve:
+
+`level = 1 + floor(sqrt(playerXp / 100.0))`
+
+This keeps a player's migrated level aligned with the existing lifetime-Treat-derived level while allowing future XP to come from more than Treat accumulation.
 
 ### XP sources
 
-Award XP for ordinary play actions that already exist:
+All XP awards go through one progression helper. Initial 1.0 award values are:
 
-- Manual tapping.
-- Care actions.
-- Daily task completion.
-- Achievement claims / completion.
-- New-puppy acquisition.
-- Selected event/reward completions where appropriate.
+- Successful manual tap event: `+1 XP`.
+- Care action completed: `+5 XP`.
+- Daily task completed: `+25 XP`.
+- Achievement newly completed after migration: `+50 XP`.
+- New puppy ownership acquired: `+100 XP`.
+- Event/reward completion explicitly opted into XP: `+50 XP` per stable completion ID.
 
-XP awards must be bounded and centralized in one progression service/helper rather than scattered magic numbers across UI files.
+XP is non-negative and monotonic. No action removes XP. A single action event can settle its XP only once.
 
-### Level curve
-
-Use a deterministic monotonic curve with no level loss. The exact formula is owned by the progression helper and covered by tests for boundary levels and migration values.
+Migration may mark existing achievements completed from existing state, but migration itself does not retroactively award achievement XP; this avoids an unpredictable one-time XP spike for established saves.
 
 No prestige reset of XP is introduced by this design.
 
@@ -167,7 +169,7 @@ Each achievement has:
 
 Achievement evaluation must be pure/deterministic from persisted game state where possible. One-time reward claims must use persisted claim IDs so they are idempotent across app restart/import.
 
-Existing players receive completion credit when their current state already satisfies an achievement.
+Existing players receive completion credit when their current state already satisfies an achievement. Migration completion credit does not award the new XP completion bonus.
 
 ## 4. Expanded 2D Puppy Viewer
 
@@ -229,17 +231,17 @@ History is local only. No notification server is introduced.
 
 ### Retention
 
-Keep a bounded history, for example the most recent 100 items. Pruning is deterministic and must not affect Android system notifications.
+Keep exactly the most recent `100` history items. On insertion beyond 100, prune the oldest items by creation timestamp with stable-ID tie-breaking. Pruning must not affect Android system notifications.
 
 ### Bell behavior
 
-The top-bar bell opens the history list. Opening the inbox does not have to mark every item read automatically; items should become read through explicit viewing/interaction rules.
+The top-bar bell opens the history list. Opening the inbox alone does not mark all items read. An item becomes read when its row/detail is opened or its explicit action is invoked. A user-visible `Mark all read` action is allowed.
 
 Unread badge count derives from local inbox state.
 
 ### Android notification channels
 
-The implementation should preserve current notification behavior first. Channel consolidation is not part of this 1.0 completion spec unless a compatibility review proves a safe migration path. Android notification channel IDs are persistent user-facing OS objects once created, so changing them requires a separately deliberate migration decision.
+The implementation preserves current Android notification channel IDs and behavior. Channel consolidation is not part of this 1.0 completion spec. Android notification channel IDs are persistent user-facing OS objects once created, so changing them requires a separately deliberate migration decision.
 
 ## 6. Release Hub / What's New
 
@@ -271,16 +273,16 @@ AFK accrual is correctly gated behind completed onboarding and process/backgroun
 
 ### 1.0 hardening
 
+The maximum AFK accrual window is exactly `7 days` (`168 hours`). At the existing `1000 Treats/day` rate, the largest normal capped AFK reward is therefore `7000 Treats`.
+
 Add:
 
-- A defined maximum AFK accrual duration.
-- Persisted claim identity / claim timestamp sufficient to prevent duplicate settlement of the same background interval.
+- Persisted settlement identity for each pending AFK interval.
+- Persisted last-settled interval metadata sufficient to reject duplicate settlement of the same interval.
 - Validation that pending reward interval start/end are sane and ordered.
 - Protection against negative clock deltas.
-- Protection against large forward/backward clock anomalies by clamping to the supported maximum interval.
+- Forward/backward clock anomalies clamped to the 168-hour maximum rather than producing unbounded rewards.
 - Regression tests for onboarding, process death, repeated foregrounding, duplicate activity lifecycle callbacks, and repeated claim attempts.
-
-Recommended maximum accrual window: 7 days. At the existing 1000 Treats/day rate this remains understandable and bounded.
 
 AFK must continue to use the existing Treat economy; no separate AFK currency is created.
 
@@ -292,7 +294,7 @@ AFK must continue to use the existing Treat economy; no separate AFK currency is
 
 ### 1.0 behavior
 
-Expose three simple player-facing presets in Settings:
+Expose exactly three simple player-facing presets in Settings:
 
 - Automatic
 - Quality
@@ -337,7 +339,7 @@ Requirements:
 - Reduced-motion policy is respected by new 1.0 animations.
 - Layout remains usable at increased Android font scale; critical controls must not be clipped or made unreachable.
 
-Accessibility changes should not replace the existing visual theme.
+Accessibility changes must not replace the existing visual theme.
 
 ## 10. Adaptive Tablet and Large-Screen Layouts
 
@@ -345,45 +347,49 @@ Accessibility changes should not replace the existing visual theme.
 
 Support tablets, foldables, and wide landscape windows without creating a separate tablet app.
 
-### Implementation pattern
+### Breakpoints
 
-Use window/content-width breakpoints in shared Compose layout helpers.
+Use content/window width in density-independent pixels:
+
+- Compact: `< 600dp`
+- Medium: `600dp..839dp`
+- Expanded: `>= 840dp`
 
 Compact width retains the current phone-first stack.
 
 Medium/expanded widths may use two-pane or denser adaptive composition where it improves usability.
 
-Priority surfaces:
+### Priority surfaces
 
-- Roster: filters/list/grid + Puppy Viewer can become side-by-side.
-- Care: puppy/status area + actions can use two columns.
+- Roster: filters/grid and Puppy Viewer may become side-by-side on expanded width.
+- Care: puppy/status area and actions may use two columns.
 - Shop / Rewards: adaptive grid width and constrained readable content columns.
 - Settings: constrained centered content or two-column sections on expanded width.
 - Casino / Gacha: preserve game aspect and controls without stretching excessively.
 
-Do not duplicate business logic per form factor.
+Do not duplicate business logic per form factor. If an adaptive branch cannot safely render, fall back to the compact composition.
 
 ## 11. Android Home-Screen Puppy Widget
 
 ### 1.0 scope
 
-Add a read-only home-screen widget.
+Add one read-only home-screen widget using the platform `AppWidgetProvider`/`RemoteViews` path so the feature does not require introducing a second UI framework dependency.
 
 The widget shows:
 
 - Currently selected puppy artwork when a safe local/bundled/cached representation is available.
 - Puppy name.
 - Current Treat balance.
-- A compact care/status indicator where practical.
+- A compact care/status indicator.
 - Tap action to open Puppy Clicker.
 
 The widget must not directly mutate the game economy in 1.0. No widget tap-to-earn, feed, claim, or gacha actions are included because direct cross-process game mutations increase save-race and integrity risk.
 
 ### Data source
 
-Expose a small widget-safe snapshot written by the main app after successful game saves/state changes. The widget reads this snapshot and does not parse or mutate the full protected save.
+Expose a small widget-safe snapshot written by the main app only after a successful authoritative game save/state settlement. The widget reads this snapshot and does not parse or mutate the full protected save.
 
-When streamed artwork is unavailable to the widget process, use a safe fallback/logo/placeholder rather than performing unrestricted network work from the widget provider.
+When streamed artwork is unavailable to the widget process, use the app's safe packaged fallback artwork/logo rather than performing unrestricted network work from the widget provider.
 
 ## 12. One-Time 1.0 Celebration
 
@@ -397,17 +403,17 @@ Display a Puppy Clicker 1.0 celebration surface with:
 
 - 1.0 title.
 - Compact What's New summary.
-- A commemorative 1.0 badge/reward.
+- A commemorative profile badge named `Puppy Clicker 1.0` with stable ID `release_1_0_badge`.
 - Continue action.
 - Link/action to Release Hub for full notes.
 
+The 1.0 celebration grants no Treats, tickets, Casino value, or other economy currency.
+
 ### Reward integrity
 
-Persist a stable reward/claim ID such as `release_1_0_launch_reward`.
+Persist stable claim ID `release_1_0_launch_reward` together with the badge entitlement.
 
-The reward is idempotent. App restart, activity recreation, save import, or repeated upgrade checks must not grant it more than once for the same player save.
-
-The reward should be cosmetic/profile-oriented or a modest bounded existing-currency reward. It must not introduce a new currency.
+The reward is idempotent. App restart, activity recreation, save import, or repeated upgrade checks must not grant duplicate badge entitlements or replay claim side effects.
 
 If the player imports a save that has already claimed the 1.0 reward, the claim remains honored.
 
@@ -423,7 +429,7 @@ The generated main shell remains:
 
 Internal destinations continue to include existing Settings, Prestige, Exchange, Casino, and Gacha routes.
 
-New 1.0 surfaces should integrate as nested/current destinations rather than new bottom-nav tabs:
+New 1.0 surfaces integrate as nested/current destinations rather than new bottom-nav tabs:
 
 - Puppy Viewer: from Roster.
 - Achievements: under Rewards.
@@ -437,7 +443,7 @@ The home-screen widget exists outside in-app navigation and launches the existin
 
 ### New persisted concepts
 
-The save layer will gain explicit state for:
+The save layer gains explicit state for:
 
 - Per-puppy Bond map.
 - Player XP / progression state.
@@ -445,34 +451,33 @@ The save layer will gain explicit state for:
 - Notification history/read state.
 - Performance preset.
 - AFK claim-settlement metadata.
-- 1.0 celebration/reward claim state.
+- 1.0 celebration/reward claim and badge entitlement state.
 
-Widget snapshot storage is derived/cache state and should not be treated as authoritative save data.
+Widget snapshot storage is derived/cache state and is not authoritative save data.
 
 ### Migration rules
 
 On loading an older save:
 
 1. Preserve all existing balances, roster ownership, selected puppy, event data, Casino state, account/player identity, and support/privacy settings.
-2. Migrate current global Bond to the selected puppy.
-3. Initialize other puppy Bond entries lazily/defaulted.
-4. Seed XP from the existing lifetime-Treat/level progression so player progression does not visibly reset.
-5. Re-evaluate achievements from current state and mark satisfied non-claim progress appropriately; one-time rewards remain unclaimed until their claim rules are satisfied.
-6. Default notification history to empty without affecting existing Android notifications.
-7. Map existing motion preferences to the nearest 1.0 performance preset when deterministic; otherwise use Automatic.
-8. Initialize AFK settlement metadata without invalidating any legitimate pending reward already created before migration.
-9. Preserve any imported 1.0 celebration claim state when present.
+2. Migrate current global Bond to the selected puppy; other puppies lazily default to Bond 10.
+3. Seed `playerXp` from non-negative lifetime Treats so the existing visible level is preserved by the compatible square-root curve.
+4. Re-evaluate achievements from current state and mark satisfied progress/completion; migration completion does not award new achievement XP.
+5. Default notification history to empty without affecting existing Android notifications.
+6. Map existing motion preferences to the nearest 1.0 performance preset when deterministic; otherwise use Automatic.
+7. Initialize AFK settlement metadata without invalidating any legitimate pending reward already created before migration; any migrated pending interval is still clamped to the 168-hour cap before settlement.
+8. Preserve any imported 1.0 celebration claim/badge state when present.
 
 Migration must be covered by unit/instrumentation tests using representative legacy payloads.
 
 ## Error Handling
 
-- Unknown puppy ID in Bond map: ignore orphan entry safely and preserve it through save migration when possible; never crash roster loading.
-- Corrupt/invalid XP: clamp to a safe non-negative value and let save integrity tooling record/recover according to existing policy.
+- Unknown puppy ID in Bond map: ignore the orphan for active UI but preserve it through save round trips when possible; never crash roster loading.
+- Corrupt/invalid XP: clamp to a safe non-negative value and let existing save-integrity tooling record/recover according to current policy.
 - Notification history decode failure: drop only invalid history entries rather than resetting the game save.
 - Release API unavailable: show cached data and a clear refresh failure state; do not break Settings.
-- AFK invalid interval: reject/clamp the interval and never produce negative or unbounded rewards.
-- Widget snapshot missing/corrupt: render fallback content and open app normally on tap.
+- AFK invalid interval: reject/clamp the interval and never produce negative or more than 7000 Treats from one AFK settlement under the current rate.
+- Widget snapshot missing/corrupt: render packaged fallback content and open the app normally on tap.
 - Large-screen adaptive layout failure: fall back to compact composition rather than hiding controls.
 
 ## Testing Strategy
@@ -481,13 +486,13 @@ Migration must be covered by unit/instrumentation tests using representative leg
 
 Add focused tests for:
 
-- Bond per-puppy isolation, clamping, milestones, and migration.
-- XP awards, level boundaries, migration seeding, and no level regression for representative saves.
+- Bond per-puppy isolation, clamping, milestone boundaries, and migration.
+- XP awards, exactly-once event settlement, level boundaries, migration seeding, and no level regression for representative saves.
 - Achievement evaluation and idempotent claims.
-- Notification history insertion, read state, pruning, and serialization.
-- AFK maximum accrual, duplicate-claim protection, clock anomaly handling, and onboarding gate preservation.
+- Notification history insertion, read state, 100-item pruning, tie-breaking, and serialization.
+- AFK 168-hour maximum accrual, 7000-Treat cap at the current rate, duplicate-claim protection, clock anomaly handling, and onboarding gate preservation.
 - Performance preset mapping and persistence.
-- 1.0 celebration/reward idempotency.
+- 1.0 celebration/badge idempotency.
 - Widget snapshot serialization.
 
 ### Generated integration tests
@@ -508,7 +513,7 @@ Patch application must remain deterministic in a clean build.
 Cover at minimum:
 
 - Phone compact Roster -> Puppy Viewer flow.
-- Expanded-width Roster two-pane/adaptive behavior.
+- Expanded-width Roster adaptive/two-pane behavior.
 - Achievement visibility/claim path.
 - Notification inbox read/unread behavior.
 - Performance preset selection.
@@ -522,7 +527,7 @@ Existing tests for save transfer, streamed assets, Gacha, Casino, navigation, Pu
 
 ## Implementation Boundaries
 
-Prefer small focused classes/files for new responsibilities, for example:
+Prefer small focused classes/files for new responsibilities, including:
 
 - Progression/Bond helper or repository.
 - Achievement evaluator/state adapter.
