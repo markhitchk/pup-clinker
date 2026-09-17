@@ -40,9 +40,8 @@ internal object PuppyNotificationHistoryCodec {
     fun normalize(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
         items.asSequence()
             .filter { it.id.isNotBlank() && it.title.isNotBlank() }
-            .groupBy { it.id }
-            .map { (_, duplicates) -> duplicates.maxWithOrNull(NEWEST_FIRST)!! }
             .sortedWith(NEWEST_FIRST)
+            .distinctBy { it.id }
             .take(MAX_ITEMS)
             .toList()
 
