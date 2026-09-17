@@ -207,6 +207,22 @@ def post_fix(root: Path) -> None:
     if gift_old in source:
         source = source.replace(gift_old, gift_new, 1)
 
+    # The source reset currently names its protected state snapshot `keep`, while the core 1.0
+    # transform still targets an older `current` shape. Preserve all non-run 1.0 progression here.
+    reset_old = '''            redeemedCodeIds = keep.redeemedCodeIds,
+            hapticsEnabled = keep.hapticsEnabled,'''
+    reset_new = '''            redeemedCodeIds = keep.redeemedCodeIds,
+            bond = keep.bond,
+            bondByPuppyId = keep.bondByPuppyId,
+            playerXp = keep.playerXp,
+            achievementRewardedIds = keep.achievementRewardedIds,
+            xpSettlementIds = keep.xpSettlementIds,
+            releaseClaimIds = keep.releaseClaimIds,
+            profileBadgeIds = keep.profileBadgeIds,
+            hapticsEnabled = keep.hapticsEnabled,'''
+    if reset_old in source:
+        source = source.replace(reset_old, reset_new, 1)
+
     # Existing pre-1.0 ownership is migration-settled without awarding XP. This prevents an old
     # puppy from producing +100 XP merely because a trade was cancelled or the puppy was reacquired.
     settlement_load_old = '''            xpSettlementIds = prefs.getStringSet(PuppyProgressionStore.KEY_XP_SETTLEMENTS, emptySet())?.toSet() ?: emptySet(),'''
