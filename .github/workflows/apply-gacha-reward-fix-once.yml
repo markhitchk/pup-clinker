@@ -1,0 +1,29 @@
+name: Apply gacha reward fix once
+
+on:
+  push:
+    branches:
+      - chatgpt/fix-gacha-profile-play-rewards-20260917
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/fix-gacha-profile-play-rewards-20260917
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact source transformation
+        run: python3 App/tools/apply_gacha_reward_fix_once.py
+      - name: Commit transformed source
+        run: |
+          git config user.name "markhitchk"
+          git config user.email "mark.hitchk@gmail.com"
+          git add -A
+          git commit -m "fix: prevent duplicate gacha and stale play rewards"
+          git push origin HEAD:chatgpt/fix-gacha-profile-play-rewards-20260917
