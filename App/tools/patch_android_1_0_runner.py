@@ -6,8 +6,20 @@ import sys
 import patch_android_1_0_completion as core
 
 PACKAGE = Path("com/harleytg/puppyclicker")
-SENTINEL_START = "/* ANDROID_1_0_SCHEMA2_SENTINEL\n"
-SENTINEL_END = "ANDROID_1_0_SCHEMA2_SENTINEL_END */\n"
+SCHEMA2_SENTINEL_START = "/* ANDROID_1_0_SCHEMA2_SENTINEL\n"
+SCHEMA2_SENTINEL_END = "ANDROID_1_0_SCHEMA2_SENTINEL_END */\n"
+GIFT_SENTINEL_START = "/* ANDROID_1_0_GIFT_SENTINEL\n"
+GIFT_SENTINEL_END = "ANDROID_1_0_GIFT_SENTINEL_END */\n"
+
+
+def remove_sentinel(source: str, start_marker: str, end_marker: str, label: str) -> str:
+    start = source.find(start_marker)
+    if start < 0:
+        return source
+    end = source.find(end_marker, start)
+    if end < 0:
+        raise RuntimeError(f"Android 1.0 runner: {label} sentinel end missing")
+    return source[:start] + source[end + len(end_marker):]
 
 
 def pre_normalize(root: Path) -> None:
@@ -45,12 +57,23 @@ def pre_normalize(root: Path) -> None:
         prestige = source.find("    fun prestige() {")
         if prestige < 0:
             raise RuntimeError("Android 1.0 runner: prestige anchor not found for Puppy Code sentinel")
-        sentinel = SENTINEL_START + '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        sentinel = SCHEMA2_SENTINEL_START + '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
         )
         saveState()
         return V6RedeemOutcome(true, reward.message)
-''' + SENTINEL_END
+''' + SCHEMA2_SENTINEL_END
         source = source[:prestige] + sentinel + source[prestige:]
+
+    # Exchange's final patch uses asset.style.id for gifts, while the core 1.0 transform has a
+    # legacy puppyId anchor. Satisfy that anchor in a comment and patch the real gift method later.
+    if "fun receiveExchangePuppy(puppyId: String): Boolean" in source:
+        trade = source.find("    fun applyExchangeTrade(")
+        if trade < 0:
+            raise RuntimeError("Android 1.0 runner: Exchange trade anchor not found for gift sentinel")
+        sentinel = GIFT_SENTINEL_START + '''        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
+        saveState()
+''' + GIFT_SENTINEL_END
+        source = source[:trade] + sentinel + source[trade:]
 
     vm.write_text(source, encoding="utf-8")
 
@@ -59,13 +82,18 @@ def post_fix(root: Path) -> None:
     vm = root / PACKAGE / "PuppyClickerV6ViewModel.kt"
     source = vm.read_text(encoding="utf-8")
 
-    # Remove the comment-only schema-2 compatibility sentinel after the core anchor is consumed.
-    start = source.find(SENTINEL_START)
-    if start >= 0:
-        end = source.find(SENTINEL_END, start)
-        if end < 0:
-            raise RuntimeError("Android 1.0 runner: Puppy Code sentinel end missing")
-        source = source[:start] + source[end + len(SENTINEL_END):]
+    source = remove_sentinel(
+        source,
+        SCHEMA2_SENTINEL_START,
+        SCHEMA2_SENTINEL_END,
+        "Puppy Code schema-2",
+    )
+    source = remove_sentinel(
+        source,
+        GIFT_SENTINEL_START,
+        GIFT_SENTINEL_END,
+        "Exchange gift",
+    )
 
     # Attach new-puppy XP to the actual live, validated Puppy Code grant result.
     schema2_old = '''                        val next = grant.state.copy(
@@ -93,6 +121,28 @@ def post_fix(root: Path) -> None:
         putString(KEY_PUPPY_CODE_HISTORY, PuppyCodeHistory.encode(history))''',
             1,
         )
+
+    # Exchange gifts award ownership XP against the real canonical asset ID.
+    gift_old = '''        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
+        saveState()
+        return true'''
+    gift_new = '''        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
+        _state.value = awardNewPuppyXp(current, _state.value)
+        saveState()
+        return true'''
+    if gift_old in source:
+        source = source.replace(gift_old, gift_new, 1)
+
+    # Existing pre-1.0 ownership is migration-settled without awarding XP. This prevents an old
+    # puppy from producing +100 XP merely because a trade was cancelled or the puppy was reacquired.
+    settlement_load_old = '''            xpSettlementIds = prefs.getStringSet(PuppyProgressionStore.KEY_XP_SETTLEMENTS, emptySet())?.toSet() ?: emptySet(),'''
+    settlement_load_new = '''            xpSettlementIds = if (prefs.contains(PuppyProgressionStore.KEY_XP_SETTLEMENTS)) {
+                prefs.getStringSet(PuppyProgressionStore.KEY_XP_SETTLEMENTS, emptySet())?.toSet() ?: emptySet()
+            } else {
+                unlocked.mapTo(linkedSetOf()) { "puppy:$it" }
+            },'''
+    if settlement_load_old in source:
+        source = source.replace(settlement_load_old, settlement_load_new, 1)
 
     # The core patch's compact park/daily compatibility insertion can sit next to the multiline
     # per-puppy Bond insertion. Keep only the multiline authoritative map update.
