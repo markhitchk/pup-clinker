@@ -3,6 +3,7 @@ package com.harleytg.puppyclicker
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -133,9 +135,10 @@ internal fun PuppyScratchersScreen(
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(18.dp),
             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            shadowElevation = 2.dp
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -153,47 +156,20 @@ internal fun PuppyScratchersScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            color = scratcherShellColor(displayCard),
-            border = BorderStroke(2.dp, scratcherAccentColor(displayCard))
-        ) {
-            Column(Modifier.fillMaxWidth().padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "${displayCard.emoji} ${displayCard.name.uppercase()}",
-                    color = Color.White,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    displayCard.tagline,
-                    color = Color.White.copy(alpha = 0.78f),
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(10.dp))
-                ScratcherCard(
-                    card = displayCard,
-                    outcome = display,
-                    scratched = scratched,
-                    enabled = round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED && !revealed,
-                    revealAll = revealed
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    when {
-                        display == null -> "Choose a card below to begin."
-                        revealed -> "${display.prize.label} • ${display.payoutTreats} Treats returned"
-                        round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
-                            "Scratch with the Pup Coin • ${(scratchProgress * 100).toInt()}%"
-                        else -> "Scratch to reveal."
-                    },
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
+        ScratcherCartoonStage(
+            card = displayCard,
+            outcome = display,
+            scratched = scratched,
+            enabled = round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED && !revealed,
+            revealAll = revealed,
+            status = when {
+                display == null -> "Choose a card below to begin."
+                revealed -> "${display.prize.label} • ${display.payoutTreats} Treats returned"
+                round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
+                    "Scratch with the Pup Coin • ${(scratchProgress * 100).toInt()}%"
+                else -> "Scratch to reveal."
             }
-        }
+        )
 
         if (round?.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
             Spacer(Modifier.height(10.dp))
@@ -305,6 +281,87 @@ internal fun PuppyScratchersScreen(
 }
 
 @Composable
+private fun ScratcherCartoonStage(
+    card: PuppyScratcherCardType,
+    outcome: PuppyScratcherOutcome?,
+    scratched: MutableMap<Int, Boolean>,
+    enabled: Boolean,
+    revealAll: Boolean,
+    status: String
+) {
+    val palette = puppyCasinoCartoonPalette()
+    CartoonStageFrame(
+        modifier = Modifier.fillMaxWidth().height(340.dp),
+        accent = scratcherAccentColor(card),
+        background = Brush.verticalGradient(
+            listOf(
+                Color(0xFF113D32),
+                scratcherShellColor(card),
+                Color(0xFF0B2F28)
+            )
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 15.dp, end = 12.dp, bottom = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("🐶", style = MaterialTheme.typography.headlineMedium)
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Color(0xFF0C634C),
+                border = BorderStroke(3.dp, Color(0xFFFFC84A)),
+                shadowElevation = 5.dp
+            ) {
+                Column(
+                    Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "${card.emoji} ${card.name.uppercase()} ${card.emoji}",
+                        color = Color(0xFFFFD45B),
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        card.tagline,
+                        color = Color.White.copy(alpha = 0.84f),
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(19.dp),
+                color = Color(0xFF0C6B4E),
+                border = BorderStroke(3.dp, Color(0xFFFFCF59)),
+                shadowElevation = 6.dp
+            ) {
+                Box(Modifier.padding(8.dp)) {
+                    ScratcherCard(card, outcome, scratched, enabled, revealAll)
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = palette.cream,
+                border = BorderStroke(2.dp, Color(0xFFFFC84A)),
+                shadowElevation = 3.dp
+            ) {
+                Text(
+                    status,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    color = palette.woodDark,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ScratcherCard(
     card: PuppyScratcherCardType,
     outcome: PuppyScratcherOutcome?,
@@ -323,25 +380,44 @@ private fun ScratcherCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(176.dp)
+            .height(170.dp)
             .onSizeChanged { cardSize = it },
         contentAlignment = Alignment.TopStart
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(16.dp),
-            color = scratcherCardBackground(card)
+            shape = RoundedCornerShape(15.dp),
+            color = scratcherCardBackground(card),
+            border = BorderStroke(2.dp, Color.White.copy(alpha = 0.65f)),
+            shadowElevation = 3.dp
         ) {
             Row(
-                Modifier.fillMaxSize().padding(18.dp),
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.45f), Color.Transparent, Color(0xFFFFD965).copy(alpha = 0.10f))
+                        )
+                    )
+                    .padding(18.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val symbols = outcome?.symbols ?: listOf("?", "?", "?")
                 symbols.forEach { symbol ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(symbol, style = MaterialTheme.typography.displaySmall)
-                        Text("PRIZE", color = Color(0xFF2F3A36), fontWeight = FontWeight.Black)
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White.copy(alpha = 0.70f),
+                        border = BorderStroke(1.dp, Color(0xFFD7B557).copy(alpha = 0.55f)),
+                        shadowElevation = 2.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(symbol, style = MaterialTheme.typography.displaySmall)
+                            Text("PRIZE", color = Color(0xFF2F3A36), fontWeight = FontWeight.Black)
+                        }
                     }
                 }
             }
@@ -463,7 +539,6 @@ private fun ScratcherCard(
                                         (dragAmount.y * 0.02f)
                                     ).coerceIn(-28f, 28f)
 
-                                // Scratch from the same filtered coin center that is rendered.
                                 markSegment(current, next, speedPxPerMs)
                             }
                         )
@@ -472,30 +547,52 @@ private fun ScratcherCard(
                 val cellW = size.width / SCRATCH_COLUMNS
                 val cellH = size.height / SCRATCH_ROWS
                 val coating = scratcherCoatingColor(card)
-                val fleck = Color.White.copy(alpha = 0.16f)
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.55f),
+                            coating,
+                            coating.copy(alpha = 0.94f),
+                            Color.Black.copy(alpha = 0.10f)
+                        )
+                    )
+                )
 
                 for (row in 0 until SCRATCH_ROWS) {
                     for (col in 0 until SCRATCH_COLUMNS) {
                         val index = row * SCRATCH_COLUMNS + col
                         if (index !in scratched) {
                             drawRect(
-                                color = coating,
+                                color = coating.copy(alpha = 0.92f),
                                 topLeft = Offset(col * cellW, row * cellH),
                                 size = Size(cellW + 1.2f, cellH + 1.2f)
                             )
-                            if (index % 11 == 0) {
+                            if (index % 9 == 0) {
                                 drawCircle(
-                                    color = fleck,
+                                    color = Color.White.copy(alpha = 0.26f),
                                     radius = minOf(cellW, cellH) * 0.18f,
-                                    center = Offset(
-                                        (col + 0.5f) * cellW,
-                                        (row + 0.5f) * cellH
-                                    )
+                                    center = Offset((col + 0.5f) * cellW, (row + 0.5f) * cellH)
+                                )
+                            }
+                            if (index % 17 == 0) {
+                                drawCircle(
+                                    color = Color.Black.copy(alpha = 0.06f),
+                                    radius = minOf(cellW, cellH) * 0.12f,
+                                    center = Offset((col + 0.72f) * cellW, (row + 0.36f) * cellH)
                                 )
                             }
                         }
                     }
                 }
+
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.38f),
+                    topLeft = Offset(5f, 5f),
+                    size = Size(size.width - 10f, size.height - 10f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(17f, 17f),
+                    style = Stroke(2.4f)
+                )
             }
         }
 
@@ -555,25 +652,16 @@ private fun PupCoin(
                 contentScale = ContentScale.Fit
             )
         } else {
-            // Keep the scratcher usable before the streamed asset is available.
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(Modifier.fillMaxSize()) {
                     val outerRadius = size.minDimension / 2f
-                    drawCircle(
-                        color = Color(0xFFFFE58A),
-                        radius = outerRadius
-                    )
-                    drawCircle(
-                        color = Color(0xFFFFC83D),
-                        radius = outerRadius * 0.88f
-                    )
-                    drawCircle(
-                        color = Color(0xFFFFD95F),
-                        radius = outerRadius * 0.72f
-                    )
+                    drawCircle(color = Color(0xFF8A5A06).copy(alpha = 0.35f), radius = outerRadius, center = Offset(center.x + 1.5f, center.y + 2.5f))
+                    drawCircle(color = Color(0xFFFFE58A), radius = outerRadius)
+                    drawCircle(color = Color(0xFFFFC83D), radius = outerRadius * 0.88f)
+                    drawCircle(color = Color(0xFFFFD95F), radius = outerRadius * 0.72f)
                     drawCircle(
                         color = Color(0xFF9C6A10),
                         radius = outerRadius * 0.63f,
@@ -582,7 +670,7 @@ private fun PupCoin(
 
                     val highlightInset = outerRadius * 0.22f
                     drawArc(
-                        color = Color.White.copy(alpha = 0.42f),
+                        color = Color.White.copy(alpha = 0.55f),
                         startAngle = 200f,
                         sweepAngle = 86f,
                         useCenter = false,
@@ -652,7 +740,8 @@ private fun ScratcherWallet(state: V6GameState) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("🍪", style = MaterialTheme.typography.headlineSmall)
