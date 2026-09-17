@@ -137,22 +137,27 @@ def pre_normalize(root: Path) -> None:
 ''' + SCHEMA2_SENTINEL_END
         source = source[:prestige] + sentinel + source[prestige:]
 
-    # The 1.0 ownership-XP patch also expects the old synchronous friend-gift claim body. The
-    # Exchange patch replaces it with RewardGrantEngine before this runner executes. Use a
-    # comment-only compatibility sentinel containing the exact legacy anchor, then wire XP into
-    # the real gift path in post_fix().
-    if "fun claimIncomingGift(" in source and "RewardGrantEngine.grantIncomingGift" in source:
-        park = source.find("    fun parkVisit()")
-        if park < 0:
-            raise RuntimeError("Android 1.0 runner: parkVisit insertion point not found")
-        gift_sentinel = GIFT_SENTINEL_START + '''    fun claimGift(puppyId: String): Boolean {
-        val current = _state.value
-        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
+    # Exchange's current generated source uses asset.style.id for gifts while the core 1.0
+    # transform still has the older puppyId anchor. Feed that exact legacy anchor through a
+    # comment-only sentinel; post_fix() applies XP to the real canonical asset path afterward.
+    current_exchange_gift = "fun receiveExchangePuppy(puppyId: String): Boolean" in source
+    reward_engine_gift = (
+        "fun claimIncomingGift(" in source
+        and "RewardGrantEngine.grantIncomingGift" in source
+    )
+    if current_exchange_gift or reward_engine_gift:
+        if current_exchange_gift:
+            insertion = source.find("    fun applyExchangeTrade(")
+            if insertion < 0:
+                raise RuntimeError("Android 1.0 runner: Exchange trade insertion point not found")
+        else:
+            insertion = source.find("    fun parkVisit()")
+            if insertion < 0:
+                raise RuntimeError("Android 1.0 runner: parkVisit insertion point not found")
+        gift_sentinel = GIFT_SENTINEL_START + '''        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
         saveState()
-        return true
-    }
 ''' + GIFT_SENTINEL_END
-        source = source[:park] + gift_sentinel + source[park:]
+        source = source[:insertion] + gift_sentinel + source[insertion:]
 
     vm.write_text(source, encoding="utf-8")
 
