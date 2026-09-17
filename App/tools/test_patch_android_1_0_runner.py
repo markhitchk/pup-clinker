@@ -126,11 +126,11 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
 
     private fun rollDailyDayIfNeeded() = Unit
 
-    fun claimIncomingGift() {
-        RewardGrantEngine.grantIncomingGift()
+    fun receiveExchangePuppy(puppyId: String): Boolean {
+        return false
     }
 
-    fun parkVisit() {
+    fun applyExchangeTrade() {
     }
 }
 '''
