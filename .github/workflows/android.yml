@@ -32,7 +32,7 @@ jobs:
           python-version: '3.12'
 
       - name: Run Python patch regression tests
-        run: python3 -m unittest tools.test_patch_puppy_exchange
+        run: python3 -m unittest tools.test_patch_puppy_exchange tools.test_patch_android_1_0_runner
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -163,7 +163,6 @@ jobs:
           name: puppy-clicker-unsigned-release
           path: App/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
-
 
       - name: Run Android instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
