@@ -41,6 +41,12 @@ internal fun PuppyRevampedPlayScreen(
     val tapScale = remember { Animatable(1f) }
     val tapRotation = remember { Animatable(0f) }
     val tapLift = remember { Animatable(0f) }
+    val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
+    val today = LocalDate.now()
+    val todayGoals = remember(rewardSchedule, today) {
+        PuppyMonthlyRewards.currentGoals(today)
+    }
+    val nextRewardGoal = PuppyMonthlyRewards.nextUnclaimedGoal(todayGoals, state.claimedDailyTasks)
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -159,33 +165,35 @@ internal fun PuppyRevampedPlayScreen(
                 }
             }
 
-            Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-            val target = 75L
-            val progressNow = state.dailyTaps.coerceAtMost(target)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.30f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = if (tiny) 6.dp else 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            nextRewardGoal?.let { goal ->
+                Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
+                val target = goal.target.coerceAtLeast(1L)
+                val progressNow = goal.progress(state).coerceIn(0L, target)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.30f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
-                    Text("🎁", fontSize = 22.sp)
-                    Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Next Reward", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
-                            Text("$progressNow/$target", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = if (tiny) 6.dp else 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(goal.emoji.ifBlank { "🎁" }, fontSize = 22.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(goal.title, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
+                                Text("$progressNow/$target", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+                            }
+                            LinearProgressIndicator(
+                                progress = { progressNow.toFloat() / target.toFloat() },
+                                modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape)
+                            )
                         }
-                        LinearProgressIndicator(
-                            progress = { progressNow.toFloat() / target.toFloat() },
-                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape)
-                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("${goal.rewardTreats} 🍪", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Text("300 🍪", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }

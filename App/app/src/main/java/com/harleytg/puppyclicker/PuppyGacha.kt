@@ -73,14 +73,7 @@ internal object PuppyGachaEngine {
     fun pullPool(
         styles: List<PuppyStyle>,
         unlocked: Set<String>
-    ): List<PuppyStyle> {
-        val unowned = eligiblePuppies(styles, unlocked)
-        return if (unowned.isNotEmpty()) {
-            unowned
-        } else {
-            allEligiblePuppies(styles).filter { it.id in unlocked }
-        }
-    }
+    ): List<PuppyStyle> = eligiblePuppies(styles, unlocked)
 
     internal fun select(candidates: List<PuppyStyle>, roll: Int): PuppyStyle? {
         if (candidates.isEmpty()) return null
@@ -249,7 +242,7 @@ internal fun PuppyGachaScreen(
             when {
                 eligible.isEmpty() -> "No puppies are currently eligible for Gacha."
                 remaining.isEmpty() ->
-                    "Collection complete · future pulls reveal an owned eligible puppy."
+                    "Collection complete · no unowned Gacha puppies remain."
                 remaining.size == 1 -> "1 new puppy remains · new puppies are guaranteed first."
                 else -> remaining.size.toString() + " new puppies remain · new puppies are guaranteed first."
             },
@@ -267,7 +260,7 @@ internal fun PuppyGachaScreen(
         ) {
             Button(
                 onClick = { startPull(PuppyGachaPayment.TREATS) },
-                enabled = eligible.isNotEmpty() &&
+                enabled = remaining.isNotEmpty() &&
                     state.treats >= PuppyGachaEngine.COST_TREATS &&
                     stage == 0,
                 modifier = Modifier.weight(1f).height(58.dp),
@@ -282,7 +275,7 @@ internal fun PuppyGachaScreen(
 
             Button(
                 onClick = { startPull(PuppyGachaPayment.COMMON_TICKET) },
-                enabled = eligible.isNotEmpty() &&
+                enabled = remaining.isNotEmpty() &&
                     commonTickets >= PuppyGachaEngine.COST_COMMON_TICKETS &&
                     stage == 0,
                 modifier = Modifier.weight(1f).height(58.dp),

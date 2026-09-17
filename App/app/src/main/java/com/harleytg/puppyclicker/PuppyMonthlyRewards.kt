@@ -112,6 +112,11 @@ internal object PuppyMonthlyRewards {
             ?: fallbackGoals(today.dayOfMonth)
     }
 
+    fun nextUnclaimedGoal(
+        goals: List<PuppyRewardGoal>,
+        claimedIds: Set<String>
+    ): PuppyRewardGoal? = goals.firstOrNull { it.id !in claimedIds }
+
     fun goalToday(id: String, today: LocalDate = LocalDate.now()): PuppyRewardGoal? =
         currentGoals(today).firstOrNull { it.id == id }
 
