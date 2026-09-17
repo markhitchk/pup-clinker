@@ -83,7 +83,8 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
         onResult(V6RedeemOutcome(false, rawCode))
     }
 
-    fun prestige() = Unit
+    fun prestige() {
+    }
 }
 '''
         with tempfile.TemporaryDirectory() as temporary:
