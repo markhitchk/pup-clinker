@@ -94,6 +94,10 @@ private fun ProfileSettings(
                 StatusLine("Account", "HarleyTG Developer / Owner")
                 StatusLine("Studio", "Harley's Studios")
             }
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
 }
 
 @Composable
