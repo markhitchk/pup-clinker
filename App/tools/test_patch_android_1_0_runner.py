@@ -8,6 +8,7 @@ if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
 from patch_android_1_0_runner import pre_normalize
+from patch_android_1_0_completion import patch_settings
 
 
 VM_RELATIVE = Path("com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt")
@@ -53,6 +54,59 @@ class AndroidOnePointZeroRunnerTest(unittest.TestCase):
             self.assertIn("lifetimeTreats = safeAdd(s.lifetimeTreats, amount)", normalized)
             self.assertNotIn("safeAdd(it.treats, amount)", normalized)
             self.assertNotIn("safeAdd(it.lifetimeTreats, amount)", normalized)
+
+    def test_settings_badge_state_is_scoped_to_profile_settings(self) -> None:
+        source = '''enum class SettingsDestination {
+    DEVELOPER,
+    ABOUT
+}
+
+fun router() {
+        SettingsDestination.ABOUT -> SettingsSubpage(
+            title = "About Puppy Clicker",
+}
+
+fun advanced() {
+            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
+                onOpen(SettingsDestination.ABOUT)
+            }
+}
+
+fun appearance() {
+    SettingsLabel("INTERFACE")
+    InlineSwitch("Animated UI",
+}
+
+@Composable
+private fun SettingsHome() {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+}
+
+@Composable
+private fun ProfileSettings(
+    vm: PuppyClickerV6ViewModel,
+    ui: PuppyUiState
+) {
+    val context = LocalContext.current
+    val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+            if (officialDeveloper) {
+                StatusLine("Account", "HarleyTG Developer / Owner")
+                StatusLine("Studio", "Harley's Studios")
+            }
+}
+
+@Composable
+private fun DiscordSettings() {}
+'''
+        patched = patch_settings(source)
+
+        settings_home = patched.index("private fun SettingsHome()")
+        profile = patched.index("private fun ProfileSettings(")
+        discord = patched.index("private fun DiscordSettings()")
+        self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
+        self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
+        self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
 
 
 if __name__ == "__main__":
