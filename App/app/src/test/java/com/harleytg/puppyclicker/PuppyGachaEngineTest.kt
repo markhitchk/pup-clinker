@@ -36,9 +36,8 @@ class PuppyGachaEngineTest {
         assertEquals(listOf(sunny.id), eligible.map { it.id })
     }
 
-
     @Test
-    fun allEligiblePoolKeepsOwnedPuppiesForCompletedCollectionPulls() {
+    fun allEligiblePoolStillListsEveryNonRedeemOnlyPuppy() {
         val eligible = PuppyGachaEngine.allEligiblePuppies(
             styles = listOf(buddy, sunny, special, sunny)
         )
@@ -47,16 +46,21 @@ class PuppyGachaEngineTest {
     }
 
     @Test
-    fun pullPoolPrioritizesUnownedThenFallsBackToOwnedEligiblePuppies() {
+    fun pullPoolContainsOnlyUnownedEligiblePuppies() {
         val styles = listOf(buddy, sunny, special)
 
         assertEquals(
             listOf(sunny.id),
             PuppyGachaEngine.pullPool(styles, setOf(buddy.id)).map { it.id }
         )
-        assertEquals(
-            listOf(buddy.id, sunny.id),
-            PuppyGachaEngine.pullPool(styles, setOf(buddy.id, sunny.id)).map { it.id }
+    }
+
+    @Test
+    fun pullPoolReturnsEmptyWhenEveryEligiblePuppyIsAlreadyOwned() {
+        val styles = listOf(buddy, sunny, special)
+
+        assertTrue(
+            PuppyGachaEngine.pullPool(styles, setOf(buddy.id, sunny.id)).isEmpty()
         )
     }
 
