@@ -25,7 +25,8 @@ tasks.named("generateProtectedPuppySources").configure {
     val mainUiRevampPatch = rootProject.file("tools/patch_main_ui_revamp.py")
     val compactViewportPatch = rootProject.file("tools/patch_compact_viewport.py")
     val puppyGachaPatch = rootProject.file("tools/patch_puppy_gacha.py")
-    val androidOnePointZeroPatch = rootProject.file("tools/patch_android_1_0_completion.py")
+    val androidOnePointZeroCorePatch = rootProject.file("tools/patch_android_1_0_completion.py")
+    val androidOnePointZeroPatch = rootProject.file("tools/patch_android_1_0_runner.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -43,6 +44,7 @@ tasks.named("generateProtectedPuppySources").configure {
         mainUiRevampPatch,
         compactViewportPatch,
         puppyGachaPatch,
+        androidOnePointZeroCorePatch,
         androidOnePointZeroPatch
     )
     doLast {
@@ -109,8 +111,8 @@ tasks.named("generateProtectedPuppySources").configure {
         project.exec {
             commandLine("python3", puppyGachaPatch.absolutePath, generatedSourceRoot)
         }
-        // Android 1.0 is the final integration layer. It consumes the finished Gacha/Exchange/
-        // Casino shell and adds progression, inbox, Release Hub, widget snapshot, and accessibility wiring.
+        // Android 1.0 is the final integration layer. The compatibility runner normalizes stable
+        // legacy-patch output, applies the 1.0 core transform, then performs narrow safety fixups.
         project.exec {
             commandLine("python3", androidOnePointZeroPatch.absolutePath, generatedSourceRoot)
         }
