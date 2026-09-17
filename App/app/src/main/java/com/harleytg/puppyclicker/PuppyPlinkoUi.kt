@@ -38,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 
@@ -116,42 +118,16 @@ internal fun PuppyPlinkoScreen(
         PlinkoWallet(state)
         Spacer(Modifier.height(12.dp))
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF10141A),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("🐾 PUP PLINKO", color = Color.White, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(6.dp))
-                PlinkoBoard(
-                    outcome = display,
-                    dropKey = plinkoRound?.roundId ?: revealRoundId,
-                    animationsEnabled = state.animationsEnabled
-                )
-                Text(
-                    PuppyPlinkoEngine.binMultiplierHundredths.joinToString("  ") {
-                        if (it % 100 == 0) (it / 100).toString() + "×" else (it / 100.0).toString() + "×"
-                    },
-                    color = Color.White.copy(alpha = 0.78f),
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    when {
-                        dropping -> "Ball in motion…"
-                        showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Treats returned"
-                        else -> "Choose a wager and drop the ball."
-                    },
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+        PlinkoCartoonStage(
+            outcome = display,
+            dropKey = plinkoRound?.roundId ?: revealRoundId,
+            animationsEnabled = state.animationsEnabled,
+            status = when {
+                dropping -> "Ball in motion…"
+                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Treats returned"
+                else -> "Choose a wager and drop the ball."
             }
-        }
+        )
 
         if (plinkoRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
             Spacer(Modifier.height(10.dp))
@@ -227,14 +203,84 @@ internal fun PuppyPlinkoScreen(
 }
 
 @Composable
+private fun PlinkoCartoonStage(
+    outcome: PuppyPlinkoOutcome?,
+    dropKey: String?,
+    animationsEnabled: Boolean,
+    status: String
+) {
+    val palette = puppyCasinoCartoonPalette()
+    CartoonStageFrame(
+        modifier = Modifier.fillMaxWidth().height(430.dp),
+        accent = MaterialTheme.colorScheme.primary,
+        background = Brush.verticalGradient(
+            listOf(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                MaterialTheme.colorScheme.surface,
+                palette.woodLight.copy(alpha = 0.16f)
+            )
+        )
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(start = 10.dp, top = 18.dp, end = 10.dp, bottom = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("🐶", fontSize = 33.sp)
+                CartoonBonePlaque("PUP PLINKO")
+                Text("🐶", fontSize = 33.sp)
+            }
+            Spacer(Modifier.height(5.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(292.dp),
+                shape = RoundedCornerShape(26.dp),
+                color = Color(0xFF12345C),
+                border = BorderStroke(7.dp, MaterialTheme.colorScheme.primary),
+                shadowElevation = 7.dp
+            ) {
+                PlinkoBoard(outcome, dropKey, animationsEnabled)
+            }
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = palette.cream,
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                shadowElevation = 3.dp
+            ) {
+                Text(
+                    text = status,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                    color = palette.woodDark,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlinkoBoard(
     outcome: PuppyPlinkoOutcome?,
     dropKey: String?,
     animationsEnabled: Boolean
 ) {
     val progress = remember { Animatable(1f) }
-    val pegColor = Color.White.copy(alpha = 0.72f)
-    val ballColor = MaterialTheme.colorScheme.primary
+    val palette = puppyCasinoCartoonPalette()
+    val binColors = listOf(
+        Color(0xFFE9588C),
+        Color(0xFF845DE8),
+        Color(0xFF30A9E8),
+        Color(0xFF22BFC8),
+        Color(0xFFFFC13A),
+        Color(0xFF22BFC8),
+        Color(0xFF30A9E8),
+        Color(0xFF845DE8),
+        Color(0xFFE9588C)
+    )
 
     LaunchedEffect(dropKey, outcome, animationsEnabled) {
         if (outcome == null) {
@@ -247,36 +293,62 @@ private fun PlinkoBoard(
         }
     }
 
-    Box(Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 5.dp)) {
             val rows = PuppyPlinkoEngine.ROWS
             val centerX = size.width / 2f
-            val topY = 18f
-            val bottomY = size.height - 30f
+            val topY = 21f
+            val bottomY = size.height - 48f
             val rowGap = (bottomY - topY) / (rows + 1f)
             val xStep = size.width / (rows + 3f) / 2f
+
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(Color(0xFF173D69), Color(0xFF0B2443))),
+                topLeft = Offset(3f, 3f),
+                size = Size(size.width - 6f, size.height - 6f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f, 22f)
+            )
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.12f),
+                topLeft = Offset(8f, 8f),
+                size = Size(size.width - 16f, size.height - 16f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f),
+                style = Stroke(2f)
+            )
 
             for (row in 0 until rows) {
                 val count = row + 1
                 val y = topY + (row + 1) * rowGap
                 val firstX = centerX - row * xStep
+                val impactAt = (row + 1f) / (rows + 1f)
+                val pulse = PuppyCasinoCartoonMath.impactPulse(progress.value, impactAt, 0.045f)
                 repeat(count) { col ->
-                    drawCircle(pegColor, radius = 4.5f, center = Offset(firstX + col * xStep * 2f, y))
+                    val x = firstX + col * xStep * 2f
+                    drawCircle(Color.Black.copy(alpha = 0.28f), radius = 6.2f + pulse * 2.2f, center = Offset(x + 1.5f, y + 2.5f))
+                    drawCircle(Color(0xFFD7E4EE), radius = 5.2f + pulse * 2.2f, center = Offset(x, y))
+                    drawCircle(Color.White.copy(alpha = 0.85f), radius = 1.8f, center = Offset(x - 1.7f, y - 1.7f))
                 }
             }
+
+            val binTop = bottomY - 4f
+            val binWidth = size.width / (rows + 1f)
             repeat(rows + 1) { bin ->
-                val x = centerX + (bin - rows / 2f) * xStep * 2f
-                drawLine(
-                    Color.White.copy(alpha = 0.25f),
-                    Offset(x - xStep, bottomY),
-                    Offset(x - xStep, size.height),
-                    strokeWidth = 2f
+                val left = bin * binWidth
+                drawRoundRect(
+                    color = binColors[bin],
+                    topLeft = Offset(left + 1.5f, binTop),
+                    size = Size(binWidth - 3f, size.height - binTop - 5f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7f, 7f)
+                )
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.22f),
+                    topLeft = Offset(left + 4f, binTop + 2f),
+                    size = Size(binWidth - 8f, 5f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                 )
             }
 
             val path = outcome?.pathRight ?: emptyList()
-            // Eight bounce decisions create nine vertical travel segments:
-            // start -> row 1 ... row 8 -> final multiplier bin.
             val travelSegments = rows + 1
             val scaled = progress.value * travelSegments
             val completedRows = scaled.toInt().coerceIn(0, rows)
@@ -289,15 +361,38 @@ private fun PlinkoBoard(
                 x += (if (path[completedRows]) xStep else -xStep) * fraction
             }
             val y = topY + scaled * rowGap
-            drawCircle(Color.Black.copy(alpha = 0.35f), 10f, Offset(x + 2f, y + 3f))
-            drawCircle(ballColor, 9f, Offset(x, y))
-            drawCircle(Color.White.copy(alpha = 0.5f), 2f, Offset(x - 3f, y - 3f))
-            drawRect(
-                color = Color.White.copy(alpha = 0.18f),
-                topLeft = Offset(4f, 4f),
-                size = Size(size.width - 8f, size.height - 8f),
-                style = Stroke(2f)
+
+            drawCircle(Color.Black.copy(alpha = 0.34f), 12f, Offset(x + 2.5f, y + 4f))
+            drawCircle(Color(0xFFC87932), 11f, Offset(x, y))
+            drawCircle(Color(0xFFFFB65C), 9.2f, Offset(x, y - 1f))
+            drawCircle(Color.White.copy(alpha = 0.62f), 2.2f, Offset(x - 3.2f, y - 4f))
+            val chipOffsets = listOf(
+                Offset(-4f, -1f), Offset(3f, 1f), Offset(0f, 5f), Offset(4f, -4f), Offset(-3f, 4f)
             )
+            chipOffsets.forEach { delta ->
+                drawCircle(Color(0xFF6B3A24), 1.5f, Offset(x + delta.x, y + delta.y))
+            }
+
+            drawCircle(
+                color = palette.gold.copy(alpha = 0.32f),
+                radius = 17f,
+                center = Offset(centerX, topY),
+                style = Stroke(2.5f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, bottom = 7.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            PuppyPlinkoEngine.binMultiplierHundredths.forEach { value ->
+                Text(
+                    text = if (value % 100 == 0) (value / 100).toString() + "×" else (value / 100.0).toString() + "×",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 10.sp
+                )
+            }
         }
     }
 }
@@ -308,7 +403,8 @@ private fun PlinkoWallet(state: V6GameState) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("🍪", style = MaterialTheme.typography.headlineSmall)
