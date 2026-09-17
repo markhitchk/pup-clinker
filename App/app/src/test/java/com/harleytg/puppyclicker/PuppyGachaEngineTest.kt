@@ -5,6 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// Contract: legacy redeemOnly is not itself a Gacha exclusion; only explicit specials are excluded.
 class PuppyGachaEngineTest {
     private val buddy = PuppyStyle(
         id = "buddy_test",
