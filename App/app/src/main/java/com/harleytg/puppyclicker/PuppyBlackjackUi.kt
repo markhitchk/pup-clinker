@@ -303,10 +303,12 @@ private fun BlackjackCartoonTable(
     displayOutcome: PuppyBlackjackOutcome?,
     animationsEnabled: Boolean
 ) {
-    val activeIndex = displayState?.activeHandIndex?.coerceIn(0, (displayState.hands.size - 1).coerceAtLeast(0)) ?: 0
+    val activeIndex = displayState?.let { current ->
+        current.activeHandIndex.coerceIn(0, (current.hands.size - 1).coerceAtLeast(0))
+    } ?: 0
     val hand = displayState?.hands?.getOrNull(activeIndex)
     val handOutcome = displayOutcome?.hands?.getOrNull(activeIndex)
-    val handValue = hand?.let(PuppyBlackjackEngine::handValue)
+    val handValue = hand?.let { PuppyBlackjackEngine.handValue(it.cards) }
 
     Surface(
         modifier = Modifier.fillMaxWidth().height(360.dp),
