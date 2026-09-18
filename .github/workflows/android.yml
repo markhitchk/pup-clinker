@@ -176,7 +176,6 @@ jobs:
           disable-animations: true
           working-directory: App
           script: |
-            set -o pipefail
             adb logcat -c
             if ! gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace; then
               echo "::group::Instrumentation crash logcat"
