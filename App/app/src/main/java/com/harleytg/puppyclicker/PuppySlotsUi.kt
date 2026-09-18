@@ -6,17 +6,32 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,8 +56,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -72,6 +95,7 @@ internal fun PuppySlotsScreen(
     var revealRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var revealFinishedRoundId by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
+    var leverPullToken by rememberSaveable { mutableLongStateOf(0L) }
 
     val slotsRound = activeRound?.takeIf { it.game == PuppyCasinoGame.SLOTS }
     val recoveredOutcome = remember(slotsRound?.outcomePayload, slotsRound?.wagerTreats) {
@@ -121,6 +145,25 @@ internal fun PuppySlotsScreen(
             raw = lastOutcomePayload,
             wagerTreats = lastOutcomeWager
         )
+    }
+
+    val startSlotsRound: () -> Unit = {
+        message = null
+        val result = vm.startSlotsSpin(wager)
+        if (result.success) {
+            leverPullToken += 1L
+        } else {
+            message = when (result.failure) {
+                PuppySlotsStartFailure.INVALID_WAGER -> "Invalid Slots wager."
+                PuppySlotsStartFailure.TRANSACTION_REJECTED ->
+                    "Spin blocked: " + (result.transactionFailure?.name ?: "transaction rejected")
+                PuppySlotsStartFailure.OUTCOME_GENERATION_FAILED ->
+                    "Outcome generation failed. The accepted wager was refunded."
+                PuppySlotsStartFailure.OUTCOME_COMMIT_FAILED ->
+                    "Outcome could not be committed. Use the interrupted-wager recovery control."
+                null -> "Spin could not start."
+            }
+        }
     }
 
     Column(
@@ -186,115 +229,21 @@ internal fun PuppySlotsScreen(
                 revealRoundId != null &&
                 revealFinishedRoundId != revealRoundId
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            color = Color(0xFF17191F),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "●  PUPPY SLOTS  ●",
-                    color = Color(0xFFFFD54F),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.2.sp
-                )
-                Text(
-                    if (reelsSpinning) "REELS IN MOTION" else "TREAT JACKPOT MACHINE",
-                    color = Color.White.copy(alpha = 0.70f),
-                    style = MaterialTheme.typography.labelSmall
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(18.dp),
-                        color = Color(0xFF08090B),
-                        border = BorderStroke(2.dp, Color(0xFFB8BDC8))
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(9.dp),
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            repeat(PuppySlotsEngine.REEL_COUNT) { index ->
-                                SlotReel(
-                                    emoji = display?.symbols?.getOrNull(index)?.emoji ?: "?",
-                                    spinKey = revealRoundId,
-                                    reelIndex = index,
-                                    animationsEnabled = state.animationsEnabled,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.width(10.dp))
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("●", color = Color(0xFFFFD54F), fontSize = 20.sp)
-                        Text("│", color = Color(0xFFB8BDC8), fontSize = 34.sp)
-                        Text("●", color = MaterialTheme.colorScheme.primary, fontSize = 20.sp)
-                    }
-                }
-
-                Spacer(Modifier.height(10.dp))
-
-                when {
-                    reelsSpinning -> {
-                        Text(
-                            "Reel 1 → Reel 2 → Reel 3",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Result reveals after the final reel locks.",
-                            color = Color.White.copy(alpha = 0.70f),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    resultRevealReady && display != null -> {
-                        val resultText = when (display.winKind) {
-                            PuppySlotsWinKind.LOSS -> "No match"
-                            PuppySlotsWinKind.PAIR -> "Pair · " + display.multiplierLabel
-                            PuppySlotsWinKind.TRIPLE -> "Triple · " + display.multiplierLabel
-                        }
-                        Text(
-                            resultText,
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            display.payoutTreats.toString() + " Treats returned",
-                            color = Color.White.copy(alpha = 0.82f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    slotsRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED -> {
-                        Text(
-                            "Wager accepted. Outcome not committed.",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    else -> {
-                        Text(
-                            "Choose a wager and pull the machine.",
-                            color = Color.White.copy(alpha = 0.82f),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        }
+        SlotsMachineCard(
+            display = display,
+            resultRevealReady = resultRevealReady,
+            reelsSpinning = reelsSpinning,
+            spinKey = revealRoundId,
+            roundState = slotsRound?.state,
+            animationsEnabled = state.animationsEnabled,
+            leverEnabled =
+                canPlayFeature &&
+                    activeRound == null &&
+                    PuppySlotsEngine.isValidWager(wager) &&
+                    state.treats >= wager,
+            leverPullToken = leverPullToken,
+            onLeverPull = startSlotsRound
+        )
 
         if (slotsRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED) {
             Spacer(Modifier.height(10.dp))
@@ -361,22 +310,7 @@ internal fun PuppySlotsScreen(
         Spacer(Modifier.height(10.dp))
 
         Button(
-            onClick = {
-                message = null
-                val result = vm.startSlotsSpin(wager)
-                if (!result.success) {
-                    message = when (result.failure) {
-                        PuppySlotsStartFailure.INVALID_WAGER -> "Invalid Slots wager."
-                        PuppySlotsStartFailure.TRANSACTION_REJECTED ->
-                            "Spin blocked: " + (result.transactionFailure?.name ?: "transaction rejected")
-                        PuppySlotsStartFailure.OUTCOME_GENERATION_FAILED ->
-                            "Outcome generation failed. The accepted wager was refunded."
-                        PuppySlotsStartFailure.OUTCOME_COMMIT_FAILED ->
-                            "Outcome could not be committed. Use the interrupted-wager recovery control."
-                        null -> "Spin could not start."
-                    }
-                }
-            },
+            onClick = startSlotsRound,
             enabled =
                 canPlayFeature &&
                     activeRound == null &&
@@ -407,9 +341,308 @@ internal fun PuppySlotsScreen(
     }
 }
 
+private const val SLOTS_MACHINE_VISIBLE_WIDTH = 440f
+private const val SLOTS_MACHINE_VISIBLE_HEIGHT = 483f
+private const val SLOTS_REEL_TOP = 180f / SLOTS_MACHINE_VISIBLE_HEIGHT
+private const val SLOTS_REEL_HEIGHT = 182f / SLOTS_MACHINE_VISIBLE_HEIGHT
+private val SLOTS_REEL_LEFTS = listOf(
+    57f / SLOTS_MACHINE_VISIBLE_WIDTH,
+    170f / SLOTS_MACHINE_VISIBLE_WIDTH,
+    285f / SLOTS_MACHINE_VISIBLE_WIDTH
+)
+private val SLOTS_REEL_WIDTHS = listOf(
+    97f / SLOTS_MACHINE_VISIBLE_WIDTH,
+    98f / SLOTS_MACHINE_VISIBLE_WIDTH,
+    98f / SLOTS_MACHINE_VISIBLE_WIDTH
+)
+
+@Composable
+private fun SlotsMachineCard(
+    display: PuppySlotsOutcome?,
+    resultRevealReady: Boolean,
+    reelsSpinning: Boolean,
+    spinKey: String?,
+    roundState: PuppyCasinoRoundState?,
+    animationsEnabled: Boolean,
+    leverEnabled: Boolean,
+    leverPullToken: Long,
+    onLeverPull: () -> Unit
+) {
+    val idleMotion = rememberInfiniteTransition(label = "slots_mascot_idle")
+    val idleBob by idleMotion.animateFloat(
+        initialValue = -2f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "slots_mascot_bob"
+    )
+    val idleSway by idleMotion.animateFloat(
+        initialValue = -1.4f,
+        targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1_200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "slots_mascot_sway"
+    )
+    val lightPulse by idleMotion.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(520),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "slots_light_pulse"
+    )
+    val winReady =
+        resultRevealReady &&
+            display != null &&
+            display.winKind != PuppySlotsWinKind.LOSS
+    val mascotReaction by animateFloatAsState(
+        targetValue = when {
+            !animationsEnabled -> 0f
+            winReady -> -8f
+            reelsSpinning -> -4f
+            else -> 0f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "slots_mascot_reaction"
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = Color(0xFF17191F),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+            ) {
+                val machineWidth = maxWidth * 0.82f
+                val machineHeight =
+                    machineWidth * (SLOTS_MACHINE_VISIBLE_HEIGHT / SLOTS_MACHINE_VISIBLE_WIDTH)
+                val machineLeft = maxWidth * 0.05f
+                val machineTop = maxHeight * 0.10f
+
+                val mascotWidth = machineWidth * 0.48f
+                val mascotHeight = mascotWidth * (131f / 180f)
+                val mascotLeft = machineLeft + machineWidth * 0.26f
+                val mascotTop = machineTop - machineHeight * 0.07f
+
+                // Mascot sits behind the cabinet marquee so the artwork remains layered.
+                Image(
+                    painter = painterResource(R.drawable.puppy_slots_mascot),
+                    contentDescription = "Puppy Slots mascot",
+                    modifier = Modifier
+                        .offset(x = mascotLeft, y = mascotTop)
+                        .width(mascotWidth)
+                        .height(mascotHeight)
+                        .graphicsLayer {
+                            if (animationsEnabled) {
+                                translationY = idleBob + mascotReaction
+                                rotationZ = idleSway * if (reelsSpinning || winReady) 1.7f else 1f
+                                val reactionScale = if (winReady) 1.05f else 1f
+                                scaleX = reactionScale
+                                scaleY = reactionScale
+                            }
+                        }
+                )
+
+                Image(
+                    painter = painterResource(R.drawable.puppy_slots_machine),
+                    contentDescription = "Puppy Slots machine",
+                    modifier = Modifier
+                        .offset(x = machineLeft, y = machineTop)
+                        .width(machineWidth)
+                        .height(machineHeight)
+                )
+
+                repeat(PuppySlotsEngine.REEL_COUNT) { index ->
+                    val idleSymbol = when (index) {
+                        0 -> PuppySlotSymbol.TREAT
+                        1 -> PuppySlotSymbol.PUPPY
+                        else -> PuppySlotSymbol.PAW
+                    }
+                    SlotReel(
+                        emoji = display?.symbols?.getOrNull(index) ?: idleSymbol,
+                        spinKey = spinKey,
+                        reelIndex = index,
+                        animationsEnabled = animationsEnabled,
+                        modifier = Modifier
+                            .offset(
+                                x = machineLeft + machineWidth * SLOTS_REEL_LEFTS[index],
+                                y = machineTop + machineHeight * SLOTS_REEL_TOP
+                            )
+                            .width(machineWidth * SLOTS_REEL_WIDTHS[index])
+                            .height(machineHeight * SLOTS_REEL_HEIGHT)
+                    )
+                }
+
+                val leverBaseWidth = machineWidth * 0.17f
+                Image(
+                    painter = painterResource(R.drawable.puppy_slots_lever_base),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset(
+                            x = machineLeft + machineWidth * 0.91f,
+                            y = machineTop + machineHeight * 0.49f
+                        )
+                        .width(leverBaseWidth)
+                        .height(leverBaseWidth * (120f / 81f))
+                )
+
+                PuppySlotsLever(
+                    pullToken = leverPullToken,
+                    enabled = leverEnabled,
+                    animationsEnabled = animationsEnabled,
+                    onPull = onLeverPull,
+                    modifier = Modifier
+                        .offset(
+                            x = machineLeft + machineWidth * 0.91f,
+                            y = machineTop + machineHeight * 0.16f
+                        )
+                        .width(machineWidth * 0.15f)
+                        .height(machineWidth * 0.15f * (180f / 66f))
+                )
+
+                val glowColor = MaterialTheme.colorScheme.primary
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    if (reelsSpinning || winReady) {
+                        val alphaBase = if (winReady) 0.80f else 0.42f
+                        SLOTS_REEL_LEFTS.indices.forEach { index ->
+                            drawRoundRect(
+                                color = glowColor.copy(
+                                    alpha = alphaBase *
+                                        if (animationsEnabled) lightPulse else 0.65f
+                                ),
+                                topLeft = Offset(
+                                    x = (machineLeft + machineWidth * SLOTS_REEL_LEFTS[index]).toPx(),
+                                    y = (machineTop + machineHeight * SLOTS_REEL_TOP).toPx()
+                                ),
+                                size = Size(
+                                    width = (machineWidth * SLOTS_REEL_WIDTHS[index]).toPx(),
+                                    height = (machineHeight * SLOTS_REEL_HEIGHT).toPx()
+                                ),
+                                cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                style = Stroke(width = 2.dp.toPx())
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            when {
+                reelsSpinning -> {
+                    Text(
+                        "Reel 1 → Reel 2 → Reel 3",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Result reveals after the final reel locks.",
+                        color = Color.White.copy(alpha = 0.70f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                resultRevealReady && display != null -> {
+                    val resultText = when (display.winKind) {
+                        PuppySlotsWinKind.LOSS -> "No match"
+                        PuppySlotsWinKind.PAIR -> "Pair · " + display.multiplierLabel
+                        PuppySlotsWinKind.TRIPLE -> "Triple · " + display.multiplierLabel
+                    }
+                    Text(
+                        resultText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        display.payoutTreats.toString() + " Treats returned",
+                        color = Color.White.copy(alpha = 0.82f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                roundState == PuppyCasinoRoundState.WAGER_ACCEPTED -> {
+                    Text(
+                        "Wager accepted. Outcome not committed.",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                else -> {
+                    Text(
+                        "Choose a wager and pull the machine.",
+                        color = Color.White.copy(alpha = 0.82f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PuppySlotsLever(
+    pullToken: Long,
+    enabled: Boolean,
+    animationsEnabled: Boolean,
+    onPull: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val leverRotation = remember { Animatable(0f) }
+
+    LaunchedEffect(pullToken, animationsEnabled) {
+        if (pullToken <= 0L) return@LaunchedEffect
+        if (!animationsEnabled) {
+            leverRotation.snapTo(0f)
+            return@LaunchedEffect
+        }
+        leverRotation.snapTo(0f)
+        leverRotation.animateTo(
+            targetValue = 24f,
+            animationSpec = tween(140, easing = FastOutSlowInEasing)
+        )
+        leverRotation.animateTo(
+            targetValue = 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
+    }
+
+    Image(
+        painter = painterResource(R.drawable.puppy_slots_lever_handle),
+        contentDescription = "Pull Puppy Slots lever",
+        modifier = modifier
+            .graphicsLayer {
+                rotationZ = leverRotation.value
+                transformOrigin = TransformOrigin(0.50f, 0.88f)
+            }
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onPull
+            )
+    )
+}
+
 @Composable
 private fun SlotReel(
-    emoji: String,
+    emoji: PuppySlotSymbol,
     spinKey: String?,
     reelIndex: Int,
     animationsEnabled: Boolean,
@@ -418,7 +651,7 @@ private fun SlotReel(
     var visibleEmoji by remember { mutableStateOf(emoji) }
 
     LaunchedEffect(spinKey, emoji, animationsEnabled) {
-        if (spinKey == null || !animationsEnabled || emoji == "?") {
+        if (spinKey == null || !animationsEnabled) {
             visibleEmoji = emoji
             return@LaunchedEffect
         }
@@ -427,40 +660,50 @@ private fun SlotReel(
         val stopTicks = listOf(16, 23, 30)
         val ticks = stopTicks.getOrElse(reelIndex) { 30 }
         repeat(ticks) { tick ->
-            visibleEmoji = symbols[(tick + reelIndex * 2) % symbols.size].emoji
+            visibleEmoji = symbols[(tick + reelIndex * 2) % symbols.size]
             delay(70L)
         }
         visibleEmoji = emoji
     }
 
-    Surface(
-        modifier = modifier.height(96.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFF4F4F1),
-        border = BorderStroke(2.dp, Color(0xFF34373D))
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            AnimatedContent(
-                targetState = visibleEmoji,
-                transitionSpec = {
-                    (
-                        slideInVertically(
-                            animationSpec = tween(75, easing = FastOutSlowInEasing)
-                        ) { height -> -height } +
-                            fadeIn(animationSpec = tween(55))
-                    ).togetherWith(
-                        slideOutVertically(
-                            animationSpec = tween(75, easing = FastOutSlowInEasing)
-                        ) { height -> height } +
-                            fadeOut(animationSpec = tween(55))
-                    )
-                },
-                label = "slot_reel_" + reelIndex
-            ) { symbol ->
-                Text(symbol, fontSize = 42.sp, textAlign = TextAlign.Center)
-            }
+        AnimatedContent(
+            targetState = visibleEmoji,
+            transitionSpec = {
+                (
+                    slideInVertically(
+                        animationSpec = tween(75, easing = FastOutSlowInEasing)
+                    ) { height -> -height } +
+                        fadeIn(animationSpec = tween(55))
+                ).togetherWith(
+                    slideOutVertically(
+                        animationSpec = tween(75, easing = FastOutSlowInEasing)
+                    ) { height -> height } +
+                        fadeOut(animationSpec = tween(55))
+                )
+            },
+            label = "slot_reel_" + reelIndex
+        ) { symbol ->
+            Image(
+                painter = painterResource(symbol.drawableRes()),
+                contentDescription = symbol.label,
+                modifier = Modifier.fillMaxWidth(0.76f)
+            )
         }
     }
+}
+
+@DrawableRes
+private fun PuppySlotSymbol.drawableRes(): Int = when (this) {
+    PuppySlotSymbol.TREAT -> R.drawable.slot_treat
+    PuppySlotSymbol.BALL -> R.drawable.slot_ball
+    PuppySlotSymbol.PAW -> R.drawable.slot_paw
+    PuppySlotSymbol.TICKET -> R.drawable.slot_ticket
+    PuppySlotSymbol.PUPPY -> R.drawable.slot_puppy
+    PuppySlotSymbol.STAR -> R.drawable.slot_star
 }
 
 @Composable
