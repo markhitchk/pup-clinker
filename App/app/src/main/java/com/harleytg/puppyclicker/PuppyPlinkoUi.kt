@@ -219,9 +219,9 @@ private fun PlinkoCartoonStage(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 28.dp)
                 .height(224.dp)
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 28.dp)
                 .offset(y = 40.dp),
             shape = RoundedCornerShape(14.dp),
             color = Color(0xFF0B1117),
