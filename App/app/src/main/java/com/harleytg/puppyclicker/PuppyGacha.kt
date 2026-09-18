@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,9 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -404,181 +409,335 @@ private fun PuppyMechanicalGachaMachine(
 ) {
     val palette = puppyCasinoCartoonPalette()
     val machineScale by animateFloatAsState(
-        targetValue = if (stage == 1) 1.012f else 1f,
+        targetValue = if (stage == 1) 1.008f else 1f,
         animationSpec = spring(dampingRatio = 0.58f, stiffness = 390f),
         label = "mechanical-gacha-scale"
     )
 
     CartoonStageFrame(
         modifier = Modifier.fillMaxWidth().scale(machineScale),
-        accent = MaterialTheme.colorScheme.primary,
+        accent = Color(0xFF12AEEA),
         background = Brush.verticalGradient(
             listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                MaterialTheme.colorScheme.surface,
-                palette.woodLight.copy(alpha = 0.12f)
+                Color(0xFFDDF4FF),
+                Color(0xFFF7FCFF),
+                palette.cream.copy(alpha = 0.72f)
             )
         )
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(start = 12.dp, top = 58.dp, end = 12.dp, bottom = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("🐶", fontSize = 42.sp, modifier = Modifier.offset(y = 8.dp))
-            CartoonBonePlaque("PUPPY GACHA")
-            Spacer(Modifier.height(8.dp))
-            PuppyGachaDome()
-            Spacer(Modifier.height(0.dp))
-            PuppyGachaBody(
-                stage = stage,
-                knobRotation = knobRotation,
-                capsuleDrop = capsuleDrop,
-                trayScale = trayScale,
-                openProgress = openProgress,
-                onOpenCapsule = onOpenCapsule
-            )
+        Box(Modifier.fillMaxWidth()) {
+            Canvas(Modifier.matchParentSize()) {
+                val paw = Color(0xFF2E9ED7).copy(alpha = 0.10f)
+                val r = size.minDimension * 0.035f
+                fun pawAt(x: Float, y: Float) {
+                    drawCircle(paw, r, Offset(x, y))
+                    drawCircle(paw, r * 0.42f, Offset(x - r * 0.78f, y - r * 0.92f))
+                    drawCircle(paw, r * 0.42f, Offset(x - r * 0.20f, y - r * 1.22f))
+                    drawCircle(paw, r * 0.42f, Offset(x + r * 0.42f, y - r * 1.15f))
+                    drawCircle(paw, r * 0.42f, Offset(x + r * 0.90f, y - r * 0.72f))
+                }
+                pawAt(size.width * 0.10f, size.height * 0.16f)
+                pawAt(size.width * 0.90f, size.height * 0.20f)
+                pawAt(size.width * 0.12f, size.height * 0.79f)
+                pawAt(size.width * 0.88f, size.height * 0.76f)
+            }
+
+            Column(
+                Modifier.fillMaxWidth().padding(start = 10.dp, top = 6.dp, end = 10.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                PuppyGachaMascot()
+                Box(
+                    modifier = Modifier.offset(y = (-14).dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CartoonBonePlaque("PUPPY GACHA")
+                }
+
+                Box(Modifier.offset(y = (-18).dp)) {
+                    PuppyGachaDome()
+                }
+
+                Box(Modifier.offset(y = (-20).dp)) {
+                    PuppyGachaBody(
+                        stage = stage,
+                        knobRotation = knobRotation
+                    )
+                }
+
+                Box(Modifier.offset(y = (-18).dp)) {
+                    PuppyGachaTray(
+                        stage = stage,
+                        capsuleDrop = capsuleDrop,
+                        trayScale = trayScale,
+                        openProgress = openProgress,
+                        onOpenCapsule = onOpenCapsule
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun PuppyGachaMascot() {
+    Canvas(
+        modifier = Modifier
+            .width(196.dp)
+            .height(92.dp)
+    ) {
+        val centerX = size.width / 2f
+        val headCenter = Offset(centerX, size.height * 0.47f)
+        val headRadius = size.height * 0.33f
+        val brown = Color(0xFFB86E3D)
+        val darkBrown = Color(0xFF6D3823)
+        val cream = Color(0xFFFFE8C8)
+        val white = Color(0xFFFFF9EE)
+        val pink = Color(0xFFFF8E9D)
+
+        drawOval(
+            color = brown,
+            topLeft = Offset(centerX - headRadius * 1.55f, headCenter.y - headRadius * 0.72f),
+            size = Size(headRadius * 0.95f, headRadius * 1.45f)
+        )
+        drawOval(
+            color = brown,
+            topLeft = Offset(centerX + headRadius * 0.60f, headCenter.y - headRadius * 0.72f),
+            size = Size(headRadius * 0.95f, headRadius * 1.45f)
+        )
+        drawCircle(cream, headRadius, headCenter)
+        drawOval(
+            color = white,
+            topLeft = Offset(centerX - headRadius * 0.22f, headCenter.y - headRadius),
+            size = Size(headRadius * 0.45f, headRadius * 1.30f)
+        )
+
+        val eyeY = headCenter.y - headRadius * 0.16f
+        drawArc(
+            color = darkBrown,
+            startAngle = 200f,
+            sweepAngle = 140f,
+            useCenter = false,
+            topLeft = Offset(centerX - headRadius * 0.56f, eyeY - 4f),
+            size = Size(headRadius * 0.28f, headRadius * 0.18f),
+            style = Stroke(width = 4f)
+        )
+        drawArc(
+            color = darkBrown,
+            startAngle = 200f,
+            sweepAngle = 140f,
+            useCenter = false,
+            topLeft = Offset(centerX + headRadius * 0.28f, eyeY - 4f),
+            size = Size(headRadius * 0.28f, headRadius * 0.18f),
+            style = Stroke(width = 4f)
+        )
+
+        drawOval(
+            color = white,
+            topLeft = Offset(centerX - headRadius * 0.48f, headCenter.y + headRadius * 0.06f),
+            size = Size(headRadius * 0.96f, headRadius * 0.62f)
+        )
+        drawOval(
+            color = darkBrown,
+            topLeft = Offset(centerX - headRadius * 0.14f, headCenter.y + headRadius * 0.03f),
+            size = Size(headRadius * 0.28f, headRadius * 0.20f)
+        )
+        drawArc(
+            color = darkBrown,
+            startAngle = 8f,
+            sweepAngle = 164f,
+            useCenter = false,
+            topLeft = Offset(centerX - headRadius * 0.30f, headCenter.y + headRadius * 0.16f),
+            size = Size(headRadius * 0.60f, headRadius * 0.42f),
+            style = Stroke(width = 3.5f)
+        )
+        drawOval(
+            color = pink,
+            topLeft = Offset(centerX - headRadius * 0.12f, headCenter.y + headRadius * 0.39f),
+            size = Size(headRadius * 0.24f, headRadius * 0.20f)
+        )
+
+        val pawY = size.height * 0.84f
+        drawOval(
+            color = cream,
+            topLeft = Offset(centerX - headRadius * 0.92f, pawY - headRadius * 0.24f),
+            size = Size(headRadius * 0.64f, headRadius * 0.48f)
+        )
+        drawOval(
+            color = cream,
+            topLeft = Offset(centerX + headRadius * 0.28f, pawY - headRadius * 0.24f),
+            size = Size(headRadius * 0.64f, headRadius * 0.48f)
+        )
+        drawCircle(Color(0xFFFFD23F), 5f, Offset(centerX - headRadius * 1.18f, size.height * 0.34f))
+        drawCircle(Color(0xFFFFD23F), 4f, Offset(centerX + headRadius * 1.20f, size.height * 0.30f))
     }
 }
 
 @Composable
 private fun PuppyGachaBody(
     stage: Int,
-    knobRotation: Float,
-    capsuleDrop: Float,
-    trayScale: Float,
-    openProgress: Float,
-    onOpenCapsule: () -> Unit
+    knobRotation: Float
 ) {
     val palette = puppyCasinoCartoonPalette()
+
     Surface(
-        modifier = Modifier.fillMaxWidth(0.92f),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 34.dp, bottomEnd = 34.dp),
-        color = MaterialTheme.colorScheme.primary,
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.95f)),
-        shadowElevation = 9.dp
+        modifier = Modifier.fillMaxWidth(0.88f),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 34.dp, bottomEnd = 34.dp),
+        color = Color(0xFF10A9E8),
+        border = BorderStroke(3.dp, Color(0xFF087EB9)),
+        shadowElevation = 12.dp
     ) {
-        Column(
+        Box(
             Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = 0.23f),
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+                            Color(0xFF66D8FF),
+                            Color(0xFF18B4F0),
+                            Color(0xFF0497D8)
                         )
                     )
                 )
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 14.dp, vertical = 14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Surface(
-                    modifier = Modifier.width(80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = palette.cream,
-                    border = BorderStroke(2.dp, Color.White.copy(alpha = 0.55f)),
-                    shadowElevation = 4.dp
-                ) {
-                    Text(
-                        "TURN\nPULL\nPUPPY!",
-                        modifier = Modifier.padding(8.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Black,
-                        color = palette.woodDark,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 13.sp
-                    )
-                }
-
-                PuppyGachaKnob(knobRotation)
-
-                Surface(
-                    modifier = Modifier.size(62.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    color = palette.cream,
-                    border = BorderStroke(2.dp, Color.White.copy(alpha = 0.55f)),
-                    shadowElevation = 4.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("🐾", fontSize = 28.sp, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
+            Canvas(Modifier.matchParentSize()) {
+                drawRoundRect(
+                    color = Color.White.copy(alpha = 0.18f),
+                    topLeft = Offset(size.width * 0.06f, size.height * 0.06f),
+                    size = Size(size.width * 0.88f, size.height * 0.18f),
+                    cornerRadius = CornerRadius(22f, 22f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.18f),
+                    radius = 18f,
+                    center = Offset(size.width * 0.09f, size.height * 0.75f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.18f),
+                    radius = 18f,
+                    center = Offset(size.width * 0.91f, size.height * 0.75f)
+                )
             }
 
-            Spacer(Modifier.height(10.dp))
-            PuppyGachaChute(stage)
-            Spacer(Modifier.height(6.dp))
-            PuppyGachaTray(
-                stage = stage,
-                capsuleDrop = capsuleDrop,
-                trayScale = trayScale,
-                openProgress = openProgress,
-                onOpenCapsule = onOpenCapsule
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Surface(
+                        modifier = Modifier.width(88.dp).height(82.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFFEFFAFF),
+                        border = BorderStroke(2.dp, Color(0xFF8DD8F5)),
+                        shadowElevation = 5.dp
+                    ) {
+                        Box(
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    listOf(Color.White, Color(0xFFE3F7FF))
+                                )
+                            ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "TURN\nPULL\nPUPPY!",
+                                modifier = Modifier.padding(8.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF162735),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    PuppyGachaKnob(knobRotation)
+
+                    Surface(
+                        modifier = Modifier.size(74.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        color = Color(0xFFEFFAFF),
+                        border = BorderStroke(2.dp, Color(0xFF8DD8F5)),
+                        shadowElevation = 5.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            PuppyPawMark(
+                                color = Color(0xFF119FD7),
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                PuppyGachaChute(stage)
+            }
         }
     }
 }
 
 @Composable
 private fun PuppyGachaDome() {
-    val palette = puppyCasinoCartoonPalette()
     val capsuleColors = listOf(
-        Color(0xFF70CFFF),
-        Color(0xFFFF9DC4),
-        Color(0xFFA9E9D0),
-        Color(0xFFC7AEFF),
-        Color(0xFF8EDDEB),
-        Color(0xFFFFB6D0),
-        Color(0xFF88D6FF),
-        Color(0xFFBDEED8),
-        Color(0xFFD2BEFF)
+        Color(0xFF57C8FF),
+        Color(0xFFFF8EB9),
+        Color(0xFF7ADFC2),
+        Color(0xFFC5A1FF),
+        Color(0xFF56D7EA),
+        Color(0xFFFFA2C6),
+        Color(0xFF4FC3F7),
+        Color(0xFF8FE0C9),
+        Color(0xFFC7A8F5)
     )
 
     Surface(
-        modifier = Modifier.fillMaxWidth(0.88f).height(205.dp),
-        shape = RoundedCornerShape(topStart = 84.dp, topEnd = 84.dp, bottomStart = 34.dp, bottomEnd = 34.dp),
-        color = palette.glass,
-        border = BorderStroke(5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.70f)),
-        shadowElevation = 7.dp
+        modifier = Modifier.fillMaxWidth(0.82f).height(222.dp),
+        shape = RoundedCornerShape(topStart = 96.dp, topEnd = 96.dp, bottomStart = 28.dp, bottomEnd = 28.dp),
+        color = Color(0xFFDFF5FF).copy(alpha = 0.78f),
+        border = BorderStroke(5.dp, Color(0xFF159ED8)),
+        shadowElevation = 10.dp
     ) {
         Box(
             Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 80.dp, topEnd = 80.dp, bottomStart = 30.dp, bottomEnd = 30.dp))
+                .clip(RoundedCornerShape(topStart = 92.dp, topEnd = 92.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = 0.80f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                            Color.White.copy(alpha = 0.94f),
+                            Color(0xFFCDEEFF).copy(alpha = 0.72f),
+                            Color(0xFF93D8F5).copy(alpha = 0.55f)
                         )
                     )
                 )
         ) {
-            Box(
-                Modifier
-                    .width(34.dp)
-                    .height(132.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = 24.dp, y = 16.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.52f))
-            )
-            PuppyMiniMechanicalCapsule(capsuleColors[0], Modifier.align(Alignment.TopStart).padding(start = 30.dp, top = 62.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[1], Modifier.align(Alignment.TopCenter).padding(top = 45.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[2], Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 66.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[3], Modifier.align(Alignment.CenterStart).padding(start = 18.dp, top = 26.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[4], Modifier.align(Alignment.Center).padding(top = 18.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[5], Modifier.align(Alignment.CenterEnd).padding(end = 18.dp, top = 25.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[6], Modifier.align(Alignment.BottomStart).padding(start = 48.dp, bottom = 12.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[7], Modifier.align(Alignment.BottomCenter).padding(bottom = 9.dp))
-            PuppyMiniMechanicalCapsule(capsuleColors[8], Modifier.align(Alignment.BottomEnd).padding(end = 49.dp, bottom = 12.dp))
+            Canvas(Modifier.matchParentSize()) {
+                drawOval(
+                    color = Color.White.copy(alpha = 0.58f),
+                    topLeft = Offset(size.width * 0.08f, size.height * 0.09f),
+                    size = Size(size.width * 0.08f, size.height * 0.53f)
+                )
+                drawOval(
+                    color = Color.White.copy(alpha = 0.32f),
+                    topLeft = Offset(size.width * 0.80f, size.height * 0.13f),
+                    size = Size(size.width * 0.055f, size.height * 0.34f)
+                )
+            }
+
+            PuppyMiniMechanicalCapsule(capsuleColors[0], Modifier.align(Alignment.TopStart).padding(start = 22.dp, top = 72.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[1], Modifier.align(Alignment.TopCenter).padding(top = 42.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[2], Modifier.align(Alignment.TopEnd).padding(end = 20.dp, top = 76.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[3], Modifier.align(Alignment.CenterStart).padding(start = 14.dp, top = 24.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[4], Modifier.align(Alignment.Center).padding(top = 24.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[5], Modifier.align(Alignment.CenterEnd).padding(end = 16.dp, top = 30.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[6], Modifier.align(Alignment.BottomStart).padding(start = 42.dp, bottom = 8.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[7], Modifier.align(Alignment.BottomCenter).padding(bottom = 7.dp))
+            PuppyMiniMechanicalCapsule(capsuleColors[8], Modifier.align(Alignment.BottomEnd).padding(end = 40.dp, bottom = 10.dp))
         }
     }
 }
@@ -588,104 +747,178 @@ private fun PuppyMiniMechanicalCapsule(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    Canvas(modifier = modifier.size(60.dp)) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension * 0.44f
+
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.12f),
+            radius = radius,
+            center = Offset(center.x + 2.5f, center.y + 4f)
+        )
+        drawCircle(color = color, radius = radius, center = center)
+        drawArc(
+            color = Color.White.copy(alpha = 0.72f),
+            startAngle = 205f,
+            sweepAngle = 115f,
+            useCenter = false,
+            topLeft = Offset(center.x - radius * 0.72f, center.y - radius * 0.80f),
+            size = Size(radius * 1.10f, radius * 0.88f),
+            style = Stroke(width = 5f)
+        )
+        drawLine(
+            color = Color.White.copy(alpha = 0.76f),
+            start = Offset(center.x - radius * 0.86f, center.y),
+            end = Offset(center.x + radius * 0.86f, center.y),
+            strokeWidth = 3f
+        )
+
+        val paw = Color(0xFF0E96D0)
+        drawCircle(paw, radius * 0.18f, Offset(center.x, center.y + radius * 0.08f))
+        drawCircle(paw, radius * 0.075f, Offset(center.x - radius * 0.24f, center.y - radius * 0.17f))
+        drawCircle(paw, radius * 0.075f, Offset(center.x - radius * 0.07f, center.y - radius * 0.27f))
+        drawCircle(paw, radius * 0.075f, Offset(center.x + radius * 0.10f, center.y - radius * 0.25f))
+        drawCircle(paw, radius * 0.075f, Offset(center.x + radius * 0.25f, center.y - radius * 0.13f))
+    }
+}
+
+@Composable
+private fun PuppyGachaKnob(rotation: Float) {
+    Box(
+        modifier = Modifier.size(100.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val outer = size.minDimension * 0.47f
+            drawCircle(Color.Black.copy(alpha = 0.15f), outer, Offset(center.x + 2f, center.y + 5f))
+            drawCircle(Color(0xFFF8FAFC), outer, center)
+            drawCircle(Color(0xFFD9E3EA), outer * 0.86f, center)
+            drawCircle(Color.White, outer * 0.70f, center)
+            drawArc(
+                color = Color(0xFF44BCEB),
+                startAngle = 205f,
+                sweepAngle = 130f,
+                useCenter = false,
+                topLeft = Offset(center.x - outer * 0.68f, center.y - outer * 0.68f),
+                size = Size(outer * 1.36f, outer * 1.36f),
+                style = Stroke(width = 5f)
+            )
+        }
+
+        Surface(
+            modifier = Modifier
+                .width(24.dp)
+                .height(64.dp)
+                .graphicsLayer { rotationZ = rotation },
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFF12AEEA),
+            border = BorderStroke(2.dp, Color(0xFF087EB9)),
+            shadowElevation = 4.dp
+        ) {
+            Box(
+                Modifier.background(
+                    Brush.horizontalGradient(
+                        listOf(Color.White.copy(alpha = 0.44f), Color.Transparent, Color.Black.copy(alpha = 0.08f))
+                    )
+                )
+            )
+        }
+
+        Text(
+            "↙",
+            modifier = Modifier.align(Alignment.CenterStart),
+            color = Color(0xFF159ED8),
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            "↘",
+            modifier = Modifier.align(Alignment.CenterEnd),
+            color = Color(0xFF159ED8),
+            fontWeight = FontWeight.Black
+        )
+    }
+}
+
+@Composable
+private fun PuppyPawMark(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier) {
+        val c = Offset(size.width / 2f, size.height / 2f)
+        val r = size.minDimension
+        drawOval(
+            color = color,
+            topLeft = Offset(c.x - r * 0.18f, c.y - r * 0.02f),
+            size = Size(r * 0.36f, r * 0.30f)
+        )
+        drawCircle(color, r * 0.075f, Offset(c.x - r * 0.22f, c.y - r * 0.20f))
+        drawCircle(color, r * 0.075f, Offset(c.x - r * 0.07f, c.y - r * 0.28f))
+        drawCircle(color, r * 0.075f, Offset(c.x + r * 0.09f, c.y - r * 0.27f))
+        drawCircle(color, r * 0.075f, Offset(c.x + r * 0.23f, c.y - r * 0.18f))
+    }
+}
+
+@Composable
+private fun PuppyGachaChute(stage: Int) {
     Surface(
-        modifier = modifier.size(51.dp),
-        shape = CircleShape,
-        color = color,
-        border = BorderStroke(2.dp, Color.White.copy(alpha = 0.72f)),
-        shadowElevation = 4.dp
+        modifier = Modifier.width(176.dp).height(96.dp),
+        shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
+        color = Color(0xFFDDEBF2),
+        border = BorderStroke(3.dp, Color(0xFFB7CCD7)),
+        shadowElevation = 7.dp
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.44f), Color.Transparent, Color.Black.copy(alpha = 0.07f))
+                        listOf(Color.White.copy(alpha = 0.92f), Color(0xFFCDE3EC))
                     )
-                ),
-            contentAlignment = Alignment.Center
+                )
         ) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(Color.White.copy(alpha = 0.7f))
-            )
-            Text("🐾", fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
-        }
-    }
-}
-
-@Composable
-private fun PuppyGachaKnob(rotation: Float) {
-    val palette = puppyCasinoCartoonPalette()
-    Surface(
-        modifier = Modifier.size(88.dp),
-        shape = CircleShape,
-        color = Color.White,
-        border = BorderStroke(5.dp, palette.cream),
-        shadowElevation = 9.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
             Surface(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(7.dp),
-                shape = CircleShape,
-                color = palette.cream,
-                border = BorderStroke(2.dp, palette.woodLight.copy(alpha = 0.45f))
-            ) {}
-            Surface(
-                modifier = Modifier
-                    .width(21.dp)
-                    .height(58.dp)
-                    .graphicsLayer { rotationZ = rotation },
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.primary,
-                shadowElevation = 3.dp
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+                    .width(112.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFFAEDDF0).copy(alpha = 0.55f),
+                border = BorderStroke(2.dp, Color.White.copy(alpha = 0.86f))
             ) {
-                Box(
-                    Modifier.background(
-                        Brush.horizontalGradient(
-                            listOf(Color.White.copy(alpha = 0.32f), Color.Transparent, Color.Black.copy(alpha = 0.08f))
+                Box(contentAlignment = Alignment.Center) {
+                    if (stage <= 1) {
+                        PuppyClosedCapsule(Modifier.size(48.dp))
+                    } else {
+                        PuppyPawMark(
+                            color = Color(0xFF159ED8).copy(alpha = 0.22f),
+                            modifier = Modifier.size(32.dp)
                         )
-                    )
-                )
+                    }
+                }
             }
-            Text(
-                "↻",
-                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = palette.woodDark
-            )
-        }
-    }
-}
 
-@Composable
-private fun PuppyGachaChute(stage: Int) {
-    val palette = puppyCasinoCartoonPalette()
-    Surface(
-        modifier = Modifier.width(126.dp).height(47.dp),
-        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
-        color = palette.cream,
-        border = BorderStroke(2.dp, palette.woodLight.copy(alpha = 0.55f)),
-        shadowElevation = 5.dp
-    ) {
-        Box(
-            Modifier.background(
-                Brush.verticalGradient(
-                    listOf(Color.White.copy(alpha = 0.5f), Color.Transparent, palette.shadow.copy(alpha = 0.08f))
-                )
-            ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                if (stage == 1) "⬇ CAPSULE" else "CAPSULE CHUTE",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                color = palette.woodDark
-            )
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+                    .width(142.dp)
+                    .height(28.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFFFFF4E2),
+                border = BorderStroke(1.dp, Color(0xFFD4B891))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        "CAPSULE CHUTE",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF3A332D)
+                    )
+                }
+            }
         }
     }
 }
@@ -698,23 +931,26 @@ private fun PuppyGachaTray(
     openProgress: Float,
     onOpenCapsule: () -> Unit
 ) {
-    val palette = puppyCasinoCartoonPalette()
     Surface(
         modifier = Modifier
-            .fillMaxWidth(0.88f)
-            .height(132.dp)
+            .fillMaxWidth(0.96f)
+            .height(126.dp)
             .scale(trayScale),
-        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 30.dp, bottomEnd = 30.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(3.dp, palette.cream.copy(alpha = 0.95f)),
-        shadowElevation = 7.dp
+        shape = RoundedCornerShape(28.dp),
+        color = Color(0xFFF8FCFE),
+        border = BorderStroke(2.dp, Color(0xFFD6E7EF)),
+        shadowElevation = 8.dp
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.White.copy(alpha = 0.40f), MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primary.copy(alpha = 0.07f))
+                        listOf(
+                            Color.White,
+                            Color(0xFFF3FBFF),
+                            Color(0xFFEFF8FD)
+                        )
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -722,50 +958,57 @@ private fun PuppyGachaTray(
             Text(
                 "CAPSULE TRAY",
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color(0xFF64727B)
             )
-            Text("🐾", modifier = Modifier.align(Alignment.CenterStart).padding(start = 12.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), fontSize = 24.sp)
-            Text("🐾", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), fontSize = 24.sp)
+
+            PuppyPawMark(
+                color = Color(0xFF159ED8).copy(alpha = 0.12f),
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 14.dp).size(34.dp)
+            )
+            PuppyPawMark(
+                color = Color(0xFF159ED8).copy(alpha = 0.12f),
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 14.dp).size(34.dp)
+            )
 
             when (stage) {
                 0 -> Text(
                     "Choose Treats or a Ticket",
-                    modifier = Modifier.padding(top = 16.dp),
-                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 18.dp),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 1 -> PuppyClosedCapsule(
                     modifier = Modifier
-                        .padding(top = 13.dp)
-                        .size(64.dp)
+                        .padding(top = 14.dp)
+                        .size(66.dp)
                         .graphicsLayer {
                             translationY = capsuleDrop
-                            rotationZ = -12f + (capsuleDrop / -58f) * 12f
+                            rotationZ = -16f + (capsuleDrop / -58f) * 16f
                         }
                 )
 
-                2 -> Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 14.dp)
+                2 -> Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(top = 16.dp)
                 ) {
-                    PuppyClosedCapsule(Modifier.size(58.dp))
-                    Spacer(Modifier.height(3.dp))
+                    PuppyClosedCapsule(Modifier.size(60.dp))
                     Button(
                         onClick = onOpenCapsule,
-                        modifier = Modifier.height(34.dp),
-                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.height(40.dp),
+                        shape = RoundedCornerShape(16.dp),
                         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp)
                     ) {
-                        Text("Open Capsule", style = MaterialTheme.typography.labelMedium)
+                        Text("Open Capsule", fontWeight = FontWeight.Bold)
                     }
                 }
 
                 3, 4 -> PuppyOpeningCapsule(
                     progress = openProgress,
-                    modifier = Modifier.padding(top = 14.dp)
+                    modifier = Modifier.padding(top = 15.dp)
                 )
             }
         }
