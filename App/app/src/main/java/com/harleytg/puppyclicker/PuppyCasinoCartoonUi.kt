@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -85,6 +86,77 @@ internal fun puppyCasinoCartoonPalette(): PuppyCasinoCartoonPalette {
         glass = Color(0xFFDDF7FF).copy(alpha = if (scheme.surface.luminance() > 0.5f) 0.72f else 0.28f),
         shadow = Color.Black.copy(alpha = if (scheme.surface.luminance() > 0.5f) 0.24f else 0.48f)
     )
+}
+
+@Composable
+internal fun PuppyCasinoRenderStage(
+    title: String,
+    modifier: Modifier = Modifier,
+    height: Dp = 330.dp,
+    accent: Color = Color(0xFF00B8F0),
+    background: Color = Color(0xFF101820),
+    content: @Composable BoxScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth().height(height),
+        shape = RoundedCornerShape(26.dp),
+        color = background,
+        border = BorderStroke(2.dp, accent),
+        shadowElevation = 0.dp
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Text(
+                text = title,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 15.dp),
+                color = Color.White,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+internal fun PuppyCasinoRenderStatusBar(
+    text: String,
+    modifier: Modifier = Modifier,
+    accent: Color = Color(0xFF00B8F0),
+    centered: Boolean = false,
+    height: Dp = 40.dp,
+    corner: Dp = 13.dp
+) {
+    Surface(
+        modifier = modifier.height(height),
+        shape = RoundedCornerShape(corner),
+        color = Color(0xFF16232D),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!centered) {
+                Box(
+                    Modifier
+                        .width(8.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(accent)
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text = text,
+                modifier = if (centered) Modifier.weight(1f) else Modifier,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = if (centered) TextAlign.Center else TextAlign.Start
+            )
+        }
+    }
 }
 
 @Composable

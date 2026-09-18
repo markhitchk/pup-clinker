@@ -199,6 +199,8 @@ private fun DiscordSettings() {}
         self.assertNotIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[settings_home:profile])
         self.assertIn("val gameState by vm.state.collectAsStateWithLifecycle()", patched[profile:discord])
         self.assertIn('StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)', patched[profile:discord])
+        self.assertIn("PuppyPlayerProgressCard(gameState)", patched[profile:discord])
+        self.assertIn("PuppyAchievementsSection(gameState)", patched[profile:discord])
 
     def test_settings_compat_targets_profile_when_other_developer_anchor_is_outside_home(self) -> None:
         source = '''enum class SettingsDestination {

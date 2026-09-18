@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -113,12 +115,12 @@ internal fun PuppyLuckyWheelScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
+            .padding(start = 20.dp, top = 2.dp, end = 20.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Lucky Pup Wheel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Spin for Treat multipliers or a real eligible puppy unlock from the existing roster.",
+            "Spin for Treat multipliers or a puppy unlock",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -137,7 +139,7 @@ internal fun PuppyLuckyWheelScreen(
                     "PUP UNLOCK • ${style?.name ?: display.puppyStyleId.orEmpty()}"
                 }
                 showResult -> "${display!!.prize.label} • ${display.payoutTreats} Treats returned"
-                else -> "Choose a wager and spin."
+                else -> "Spin to reveal your prize"
             }
         )
 
@@ -159,13 +161,14 @@ internal fun PuppyLuckyWheelScreen(
         Spacer(Modifier.height(16.dp))
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PuppyLuckyWheelEngine.wagerPresets.forEach { preset ->
                 FilterChip(
                     selected = wager == preset,
                     onClick = { wager = preset },
                     label = { Text(preset.toString()) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(14.dp)
                 )
             }
         }
@@ -181,14 +184,15 @@ internal fun PuppyLuckyWheelScreen(
             },
             enabled = canPlayFeature && activeRound == null &&
                 PuppyLuckyWheelEngine.isValidWager(wager) && state.treats >= wager,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(19.dp)
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Wheel Locked"
                     activeRound != null -> "Round In Progress"
                     state.treats < wager -> "Not Enough Treats"
-                    else -> "Spin Wheel · $wager Treats"
+                    else -> "Spin Wheel • $wager Treats"
                 }
             )
         }
@@ -232,40 +236,35 @@ private fun LuckyWheelCartoonStage(
     animationsEnabled: Boolean,
     status: String
 ) {
-    val palette = puppyCasinoCartoonPalette()
-    CartoonStageFrame(
-        modifier = Modifier.fillMaxWidth().height(365.dp),
-        accent = MaterialTheme.colorScheme.primary,
-        background = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
-                MaterialTheme.colorScheme.surface,
-                palette.woodLight.copy(alpha = 0.18f)
-            )
-        )
+    PuppyCasinoRenderStage(
+        title = "LUCKY PUP WHEEL",
+        height = 330.dp,
+        accent = Color(0xFF7C4DFF)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 18.dp, end = 12.dp, bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(212.dp)
+                .offset(y = 32.dp)
         ) {
-            Text("🐶", fontSize = 38.sp)
-            CartoonBonePlaque("LUCKY PUP WHEEL")
-            Spacer(Modifier.height(2.dp))
-            LuckyWheelBoard(outcome, spinKey, animationsEnabled)
-            Surface(
-                shape = RoundedCornerShape(15.dp),
-                color = palette.cream,
-                border = BorderStroke(2.dp, palette.woodLight.copy(alpha = 0.70f)),
-                shadowElevation = 4.dp
-            ) {
-                Text(
-                    text = status,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = palette.woodDark,
-                    fontWeight = FontWeight.Black
-                )
-            }
+            LuckyWheelBoard(
+                outcome = outcome,
+                spinKey = spinKey,
+                animationsEnabled = animationsEnabled
+            )
         }
+
+        PuppyCasinoRenderStatusBar(
+            text = status,
+            centered = true,
+            height = 46.dp,
+            corner = 15.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 257.dp)
+                .width(286.dp)
+        )
     }
 }
 
@@ -310,8 +309,13 @@ private fun LuckyWheelBoard(
         }
     }
 
-    Box(Modifier.fillMaxWidth().height(245.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(224.dp)) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Canvas(
+            Modifier
+                .size(190.dp)
+                .align(Alignment.TopCenter)
+                .offset(y = 22.dp)
+        ) {
             val center = Offset(size.width / 2f, size.height / 2f + 4f)
             val outerRadius = size.minDimension * 0.49f
             val rimRadius = outerRadius * 0.92f
@@ -372,30 +376,56 @@ private fun LuckyWheelBoard(
 
         Text(
             "▼",
-            color = Color(0xFFE74D56),
-            fontSize = 34.sp,
+            color = Color.White,
+            fontSize = 25.sp,
             modifier = Modifier.align(Alignment.TopCenter)
         )
-        Text("🐾", fontSize = 31.sp)
+        Text(
+            "🐾",
+            color = Color(0xFF00B8F0),
+            fontSize = 22.sp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 100.dp)
+        )
     }
 }
 
 @Composable
 private fun WheelWallet(state: V6GameState) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().height(78.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 2.dp
+        shadowElevation = 0.dp
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
-            Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = Color(0xFFEAF8FD)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("🍪", fontSize = 22.sp)
+                }
             }
-            Text("2% PUP", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("Treat Wallet", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${state.treats} Treats",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Text(
+                "2% PUP",
+                color = Color(0xFF00B8F0),
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }
