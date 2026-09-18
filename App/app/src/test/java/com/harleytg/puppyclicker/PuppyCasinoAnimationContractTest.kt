@@ -88,7 +88,9 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(scratchers.contains("coinRadiusPx *"))
         assertTrue(scratchers.contains("SCRATCH_COLUMNS = 48"))
         assertTrue(scratchers.contains("painterResource(R.drawable.pup_coin)"))
-        assertTrue(scratchers.contains("R.drawable.puppy_scratch_stage"))
+        assertTrue(scratchers.contains("R.drawable.puppy_scratch_play_border"))
+        assertTrue(scratchers.contains("R.drawable.puppy_scratch_field"))
+        assertTrue(scratchers.contains("BlendMode.Clear"))
         assertTrue(scratchers.contains("BoxWithConstraints("))
 
         assertTrue(luckyWheel.contains("LuckyWheelBoard("))

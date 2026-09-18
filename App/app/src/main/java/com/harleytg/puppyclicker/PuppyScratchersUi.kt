@@ -43,15 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -300,7 +301,7 @@ private fun ScratcherCartoonStage(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(941f / 728f)
+            .aspectRatio(1426f / 1103f)
     ) {
         ScratcherCard(
             card = card,
@@ -310,32 +311,40 @@ private fun ScratcherCartoonStage(
             revealAll = revealAll,
             modifier = Modifier
                 .offset(
-                    x = maxWidth * (125f / 941f),
-                    y = maxHeight * (309f / 728f)
+                    x = maxWidth * (200f / 1426f),
+                    y = maxHeight * (482f / 1103f)
                 )
                 .size(
-                    width = maxWidth * (692f / 941f),
-                    height = maxHeight * (331f / 728f)
+                    width = maxWidth * (1013f / 1426f),
+                    height = maxHeight * (443f / 1103f)
                 )
         )
 
         Image(
-            painter = painterResource(R.drawable.puppy_scratch_stage),
+            painter = painterResource(R.drawable.puppy_scratch_play_border),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
         )
 
-        Text(
-            status,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = maxHeight * 0.035f),
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center
-        )
+        if (status != "Choose a card below to begin.") {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = maxHeight * 0.018f),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xCC075843)
+            ) {
+                Text(
+                    status,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 
@@ -355,6 +364,7 @@ private fun ScratcherCard(
     val density = LocalDensity.current
     val coinDiameter = 56.dp
     val coinRadiusPx = with(density) { coinDiameter.toPx() / 2f }
+    val scratchField = ImageBitmap.imageResource(R.drawable.puppy_scratch_field)
 
     Box(
         modifier = modifier
@@ -404,6 +414,9 @@ private fun ScratcherCard(
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
                     .pointerInput(enabled, outcome) {
                         if (!enabled || outcome == null) return@pointerInput
 
@@ -523,53 +536,31 @@ private fun ScratcherCard(
             ) {
                 val cellW = size.width / SCRATCH_COLUMNS
                 val cellH = size.height / SCRATCH_ROWS
-                val coating = scratcherCoatingColor(card)
 
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.55f),
-                            coating,
-                            coating.copy(alpha = 0.94f),
-                            Color.Black.copy(alpha = 0.10f)
-                        )
+                drawImage(
+                    image = scratchField,
+                    dstSize = IntSize(
+                        width = size.width.roundToInt(),
+                        height = size.height.roundToInt()
                     )
                 )
 
                 for (row in 0 until SCRATCH_ROWS) {
                     for (col in 0 until SCRATCH_COLUMNS) {
                         val index = row * SCRATCH_COLUMNS + col
-                        if (index !in scratched) {
+                        if (index in scratched) {
                             drawRect(
-                                color = coating.copy(alpha = 0.92f),
+                                color = Color.Transparent,
                                 topLeft = Offset(col * cellW, row * cellH),
-                                size = Size(cellW + 1.2f, cellH + 1.2f)
+                                size = androidx.compose.ui.geometry.Size(
+                                    width = cellW + 1.5f,
+                                    height = cellH + 1.5f
+                                ),
+                                blendMode = BlendMode.Clear
                             )
-                            if (index % 9 == 0) {
-                                drawCircle(
-                                    color = Color.White.copy(alpha = 0.26f),
-                                    radius = minOf(cellW, cellH) * 0.18f,
-                                    center = Offset((col + 0.5f) * cellW, (row + 0.5f) * cellH)
-                                )
-                            }
-                            if (index % 17 == 0) {
-                                drawCircle(
-                                    color = Color.Black.copy(alpha = 0.06f),
-                                    radius = minOf(cellW, cellH) * 0.12f,
-                                    center = Offset((col + 0.72f) * cellW, (row + 0.36f) * cellH)
-                                )
-                            }
                         }
                     }
                 }
-
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.38f),
-                    topLeft = Offset(5f, 5f),
-                    size = Size(size.width - 10f, size.height - 10f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(17f, 17f),
-                    style = Stroke(2.4f)
-                )
             }
         }
 
@@ -616,38 +607,11 @@ private fun PupCoin(
     )
 }
 
-private fun scratcherAccentColor(card: PuppyScratcherCardType): Color = when (card.id) {
-    "bone_bonanza" -> Color(0xFFD8A96A)
-    "lucky_fetch" -> Color(0xFF55DFA8)
-    "golden_paw" -> Color(0xFFFFD35A)
-    "casino_scratch" -> Color(0xFFE45C5C)
-    "ultra_pup" -> Color(0xFF6DDCFF)
-    else -> Color(0xFFD8C477)
-}
-
-private fun scratcherShellColor(card: PuppyScratcherCardType): Color = when (card.id) {
-    "bone_bonanza" -> Color(0xFF473019)
-    "lucky_fetch" -> Color(0xFF124438)
-    "golden_paw" -> Color(0xFF58480E)
-    "casino_scratch" -> Color(0xFF4C1818)
-    "ultra_pup" -> Color(0xFF102E45)
-    else -> Color(0xFF163B35)
-}
-
 private fun scratcherCardBackground(card: PuppyScratcherCardType): Color = when (card.id) {
     "casino_scratch" -> Color(0xFFFFECEC)
     "ultra_pup" -> Color(0xFFE9F8FF)
     "golden_paw" -> Color(0xFFFFF7D6)
     else -> Color(0xFFFFF8E7)
-}
-
-private fun scratcherCoatingColor(card: PuppyScratcherCardType): Color = when (card.id) {
-    "bone_bonanza" -> Color(0xFFB8B0A5)
-    "lucky_fetch" -> Color(0xFFB4CFC5)
-    "golden_paw" -> Color(0xFFD6C778)
-    "casino_scratch" -> Color(0xFFB7B7BC)
-    "ultra_pup" -> Color(0xFF9DC9D9)
-    else -> Color(0xFFC7CCD1)
 }
 
 @Composable
