@@ -125,7 +125,7 @@ internal fun PuppyScratchersScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Scratchers", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Pick a scratch card, then drag the Pup Coin across the coating. The coin has weighted movement and scratches a wider trail when you move it faster.",
+            "Drag the Pup Coin to uncover your prize",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -134,14 +134,14 @@ internal fun PuppyScratchersScreen(
         Spacer(Modifier.height(10.dp))
 
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(58.dp),
             shape = RoundedCornerShape(18.dp),
             color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 2.dp
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                Modifier.fillMaxSize().padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("🪙", style = MaterialTheme.typography.headlineSmall)
@@ -195,7 +195,7 @@ internal fun PuppyScratchersScreen(
         )
         Spacer(Modifier.height(8.dp))
 
-        PuppyScratchersEngine.cardTypes.chunked(2).forEach { rowCards ->
+        PuppyScratchersEngine.cardTypes.chunked(3).forEach { rowCards ->
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -208,14 +208,14 @@ internal fun PuppyScratchersScreen(
                         },
                         label = {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("${card.emoji} ${card.shortName}", fontWeight = FontWeight.Bold)
-                                Text("${card.costTreats} Treats", style = MaterialTheme.typography.labelSmall)
+                                Text("${card.emoji} ${card.shortName} • ${card.costTreats}", fontWeight = FontWeight.Bold, maxLines = 1)
                             }
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        shape = RoundedCornerShape(14.dp)
                     )
                 }
-                if (rowCards.size == 1) Spacer(Modifier.weight(1f))
+                repeat(3 - rowCards.size) { Spacer(Modifier.weight(1f)) }
             }
             Spacer(Modifier.height(6.dp))
         }
@@ -236,7 +236,8 @@ internal fun PuppyScratchersScreen(
             },
             enabled = canPlayFeature && activeRound == null &&
                 PuppyScratchersEngine.isValidWager(wager) && state.treats >= wager,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(19.dp)
         ) {
             Text(
                 when {
@@ -289,75 +290,46 @@ private fun ScratcherCartoonStage(
     revealAll: Boolean,
     status: String
 ) {
-    val palette = puppyCasinoCartoonPalette()
-    CartoonStageFrame(
-        modifier = Modifier.fillMaxWidth().height(340.dp),
-        accent = scratcherAccentColor(card),
-        background = Brush.verticalGradient(
-            listOf(
-                Color(0xFF113D32),
-                scratcherShellColor(card),
-                Color(0xFF0B2F28)
-            )
-        )
+    PuppyCasinoRenderStage(
+        title = "${card.emoji} ${card.shortName.uppercase()} SCRATCH",
+        height = 292.dp,
+        accent = Color(0xFFF8C24E),
+        background = Color(0xFF174C3F)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 15.dp, end = 12.dp, bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Text(
+            text = card.tagline,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 43.dp, start = 20.dp, end = 20.dp),
+            color = Color(0xFFD8EAE5),
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .offset(y = 80.dp)
+                .height(150.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xFF0F6A4A),
+            border = BorderStroke(1.dp, Color(0xFFF8C24E)),
+            shadowElevation = 0.dp
         ) {
-            Text("🐶", style = MaterialTheme.typography.headlineMedium)
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF0C634C),
-                border = BorderStroke(3.dp, Color(0xFFFFC84A)),
-                shadowElevation = 5.dp
-            ) {
-                Column(
-                    Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "${card.emoji} ${card.name.uppercase()} ${card.emoji}",
-                        color = Color(0xFFFFD45B),
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        card.tagline,
-                        color = Color.White.copy(alpha = 0.84f),
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            Spacer(Modifier.height(9.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(19.dp),
-                color = Color(0xFF0C6B4E),
-                border = BorderStroke(3.dp, Color(0xFFFFCF59)),
-                shadowElevation = 6.dp
-            ) {
-                Box(Modifier.padding(8.dp)) {
-                    ScratcherCard(card, outcome, scratched, enabled, revealAll)
-                }
-            }
-            Spacer(Modifier.height(9.dp))
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = palette.cream,
-                border = BorderStroke(2.dp, Color(0xFFFFC84A)),
-                shadowElevation = 3.dp
-            ) {
-                Text(
-                    status,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    color = palette.woodDark,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center
-                )
+            Box(Modifier.padding(6.dp)) {
+                ScratcherCard(card, outcome, scratched, enabled, revealAll)
             }
         }
+        PuppyCasinoRenderStatusBar(
+            text = status,
+            accent = Color(0xFFF8C24E),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 10.dp)
+        )
     }
 }
 
@@ -737,22 +709,35 @@ private fun scratcherCoatingColor(card: PuppyScratcherCardType): Color = when (c
 @Composable
 private fun ScratcherWallet(state: V6GameState) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().height(78.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 2.dp
+        shadowElevation = 0.dp
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
-            Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = Color(0xFFEAF8FD)
+            ) {
+                Box(contentAlignment = Alignment.Center) { Text("🍪", fontSize = 22.sp) }
+            }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("Treat Wallet", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${state.treats} Treats",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
+                )
             }
             Text(
                 PuppyScratchersEngine.PUBLISHED_RTP_PERCENT + " RTP",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
+                color = Color(0xFF00B8F0),
+                fontWeight = FontWeight.Black
             )
         }
     }
