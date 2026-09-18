@@ -60,7 +60,7 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(blackjack.contains("rotationZ = (1f - reveal.value) * -7f"))
         assertTrue(blackjack.contains("shadowElevation = 2f + (9f * reveal.value)"))
         assertTrue(blackjack.contains("BlackjackActionPanel("))
-        assertTrue(blackjack.contains("🐾 + HIT"))
+        assertTrue(blackjack.contains("＋ HIT"))
         assertTrue(blackjack.contains("■ STAND"))
         assertTrue(blackjack.contains("animateFloatAsState("))
         assertTrue(blackjack.contains("animationToken = id.toString() + \":\" + hidden"))
