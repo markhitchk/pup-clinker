@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -107,7 +108,7 @@ internal fun PuppyPlinkoScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
+            .padding(start = 20.dp, top = 2.dp, end = 20.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
@@ -127,7 +128,7 @@ internal fun PuppyPlinkoScreen(
             status = when {
                 dropping -> "Ball in motion…"
                 showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Treats returned"
-                else -> "Choose a wager and drop the ball."
+                else -> "Choose a wager and drop the ball"
             }
         )
 
@@ -147,10 +148,10 @@ internal fun PuppyPlinkoScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PuppyPlinkoEngine.wagerPresets.forEach { preset ->
                 FilterChip(
                     selected = wager == preset,
@@ -181,7 +182,7 @@ internal fun PuppyPlinkoScreen(
                     !canPlayFeature -> "Plinko Locked"
                     activeRound != null -> "Round In Progress"
                     state.treats < wager -> "Not Enough Treats"
-                    else -> "Drop Ball · $wager Treats"
+                    else -> "Drop Ball • $wager Treats"
                 }
             )
         }
@@ -213,31 +214,61 @@ private fun PlinkoCartoonStage(
     animationsEnabled: Boolean,
     status: String
 ) {
-    PuppyCasinoRenderStage(
-        title = "PUP PLINKO",
-        height = 330.dp,
-        accent = Color(0xFF00B8F0)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(350.dp)
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 28.dp)
-                .height(224.dp)
-                .align(Alignment.TopCenter)
-                .offset(y = 40.dp),
-            shape = RoundedCornerShape(14.dp),
-            color = Color(0xFF0B1117),
-            border = BorderStroke(1.dp, Color(0xFF394854)),
-            shadowElevation = 0.dp
+        PuppyCasinoRenderStage(
+            title = "PUP PLINKO",
+            height = 330.dp,
+            accent = Color(0xFF00B8F0)
         ) {
-            PlinkoBoard(outcome, dropKey, animationsEnabled)
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = 40.dp)
+                    .width(294.dp)
+                    .height(224.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = Color(0xFF0B1117),
+                border = BorderStroke(1.dp, Color(0xFF394854)),
+                shadowElevation = 0.dp
+            ) {
+                PlinkoBoard(outcome, dropKey, animationsEnabled)
+            }
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = 270.dp)
+                    .width(294.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                PuppyPlinkoEngine.binMultiplierHundredths.forEach { value ->
+                    Text(
+                        text = if (value % 100 == 0) {
+                            (value / 100).toString() + "×"
+                        } else {
+                            (value / 100.0).toString() + "×"
+                        },
+                        modifier = Modifier.weight(1f),
+                        color = Color(0xFFCBD7DE),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
         }
+
         PuppyCasinoRenderStatusBar(
             text = status,
+            accent = Color(0xFF00B8F0),
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 0.dp)
+                .align(Alignment.TopCenter)
+                .offset(y = 310.dp)
+                .width(306.dp)
         )
     }
 }
@@ -249,18 +280,16 @@ private fun PlinkoBoard(
     animationsEnabled: Boolean
 ) {
     val progress = remember { Animatable(1f) }
-    val palette = puppyCasinoCartoonPalette()
-    val binColors = listOf(
-        Color(0xFFE9588C),
-        Color(0xFF845DE8),
-        Color(0xFF30A9E8),
-        Color(0xFF22BFC8),
-        Color(0xFFFFC13A),
-        Color(0xFF22BFC8),
-        Color(0xFF30A9E8),
-        Color(0xFF845DE8),
-        Color(0xFFE9588C)
-    )
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val pegRadius = with(density) { 3.dp.toPx() }
+    val pegHighlightRadius = with(density) { 1.dp.toPx() }
+    val halfStep = with(density) { 15.dp.toPx() }
+    val rowStep = halfStep * 2f
+    val firstPegY = with(density) { 36.dp.toPx() }
+    val rowGap = with(density) { 22.dp.toPx() }
+    val startY = with(density) { 14.dp.toPx() }
+    val landingYInset = with(density) { 12.dp.toPx() }
+    val ballRadius = with(density) { 7.dp.toPx() }
 
     LaunchedEffect(dropKey, outcome, animationsEnabled) {
         if (outcome == null) {
@@ -273,101 +302,75 @@ private fun PlinkoBoard(
         }
     }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 5.dp)) {
-            val rows = PuppyPlinkoEngine.ROWS
-            val centerX = size.width / 2f
-            val topY = 21f
-            val bottomY = size.height - 48f
-            val rowGap = (bottomY - topY) / (rows + 1f)
-            val xStep = size.width / (rows + 3f) / 2f
+    Canvas(Modifier.fillMaxSize()) {
+        val rows = PuppyPlinkoEngine.ROWS
+        val centerX = size.width / 2f
 
-            drawRoundRect(
-                color = Color(0xFF0B1117),
-                topLeft = Offset(3f, 3f),
-                size = Size(size.width - 6f, size.height - 6f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(14f, 14f)
-            )
-            drawRoundRect(
-                color = Color(0xFF394854),
-                topLeft = Offset(8f, 8f),
-                size = Size(size.width - 16f, size.height - 16f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(14f, 14f),
-                style = Stroke(2f)
-            )
-
-            for (row in 0 until rows) {
-                val count = row + 1
-                val y = topY + (row + 1) * rowGap
-                val firstX = centerX - row * xStep
-                val impactAt = (row + 1f) / (rows + 1f)
-                val pulse = PuppyCasinoCartoonMath.impactPulse(progress.value, impactAt, 0.045f)
-                repeat(count) { col ->
-                    val x = firstX + col * xStep * 2f
-                    drawCircle(Color.Black.copy(alpha = 0.28f), radius = 4.2f + pulse * 1.2f, center = Offset(x + 1.5f, y + 2.5f))
-                    drawCircle(Color(0xFFD7E4EE), radius = 3.0f + pulse * 1.2f, center = Offset(x, y))
-                    drawCircle(Color.White.copy(alpha = 0.70f), radius = 1.0f, center = Offset(x - 0.9f, y - 0.9f))
-                }
-            }
-
-            val binTop = bottomY - 4f
-            val binWidth = size.width / (rows + 1f)
-            repeat(rows + 1) { bin ->
-                val left = bin * binWidth
-                drawLine(
-                    color = Color(0xFF394854),
-                    start = Offset(left, binTop),
-                    end = Offset(left, size.height - 5f),
-                    strokeWidth = 1.5f
+        for (row in 0 until rows) {
+            val count = row + 1
+            val y = firstPegY + row * rowGap
+            val firstX = centerX - row * halfStep
+            val impactAt = (row + 1f) / (rows + 1f)
+            val pulse = PuppyCasinoCartoonMath.impactPulse(progress.value, impactAt, 0.045f)
+            repeat(count) { col ->
+                val x = firstX + col * rowStep
+                val radius = pegRadius + with(density) { (pulse * 1.2f).dp.toPx() }
+                drawCircle(
+                    Color.Black.copy(alpha = 0.24f),
+                    radius = radius + with(density) { 1.dp.toPx() },
+                    center = Offset(x + with(density) { 1.dp.toPx() }, y + with(density) { 1.5.dp.toPx() })
                 )
-            }
-
-            val path = outcome?.pathRight ?: emptyList()
-            val travelSegments = rows + 1
-            val scaled = progress.value * travelSegments
-            val completedRows = scaled.toInt().coerceIn(0, rows)
-            val fraction = (scaled - completedRows).coerceIn(0f, 1f)
-            var x = centerX
-            for (i in 0 until completedRows.coerceAtMost(path.size)) {
-                x += if (path[i]) xStep else -xStep
-            }
-            if (completedRows < rows && completedRows < path.size) {
-                x += (if (path[completedRows]) xStep else -xStep) * fraction
-            }
-            val y = topY + scaled * rowGap
-
-            drawCircle(Color.Black.copy(alpha = 0.30f), 8.5f, Offset(x + 1.5f, y + 2.5f))
-            drawCircle(Color(0xFFC87932), 7f, Offset(x, y))
-            drawCircle(Color(0xFFFFB65C), 5.8f, Offset(x, y - 0.5f))
-            drawCircle(Color.White.copy(alpha = 0.62f), 1.5f, Offset(x - 2f, y - 2.5f))
-            val chipOffsets = listOf(
-                Offset(-4f, -1f), Offset(3f, 1f), Offset(0f, 5f), Offset(4f, -4f), Offset(-3f, 4f)
-            )
-            chipOffsets.forEach { delta ->
-                drawCircle(Color(0xFF6B3A24), 1.5f, Offset(x + delta.x, y + delta.y))
-            }
-
-            drawCircle(
-                color = palette.gold.copy(alpha = 0.32f),
-                radius = 17f,
-                center = Offset(centerX, topY),
-                style = Stroke(2.5f)
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, bottom = 7.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            PuppyPlinkoEngine.binMultiplierHundredths.forEach { value ->
-                Text(
-                    text = if (value % 100 == 0) (value / 100).toString() + "×" else (value / 100.0).toString() + "×",
-                    color = Color(0xFFCBD7DE),
-                    fontWeight = FontWeight.Black,
-                    fontSize = 9.sp
+                drawCircle(Color(0xFFD7E4EE), radius = radius, center = Offset(x, y))
+                drawCircle(
+                    Color.White.copy(alpha = 0.72f),
+                    radius = pegHighlightRadius,
+                    center = Offset(x - pegHighlightRadius, y - pegHighlightRadius)
                 )
             }
         }
+
+        val path = outcome?.pathRight ?: emptyList()
+        val segments = rows + 1
+        val scaled = (progress.value * segments).coerceIn(0f, segments.toFloat())
+        val completed = scaled.toInt().coerceIn(0, rows)
+        val fraction = (scaled - completed).coerceIn(0f, 1f)
+
+        var x0 = centerX
+        repeat(completed.coerceAtMost(path.size)) { index ->
+            x0 += if (path[index]) halfStep else -halfStep
+        }
+
+        val x1 = if (completed < rows && completed < path.size) {
+            x0 + if (path[completed]) halfStep else -halfStep
+        } else {
+            x0
+        }
+
+        val y0 = when {
+            completed == 0 -> startY
+            completed <= rows -> firstPegY + (completed - 1) * rowGap
+            else -> size.height - landingYInset
+        }
+        val y1 = when {
+            completed < rows -> firstPegY + completed * rowGap
+            else -> size.height - landingYInset
+        }
+
+        val x = x0 + (x1 - x0) * fraction
+        val y = y0 + (y1 - y0) * fraction
+
+        drawCircle(
+            Color.Black.copy(alpha = 0.30f),
+            ballRadius + with(density) { 1.5.dp.toPx() },
+            Offset(x + with(density) { 1.dp.toPx() }, y + with(density) { 2.dp.toPx() })
+        )
+        drawCircle(Color(0xFFC87932), ballRadius, Offset(x, y))
+        drawCircle(Color(0xFFFFB65C), ballRadius * 0.83f, Offset(x, y - with(density) { 0.5.dp.toPx() }))
+        drawCircle(
+            Color.White.copy(alpha = 0.62f),
+            with(density) { 1.3.dp.toPx() },
+            Offset(x - with(density) { 2.dp.toPx() }, y - with(density) { 2.4.dp.toPx() })
+        )
     }
 }
 
