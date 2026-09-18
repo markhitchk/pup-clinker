@@ -1,15 +1,17 @@
 package com.harleytg.puppyclicker
 
-import android.graphics.Paint
-import android.graphics.Typeface
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,12 +51,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -249,15 +256,12 @@ internal fun PuppyRouletteScreen(
                 RouletteColorBoard(
                     selectedType = selectedType,
                     selectedNumber = selectedNumber,
-                    onSelectRed = {
-                        selectedTypeName = PuppyRouletteBetType.RED.name
-                    },
-                    onSelectBlack = {
-                        selectedTypeName = PuppyRouletteBetType.BLACK.name
-                    },
-                    onSelectGreen = {
-                        selectedNumber = 0
+                    onSelectNumber = { number ->
+                        selectedNumber = number
                         selectedTypeName = PuppyRouletteBetType.STRAIGHT.name
+                    },
+                    onSelectType = { type ->
+                        selectedTypeName = type.name
                     },
                     onPickNumber = { showNumberPicker = true }
                 )
@@ -387,16 +391,8 @@ private fun RouletteWheel(
     val ballAngle = remember { Animatable(-90f) }
     val ballRadiusFraction = remember { Animatable(0.93f) }
     val sweep = 360f / EuropeanRouletteWheelOrder.size
-    val wheelCenterColor = MaterialTheme.colorScheme.surface
-    val wheelAccentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-    val labelPaint = remember {
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            textAlign = Paint.Align.CENTER
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-        }
-    }
+    val density = LocalDensity.current
+    val maximumBallOrbitPx = with(density) { 76.dp.toPx() }
 
     LaunchedEffect(spinKey, outcome?.winningNumber, animationsEnabled) {
         val result = outcome ?: return@LaunchedEffect
@@ -446,90 +442,97 @@ private fun RouletteWheel(
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth().height(190.dp),
+        modifier = Modifier.fillMaxWidth().height(204.dp),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(Modifier.size(176.dp)) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val radius = size.minDimension / 2f
-            val wheelRadius = radius * 0.95f
-            val topLeft = Offset(center.x - wheelRadius, center.y - wheelRadius)
-            val wheelSize = Size(wheelRadius * 2f, wheelRadius * 2f)
+        // Static illustrated bowl/frame. It never rotates.
+        Image(
+            painter = painterResource(R.drawable.puppy_roulette_wheel_base),
+            contentDescription = null,
+            modifier = Modifier.size(190.dp)
+        )
 
-            EuropeanRouletteWheelOrder.forEachIndexed { index, number ->
-                val pocketColor = when (PuppyRouletteEngine.colorOf(number)) {
-                    PuppyRouletteColor.GREEN -> RouletteGreen
-                    PuppyRouletteColor.RED -> RouletteRed
-                    PuppyRouletteColor.BLACK -> RouletteBlack
+        // Only the numbered rotor rotates.
+        Image(
+            painter = painterResource(R.drawable.puppy_roulette_rotor),
+            contentDescription = "European roulette rotor",
+            modifier = Modifier
+                .size(154.dp)
+                .graphicsLayer {
+                    rotationZ = wheelRotation.value
                 }
-                val start = -90f + (index * sweep) + wheelRotation.value
+        )
+
+        // Canvas is effects-only: it highlights the already-committed pocket.
+        Canvas(Modifier.size(176.dp)) {
+            val result = outcome
+            if (showResult && result != null) {
+                val index =
+                    EuropeanRouletteWheelOrder.indexOf(result.winningNumber).coerceAtLeast(0)
+                val pocketAngle = -90f + (index * sweep) + (sweep / 2f)
                 drawArc(
-                    color = pocketColor,
-                    startAngle = start,
-                    sweepAngle = sweep + 0.35f,
-                    useCenter = true,
-                    topLeft = topLeft,
-                    size = wheelSize
-                )
-                val labelAngle = (start + sweep / 2f) * PI / 180.0
-                val labelRadius = wheelRadius * 0.77f
-                val x = center.x + cos(labelAngle).toFloat() * labelRadius
-                val y = center.y + sin(labelAngle).toFloat() * labelRadius
-                drawContext.canvas.nativeCanvas.drawText(
-                    number.toString(), x, y + labelPaint.textSize / 3f, labelPaint
+                    color = Color.White.copy(alpha = 0.78f),
+                    startAngle = pocketAngle + wheelRotation.value - (sweep / 2f),
+                    sweepAngle = sweep,
+                    useCenter = false,
+                    topLeft = Offset(9.dp.toPx(), 9.dp.toPx()),
+                    size = Size(size.width - 18.dp.toPx(), size.height - 18.dp.toPx()),
+                    style = Stroke(width = 4.dp.toPx())
                 )
             }
-
-            drawCircle(
-                color = Color.White.copy(alpha = 0.18f),
-                radius = wheelRadius * 0.88f,
-                center = center,
-                style = Stroke(width = 2f)
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.30f),
-                radius = wheelRadius,
-                center = center,
-                style = Stroke(width = 3f)
-            )
-            drawCircle(color = wheelCenterColor, radius = wheelRadius * 0.48f, center = center)
-            drawCircle(color = wheelAccentColor, radius = wheelRadius * 0.41f, center = center)
-
-            val ballRadians = ballAngle.value * PI / 180.0
-            val ballRadius = wheelRadius * ballRadiusFraction.value
-            val ballCenter = Offset(
-                center.x + cos(ballRadians).toFloat() * ballRadius,
-                center.y + sin(ballRadians).toFloat() * ballRadius
-            )
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.35f),
-                radius = 9f,
-                center = ballCenter + Offset(2f, 3f)
-            )
-            drawCircle(color = Color.White, radius = 8f, center = ballCenter)
         }
 
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🐾", fontSize = 20.sp)
+        // The ball is a separate PNG and runs opposite the rotor before dropping inward.
+        val ballRadians = ballAngle.value * PI / 180.0
+        val ballOrbitPx = maximumBallOrbitPx * ballRadiusFraction.value
+        Image(
+            painter = painterResource(R.drawable.puppy_roulette_ball),
+            contentDescription = "Roulette ball",
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer {
+                    translationX = cos(ballRadians).toFloat() * ballOrbitPx
+                    translationY = sin(ballRadians).toFloat() * ballOrbitPx
+                }
+        )
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.60f))
+        ) {
             Text(
                 if (showResult) outcome?.winningNumber?.toString() ?: "—" else "SPIN",
-                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black
             )
         }
     }
 }
 
+private const val ROULETTE_TABLE_WIDTH = 1600f
+private const val ROULETTE_TABLE_HEIGHT = 900f
+private const val ROULETTE_GRID_X = 190f
+private const val ROULETTE_GRID_Y = 245f
+private const val ROULETTE_ZERO_X = 100f
+private const val ROULETTE_ZERO_WIDTH = 90f
+private const val ROULETTE_CELL_WIDTH = 95f
+private const val ROULETTE_CELL_HEIGHT = 95f
+private const val ROULETTE_OUTSIDE_Y = 570f
+private const val ROULETTE_OUTSIDE_HEIGHT = 105f
+private const val ROULETTE_OUTSIDE_WIDTH = 1_140f
+
 @Composable
 private fun RouletteColorBoard(
     selectedType: PuppyRouletteBetType,
     selectedNumber: Int,
-    onSelectRed: () -> Unit,
-    onSelectBlack: () -> Unit,
-    onSelectGreen: () -> Unit,
+    onSelectNumber: (Int) -> Unit,
+    onSelectType: (PuppyRouletteBetType) -> Unit,
     onPickNumber: () -> Unit
 ) {
     val straightSelected = selectedType == PuppyRouletteBetType.STRAIGHT
+
     Column(Modifier.fillMaxWidth()) {
         Text(
             "BET BOARD",
@@ -540,41 +543,79 @@ private fun RouletteColorBoard(
             fontWeight = FontWeight.Black
         )
         Spacer(Modifier.height(5.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(ROULETTE_TABLE_WIDTH / ROULETTE_TABLE_HEIGHT)
         ) {
-            Button(
-                onClick = onSelectRed,
-                colors = ButtonDefaults.buttonColors(containerColor = RouletteRed),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("RED", color = Color.White, fontWeight = FontWeight.Black)
+            Image(
+                painter = painterResource(R.drawable.puppy_roulette_table),
+                contentDescription = "Puppy Roulette betting table",
+                modifier = Modifier.fillMaxSize()
+            )
+
+            RouletteBoardHitTarget(
+                x = maxWidth * (ROULETTE_ZERO_X / ROULETTE_TABLE_WIDTH),
+                y = maxHeight * (ROULETTE_GRID_Y / ROULETTE_TABLE_HEIGHT),
+                width = maxWidth * (ROULETTE_ZERO_WIDTH / ROULETTE_TABLE_WIDTH),
+                height = maxHeight * ((ROULETTE_CELL_HEIGHT * 3f) / ROULETTE_TABLE_HEIGHT),
+                selected = straightSelected && selectedNumber == 0,
+                description = "Bet on 0",
+                onClick = { onSelectNumber(0) }
+            )
+
+            (1..36).forEach { number ->
+                val column = (number - 1) / 3
+                val row = ((column + 1) * 3) - number
+                RouletteBoardHitTarget(
+                    x = maxWidth *
+                        ((ROULETTE_GRID_X + column * ROULETTE_CELL_WIDTH) /
+                            ROULETTE_TABLE_WIDTH),
+                    y = maxHeight *
+                        ((ROULETTE_GRID_Y + row * ROULETTE_CELL_HEIGHT) /
+                            ROULETTE_TABLE_HEIGHT),
+                    width = maxWidth * (ROULETTE_CELL_WIDTH / ROULETTE_TABLE_WIDTH),
+                    height = maxHeight * (ROULETTE_CELL_HEIGHT / ROULETTE_TABLE_HEIGHT),
+                    selected = straightSelected && selectedNumber == number,
+                    description = "Bet on " + number,
+                    onClick = { onSelectNumber(number) }
+                )
             }
-            Button(
-                onClick = onSelectGreen,
-                colors = ButtonDefaults.buttonColors(containerColor = RouletteGreen),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("0", color = Color.White, fontWeight = FontWeight.Black)
-            }
-            Button(
-                onClick = onSelectBlack,
-                colors = ButtonDefaults.buttonColors(containerColor = RouletteBlack),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("BLACK", color = Color.White, fontWeight = FontWeight.Black)
+
+            val outsideTypes = listOf(
+                PuppyRouletteBetType.LOW,
+                PuppyRouletteBetType.EVEN,
+                PuppyRouletteBetType.RED,
+                PuppyRouletteBetType.BLACK,
+                PuppyRouletteBetType.ODD,
+                PuppyRouletteBetType.HIGH
+            )
+            outsideTypes.forEachIndexed { index, type ->
+                RouletteBoardHitTarget(
+                    x = maxWidth *
+                        ((ROULETTE_GRID_X + index * (ROULETTE_OUTSIDE_WIDTH / 6f)) /
+                            ROULETTE_TABLE_WIDTH),
+                    y = maxHeight * (ROULETTE_OUTSIDE_Y / ROULETTE_TABLE_HEIGHT),
+                    width = maxWidth *
+                        ((ROULETTE_OUTSIDE_WIDTH / 6f) / ROULETTE_TABLE_WIDTH),
+                    height = maxHeight * (ROULETTE_OUTSIDE_HEIGHT / ROULETTE_TABLE_HEIGHT),
+                    selected = selectedType == type,
+                    description = "Bet on " + type.label,
+                    onClick = { onSelectType(type) }
+                )
             }
         }
-        Spacer(Modifier.height(6.dp))
+
+        Spacer(Modifier.height(7.dp))
         OutlinedButton(
             onClick = onPickNumber,
             modifier = Modifier.fillMaxWidth(),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
         ) {
             Text(
-                if (straightSelected && selectedNumber != 0) {
-                    "Exact number: " + selectedNumber + " · change"
+                if (straightSelected) {
+                    "Exact number: " + selectedNumber + " · picker"
                 } else {
                     "Choose exact landing number"
                 },
@@ -583,6 +624,36 @@ private fun RouletteColorBoard(
             )
         }
     }
+}
+
+@Composable
+private fun RouletteBoardHitTarget(
+    x: Dp,
+    y: Dp,
+    width: Dp,
+    height: Dp,
+    selected: Boolean,
+    description: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .offset(x = x, y = y)
+            .width(width)
+            .height(height)
+            .border(
+                width = if (selected) 2.dp else 0.dp,
+                color =
+                    if (selected) MaterialTheme.colorScheme.primary
+                    else Color.Transparent,
+                shape = RoundedCornerShape(4.dp)
+            )
+            .clickable(
+                role = Role.Button,
+                onClickLabel = description,
+                onClick = onClick
+            )
+    )
 }
 
 @Composable
