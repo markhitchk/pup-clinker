@@ -113,7 +113,7 @@ internal fun PuppyLuckyWheelScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
+            .padding(start = 20.dp, top = 2.dp, end = 20.dp, bottom = 0.dp)
     ) {
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Lucky Pup Wheel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
@@ -137,7 +137,7 @@ internal fun PuppyLuckyWheelScreen(
                     "PUP UNLOCK • ${style?.name ?: display.puppyStyleId.orEmpty()}"
                 }
                 showResult -> "${display!!.prize.label} • ${display.payoutTreats} Treats returned"
-                else -> "Choose a wager and spin."
+                else -> "Spin to reveal your prize"
             }
         )
 
@@ -159,7 +159,7 @@ internal fun PuppyLuckyWheelScreen(
         Spacer(Modifier.height(16.dp))
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PuppyLuckyWheelEngine.wagerPresets.forEach { preset ->
                 FilterChip(
                     selected = wager == preset,
@@ -190,7 +190,7 @@ internal fun PuppyLuckyWheelScreen(
                     !canPlayFeature -> "Wheel Locked"
                     activeRound != null -> "Round In Progress"
                     state.treats < wager -> "Not Enough Treats"
-                    else -> "Spin Wheel · $wager Treats"
+                    else -> "Spin Wheel • $wager Treats"
                 }
             )
         }
@@ -241,23 +241,28 @@ private fun LuckyWheelCartoonStage(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 38.dp, bottom = 22.dp)
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(212.dp)
+                .offset(y = 32.dp)
         ) {
             LuckyWheelBoard(
                 outcome = outcome,
                 spinKey = spinKey,
                 animationsEnabled = animationsEnabled
             )
-            PuppyCasinoRenderStatusBar(
-                text = status,
-                centered = true,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 5.dp)
-            )
         }
+
+        PuppyCasinoRenderStatusBar(
+            text = status,
+            centered = true,
+            height = 46.dp,
+            corner = 15.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 257.dp)
+                .width(286.dp)
+        )
     }
 }
 
@@ -302,8 +307,13 @@ private fun LuckyWheelBoard(
         }
     }
 
-    Box(Modifier.fillMaxWidth().height(218.dp), contentAlignment = Alignment.TopCenter) {
-        Canvas(Modifier.size(190.dp)) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Canvas(
+            Modifier
+                .size(190.dp)
+                .align(Alignment.TopCenter)
+                .offset(y = 22.dp)
+        ) {
             val center = Offset(size.width / 2f, size.height / 2f + 4f)
             val outerRadius = size.minDimension * 0.49f
             val rimRadius = outerRadius * 0.92f
@@ -364,11 +374,18 @@ private fun LuckyWheelBoard(
 
         Text(
             "▼",
-            color = Color(0xFFE74D56),
+            color = Color.White,
             fontSize = 25.sp,
             modifier = Modifier.align(Alignment.TopCenter)
         )
-        Text("🐾", fontSize = 22.sp, modifier = Modifier.padding(top = 84.dp))
+        Text(
+            "🐾",
+            color = Color(0xFF00B8F0),
+            fontSize = 22.sp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 100.dp)
+        )
     }
 }
 
