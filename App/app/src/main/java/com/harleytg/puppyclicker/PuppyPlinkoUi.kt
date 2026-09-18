@@ -110,7 +110,7 @@ internal fun PuppyPlinkoScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Drop a Treat ball through eight rows of pegs. The path is committed before the animation.",
+            "Drop a Treat ball through eight rows of pegs",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -154,7 +154,8 @@ internal fun PuppyPlinkoScreen(
                     selected = wager == preset,
                     onClick = { wager = preset },
                     label = { Text(preset.toString()) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(14.dp)
                 )
             }
         }
@@ -170,7 +171,8 @@ internal fun PuppyPlinkoScreen(
             },
             enabled = canPlayFeature && activeRound == null &&
                 PuppyPlinkoEngine.isValidWager(wager) && state.treats >= wager,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            shape = RoundedCornerShape(19.dp)
         ) {
             Text(
                 when {
@@ -209,56 +211,32 @@ private fun PlinkoCartoonStage(
     animationsEnabled: Boolean,
     status: String
 ) {
-    val palette = puppyCasinoCartoonPalette()
-    CartoonStageFrame(
-        modifier = Modifier.fillMaxWidth().height(430.dp),
-        accent = MaterialTheme.colorScheme.primary,
-        background = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                MaterialTheme.colorScheme.surface,
-                palette.woodLight.copy(alpha = 0.16f)
-            )
-        )
+    PuppyCasinoRenderStage(
+        title = "PUP PLINKO",
+        height = 330.dp,
+        accent = Color(0xFF00B8F0)
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(start = 10.dp, top = 18.dp, end = 10.dp, bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(224.dp)
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 28.dp)
+                .offset(y = 40.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xFF0B1117),
+            border = BorderStroke(1.dp, Color(0xFF394854)),
+            shadowElevation = 0.dp
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("🐶", fontSize = 33.sp)
-                CartoonBonePlaque("PUP PLINKO")
-                Text("🐶", fontSize = 33.sp)
-            }
-            Spacer(Modifier.height(5.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(292.dp),
-                shape = RoundedCornerShape(26.dp),
-                color = Color(0xFF12345C),
-                border = BorderStroke(7.dp, MaterialTheme.colorScheme.primary),
-                shadowElevation = 7.dp
-            ) {
-                PlinkoBoard(outcome, dropKey, animationsEnabled)
-            }
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = palette.cream,
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
-                shadowElevation = 3.dp
-            ) {
-                Text(
-                    text = status,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                    color = palette.woodDark,
-                    fontWeight = FontWeight.Black
-                )
-            }
+            PlinkoBoard(outcome, dropKey, animationsEnabled)
         }
+        PuppyCasinoRenderStatusBar(
+            text = status,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 0.dp)
+        )
     }
 }
 
@@ -303,16 +281,16 @@ private fun PlinkoBoard(
             val xStep = size.width / (rows + 3f) / 2f
 
             drawRoundRect(
-                brush = Brush.verticalGradient(listOf(Color(0xFF173D69), Color(0xFF0B2443))),
+                color = Color(0xFF0B1117),
                 topLeft = Offset(3f, 3f),
                 size = Size(size.width - 6f, size.height - 6f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f, 22f)
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(14f, 14f)
             )
             drawRoundRect(
-                color = Color.White.copy(alpha = 0.12f),
+                color = Color(0xFF394854),
                 topLeft = Offset(8f, 8f),
                 size = Size(size.width - 16f, size.height - 16f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(14f, 14f),
                 style = Stroke(2f)
             )
 
@@ -324,9 +302,9 @@ private fun PlinkoBoard(
                 val pulse = PuppyCasinoCartoonMath.impactPulse(progress.value, impactAt, 0.045f)
                 repeat(count) { col ->
                     val x = firstX + col * xStep * 2f
-                    drawCircle(Color.Black.copy(alpha = 0.28f), radius = 6.2f + pulse * 2.2f, center = Offset(x + 1.5f, y + 2.5f))
-                    drawCircle(Color(0xFFD7E4EE), radius = 5.2f + pulse * 2.2f, center = Offset(x, y))
-                    drawCircle(Color.White.copy(alpha = 0.85f), radius = 1.8f, center = Offset(x - 1.7f, y - 1.7f))
+                    drawCircle(Color.Black.copy(alpha = 0.28f), radius = 4.2f + pulse * 1.2f, center = Offset(x + 1.5f, y + 2.5f))
+                    drawCircle(Color(0xFFD7E4EE), radius = 3.0f + pulse * 1.2f, center = Offset(x, y))
+                    drawCircle(Color.White.copy(alpha = 0.70f), radius = 1.0f, center = Offset(x - 0.9f, y - 0.9f))
                 }
             }
 
@@ -334,17 +312,11 @@ private fun PlinkoBoard(
             val binWidth = size.width / (rows + 1f)
             repeat(rows + 1) { bin ->
                 val left = bin * binWidth
-                drawRoundRect(
-                    color = binColors[bin],
-                    topLeft = Offset(left + 1.5f, binTop),
-                    size = Size(binWidth - 3f, size.height - binTop - 5f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7f, 7f)
-                )
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.22f),
-                    topLeft = Offset(left + 4f, binTop + 2f),
-                    size = Size(binWidth - 8f, 5f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                drawLine(
+                    color = Color(0xFF394854),
+                    start = Offset(left, binTop),
+                    end = Offset(left, size.height - 5f),
+                    strokeWidth = 1.5f
                 )
             }
 
@@ -362,10 +334,10 @@ private fun PlinkoBoard(
             }
             val y = topY + scaled * rowGap
 
-            drawCircle(Color.Black.copy(alpha = 0.34f), 12f, Offset(x + 2.5f, y + 4f))
-            drawCircle(Color(0xFFC87932), 11f, Offset(x, y))
-            drawCircle(Color(0xFFFFB65C), 9.2f, Offset(x, y - 1f))
-            drawCircle(Color.White.copy(alpha = 0.62f), 2.2f, Offset(x - 3.2f, y - 4f))
+            drawCircle(Color.Black.copy(alpha = 0.30f), 8.5f, Offset(x + 1.5f, y + 2.5f))
+            drawCircle(Color(0xFFC87932), 7f, Offset(x, y))
+            drawCircle(Color(0xFFFFB65C), 5.8f, Offset(x, y - 0.5f))
+            drawCircle(Color.White.copy(alpha = 0.62f), 1.5f, Offset(x - 2f, y - 2.5f))
             val chipOffsets = listOf(
                 Offset(-4f, -1f), Offset(3f, 1f), Offset(0f, 5f), Offset(4f, -4f), Offset(-3f, 4f)
             )
@@ -388,9 +360,9 @@ private fun PlinkoBoard(
             PuppyPlinkoEngine.binMultiplierHundredths.forEach { value ->
                 Text(
                     text = if (value % 100 == 0) (value / 100).toString() + "×" else (value / 100.0).toString() + "×",
-                    color = Color.White,
+                    color = Color(0xFFCBD7DE),
                     fontWeight = FontWeight.Black,
-                    fontSize = 10.sp
+                    fontSize = 9.sp
                 )
             }
         }
@@ -400,19 +372,36 @@ private fun PlinkoBoard(
 @Composable
 private fun PlinkoWallet(state: V6GameState) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().height(78.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 2.dp
+        shadowElevation = 0.dp
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
-            Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = Color(0xFFEAF8FD)
+            ) {
+                Box(contentAlignment = Alignment.Center) { Text("🍪", fontSize = 22.sp) }
             }
-            Text(PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT + " RTP", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("Treat Wallet", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${state.treats} Treats",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Text(
+                PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT + " RTP",
+                color = Color(0xFF00B8F0),
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }
