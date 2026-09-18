@@ -785,28 +785,21 @@ def patch_settings(source: str) -> str:
                 StatusLine("Badge", PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME)
             }
 '''
-    source = replace_once(source, profile_anchor, profile_badge, "profile release badge")
-
-    progression_anchor = '''    Spacer(Modifier.height(12.dp))
-
-    OutlinedTextField(
+    progression_ui = profile_badge + '''            Spacer(Modifier.height(12.dp))
+            PuppyPlayerProgressCard(gameState)
+            Spacer(Modifier.height(10.dp))
+            PuppyAchievementsSection(gameState)
 '''
-    progression_ui = '''    Spacer(Modifier.height(12.dp))
-    PuppyPlayerProgressCard(gameState)
-    Spacer(Modifier.height(10.dp))
-    PuppyAchievementsSection(gameState)
+    source = replace_once(source, profile_anchor, progression_ui, "profile progression and release badge")
 
-    Spacer(Modifier.height(12.dp))
-
-    OutlinedTextField(
-'''
-    source = replace_once(source, progression_anchor, progression_ui, "profile progression section")
-    if "import androidx.compose.material3.LinearProgressIndicator\n" not in source:
-        source = replace_once(
-            source,
+    if (
+        "import androidx.compose.material3.LinearProgressIndicator\n" not in source
+        and "import androidx.compose.material3.HorizontalDivider\n" in source
+    ):
+        source = source.replace(
             "import androidx.compose.material3.HorizontalDivider\n",
             "import androidx.compose.material3.HorizontalDivider\nimport androidx.compose.material3.LinearProgressIndicator\n",
-            "profile progression import",
+            1,
         )
 
     source += '''
