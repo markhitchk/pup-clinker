@@ -97,6 +97,11 @@ class PuppyCasinoAnimationContractTest {
         assertFalse(scratchers.contains("R.drawable.puppy_scratch_field"))
         assertTrue(scratchers.contains("BlendMode.Clear"))
         assertTrue(scratchers.contains("BoxWithConstraints("))
+        assertTrue(scratchers.contains("SCRATCH_BORDER_WIDTH = 1426f"))
+        assertTrue(scratchers.contains("SCRATCH_BORDER_HEIGHT = 1077f"))
+        assertTrue(scratchers.contains("PUP_COIN_VISIBLE_ASPECT = 960f / 973f"))
+        assertTrue(scratchers.contains("coinHalfWidthPx"))
+        assertFalse(scratchers.contains("1103f"))
 
         assertTrue(luckyWheel.contains("LuckyWheelBoard("))
         assertTrue(luckyWheel.contains("rotation.animateTo("))

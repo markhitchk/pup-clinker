@@ -76,6 +76,9 @@ import kotlin.math.sqrt
 private const val SCRATCH_COLUMNS = 48
 private const val SCRATCH_ROWS = 20
 private const val SCRATCH_CELL_COUNT = SCRATCH_COLUMNS * SCRATCH_ROWS
+private const val SCRATCH_BORDER_WIDTH = 1426f
+private const val SCRATCH_BORDER_HEIGHT = 1077f
+private const val PUP_COIN_VISIBLE_ASPECT = 960f / 973f
 
 @Composable
 internal fun PuppyScratchersScreen(
@@ -160,7 +163,9 @@ internal fun PuppyScratchersScreen(
                 Image(
                     painter = painterResource(R.drawable.pup_coin),
                     contentDescription = "Pup Coin",
-                    modifier = Modifier.size(54.dp),
+                    modifier = Modifier
+                        .height(54.dp)
+                        .aspectRatio(PUP_COIN_VISIBLE_ASPECT),
                     contentScale = ContentScale.Fit
                 )
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
@@ -310,7 +315,7 @@ private fun ScratcherCartoonStage(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1426f / 1103f)
+            .aspectRatio(SCRATCH_BORDER_WIDTH / SCRATCH_BORDER_HEIGHT)
     ) {
         ScratcherCard(
             card = card,
@@ -320,12 +325,12 @@ private fun ScratcherCartoonStage(
             revealAll = revealAll,
             modifier = Modifier
                 .offset(
-                    x = maxWidth * (200f / 1426f),
-                    y = maxHeight * (482f / 1103f)
+                    x = maxWidth * (200f / SCRATCH_BORDER_WIDTH),
+                    y = maxHeight * (482f / SCRATCH_BORDER_HEIGHT)
                 )
                 .size(
-                    width = maxWidth * (1013f / 1426f),
-                    height = maxHeight * (443f / 1103f)
+                    width = maxWidth * (1013f / SCRATCH_BORDER_WIDTH),
+                    height = maxHeight * (443f / SCRATCH_BORDER_HEIGHT)
                 )
         )
 
@@ -373,6 +378,7 @@ private fun ScratcherCard(
     val density = LocalDensity.current
     val coinDiameter = 56.dp
     val coinRadiusPx = with(density) { coinDiameter.toPx() / 2f }
+    val coinHalfWidthPx = coinRadiusPx * PUP_COIN_VISIBLE_ASPECT
 
     Box(
         modifier = modifier
@@ -429,9 +435,9 @@ private fun ScratcherCard(
                         if (!enabled || outcome == null) return@pointerInput
 
                         fun clampCoin(position: Offset): Offset {
-                            val minX = coinRadiusPx
+                            val minX = coinHalfWidthPx
                             val minY = coinRadiusPx
-                            val maxX = (size.width.toFloat() - coinRadiusPx).coerceAtLeast(minX)
+                            val maxX = (size.width.toFloat() - coinHalfWidthPx).coerceAtLeast(minX)
                             val maxY = (size.height.toFloat() - coinRadiusPx).coerceAtLeast(minY)
                             return Offset(
                                 x = position.x.coerceIn(minX, maxX),
@@ -743,11 +749,12 @@ private fun PupCoin(
         modifier = Modifier
             .offset {
                 IntOffset(
-                    (position.x - radiusPx).roundToInt(),
+                    (position.x - (radiusPx * PUP_COIN_VISIBLE_ASPECT)).roundToInt(),
                     (position.y - radiusPx).roundToInt()
                 )
             }
-            .size(diameter)
+            .height(diameter)
+            .aspectRatio(PUP_COIN_VISIBLE_ASPECT)
             .graphicsLayer {
                 rotationZ = rotation
                 shadowElevation = 12f
