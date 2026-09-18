@@ -124,11 +124,13 @@ internal fun PuppyCasinoRenderStatusBar(
     text: String,
     modifier: Modifier = Modifier,
     accent: Color = Color(0xFF00B8F0),
-    centered: Boolean = false
+    centered: Boolean = false,
+    height: Dp = 40.dp,
+    corner: Dp = 13.dp
 ) {
     Surface(
-        modifier = modifier.height(40.dp),
-        shape = RoundedCornerShape(13.dp),
+        modifier = modifier.height(height),
+        shape = RoundedCornerShape(corner),
         color = Color(0xFF16232D),
         shadowElevation = 0.dp
     ) {
