@@ -167,8 +167,20 @@ jobs:
       - name: Run Android instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          # Run device tests on Android 14 / API 34. The API 35 image repeatedly
+          # crashed the instrumentation process before JUnit discovery (0 tests),
+          # while the APK and androidTest APK both compiled successfully.
+          api-level: 34
           arch: x86_64
           profile: pixel_6
+          disable-animations: true
           working-directory: App
-          script: gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+          script: |
+            set -o pipefail
+            adb logcat -c
+            if ! gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace; then
+              echo "::group::Instrumentation crash logcat"
+              adb logcat -d -v threadtime '*:E' AndroidRuntime:I ActivityManager:I TestRunner:I || true
+              echo "::endgroup::"
+              exit 1
+            fi
