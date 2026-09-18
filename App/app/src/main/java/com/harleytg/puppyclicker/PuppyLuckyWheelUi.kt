@@ -6,16 +6,20 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -44,13 +48,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -233,37 +242,62 @@ private fun LuckyWheelCartoonStage(
     status: String
 ) {
     val palette = puppyCasinoCartoonPalette()
-    CartoonStageFrame(
-        modifier = Modifier.fillMaxWidth().height(365.dp),
-        accent = MaterialTheme.colorScheme.primary,
-        background = Brush.verticalGradient(
-            listOf(
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.13f),
-                MaterialTheme.colorScheme.surface,
-                palette.woodLight.copy(alpha = 0.18f)
-            )
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(2.dp, palette.gold.copy(alpha = 0.70f)),
+        shadowElevation = 7.dp
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(start = 12.dp, top = 18.dp, end = 12.dp, bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🐶", fontSize = 38.sp)
-            CartoonBonePlaque("LUCKY PUP WHEEL")
-            Spacer(Modifier.height(2.dp))
-            LuckyWheelBoard(outcome, spinKey, animationsEnabled)
+            Text(
+                "LUCKY PUP WHEEL",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                color = palette.woodDark
+            )
+            Text(
+                "Prize committed first · wheel animation is visual only",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(4.dp))
+
+            LuckyWheelBoard(
+                outcome = outcome,
+                spinKey = spinKey,
+                animationsEnabled = animationsEnabled,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(15.dp),
                 color = palette.cream,
                 border = BorderStroke(2.dp, palette.woodLight.copy(alpha = 0.70f)),
                 shadowElevation = 4.dp
             ) {
-                Text(
-                    text = status,
+                Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = palette.woodDark,
-                    fontWeight = FontWeight.Black
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = status,
+                        color = palette.woodDark,
+                        fontWeight = FontWeight.Black
+                    )
+                    if (outcome?.prize == LuckyPupWheelPrize.PUPPY_UNLOCK) {
+                        Text(
+                            "PUP UNLOCK",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
@@ -273,111 +307,133 @@ private fun LuckyWheelCartoonStage(
 private fun LuckyWheelBoard(
     outcome: LuckyPupWheelOutcome?,
     spinKey: String?,
-    animationsEnabled: Boolean
+    animationsEnabled: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val rotation = remember { Animatable(0f) }
+    val pointerBounce = remember { Animatable(0f) }
     val prizes = LuckyPupWheelPrize.entries
-    val colors = listOf(
-        Color(0xFF34A9ED),
-        Color(0xFF788592),
-        Color(0xFF14B985),
-        Color(0xFF18A1E7),
-        Color(0xFF8B45E6),
-        Color(0xFFFFC239),
-        Color(0xFF24B8D5)
-    )
-    val palette = puppyCasinoCartoonPalette()
-    val primary = MaterialTheme.colorScheme.primary
-    val paint = remember {
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            textAlign = Paint.Align.CENTER
-            textSize = 26f
-            typeface = Typeface.DEFAULT_BOLD
-        }
-    }
+    val weights = remember { prizes.map { it.weightPercent.toFloat() } }
 
     LaunchedEffect(spinKey, outcome?.segmentIndex, animationsEnabled) {
-        val result = outcome ?: return@LaunchedEffect
-        val weights = prizes.map { it.weightPercent.toFloat() }
-        val centerAngle = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, result.segmentIndex)
+        val result = outcome
+        if (result == null) {
+            rotation.snapTo(0f)
+            pointerBounce.snapTo(0f)
+            return@LaunchedEffect
+        }
+
+        val centerAngle = PuppyCasinoCartoonMath.segmentCenterDegrees(
+            weights = weights,
+            index = result.segmentIndex
+        )
         val target = 360f * 6f + (-90f - centerAngle)
+
         if (!animationsEnabled || spinKey == null) {
             rotation.snapTo(target)
+            pointerBounce.snapTo(0f)
         } else {
             rotation.snapTo(0f)
-            rotation.animateTo(target, tween(2_500, easing = FastOutSlowInEasing))
-        }
-    }
+            pointerBounce.snapTo(0f)
 
-    Box(Modifier.fillMaxWidth().height(245.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(224.dp)) {
-            val center = Offset(size.width / 2f, size.height / 2f + 4f)
-            val outerRadius = size.minDimension * 0.49f
-            val rimRadius = outerRadius * 0.92f
-            val topLeft = Offset(center.x - rimRadius, center.y - rimRadius)
-            val wheelSize = Size(rimRadius * 2f, rimRadius * 2f)
+            launch {
+                repeat(18) { click ->
+                    val bounce = 13f - (click * 0.35f).coerceAtMost(6f)
+                    pointerBounce.animateTo(-bounce, tween(30))
+                    pointerBounce.animateTo(4f, tween(38))
+                    pointerBounce.animateTo(0f, tween(32))
+                    delay(25L + click * 2L)
+                }
+            }
 
-            drawCircle(
-                color = palette.shadow.copy(alpha = 0.42f),
-                radius = outerRadius,
-                center = Offset(center.x + 3f, center.y + 7f)
+            rotation.animateTo(
+                target,
+                animationSpec = tween(2_500, easing = FastOutSlowInEasing)
             )
-            drawCircle(palette.woodLight, outerRadius, center)
-            drawCircle(primary, outerRadius * 0.93f, center)
-            drawCircle(Color.White.copy(alpha = 0.20f), outerRadius * 0.87f, center, style = Stroke(4f))
+        }
+    }
 
-            var cursor = -90f
+    BoxWithConstraints(
+        modifier = modifier.aspectRatio(420f / 447f)
+    ) {
+        val wheelSize = maxWidth * 0.82f
+        val wheelX = (maxWidth - wheelSize) * 0.5f
+        val wheelY = maxHeight * 0.075f
+
+        Box(
+            modifier = Modifier
+                .offset(x = wheelX, y = wheelY)
+                .size(wheelSize)
+                .graphicsLayer {
+                    rotationZ = rotation.value
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.puppy_lucky_wheel_disc),
+                contentDescription = "Lucky Pup Wheel prize disc",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds
+            )
+
             prizes.forEachIndexed { index, prize ->
-                val sweep = prize.weightPercent * 3.6f
-                val start = cursor + rotation.value
-                drawArc(
-                    color = colors[index % colors.size],
-                    startAngle = start,
-                    sweepAngle = sweep + 0.35f,
-                    useCenter = true,
-                    topLeft = topLeft,
-                    size = wheelSize
-                )
-                drawArc(
-                    color = Color.White.copy(alpha = 0.12f),
-                    startAngle = start,
-                    sweepAngle = sweep + 0.35f,
-                    useCenter = true,
-                    topLeft = topLeft,
-                    size = Size(wheelSize.width, wheelSize.height * 0.88f)
-                )
-                val angle = (start + sweep / 2f) * PI / 180.0
-                val labelRadius = rimRadius * 0.68f
-                val x = center.x + cos(angle).toFloat() * labelRadius
-                val y = center.y + sin(angle).toFloat() * labelRadius
-                drawContext.canvas.nativeCanvas.drawText(prize.emoji, x, y + 9f, paint)
-                cursor += sweep
-            }
+                val angleDegrees = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, index)
+                val angleRadians = angleDegrees * PI / 180.0
+                val labelRadius = wheelSize * 0.29f
+                val labelWidth = wheelSize * 0.19f
+                val x = wheelSize * 0.5f +
+                    labelRadius * cos(angleRadians).toFloat() -
+                    labelWidth * 0.5f
+                val y = wheelSize * 0.5f +
+                    labelRadius * sin(angleRadians).toFloat() -
+                    10.dp
 
-            repeat(16) { index ->
-                val angle = index * (2.0 * PI / 16.0)
-                val studRadius = outerRadius * 0.86f
-                val x = center.x + cos(angle).toFloat() * studRadius
-                val y = center.y + sin(angle).toFloat() * studRadius
-                drawCircle(palette.goldDeep.copy(alpha = 0.35f), 6f, Offset(x + 1.5f, y + 2f))
-                drawCircle(palette.gold, 5f, Offset(x, y))
-                drawCircle(Color.White.copy(alpha = 0.75f), 1.7f, Offset(x - 1.5f, y - 1.5f))
+                Text(
+                    text = luckyWheelSegmentLabel(prize),
+                    modifier = Modifier
+                        .offset(x = x, y = y)
+                        .width(labelWidth),
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 10.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 1
+                )
             }
-
-            drawCircle(palette.shadow.copy(alpha = 0.28f), rimRadius * 0.31f, Offset(center.x + 2f, center.y + 4f))
-            drawCircle(primary, rimRadius * 0.30f, center)
-            drawCircle(Color.White.copy(alpha = 0.26f), rimRadius * 0.26f, center, style = Stroke(3f))
         }
 
-        Text(
-            "▼",
-            color = Color(0xFFE74D56),
-            fontSize = 34.sp,
-            modifier = Modifier.align(Alignment.TopCenter)
+        Image(
+            painter = painterResource(R.drawable.puppy_lucky_wheel_frame),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds
         )
-        Text("🐾", fontSize = 31.sp)
+
+        Image(
+            painter = painterResource(R.drawable.puppy_lucky_wheel_pointer),
+            contentDescription = "Lucky Pup Wheel pointer",
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = maxHeight * 0.018f)
+                .width(maxWidth * 0.12f)
+                .aspectRatio(100f / 160f)
+                .graphicsLayer {
+                    rotationZ = pointerBounce.value
+                    transformOrigin = TransformOrigin(0.5f, 0.12f)
+                },
+            contentScale = ContentScale.FillBounds
+        )
     }
+}
+
+private fun luckyWheelSegmentLabel(prize: LuckyPupWheelPrize): String = when (prize) {
+    LuckyPupWheelPrize.MISS -> "MISS"
+    LuckyPupWheelPrize.HALF -> "0.5×"
+    LuckyPupWheelPrize.REFUND -> "1×"
+    LuckyPupWheelPrize.DOUBLE -> "2×"
+    LuckyPupWheelPrize.FIVE_X -> "5×"
+    LuckyPupWheelPrize.TEN_X -> "10×"
+    LuckyPupWheelPrize.PUPPY_UNLOCK -> "PUP"
 }
 
 @Composable
