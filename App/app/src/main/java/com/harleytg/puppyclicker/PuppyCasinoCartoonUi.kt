@@ -88,6 +88,75 @@ internal fun puppyCasinoCartoonPalette(): PuppyCasinoCartoonPalette {
 }
 
 @Composable
+internal fun PuppyCasinoRenderStage(
+    title: String,
+    modifier: Modifier = Modifier,
+    height: Dp = 330.dp,
+    accent: Color = Color(0xFF00B8F0),
+    background: Color = Color(0xFF101820),
+    content: @Composable BoxScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth().height(height),
+        shape = RoundedCornerShape(26.dp),
+        color = background,
+        border = BorderStroke(2.dp, accent),
+        shadowElevation = 0.dp
+    ) {
+        Box(Modifier.fillMaxWidth()) {
+            Text(
+                text = title,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 15.dp),
+                color = Color.White,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+internal fun PuppyCasinoRenderStatusBar(
+    text: String,
+    modifier: Modifier = Modifier,
+    accent: Color = Color(0xFF00B8F0),
+    centered: Boolean = false
+) {
+    Surface(
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(13.dp),
+        color = Color(0xFF16232D),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!centered) {
+                Box(
+                    Modifier
+                        .width(8.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(accent)
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text = text,
+                modifier = if (centered) Modifier.weight(1f) else Modifier,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = if (centered) TextAlign.Center else TextAlign.Start
+            )
+        }
+    }
+}
+
+@Composable
 internal fun CartoonStageFrame(
     modifier: Modifier = Modifier,
     accent: Color = MaterialTheme.colorScheme.primary,
