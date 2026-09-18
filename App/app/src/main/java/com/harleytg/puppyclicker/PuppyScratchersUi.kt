@@ -1,5 +1,7 @@
 package com.harleytg.puppyclicker
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -42,17 +44,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +68,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -364,7 +373,6 @@ private fun ScratcherCard(
     val density = LocalDensity.current
     val coinDiameter = 56.dp
     val coinRadiusPx = with(density) { coinDiameter.toPx() / 2f }
-    val scratchField = ImageBitmap.imageResource(R.drawable.puppy_scratch_field)
 
     Box(
         modifier = modifier
@@ -537,13 +545,7 @@ private fun ScratcherCard(
                 val cellW = size.width / SCRATCH_COLUMNS
                 val cellH = size.height / SCRATCH_ROWS
 
-                drawImage(
-                    image = scratchField,
-                    dstSize = IntSize(
-                        width = size.width.roundToInt(),
-                        height = size.height.roundToInt()
-                    )
-                )
+                drawScratchFieldArtwork()
 
                 for (row in 0 until SCRATCH_ROWS) {
                     for (col in 0 until SCRATCH_COLUMNS) {
@@ -579,6 +581,153 @@ private fun ScratcherCard(
             )
         }
     }
+}
+
+private fun DrawScope.drawScratchFieldArtwork() {
+    val minDim = size.minDimension
+    val corner = minDim * 0.075f
+    val darkMark = Color(0xFF747B82).copy(alpha = 0.55f)
+
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            listOf(
+                Color(0xFFF1F4F6),
+                Color(0xFFD8DDE1),
+                Color(0xFFC4CAD0),
+                Color(0xFFB5BCC3)
+            )
+        ),
+        cornerRadius = CornerRadius(corner, corner)
+    )
+
+    // Fine metallic grain so the field reads like the silver coating in the render.
+    for (row in 0 until 22) {
+        for (col in 0 until 42) {
+            val x = ((col + 0.35f + ((row * 7 + col * 3) % 5) * 0.08f) / 42f) * size.width
+            val y = ((row + 0.40f + ((row * 5 + col * 11) % 7) * 0.06f) / 22f) * size.height
+            val radius = minDim * (0.0022f + (((row + col) % 4) * 0.00045f))
+            drawCircle(
+                color = if ((row + col) % 3 == 0) {
+                    Color.White.copy(alpha = 0.23f)
+                } else {
+                    Color(0xFF7E878F).copy(alpha = 0.10f)
+                },
+                radius = radius,
+                center = Offset(x, y)
+            )
+        }
+    }
+
+    // Subtle brushed-metal streaks.
+    for (i in 0 until 18) {
+        val y = size.height * (0.08f + i * 0.047f)
+        val inset = size.width * (0.05f + ((i % 4) * 0.006f))
+        drawLine(
+            color = if (i % 2 == 0) Color.White.copy(alpha = 0.12f)
+            else Color(0xFF6F7780).copy(alpha = 0.07f),
+            start = Offset(inset, y),
+            end = Offset(size.width - inset, y + minDim * 0.006f),
+            strokeWidth = minDim * 0.0024f
+        )
+    }
+
+    val pawScale = minDim * 0.105f
+    drawPawMark(Offset(size.width * 0.21f, size.height * 0.22f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.78f, size.height * 0.22f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.29f, size.height * 0.61f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.70f, size.height * 0.60f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.18f, size.height * 0.80f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.51f, size.height * 0.79f), pawScale, darkMark)
+    drawPawMark(Offset(size.width * 0.82f, size.height * 0.80f), pawScale, darkMark)
+
+    val boneColor = Color(0xFF737A81).copy(alpha = 0.50f)
+    drawBoneMark(Offset(size.width * 0.50f, size.height * 0.19f), minDim * 0.18f, -30f, boneColor)
+    drawBoneMark(Offset(size.width * 0.12f, size.height * 0.48f), minDim * 0.15f, -34f, boneColor)
+    drawBoneMark(Offset(size.width * 0.87f, size.height * 0.48f), minDim * 0.15f, -34f, boneColor)
+
+    val native = drawContext.canvas.nativeCanvas
+    val textColor = android.graphics.Color.argb(150, 88, 95, 103)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD_ITALIC)
+        textSkewX = -0.08f
+    }
+
+    paint.textSize = minDim * 0.175f
+    native.drawText("Scratch", size.width * 0.50f, size.height * 0.49f, paint)
+    native.drawText("Here!", size.width * 0.50f, size.height * 0.64f, paint)
+
+    drawLine(
+        color = Color(0xFF777E85).copy(alpha = 0.48f),
+        start = Offset(size.width * 0.42f, size.height * 0.69f),
+        end = Offset(size.width * 0.58f, size.height * 0.65f),
+        strokeWidth = minDim * 0.009f,
+        cap = StrokeCap.Round
+    )
+
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.42f),
+        topLeft = Offset(minDim * 0.012f, minDim * 0.012f),
+        size = Size(
+            width = size.width - minDim * 0.024f,
+            height = size.height - minDim * 0.024f
+        ),
+        cornerRadius = CornerRadius(corner * 0.88f, corner * 0.88f),
+        style = Stroke(width = minDim * 0.008f)
+    )
+}
+
+private fun DrawScope.drawPawMark(
+    center: Offset,
+    scale: Float,
+    color: Color
+) {
+    drawOval(
+        color = color,
+        topLeft = Offset(center.x - scale * 0.34f, center.y - scale * 0.02f),
+        size = Size(scale * 0.68f, scale * 0.52f)
+    )
+
+    val toeRadius = scale * 0.13f
+    val toeY = center.y - scale * 0.32f
+    drawCircle(color, toeRadius, Offset(center.x - scale * 0.30f, toeY + scale * 0.07f))
+    drawCircle(color, toeRadius, Offset(center.x - scale * 0.10f, toeY - scale * 0.04f))
+    drawCircle(color, toeRadius, Offset(center.x + scale * 0.12f, toeY - scale * 0.04f))
+    drawCircle(color, toeRadius, Offset(center.x + scale * 0.31f, toeY + scale * 0.08f))
+}
+
+private fun DrawScope.drawBoneMark(
+    center: Offset,
+    length: Float,
+    angleDegrees: Float,
+    color: Color
+) {
+    val radians = Math.toRadians(angleDegrees.toDouble())
+    val ux = cos(radians).toFloat()
+    val uy = sin(radians).toFloat()
+    val px = -uy
+    val py = ux
+    val half = length * 0.5f
+    val thickness = length * 0.19f
+
+    val start = Offset(center.x - ux * half, center.y - uy * half)
+    val end = Offset(center.x + ux * half, center.y + uy * half)
+
+    drawLine(
+        color = color,
+        start = start,
+        end = end,
+        strokeWidth = thickness,
+        cap = StrokeCap.Round
+    )
+
+    val lobeRadius = thickness * 0.58f
+    val lobeOffset = thickness * 0.48f
+    drawCircle(color, lobeRadius, Offset(start.x + px * lobeOffset, start.y + py * lobeOffset))
+    drawCircle(color, lobeRadius, Offset(start.x - px * lobeOffset, start.y - py * lobeOffset))
+    drawCircle(color, lobeRadius, Offset(end.x + px * lobeOffset, end.y + py * lobeOffset))
+    drawCircle(color, lobeRadius, Offset(end.x - px * lobeOffset, end.y - py * lobeOffset))
 }
 
 @Composable
