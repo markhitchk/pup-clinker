@@ -110,7 +110,7 @@ internal fun PuppyPlinkoScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Drop a Treat ball through eight rows of pegs. The path is committed before the animation.",
+            "Drop a Treat ball through eight rows of pegs into one of nine blue-felt prize pockets. The path is committed before the animation.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -211,7 +211,7 @@ private fun PlinkoCartoonStage(
 ) {
     val palette = puppyCasinoCartoonPalette()
     CartoonStageFrame(
-        modifier = Modifier.fillMaxWidth().height(430.dp),
+        modifier = Modifier.fillMaxWidth().height(448.dp),
         accent = MaterialTheme.colorScheme.primary,
         background = Brush.verticalGradient(
             listOf(
@@ -296,60 +296,189 @@ private fun PlinkoBoard(
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 5.dp)) {
             val rows = PuppyPlinkoEngine.ROWS
+            val binCount = rows + 1
             val centerX = size.width / 2f
-            val topY = 21f
-            val bottomY = size.height - 48f
-            val rowGap = (bottomY - topY) / (rows + 1f)
-            val xStep = size.width / (rows + 3f) / 2f
 
+            /*
+             * The visual geometry intentionally derives from the nine payout pockets.
+             * With xStep = half a pocket, eight committed left/right decisions map
+             * exactly onto outcome.binIndex without the animation choosing a result.
+             */
+            val pocketWidth = size.width / binCount.toFloat()
+            val xStep = pocketWidth / 2f
+            val launchY = 22f
+            val pocketHeight = (size.height * 0.19f).coerceAtLeast(52f)
+            val pocketTop = size.height - pocketHeight - 4f
+            val pocketCenterY = pocketTop + pocketHeight * 0.52f
+            val travelSegments = rows + 1
+            val segmentGap = (pocketCenterY - launchY) / travelSegments.toFloat()
+
+            // Bright casino-blue felt main field.
             drawRoundRect(
-                brush = Brush.verticalGradient(listOf(Color(0xFF173D69), Color(0xFF0B2443))),
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF2685EE),
+                        Color(0xFF1267CC),
+                        Color(0xFF094A9E),
+                        Color(0xFF073778)
+                    )
+                ),
                 topLeft = Offset(3f, 3f),
                 size = Size(size.width - 6f, size.height - 6f),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(22f, 22f)
             )
             drawRoundRect(
-                color = Color.White.copy(alpha = 0.12f),
+                color = Color.White.copy(alpha = 0.16f),
                 topLeft = Offset(8f, 8f),
                 size = Size(size.width - 16f, size.height - 16f),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f),
                 style = Stroke(2f)
             )
 
+            // Subtle felt lighting keeps the center readable while retaining the blue field.
+            drawCircle(
+                color = Color.White.copy(alpha = 0.045f),
+                radius = size.width * 0.43f,
+                center = Offset(centerX, size.height * 0.38f)
+            )
+
+            // Gold launch ring.
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.23f),
+                radius = 19f,
+                center = Offset(centerX + 1.8f, launchY + 3f)
+            )
+            drawCircle(
+                color = palette.gold,
+                radius = 17f,
+                center = Offset(centerX, launchY),
+                style = Stroke(5f)
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.45f),
+                radius = 13.5f,
+                center = Offset(centerX, launchY),
+                style = Stroke(1.6f)
+            )
+
+            // Eight rows of fixed pegs. They are visual only; the committed path drives the ball.
             for (row in 0 until rows) {
                 val count = row + 1
-                val y = topY + (row + 1) * rowGap
+                val y = launchY + (row + 1) * segmentGap
                 val firstX = centerX - row * xStep
-                val impactAt = (row + 1f) / (rows + 1f)
-                val pulse = PuppyCasinoCartoonMath.impactPulse(progress.value, impactAt, 0.045f)
+                val impactAt = (row + 1f) / travelSegments.toFloat()
+                val pulse = PuppyCasinoCartoonMath.impactPulse(
+                    progress.value,
+                    impactAt,
+                    0.045f
+                )
                 repeat(count) { col ->
                     val x = firstX + col * xStep * 2f
-                    drawCircle(Color.Black.copy(alpha = 0.28f), radius = 6.2f + pulse * 2.2f, center = Offset(x + 1.5f, y + 2.5f))
-                    drawCircle(Color(0xFFD7E4EE), radius = 5.2f + pulse * 2.2f, center = Offset(x, y))
-                    drawCircle(Color.White.copy(alpha = 0.85f), radius = 1.8f, center = Offset(x - 1.7f, y - 1.7f))
+                    drawCircle(
+                        Color.Black.copy(alpha = 0.30f),
+                        radius = 6.8f + pulse * 2.1f,
+                        center = Offset(x + 1.5f, y + 2.5f)
+                    )
+                    drawCircle(
+                        Color(0xFFFFC746),
+                        radius = 5.7f + pulse * 2.1f,
+                        center = Offset(x, y)
+                    )
+                    drawCircle(
+                        Color(0xFFFFE9A6),
+                        radius = 3.4f + pulse,
+                        center = Offset(x - 0.8f, y - 0.8f)
+                    )
+                    drawCircle(
+                        Color.White.copy(alpha = 0.88f),
+                        radius = 1.5f,
+                        center = Offset(x - 2f, y - 2f)
+                    )
                 }
             }
 
-            val binTop = bottomY - 4f
-            val binWidth = size.width / (rows + 1f)
-            repeat(rows + 1) { bin ->
-                val left = bin * binWidth
+            /*
+             * Nine real-looking bottom pockets are part of the main playfield.
+             * The colored floors are decorative; Compose overlays the live multiplier labels.
+             */
+            repeat(binCount) { bin ->
+                val left = bin * pocketWidth
+                val winning =
+                    outcome != null &&
+                        bin == outcome.binIndex &&
+                        progress.value >= 0.92f
+                val glow = if (winning) {
+                    (0.35f + (progress.value - 0.92f) * 4.5f).coerceAtMost(0.75f)
+                } else {
+                    0f
+                }
+
+                // Deep pocket opening.
                 drawRoundRect(
-                    color = binColors[bin],
-                    topLeft = Offset(left + 1.5f, binTop),
-                    size = Size(binWidth - 3f, size.height - binTop - 5f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7f, 7f)
+                    color = Color(0xFF04172B),
+                    topLeft = Offset(left + 1.5f, pocketTop),
+                    size = Size(pocketWidth - 3f, pocketHeight - 2f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
+                )
+
+                // Colored pocket floor inset below the dark mouth.
+                drawRoundRect(
+                    color = binColors[bin].copy(alpha = 0.90f),
+                    topLeft = Offset(left + 4f, pocketTop + 9f),
+                    size = Size(pocketWidth - 8f, pocketHeight - 13f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+                )
+
+                // Shadowed lip makes each bottom slot read as an actual pocket.
+                drawRoundRect(
+                    color = Color.Black.copy(alpha = 0.38f),
+                    topLeft = Offset(left + 3f, pocketTop + 1f),
+                    size = Size(pocketWidth - 6f, 12f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
                 )
                 drawRoundRect(
-                    color = Color.White.copy(alpha = 0.22f),
-                    topLeft = Offset(left + 4f, binTop + 2f),
-                    size = Size(binWidth - 8f, 5f),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                    color = palette.gold.copy(alpha = 0.86f),
+                    topLeft = Offset(left + 2f, pocketTop - 2f),
+                    size = Size(pocketWidth - 4f, 4.5f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(3f, 3f)
+                )
+
+                if (winning) {
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = glow),
+                        topLeft = Offset(left + 2.5f, pocketTop + 2f),
+                        size = Size(pocketWidth - 5f, pocketHeight - 6f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f),
+                        style = Stroke(3f)
+                    )
+                }
+            }
+
+            // Gold dividers sit above the pocket mouths.
+            repeat(binCount - 1) { divider ->
+                val x = (divider + 1) * pocketWidth
+                drawLine(
+                    color = Color.Black.copy(alpha = 0.25f),
+                    start = Offset(x + 1.5f, pocketTop - 1f),
+                    end = Offset(x + 1.5f, size.height - 4f),
+                    strokeWidth = 6.5f
+                )
+                drawLine(
+                    color = palette.gold,
+                    start = Offset(x, pocketTop - 2f),
+                    end = Offset(x, size.height - 4f),
+                    strokeWidth = 4.5f
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.48f),
+                    start = Offset(x - 1f, pocketTop),
+                    end = Offset(x - 1f, size.height - 6f),
+                    strokeWidth = 1f
                 )
             }
 
+            // Follow only the already-committed path. Animation never rolls the outcome.
             val path = outcome?.pathRight ?: emptyList()
-            val travelSegments = rows + 1
             val scaled = progress.value * travelSegments
             val completedRows = scaled.toInt().coerceIn(0, rows)
             val fraction = (scaled - completedRows).coerceIn(0f, 1f)
@@ -360,37 +489,63 @@ private fun PlinkoBoard(
             if (completedRows < rows && completedRows < path.size) {
                 x += (if (path[completedRows]) xStep else -xStep) * fraction
             }
-            val y = topY + scaled * rowGap
 
-            drawCircle(Color.Black.copy(alpha = 0.34f), 12f, Offset(x + 2.5f, y + 4f))
-            drawCircle(Color(0xFFC87932), 11f, Offset(x, y))
-            drawCircle(Color(0xFFFFB65C), 9.2f, Offset(x, y - 1f))
-            drawCircle(Color.White.copy(alpha = 0.62f), 2.2f, Offset(x - 3.2f, y - 4f))
-            val chipOffsets = listOf(
-                Offset(-4f, -1f), Offset(3f, 1f), Offset(0f, 5f), Offset(4f, -4f), Offset(-3f, 4f)
-            )
-            chipOffsets.forEach { delta ->
-                drawCircle(Color(0xFF6B3A24), 1.5f, Offset(x + delta.x, y + delta.y))
-            }
+            val baseY = launchY + scaled * segmentGap
+            val bounceLift =
+                if (completedRows < rows) {
+                    kotlin.math.sin(fraction * kotlin.math.PI).toFloat() * 3.5f
+                } else {
+                    0f
+                }
+            val y = baseY - bounceLift
 
+            // Paw-stamped Treat ball.
             drawCircle(
-                color = palette.gold.copy(alpha = 0.32f),
-                radius = 17f,
-                center = Offset(centerX, topY),
-                style = Stroke(2.5f)
+                Color.Black.copy(alpha = 0.35f),
+                12.8f,
+                Offset(x + 2.5f, y + 4f)
+            )
+            drawCircle(Color(0xFFE19127), 12f, Offset(x, y))
+            drawCircle(Color(0xFFFFD45A), 10.2f, Offset(x, y))
+            drawCircle(Color(0xFFFFF2B3), 7.5f, Offset(x, y))
+            drawCircle(Color(0xFF7B4528), 2.6f, Offset(x, y + 2.5f))
+            drawCircle(Color(0xFF7B4528), 1.45f, Offset(x - 3f, y - 1.2f))
+            drawCircle(Color(0xFF7B4528), 1.45f, Offset(x, y - 2.6f))
+            drawCircle(Color(0xFF7B4528), 1.45f, Offset(x + 3f, y - 1.2f))
+            drawCircle(
+                Color.White.copy(alpha = 0.78f),
+                2f,
+                Offset(x - 4f, y - 5f)
             )
         }
 
+        // Dynamic values sit over the permanent pockets so balancing never needs new artwork.
         Row(
-            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, bottom = 7.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(start = 7.dp, end = 7.dp, bottom = 13.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            PuppyPlinkoEngine.binMultiplierHundredths.forEach { value ->
+            PuppyPlinkoEngine.binMultiplierHundredths.forEachIndexed { index, value ->
+                val selected =
+                    outcome != null &&
+                        index == outcome.binIndex &&
+                        progress.value >= 0.92f
                 Text(
-                    text = if (value % 100 == 0) (value / 100).toString() + "×" else (value / 100.0).toString() + "×",
+                    text =
+                        if (value % 100 == 0) {
+                            (value / 100).toString() + "×"
+                        } else {
+                            (value / 100.0).toString().trimEnd('0').trimEnd('.') + "×"
+                        },
                     color = Color.White,
                     fontWeight = FontWeight.Black,
-                    fontSize = 10.sp
+                    fontSize = if (selected) 11.sp else 10.sp,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = if (selected) 1.12f else 1f
+                        scaleY = if (selected) 1.12f else 1f
+                    }
                 )
             }
         }
