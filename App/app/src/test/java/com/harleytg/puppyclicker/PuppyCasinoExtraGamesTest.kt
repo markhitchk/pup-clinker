@@ -16,6 +16,7 @@ class PuppyCasinoExtraGamesTest {
         assertEquals(0, outcome.binIndex)
         assertEquals(5, outcome.multiplierHundredths)
         assertEquals(5L, outcome.payoutTreats)
+        assertEquals(List(PuppyPlinkoEngine.ROWS) { 0 }, outcome.bounceJitterPermille)
 
         val payload = PuppyPlinkoOutcomeCodec.encode(outcome)
         assertEquals(outcome, PuppyPlinkoOutcomeCodec.decodeAndValidate(payload, 100L))
@@ -31,6 +32,38 @@ class PuppyCasinoExtraGamesTest {
             outcomeCommittedAtMs = 1_100L
         )
         assertTrue(PuppyCasinoSaveValidator.validateActiveRound(round).valid)
+    }
+
+    @Test
+    fun plinkoRandomDropsAlwaysUseEightIndependentCommittedBounces() {
+        repeat(64) {
+            val outcome = PuppyPlinkoEngine.randomDrop(100L)
+
+            assertEquals(PuppyPlinkoEngine.ROWS, outcome.pathRight.size)
+            assertEquals(PuppyPlinkoEngine.ROWS, outcome.bounceJitterPermille.size)
+            assertEquals(outcome.pathRight.count { it }, outcome.binIndex)
+            assertEquals(
+                PuppyPlinkoEngine.binMultiplierHundredths[outcome.binIndex],
+                outcome.multiplierHundredths
+            )
+            assertTrue(
+                outcome.bounceJitterPermille.all {
+                    it in -PuppyPlinkoEngine.MAX_BOUNCE_JITTER_PERMILLE..
+                        PuppyPlinkoEngine.MAX_BOUNCE_JITTER_PERMILLE
+                }
+            )
+        }
+    }
+
+    @Test
+    fun plinkoLegacySchemaOneOutcomeStillRecovers() {
+        val legacy = """{"schemaVersion":1,"pathRight":[false,true,false,true,false,true,false,true],"binIndex":4,"multiplierHundredths":150,"payoutTreats":150}"""
+        val decoded = PuppyPlinkoOutcomeCodec.decodeAndValidate(legacy, 100L)
+
+        assertNotNull(decoded)
+        assertEquals(4, decoded!!.binIndex)
+        assertEquals(List(PuppyPlinkoEngine.ROWS) { 0 }, decoded.bounceJitterPermille)
+        assertEquals(150L, decoded.payoutTreats)
     }
 
     @Test

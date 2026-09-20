@@ -490,10 +490,19 @@ private fun PlinkoBoard(
                 x += (if (path[completedRows]) xStep else -xStep) * fraction
             }
 
+            // The engine commits fresh secure-random motion jitter for every bounce.
+            // It is zero at both ends of each segment, so it can never move the ball
+            // into a different payout pocket.
+            val jitterPermille =
+                outcome?.bounceJitterPermille?.getOrNull(completedRows) ?: 0
+            val segmentArc =
+                kotlin.math.sin(fraction * kotlin.math.PI).toFloat()
+            x += xStep * (jitterPermille / 1000f) * segmentArc
+
             val baseY = launchY + scaled * segmentGap
             val bounceLift =
                 if (completedRows < rows) {
-                    kotlin.math.sin(fraction * kotlin.math.PI).toFloat() * 3.5f
+                    segmentArc * 3.5f
                 } else {
                     0f
                 }
