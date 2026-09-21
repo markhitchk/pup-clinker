@@ -46,4 +46,14 @@ class PuppyAchievementsV6Test {
         assertTrue(after.completed)
         assertTrue(after.xpRewarded)
     }
+    @Test
+    fun legacyAutoPupIdNowTracksActiveBoneCollection() {
+        val def = PuppyAchievementsV6.definitions.first { it.id == "auto_pup" }
+        assertEquals("Bone Collector", def.title)
+        assertEquals("Collect 50 Bones through active play.", def.description)
+        assertEquals(50L, def.target)
+        assertFalse(PuppyAchievementsV6.status(def, V6GameState(bones = 49L), emptySet()).completed)
+        assertTrue(PuppyAchievementsV6.status(def, V6GameState(bones = 50L), emptySet()).completed)
+    }
+
 }
