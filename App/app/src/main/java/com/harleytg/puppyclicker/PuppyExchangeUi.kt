@@ -684,7 +684,10 @@ private fun ExchangeFriendsPanel(
         }
         Button(
             onClick = onAddFriend,
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.semantics {
+                contentDescription = if (peer == null) "Add Friend" else "Send Friend Request"
+            }
         ) {
             Text(if (peer == null) "👤+ Add Friend" else "Send Request", fontWeight = FontWeight.Bold)
         }
