@@ -1710,6 +1710,10 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             puppyStyle = keep.puppyStyle,
             unlockedPuppies = keep.unlockedPuppies,
             accessory = keep.accessory,
+            ownedAccessories = keep.ownedAccessories,
+            pupCoins = keep.pupCoins,
+            casinoChips = keep.casinoChips,
+            ticketShopPurchases = keep.ticketShopPurchases,
             redeemedCodeIds = keep.redeemedCodeIds,
             hapticsEnabled = keep.hapticsEnabled,
             animationsEnabled = keep.animationsEnabled,
@@ -1724,17 +1728,25 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     private fun consumeClaimedAfkReward() {
-        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
+        // Compatibility migration only. Economy V7 never auto-deposits AFK rewards.
+        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceIn(0L, 7_000L)
         if (amount <= 0L) return
-        prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
-        _state.update {
-            it.copy(
-                treats = safeAdd(it.treats, amount),
-                lifetimeTreats = safeAdd(it.lifetimeTreats, amount),
-                afkLastClaimed = amount
-            )
-        }
-        saveState()
+        val claimId = prefs.getString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: "afk:legacy-claim:$amount"
+        PuppyNotificationHistory.recordSystemReward(
+            context = getApplication<Application>(),
+            id = claimId,
+            title = "Your puppies saved some Treats!",
+            body = "Welcome back. Claim your saved Treats from this system message.",
+            currency = PuppyRewardCurrency.TREATS,
+            amount = amount
+        )
+        prefs.edit()
+            .putLong(KEY_AFK_CLAIM_READY, 0L)
+            .remove(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID)
+            .putString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, claimId)
+            .commit()
     }
 
     private fun rollTicketRarityV6(): TicketRarity =
