@@ -9,10 +9,10 @@ class PuppyCasinoPersistenceContractTest {
         File("src/main/java/com/harleytg/puppyclicker/" + name).readText()
 
     @Test
-    fun wagerBalanceAndRoundLedgerUseOneSynchronousEditorCommit() {
+    fun casinoChipBalanceAndRoundLedgerUseOneSynchronousEditorCommit() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
-        assertTrue(viewModel.contains(".putLong(KEY_TREATS, result.state.treats)"))
-        assertTrue(viewModel.contains(".putLong(KEY_LIFETIME, result.state.lifetimeTreats)"))
+        assertTrue(viewModel.contains(".putLong(KEY_CASINO_CHIPS, result.state.casinoChips)"))
+        assertTrue(!viewModel.substring(viewModel.indexOf("private fun persistCasinoMutation")).substringBefore("private fun loadState").contains(".putLong(KEY_LIFETIME"))
         assertTrue(viewModel.contains("PuppyCasinoPersistence.write("))
         assertTrue(viewModel.contains("if (!editor.commit())"))
         assertTrue(viewModel.contains("PERSISTENCE_FAILED"))
@@ -29,10 +29,10 @@ class PuppyCasinoPersistenceContractTest {
     }
 
     @Test
-    fun settlementPersistsTreatsTicketsOwnershipAndRewardLedgersInOneCommit() {
+    fun settlementPersistsCasinoChipsTicketsOwnershipAndRewardLedgersInOneCommit() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
 
-        assertTrue(viewModel.contains(".putLong(KEY_TREATS, result.state.treats)"))
+        assertTrue(viewModel.contains(".putLong(KEY_CASINO_CHIPS, result.state.casinoChips)"))
         assertTrue(viewModel.contains(".putLong(KEY_TOTAL_TICKETS_FOUND, result.state.totalTicketsFound)"))
         assertTrue(viewModel.contains(".putStringSet(KEY_UNLOCKED_PUPPIES, result.state.unlockedPuppies)"))
         assertTrue(viewModel.contains("TicketRarity.entries.forEach { rarity ->"))
