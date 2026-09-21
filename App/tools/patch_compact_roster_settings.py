@@ -296,7 +296,7 @@ private fun SelectedPuppyPanel(
                             modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            PuppyClickerV6ViewModel.ACCESSORIES.forEach { accessory ->
+                            PuppyClickerV6ViewModel.ACCESSORIES.filter { it in state.ownedAccessories }.forEach { accessory ->
                                 FilterChip(
                                     selected = state.accessory == accessory,
                                     onClick = { onAccessory(accessory) },
@@ -342,7 +342,7 @@ private fun CompactSelectedPuppyActions(
                 )
             }
             DropdownMenu(expanded = accessoryOpen, onDismissRequest = { accessoryOpen = false }) {
-                PuppyClickerV6ViewModel.ACCESSORIES.forEach { accessory ->
+                PuppyClickerV6ViewModel.ACCESSORIES.filter { it in state.ownedAccessories }.forEach { accessory ->
                     DropdownMenuItem(
                         text = { Text(accessory) },
                         onClick = {
