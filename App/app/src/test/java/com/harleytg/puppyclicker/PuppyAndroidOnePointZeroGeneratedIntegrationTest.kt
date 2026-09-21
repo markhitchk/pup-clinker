@@ -72,6 +72,26 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
     }
 
     @Test
+    fun generatedSourcesPreserveV7EconomyAndSystemRewards() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        val main = generated("PuppyMainScreensRevamp.kt")
+        val activity = generated("PuppyClickerV6Activity.kt")
+
+        assertTrue(vm.contains("val casinoChips: Long"))
+        assertTrue(vm.contains("val bones: Long"))
+        assertTrue(vm.contains("val pupCoins: Long"))
+        assertTrue(vm.contains("PuppyEconomyV7.ACTIVE_BONUS_TAP_INTERVAL"))
+        assertFalse(vm.contains("if (current.autoPerSecond > 0)"))
+        assertTrue(vm.contains("PuppyNotificationHistory.recordSystemReward("))
+
+        assertTrue(main.contains("🪙 Pup Coin Shop"))
+        assertTrue(main.contains("Casino Chips"))
+        assertFalse(main.contains("Per sec"))
+
+        assertTrue(activity.contains("onClaimReward = { item -> vm.claimSystemReward(item.id) }"))
+    }
+
+    @Test
     fun existingInternalRoutesRemainPresent() {
         val activity = generated("PuppyClickerV6Activity.kt")
         assertTrue(activity.contains("PuppyInternalDestination.GACHA -> PuppyGachaScreen("))
