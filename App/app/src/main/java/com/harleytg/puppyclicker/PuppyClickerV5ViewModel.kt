@@ -36,20 +36,20 @@ data class V5Upgrade(
 
 val V5_UPGRADES = listOf(
     V5Upgrade("better_treats", "Better Treats", "+1 treat per tap", "🦴", V5UpgradeEffect.CLICK, 1, V5UpgradeType.COOKIE, 35),
-    V5Upgrade("chew_toy", "Chew Toy", "+1 treat every second", "🧸", V5UpgradeEffect.AUTO, 1, V5UpgradeType.COOKIE, 100),
+    V5Upgrade("chew_toy", "Chew Toy", "+1 bonus treat every 10 active taps", "🧸", V5UpgradeEffect.AUTO, 1, V5UpgradeType.COOKIE, 100),
     V5Upgrade("golden_bowl", "Golden Bowl", "+5 treats per tap", "🥣", V5UpgradeEffect.CLICK, 5, V5UpgradeType.COOKIE, 750),
-    V5Upgrade("playmate", "Playmate", "+5 treats every second", "🐕", V5UpgradeEffect.AUTO, 5, V5UpgradeType.COOKIE, 1_500),
+    V5Upgrade("playmate", "Playmate", "+5 bonus treats every 10 active taps", "🐕", V5UpgradeEffect.AUTO, 5, V5UpgradeType.COOKIE, 1_500),
 
     V5Upgrade("lucky_collar", "Lucky Collar", "+3 treats per tap", "🍀", V5UpgradeEffect.CLICK, 3, V5UpgradeType.TICKET, 75, TicketRarity.COMMON, 2),
-    V5Upgrade("training_whistle", "Training Whistle", "+5 treats every second", "📯", V5UpgradeEffect.AUTO, 5, V5UpgradeType.TICKET, 125, TicketRarity.UNCOMMON, 2),
+    V5Upgrade("training_whistle", "Training Whistle", "+5 bonus treats every 10 active taps", "📯", V5UpgradeEffect.AUTO, 5, V5UpgradeType.TICKET, 125, TicketRarity.UNCOMMON, 2),
     V5Upgrade("puppy_power", "Puppy Power", "+25 treats per tap", "⚡", V5UpgradeEffect.CLICK, 25, V5UpgradeType.TICKET, 250, TicketRarity.RARE, 2),
-    V5Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", "🌳", V5UpgradeEffect.AUTO, 25, V5UpgradeType.TICKET, 350, TicketRarity.RARE, 3),
-    V5Upgrade("treat_factory", "Treat Factory", "+100 treats every second", "🏭", V5UpgradeEffect.AUTO, 100, V5UpgradeType.TICKET, 600, TicketRarity.EPIC, 3),
+    V5Upgrade("dog_park_crew", "Dog Park Crew", "+25 bonus treats every 10 active taps", "🌳", V5UpgradeEffect.AUTO, 25, V5UpgradeType.TICKET, 350, TicketRarity.RARE, 3),
+    V5Upgrade("treat_factory", "Treat Factory", "+100 bonus treats every 10 active taps", "🏭", V5UpgradeEffect.AUTO, 100, V5UpgradeType.TICKET, 600, TicketRarity.EPIC, 3),
     V5Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", "✨", V5UpgradeEffect.CLICK, 100, V5UpgradeType.TICKET, 900, TicketRarity.LEGENDARY, 2)
 )
 
 fun v5CookieCost(upgrade: V5Upgrade, owned: Int): Long {
-    val growth = if (upgrade.type == V5UpgradeType.COOKIE) 1.38 else 1.18
+    val growth = if (upgrade.type == V5UpgradeType.COOKIE) 1.55 else 1.35
     return (upgrade.baseCookieCost * growth.pow(owned.coerceAtLeast(0).toDouble())).toLong()
         .coerceAtLeast(upgrade.baseCookieCost)
 }
@@ -144,11 +144,7 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
                 }
 
                 val now = System.currentTimeMillis()
-                val current = _state.value
-                if (current.autoPerSecond > 0) {
-                    val careBonus = if (current.careScore >= 85) current.autoPerSecond / 10 else 0
-                    addTreats((current.autoPerSecond + careBonus).toLong())
-                }
+                // AUTO is a legacy key only; it no longer produces passive Treats.
                 if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
                     _state.update { it.copy(combo = 0) }
                 }
@@ -188,13 +184,21 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
 
         val combo = if (now - current.lastTapMs <= COMBO_CHAIN_MS) (current.combo + 1).coerceAtMost(50) else 1
         val nextTaps = safeAdd(current.totalTaps, 1)
-        val ticketDrop = if (!suspiciousThisTap && Random.nextBoolean()) rollTicketRarity() else null
+        val activeBonus =
+            if (!suspiciousThisTap && nextTaps % 10L == 0L) current.autoPerSecond.toLong() else 0L
+        val tapPayout = safeAdd(current.clickPower.toLong(), activeBonus)
+        val ticketDrop =
+            if (!suspiciousThisTap && Random.nextInt(500) == 0) {
+                PuppyEconomyV7.ticketRarityForRoll(Random.nextInt(10_000))
+            } else {
+                null
+            }
         val inventory = if (ticketDrop == null) current.ticketInventory else current.ticketInventory.toMutableMap().apply {
             this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
         }
         _state.value = current.copy(
-            treats = safeAdd(current.treats, current.clickPower.toLong()),
-            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
+            treats = safeAdd(current.treats, tapPayout),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, tapPayout),
             totalTaps = nextTaps,
             combo = combo,
             bestCombo = maxOf(current.bestCombo, combo),
