@@ -137,7 +137,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             val legacyClaimId = prefs.getString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, null)
                 ?.takeIf { it.isNotBlank() }
                 ?: "afk:legacy-claim:$legacyClaim"
-            recordAfkSystemReward(legacyClaimId, legacyClaim, now)
+            if (!recordAfkSystemReward(legacyClaimId, legacyClaim, now)) return
             val cleared = prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
                 .remove(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID)
@@ -155,7 +155,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             val existingId = prefs.getString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, null)
                 ?.takeIf { it.isNotBlank() }
                 ?: "afk:legacy-pending:$existingPending:$existingAway"
-            recordAfkSystemReward(existingId, existingPending, now)
+            if (!recordAfkSystemReward(existingId, existingPending, now)) return
             val cleared = prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
@@ -181,11 +181,13 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
 
         val lastSettledId = prefs.getString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, null)
         if (settlement.settlementId != lastSettledId) {
-            recordAfkSystemReward(
-                settlementId = settlement.settlementId,
-                amount = settlement.earnedTreats,
-                createdAtMs = now
-            )
+            if (
+                !recordAfkSystemReward(
+                    settlementId = settlement.settlementId,
+                    amount = settlement.earnedTreats,
+                    createdAtMs = now
+                )
+            ) return
         }
 
         val committed = prefs.edit()
@@ -204,7 +206,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         settlementId: String,
         amount: Long,
         createdAtMs: Long
-    ) {
+    ): Boolean =
         PuppyNotificationHistory.recordSystemReward(
             context = this,
             id = settlementId,
@@ -213,8 +215,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             currency = PuppyRewardCurrency.TREATS,
             amount = amount,
             createdAtMs = createdAtMs
-        )
-    }
+        ) != null
 
     private fun maybeShowWelcome(activity: Activity) {
         if (welcomeVisible || activity is AfkWelcomeActivity) return
