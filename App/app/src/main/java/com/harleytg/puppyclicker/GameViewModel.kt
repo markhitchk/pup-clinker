@@ -71,12 +71,12 @@ val PUPPY_STYLES = listOf(
 
 val UPGRADES = listOf(
     Upgrade("better_treats", "Better Treats", "+1 treat per tap", 25, UpgradeEffect.CLICK, 1, "🦴"),
-    Upgrade("chew_toy", "Chew Toy", "+1 treat every second", 75, UpgradeEffect.AUTO, 1, "🧸"),
+    Upgrade("chew_toy", "Chew Toy", "+1 bonus treat every 10 active taps", 75, UpgradeEffect.AUTO, 1, "🧸"),
     Upgrade("golden_bowl", "Golden Bowl", "+5 treats per tap", 350, UpgradeEffect.CLICK, 5, "🥣"),
-    Upgrade("playmate", "Playmate", "+5 treats every second", 700, UpgradeEffect.AUTO, 5, "🐕"),
+    Upgrade("playmate", "Playmate", "+5 bonus treats every 10 active taps", 700, UpgradeEffect.AUTO, 5, "🐕"),
     Upgrade("puppy_power", "Puppy Power", "+25 treats per tap", 2_500, UpgradeEffect.CLICK, 25, "⚡"),
-    Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", 5_000, UpgradeEffect.AUTO, 25, "🌳"),
-    Upgrade("treat_factory", "Treat Factory", "+100 treats every second", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
+    Upgrade("dog_park_crew", "Dog Park Crew", "+25 bonus treats every 10 active taps", 5_000, UpgradeEffect.AUTO, 25, "🌳"),
+    Upgrade("treat_factory", "Treat Factory", "+100 bonus treats every 10 active taps", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
     Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", 40_000, UpgradeEffect.CLICK, 100, "✨")
 )
 
@@ -185,7 +185,7 @@ val ACHIEVEMENTS = listOf(
     Achievement("combo_hero", "Combo Hero", "Reach a 20 tap combo.", "🔥") { it.bestCombo >= 20 },
     Achievement("ticket_hunter", "Ticket Hunter", "Find your first Upgrade Ticket while tapping.", "🎟️") { it.totalTicketsFound >= 1 },
     Achievement("big_taps", "Big Taps", "Buy enough Shop upgrades to reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
-    Achievement("auto_pup", "Automatic Pup", "Reach 10 treats per second.", "⏱️") { it.autoPerSecond >= 10 },
+    Achievement("auto_pup", "Active Training", "Reach a +10 Treat active bonus.", "⚡") { it.autoPerSecond >= 10 },
     Achievement("happy_home", "Happy Home", "Keep all three care meters at 90 or higher.", "💖") {
         it.happiness >= 90 && it.fullness >= 90 && it.energy >= 90
     },
@@ -207,7 +207,7 @@ val MISSIONS = listOf(
     Mission("combo_15", "Stay in the Groove", "Reach a 15 tap combo.", 400) { it.bestCombo >= 15 },
     Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500) { it.careActions >= 5 },
     Mission("level_5", "Growing Up", "Reach level 5.", 750) { it.level >= 5 },
-    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
+    Mission("auto_25", "Active Pup", "Reach a +25 Treat active bonus.", 1_000) { it.autoPerSecond >= 25 }
 )
 
 data class RedeemOutcome(val success: Boolean, val message: String)
@@ -237,13 +237,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 delay(1_000)
                 seconds += 1
                 val now = System.currentTimeMillis()
-                val current = _state.value
-
-                if (current.autoPerSecond > 0) {
-                    val moodBonus = if (current.careScore >= 80) current.autoPerSecond / 5 else 0
-                    addTreats((current.autoPerSecond + moodBonus).toLong())
-                }
-
+                // Legacy AUTO upgrades are active 10-tap bonuses; no passive Treat loop remains.
                 if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
                     _state.update { it.copy(combo = 0) }
                 }
@@ -299,13 +293,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             1
         }
 
-        val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
+        val activeBonus =
+            if (!suspiciousThisTap && nextTotalTaps % 10L == 0L) current.autoPerSecond.toLong() else 0L
+        val reward = safeAdd(current.clickPower.toLong(), activeBonus)
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
         val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
 
         val ticketDrop = if (!suspiciousThisTap && Random.nextInt(TICKET_DROP_ROLL_SIDES) == TICKET_DROP_WINNER) {
-            rollTicketRarity()
+            PuppyEconomyV7.ticketRarityForRoll(Random.nextInt(10_000))
         } else {
             null
         }
@@ -608,8 +604,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
-        val elapsedSeconds = ((now - lastSeen).coerceAtLeast(0) / 1_000).coerceAtMost(MAX_OFFLINE_SECONDS)
-        val offlineEarned = safeMultiply(autoPerSecond.toLong(), elapsedSeconds)
+        val offlineEarned = 0L
         val savedTreats = prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0)
         val savedLifetime = prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0)
         val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000).coerceAtMost(180)
@@ -631,8 +626,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = selectedStyle,
             unlockedPuppies = unlocked,
-            treats = safeAdd(savedTreats, offlineEarned),
-            lifetimeTreats = safeAdd(savedLifetime, offlineEarned),
+            treats = savedTreats,
+            lifetimeTreats = savedLifetime,
             clickPower = clickPower,
             autoPerSecond = autoPerSecond,
             upgrades = owned,
@@ -742,7 +737,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         private const val KEY_ANIMATIONS = "setting_animations"
         private const val KEY_COMPACT_NUMBERS = "setting_compact_numbers"
 
-        private const val TICKET_DROP_ROLL_SIDES = 100
+        private const val TICKET_DROP_ROLL_SIDES = 500
         private const val TICKET_DROP_WINNER = 0
         private const val MAX_TICKETS_PER_RARITY = 999
         private const val MAX_OFFLINE_SECONDS = 8L * 60L * 60L
