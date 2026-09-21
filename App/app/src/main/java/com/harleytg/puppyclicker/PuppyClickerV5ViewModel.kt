@@ -36,22 +36,20 @@ data class V5Upgrade(
 
 val V5_UPGRADES = listOf(
     V5Upgrade("better_treats", "Better Treats", "+1 treat per tap", "🦴", V5UpgradeEffect.CLICK, 1, V5UpgradeType.COOKIE, 35),
-    V5Upgrade("chew_toy", "Chew Toy", "+1 treat every second", "🧸", V5UpgradeEffect.AUTO, 1, V5UpgradeType.COOKIE, 100),
+    V5Upgrade("chew_toy", "Chew Toy", "+1 bonus treat every 10 active taps", "🧸", V5UpgradeEffect.AUTO, 1, V5UpgradeType.COOKIE, 100),
     V5Upgrade("golden_bowl", "Golden Bowl", "+5 treats per tap", "🥣", V5UpgradeEffect.CLICK, 5, V5UpgradeType.COOKIE, 750),
-    V5Upgrade("playmate", "Playmate", "+5 treats every second", "🐕", V5UpgradeEffect.AUTO, 5, V5UpgradeType.COOKIE, 1_500),
+    V5Upgrade("playmate", "Playmate", "+5 bonus treats every 10 active taps", "🐕", V5UpgradeEffect.AUTO, 5, V5UpgradeType.COOKIE, 1_500),
 
     V5Upgrade("lucky_collar", "Lucky Collar", "+3 treats per tap", "🍀", V5UpgradeEffect.CLICK, 3, V5UpgradeType.TICKET, 75, TicketRarity.COMMON, 2),
-    V5Upgrade("training_whistle", "Training Whistle", "+5 treats every second", "📯", V5UpgradeEffect.AUTO, 5, V5UpgradeType.TICKET, 125, TicketRarity.UNCOMMON, 2),
+    V5Upgrade("training_whistle", "Training Whistle", "+5 bonus treats every 10 active taps", "📯", V5UpgradeEffect.AUTO, 5, V5UpgradeType.TICKET, 125, TicketRarity.UNCOMMON, 2),
     V5Upgrade("puppy_power", "Puppy Power", "+25 treats per tap", "⚡", V5UpgradeEffect.CLICK, 25, V5UpgradeType.TICKET, 250, TicketRarity.RARE, 2),
-    V5Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", "🌳", V5UpgradeEffect.AUTO, 25, V5UpgradeType.TICKET, 350, TicketRarity.RARE, 3),
-    V5Upgrade("treat_factory", "Treat Factory", "+100 treats every second", "🏭", V5UpgradeEffect.AUTO, 100, V5UpgradeType.TICKET, 600, TicketRarity.EPIC, 3),
+    V5Upgrade("dog_park_crew", "Dog Park Crew", "+25 bonus treats every 10 active taps", "🌳", V5UpgradeEffect.AUTO, 25, V5UpgradeType.TICKET, 350, TicketRarity.RARE, 3),
+    V5Upgrade("treat_factory", "Treat Factory", "+100 bonus treats every 10 active taps", "🏭", V5UpgradeEffect.AUTO, 100, V5UpgradeType.TICKET, 600, TicketRarity.EPIC, 3),
     V5Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", "✨", V5UpgradeEffect.CLICK, 100, V5UpgradeType.TICKET, 900, TicketRarity.LEGENDARY, 2)
 )
 
 fun v5CookieCost(upgrade: V5Upgrade, owned: Int): Long {
-    val growth = if (upgrade.type == V5UpgradeType.COOKIE) 1.38 else 1.18
-    return (upgrade.baseCookieCost * growth.pow(owned.coerceAtLeast(0).toDouble())).toLong()
-        .coerceAtLeast(upgrade.baseCookieCost)
+    return PuppyEconomyV7.upgradeTreatCost(upgrade, owned)
 }
 
 fun v5TicketCost(upgrade: V5Upgrade, owned: Int): Int {
@@ -144,11 +142,8 @@ class PuppyClickerV5ViewModel(application: Application) : AndroidViewModel(appli
                 }
 
                 val now = System.currentTimeMillis()
-                val current = _state.value
-                if (current.autoPerSecond > 0) {
-                    val careBonus = if (current.careScore >= 85) current.autoPerSecond / 10 else 0
-                    addTreats((current.autoPerSecond + careBonus).toLong())
-                }
+                // AUTO is retained as a legacy enum/save concept only. It no longer produces
+                // Treats on a timer; Economy V7 converts AUTO ownership into active tap bonuses.
                 if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
                     _state.update { it.copy(combo = 0) }
                 }
