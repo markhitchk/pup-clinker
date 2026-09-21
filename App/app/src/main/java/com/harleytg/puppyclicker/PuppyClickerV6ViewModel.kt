@@ -1734,7 +1734,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val claimId = prefs.getString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, null)
             ?.takeIf { it.isNotBlank() }
             ?: "afk:legacy-claim:$amount"
-        PuppyNotificationHistory.recordSystemReward(
+        val recorded = PuppyNotificationHistory.recordSystemReward(
             context = getApplication<Application>(),
             id = claimId,
             title = "Your puppies saved some Treats!",
@@ -1742,6 +1742,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             currency = PuppyRewardCurrency.TREATS,
             amount = amount
         )
+        if (recorded == null) return
         prefs.edit()
             .putLong(KEY_AFK_CLAIM_READY, 0L)
             .remove(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID)
