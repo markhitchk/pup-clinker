@@ -883,7 +883,7 @@ private fun PuppyTicketInventoryCard(state: V6GameState) {
 }
 
 @Composable
-private fun PuppyPupCoinShop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
+internal fun PuppyPupCoinShop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
