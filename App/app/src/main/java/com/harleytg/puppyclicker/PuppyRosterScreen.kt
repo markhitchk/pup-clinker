@@ -139,7 +139,11 @@ internal fun PuppyRosterScreen(
                 onClick = onOpenSettings,
                 modifier = Modifier.semantics { contentDescription = "Open settings" }
             ) {
-                Text("⚙️", fontSize = 22.sp)
+                Text(
+                    "⚙️",
+                    fontSize = 22.sp,
+                    modifier = Modifier.semantics { contentDescription = "Open settings" }
+                )
             }
         }
 
