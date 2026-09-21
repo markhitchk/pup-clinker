@@ -43,6 +43,24 @@ class PuppyEconomyV7SourceContractTest {
     }
 
     @Test
+    fun everyCasinoGameUiUsesCasinoChipBalance() {
+        listOf(
+            "PuppySlotsUi.kt",
+            "PuppyRouletteUi.kt",
+            "PuppyBlackjackUi.kt",
+            "PuppyPlinkoUi.kt",
+            "PuppyScratchersUi.kt",
+            "PuppyLuckyWheelUi.kt"
+        ).forEach { name ->
+            val ui = source(name)
+            assertTrue("$name must use Casino Chips", ui.contains("state.casinoChips"))
+            assertFalse("$name must not gate wagers on Treats", ui.contains("state.treats >= wager"))
+            assertFalse("$name must not reject wagers based on Treats", ui.contains("state.treats < wager"))
+            assertFalse("$name must not label the casino wallet as Treat Wallet", ui.contains("Treat Wallet"))
+        }
+    }
+
+    @Test
     fun afkPreparationCreatesSystemRewardInsteadOfWalletDeposit() {
         val app = source("PuppyClickerApplication.kt")
         val notifications = source("PuppyNotificationHistory.kt")
