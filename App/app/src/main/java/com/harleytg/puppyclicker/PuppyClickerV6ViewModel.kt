@@ -1608,6 +1608,58 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         return true
     }
 
+    @Synchronized
+    fun claimSystemReward(notificationId: String): Boolean {
+        val app = getApplication<Application>()
+        val item = PuppyNotificationHistory.findById(app, notificationId) ?: return false
+        if (
+            item.type != PuppyNotificationType.SYSTEM_REWARD ||
+            item.rewardCurrency == null ||
+            item.rewardAmount <= 0L
+        ) return false
+
+        val claimedIds = prefs.getStringSet(KEY_SYSTEM_REWARD_CLAIMS, emptySet())
+            ?.toSet()
+            .orEmpty()
+        if (notificationId in claimedIds) {
+            // The game-save claim ledger is authoritative. If a process stopped after the
+            // currency commit but before history was updated, repair the UI without re-crediting.
+            PuppyNotificationHistory.markRewardClaimed(app, notificationId)
+            return true
+        }
+
+        val current = _state.value
+        val amount = item.rewardAmount
+        val next = when (item.rewardCurrency) {
+            PuppyRewardCurrency.TREATS -> current.copy(
+                treats = safeAdd(current.treats, amount),
+                lifetimeTreats = safeAdd(current.lifetimeTreats, amount),
+                afkLastClaimed =
+                    if (notificationId.startsWith("afk:")) amount else current.afkLastClaimed
+            )
+            PuppyRewardCurrency.BONES ->
+                current.copy(bones = safeAdd(current.bones, amount))
+            PuppyRewardCurrency.PUP_COINS ->
+                current.copy(pupCoins = safeAdd(current.pupCoins, amount))
+            PuppyRewardCurrency.CASINO_CHIPS ->
+                current.copy(casinoChips = safeAdd(current.casinoChips, amount))
+        }
+
+        val nextClaims = claimedIds + notificationId
+        val editor = prefs.edit()
+            .putStringSet(KEY_SYSTEM_REWARD_CLAIMS, nextClaims)
+            .putLong(KEY_TREATS, next.treats)
+            .putLong(KEY_LIFETIME, next.lifetimeTreats)
+            .putLong(KEY_BONES, next.bones)
+            .putLong(KEY_PUP_COINS, next.pupCoins)
+            .putLong(KEY_CASINO_CHIPS, next.casinoChips)
+        if (!editor.commit()) return false
+
+        _state.value = next
+        PuppyNotificationHistory.markRewardClaimed(app, notificationId)
+        return true
+    }
+
     fun setHapticsEnabled(value: Boolean) { _state.update { it.copy(hapticsEnabled = value) }; saveState() }
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
@@ -1957,6 +2009,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         private const val KEY_PUP_COINS = "pup_coins_v7"
         private const val KEY_CASINO_CHIPS = "casino_chips_v7"
         private const val KEY_LEGITIMATE_TAPS = "legitimate_taps_v7"
+        private const val KEY_SYSTEM_REWARD_CLAIMS = "system_reward_claims_v1"
         private const val KEY_TOTAL_SHOP = "total_shop_purchases_v5"
         private const val KEY_TOTAL_TICKETS_FOUND = "total_tickets_found"
         private const val KEY_HAPPINESS = "happiness"
