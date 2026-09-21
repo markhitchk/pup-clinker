@@ -230,7 +230,7 @@ private fun SelectedPuppyPanel(
                         modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
                     ) {
-                        PuppyClickerV6ViewModel.ACCESSORIES.forEach { accessory ->
+                        PuppyClickerV6ViewModel.ACCESSORIES.filter { it in state.ownedAccessories }.forEach { accessory ->
                             FilterChip(
                                 selected = state.accessory == accessory,
                                 onClick = { onAccessory(accessory) },
