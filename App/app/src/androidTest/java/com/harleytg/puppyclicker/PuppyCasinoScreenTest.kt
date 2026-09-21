@@ -131,6 +131,36 @@ class PuppyCasinoScreenTest {
     }
 
     @Test
+    fun systemRewardClaimIsIdempotentAcrossRepeatedClaims() {
+        app.getSharedPreferences(PuppyNotificationHistory.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        PuppyNotificationHistory.initialize(app)
+        val rewardId = "test-system-reward-idempotency"
+        PuppyNotificationHistory.recordSystemReward(
+            context = app,
+            id = rewardId,
+            title = "System reward",
+            body = "Claim this reward.",
+            currency = PuppyRewardCurrency.TREATS,
+            amount = 500L,
+            createdAtMs = 1234L
+        )
+
+        val vm = PuppyClickerV6ViewModel(app)
+        org.junit.Assert.assertTrue(vm.claimSystemReward(rewardId))
+        org.junit.Assert.assertEquals(500L, vm.state.value.treats)
+        org.junit.Assert.assertEquals(500L, vm.state.value.lifetimeTreats)
+
+        org.junit.Assert.assertTrue(vm.claimSystemReward(rewardId))
+        org.junit.Assert.assertEquals(500L, vm.state.value.treats)
+        org.junit.Assert.assertEquals(500L, vm.state.value.lifetimeTreats)
+
+        val claimed = PuppyNotificationHistory.findById(app, rewardId)
+        org.junit.Assert.assertTrue(claimed?.claimed == true)
+        org.junit.Assert.assertTrue(claimed?.read == true)
+    }
+
+    @Test
     fun malformedPersistedRoundShowsRecoveryProtectionAndBlocksFreshPlay() {
         check(
             prefs.edit()
