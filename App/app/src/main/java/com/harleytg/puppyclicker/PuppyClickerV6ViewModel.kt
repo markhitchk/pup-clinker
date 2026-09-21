@@ -1560,20 +1560,27 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         if (value !in ACCESSORIES) return
         val current = _state.value
         if (value != "None" && value !in current.ownedAccessories) return
-        _state.value = current.copy(accessory = value)
-        saveState()
+        val next = current.copy(accessory = value)
+        if (!prefs.edit().putString(KEY_ACCESSORY, value).commit()) return
+        _state.value = next
     }
 
+    @Synchronized
     fun buyAccessoryWithPupCoins(accessory: String): Boolean {
         val price = PuppyEconomyV7.accessoryPrice(accessory) ?: return false
         val current = _state.value
         if (accessory in current.ownedAccessories) return true
         if (current.pupCoins < price) return false
-        _state.value = current.copy(
+        val next = current.copy(
             pupCoins = current.pupCoins - price,
             ownedAccessories = current.ownedAccessories + accessory
         )
-        saveState()
+        val persisted = prefs.edit()
+            .putLong(KEY_PUP_COINS, next.pupCoins)
+            .putStringSet(KEY_OWNED_ACCESSORIES, next.ownedAccessories)
+            .commit()
+        if (!persisted) return false
+        _state.value = next
         return true
     }
 
