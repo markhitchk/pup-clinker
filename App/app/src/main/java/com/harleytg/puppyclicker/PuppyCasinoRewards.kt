@@ -34,8 +34,8 @@ internal data class PuppyCasinoRewardApplication(
 )
 
 internal object PuppyCasinoRewardEngine {
-    const val POLICY_VERSION = 1
-    const val MAX_DAILY_CASINO_TICKETS = 10
+    const val POLICY_VERSION = 2
+    const val MAX_DAILY_CASINO_TICKETS = 1
     const val MAX_TICKETS_PER_ROUND = 1
     const val MAX_EVALUATED_ROUND_IDS = 512
     const val MAX_TICKETS_PER_RARITY = 9_999
@@ -135,20 +135,20 @@ internal object PuppyCasinoRewardEngine {
     }
 
     /**
-     * Chance is based on total return relative to the wager:
-     * profitable <2x = 5%, 2x–<5x = 10%, 5x–<20x = 20%,
-     * 20x–<100x = 35%, and 100x+ = guaranteed.
+     * Rare bonus Upgrade Ticket chance for profitable completed rounds:
+     * profit <2x = 0.25%, 2x–<5x = 0.5%, 5x–<20x = 1%,
+     * 20x–<100x = 2%, and 100x+ = 5%.
      */
     fun dropChanceBasisPoints(round: PuppyCasinoRound): Int {
         if (round.wagerTreats <= 0L || round.payoutTreats <= round.wagerTreats) return 0
         val payout = round.payoutTreats
         val wager = round.wagerTreats
         return when {
-            ratioAtLeast(payout, wager, 100L) -> 10_000
-            ratioAtLeast(payout, wager, 20L) -> 3_500
-            ratioAtLeast(payout, wager, 5L) -> 2_000
-            ratioAtLeast(payout, wager, 2L) -> 1_000
-            else -> 500
+            ratioAtLeast(payout, wager, 100L) -> 500
+            ratioAtLeast(payout, wager, 20L) -> 200
+            ratioAtLeast(payout, wager, 5L) -> 100
+            ratioAtLeast(payout, wager, 2L) -> 50
+            else -> 25
         }
     }
 
