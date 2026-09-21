@@ -88,4 +88,23 @@ class PuppyEconomyV7Test {
         assertFalse(vm.contains("convertCasinoChipsToTreats"))
         assertFalse(vm.contains("convertChipsToTreats"))
     }
+    @Test
+    fun systemRewardClaimsUseStableIdsAndCommitCurrencyWithClaimLedger() {
+        val vm = source("PuppyClickerV6ViewModel.kt")
+        val claimStart = vm.indexOf("fun claimSystemReward(notificationId: String)")
+        val claimEnd = vm.indexOf("fun setHapticsEnabled", claimStart)
+        assertTrue(claimStart >= 0 && claimEnd > claimStart)
+        val claim = vm.substring(claimStart, claimEnd)
+
+        assertTrue(claim.contains("KEY_SYSTEM_REWARD_CLAIMS"))
+        assertTrue(claim.contains("if (notificationId in existingClaims)"))
+        assertTrue(claim.contains(".putStringSet(KEY_SYSTEM_REWARD_CLAIMS, claims)"))
+        assertTrue(claim.contains(".putLong(KEY_TREATS, next.treats)"))
+        assertTrue(claim.contains(".putLong(KEY_BONES, next.bones)"))
+        assertTrue(claim.contains(".putLong(KEY_PUP_COINS, next.pupCoins)"))
+        assertTrue(claim.contains(".putLong(KEY_CASINO_CHIPS, next.casinoChips)"))
+        assertTrue(claim.contains("if (!committed) return false"))
+        assertTrue(claim.contains("PuppyNotificationHistory.markRewardClaimed"))
+    }
+
 }
