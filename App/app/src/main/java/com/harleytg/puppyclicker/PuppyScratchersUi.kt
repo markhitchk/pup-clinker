@@ -212,7 +212,7 @@ internal fun PuppyScratchersScreen(
         Spacer(Modifier.height(16.dp))
         Text("Scratch cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Every card keeps the published 91% Treat RTP, but each has a different prize distribution.",
+            "Every card keeps the published 91% Casino Chip RTP, but each has a different prize distribution.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -281,7 +281,7 @@ internal fun PuppyScratchersScreen(
             Column(Modifier.padding(14.dp)) {
                 Text("${displayCard.emoji} ${displayCard.name} odds", fontWeight = FontWeight.Black)
                 Text(
-                    "Expected Treat return: ${PuppyScratchersEngine.PUBLISHED_RTP_PERCENT}",
+                    "Expected Casino Chip return: ${PuppyScratchersEngine.PUBLISHED_RTP_PERCENT}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(6.dp))
