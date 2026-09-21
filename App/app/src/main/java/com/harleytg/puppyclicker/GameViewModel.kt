@@ -185,7 +185,7 @@ val ACHIEVEMENTS = listOf(
     Achievement("combo_hero", "Combo Hero", "Reach a 20 tap combo.", "🔥") { it.bestCombo >= 20 },
     Achievement("ticket_hunter", "Ticket Hunter", "Find your first Upgrade Ticket while tapping.", "🎟️") { it.totalTicketsFound >= 1 },
     Achievement("big_taps", "Big Taps", "Buy enough Shop upgrades to reach 25 treats per tap.", "💪") { it.clickPower >= 25 },
-    Achievement("auto_pup", "Automatic Pup", "Reach 10 treats per second.", "⏱️") { it.autoPerSecond >= 10 },
+    Achievement("auto_pup", "Active Tapper", "Reach 50 taps through active play.", "🐾") { it.totalTaps >= 50 },
     Achievement("happy_home", "Happy Home", "Keep all three care meters at 90 or higher.", "💖") {
         it.happiness >= 90 && it.fullness >= 90 && it.energy >= 90
     },
