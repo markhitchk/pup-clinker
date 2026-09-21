@@ -85,6 +85,8 @@ class PuppyCasinoScreenTest {
         composeRule.onNodeWithText(
             "Simulated gambling • No real-money wagering or cash prizes."
         ).assertExists()
+        composeRule.onNodeWithText("Casino Chip Wallet").assertExists()
+        composeRule.onNodeWithText("🐾 Get Casino Chips").assertExists()
         composeRule.onNodeWithText("Puppy Slots").assertExists()
         composeRule.onNodeWithText("Puppy Roulette").assertExists()
         composeRule.onNodeWithText("Puppy Blackjack").assertExists()
@@ -109,7 +111,7 @@ class PuppyCasinoScreenTest {
             ),
             completedRoundIds = emptyList()
         )
-        editor.putLong("treats", 900L)
+        editor.putLong("casino_chips_v7", 900L)
         check(editor.commit())
 
         val vm = PuppyClickerV6ViewModel(app)
@@ -150,7 +152,7 @@ class PuppyCasinoScreenTest {
 
         composeRule.onNodeWithText("⚠️ Casino recovery protection").assertExists()
         composeRule.onNodeWithText(
-            "New wagers are blocked to protect your Treat balance.",
+            "New wagers are blocked to protect your Casino Chip balance.",
             substring = true
         ).assertExists()
     }
