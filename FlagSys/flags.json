@@ -40,7 +40,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Puppy Casino",
-      "description": "Treat-wager casino games backed by the existing Puppy Clicker economy."
+      "description": "Casino Chip games isolated from normal Puppy Clicker progression."
     },
     "casino_slots": {
       "visible": true,
@@ -56,7 +56,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Puppy Roulette",
-      "description": "Single-zero roulette using Treat wagers."
+      "description": "Single-zero roulette using Casino Chip wagers."
     },
     "casino_blackjack": {
       "visible": true,
@@ -72,7 +72,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Pup Plinko",
-      "description": "Eight-row Treat Plinko with committed bounce paths."
+      "description": "Eight-row Casino Chip Plinko with committed bounce paths."
     },
     "casino_scratchers": {
       "visible": true,
@@ -80,7 +80,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Pup Scratchers",
-      "description": "Six committed-prize scratch cards with weighted Pup Coin physics."
+      "description": "Six committed-prize scratch cards using Casino Chips."
     },
     "casino_lucky_wheel": {
       "visible": true,
@@ -88,7 +88,7 @@
       "status": "released",
       "releaseDate": null,
       "label": "Lucky Pup Wheel",
-      "description": "Prize wheel with Treat rewards and eligible puppy unlocks."
+      "description": "Prize wheel with Casino Chip rewards and eligible puppy unlocks."
     }
   }
 }
