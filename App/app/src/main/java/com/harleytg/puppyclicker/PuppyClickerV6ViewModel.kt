@@ -1751,7 +1751,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             ?.takeIf { it.isNotBlank() }
             ?: "afk-legacy-claim:" + amount + ":" + prefs.getLong(KEY_LAST_SEEN, 0L)
         val recorded = PuppyNotificationHistory.recordSystemReward(
-            context = getApplication(),
+            context = getApplication<Application>(),
             rewardId = settlementId,
             currency = PuppyRewardCurrency.TREATS,
             amount = amount,
