@@ -1010,7 +1010,7 @@ private fun PuppyDailyGoal(
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Reward: " + goal.rewardTreats + " 🍪",
+                        "Reward: " + goal.rewardTreats + " 🍪 + 1 🦴 + 1 🪙",
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelMedium
                     )
