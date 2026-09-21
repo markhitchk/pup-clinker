@@ -28,8 +28,8 @@ enum class PrestigeSkill(
         "Each CLICK upgrade bought in the Shop gains +1 extra tap power per skill level.", 5
     ),
     AUTO_TRAINING(
-        "Auto Training", "⏱️",
-        "Each AUTO upgrade bought in the Shop gains +1 extra treat/sec per skill level.", 5
+        "Active Training", "⚡",
+        "Each ACTIVE upgrade bought in the Shop gains +1 extra Treat in the 10-tap active bonus per skill level.", 5
     ),
     SMART_SHOPPER(
         "Smart Shopper", "🛍️",
@@ -46,15 +46,23 @@ data class V6GameState(
     val puppyStyle: String = "classic",
     val unlockedPuppies: Set<String> = DEFAULT_V6_PUPPIES,
     val accessory: String = "None",
+    val ownedAccessories: Set<String> = setOf("None"),
 
     val treats: Long = 0,
     val lifetimeTreats: Long = 0,
+    val bones: Long = 0,
+    val pupCoins: Long = 0,
+    val casinoChips: Long = 0,
     val clickPower: Int = 1,
+    val activeBonus: Int = 0,
+    // Retained for save/source compatibility only. Passive Treat production is disabled.
     val autoPerSecond: Int = 0,
+    val legitimateTaps: Long = 0,
     val upgrades: Map<String, Int> = V5_UPGRADES.associate { it.id to 0 },
     val totalShopPurchases: Long = 0,
 
     val ticketInventory: Map<TicketRarity, Int> = TicketRarity.entries.associateWith { 0 },
+    val ticketShopPurchases: Map<TicketRarity, Int> = TicketRarity.entries.associateWith { 0 },
     val lastTicketDrop: TicketRarity? = null,
     val ticketDropSerial: Long = 0,
     val totalTicketsFound: Long = 0,
@@ -141,13 +149,11 @@ fun v6SkillCost(state: V6GameState, skill: PrestigeSkill): Int {
     return 1 + level / 2
 }
 
-fun v6UpgradeTreatCost(state: V6GameState, upgrade: V5Upgrade): Long {
-    val owned = state.upgrades[upgrade.id] ?: 0
-    val base = v5CookieCost(upgrade, owned)
-    val shopper = (state.prestigeSkills[PrestigeSkill.SMART_SHOPPER] ?: 0).coerceIn(0, 5)
-    val percent = (100 - shopper * 5).coerceAtLeast(75)
-    return ((base * percent) / 100L).coerceAtLeast(1L)
-}
+fun v6UpgradeTreatCost(state: V6GameState, upgrade: V5Upgrade): Long =
+    PuppyEconomyV7.upgradeTreatCost(state, upgrade)
+
+fun v6UpgradeBoneCost(upgrade: V5Upgrade): Long =
+    PuppyEconomyV7.upgradeBoneCost(upgrade)
 
 fun v6UpgradeTicketCost(state: V6GameState, upgrade: V5Upgrade): Int {
     val owned = state.upgrades[upgrade.id] ?: 0
@@ -204,12 +210,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 consumeClaimedAfkReward()
 
                 val now = System.currentTimeMillis()
-                val current = _state.value
-                if (PuppyAppRuntime.isForeground && current.autoPerSecond > 0) {
-                    val careBonus = if (current.careScore >= 85) current.autoPerSecond / 10 else 0
-                    addTreats((current.autoPerSecond + careBonus).toLong())
-                }
-
+                // No passive Treat generation. AUTO upgrades are active 10-tap bonuses.
                 if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
                     _state.update { it.copy(combo = 0) }
                 }
@@ -1010,12 +1011,42 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         } else 1
 
         val nextTaps = safeAdd(current.totalTaps, 1)
+        val legitimateTap = !suspiciousThisTap
+        val nextLegitimateTaps =
+            if (legitimateTap) safeAdd(current.legitimateTaps, 1L) else current.legitimateTaps
+        val activeBonusPayout =
+            if (
+                legitimateTap &&
+                nextLegitimateTaps % PuppyEconomyV7.ACTIVE_BONUS_TAP_INTERVAL == 0L
+            ) {
+                current.activeBonus.toLong()
+            } else {
+                0L
+            }
+        val tapPayout = safeAdd(current.clickPower.toLong(), activeBonusPayout)
+        val boneDrop =
+            if (
+                legitimateTap &&
+                nextLegitimateTaps % PuppyEconomyV7.BONE_TAP_INTERVAL == 0L
+            ) PuppyEconomyV7.CARE_ACTION_BONES else 0L
+        val pupCoinDrop =
+            if (
+                legitimateTap &&
+                nextLegitimateTaps % PuppyEconomyV7.PUP_COIN_TAP_INTERVAL == 0L
+            ) 1L else 0L
 
-        // Tamed ticket cadence: one Upgrade Ticket on every 5th accepted human tap.
-        // Suspicious/machine-like taps never receive a ticket.
-        val ticketDrop = if (!suspiciousThisTap && nextTaps % 5L == 0L) {
-            rollTicketRarityV6()
-        } else null
+        // Upgrade Tickets are rare secondary drops. Suspicious/machine-like taps never roll.
+        val ticketDrop =
+            if (
+                legitimateTap &&
+                PuppyEconomyV7.shouldDropTicket(
+                    Random.nextInt(PuppyEconomyV7.TICKET_DROP_DENOMINATOR)
+                )
+            ) {
+                rollTicketRarityV6()
+            } else {
+                null
+            }
         val inventory = if (ticketDrop == null) current.ticketInventory else {
             current.ticketInventory.toMutableMap().apply {
                 this[ticketDrop] = ((this[ticketDrop] ?: 0) + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
@@ -1023,9 +1054,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         }
 
         _state.value = current.copy(
-            treats = safeAdd(current.treats, current.clickPower.toLong()),
-            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
+            treats = safeAdd(current.treats, tapPayout),
+            lifetimeTreats = safeAdd(current.lifetimeTreats, tapPayout),
+            bones = safeAdd(current.bones, boneDrop),
+            pupCoins = safeAdd(current.pupCoins, pupCoinDrop),
             totalTaps = nextTaps,
+            legitimateTaps = nextLegitimateTaps,
             combo = combo,
             bestCombo = maxOf(current.bestCombo, combo),
             lastTapMs = now,
@@ -1036,7 +1070,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             ticketDropSerial = if (ticketDrop != null) current.ticketDropSerial + 1 else current.ticketDropSerial,
             totalTicketsFound = if (ticketDrop != null) safeAdd(current.totalTicketsFound, 1) else current.totalTicketsFound
         )
-        if (ticketDrop != null) saveState()
+        if (ticketDrop != null || boneDrop > 0L || pupCoinDrop > 0L) saveState()
     }
 
     fun buyCookieUpgrade(upgrade: V5Upgrade) {
@@ -1044,8 +1078,16 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val current = _state.value
         val owned = current.upgrades[upgrade.id] ?: 0
         val cost = v6UpgradeTreatCost(current, upgrade)
-        if (current.treats < cost) return
-        applyUpgradePurchase(current, upgrade, owned, current.treats - cost, current.ticketInventory)
+        val boneCost = v6UpgradeBoneCost(upgrade)
+        if (current.treats < cost || current.bones < boneCost) return
+        applyUpgradePurchase(
+            current = current,
+            upgrade = upgrade,
+            owned = owned,
+            nextTreats = current.treats - cost,
+            nextBones = current.bones - boneCost,
+            inventory = current.ticketInventory
+        )
     }
 
     fun buyTicketUpgrade(upgrade: V5Upgrade) {
@@ -1055,12 +1097,24 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val ticketCost = v6UpgradeTicketCost(current, upgrade)
         val ownedTickets = current.ticketInventory[upgrade.rarity] ?: 0
         val treatFee = v6UpgradeTreatCost(current, upgrade)
-        if (ownedTickets < ticketCost || current.treats < treatFee) return
+        val boneCost = v6UpgradeBoneCost(upgrade)
+        if (
+            ownedTickets < ticketCost ||
+            current.treats < treatFee ||
+            current.bones < boneCost
+        ) return
 
         val inventory = current.ticketInventory.toMutableMap().apply {
             this[upgrade.rarity] = (ownedTickets - ticketCost).coerceAtLeast(0)
         }
-        applyUpgradePurchase(current, upgrade, owned, current.treats - treatFee, inventory)
+        applyUpgradePurchase(
+            current = current,
+            upgrade = upgrade,
+            owned = owned,
+            nextTreats = current.treats - treatFee,
+            nextBones = current.bones - boneCost,
+            inventory = inventory
+        )
     }
 
     private fun applyUpgradePurchase(
@@ -1068,6 +1122,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         upgrade: V5Upgrade,
         owned: Int,
         nextTreats: Long,
+        nextBones: Long,
         inventory: Map<TicketRarity, Int>
     ) {
         val nextUpgrades = current.upgrades.toMutableMap().apply { this[upgrade.id] = owned + 1 }
@@ -1077,13 +1132,16 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             V5UpgradeEffect.CLICK -> upgrade.amount + tapSkill
             V5UpgradeEffect.AUTO -> upgrade.amount + autoSkill
         }
+        val nextActiveBonus = PuppyEconomyV7.activeBonus(nextUpgrades, autoSkill)
 
         _state.value = current.copy(
             treats = nextTreats,
+            bones = nextBones,
             upgrades = nextUpgrades,
             ticketInventory = inventory,
             clickPower = current.clickPower + if (upgrade.effect == V5UpgradeEffect.CLICK) actualAmount else 0,
-            autoPerSecond = current.autoPerSecond + if (upgrade.effect == V5UpgradeEffect.AUTO) actualAmount else 0,
+            activeBonus = nextActiveBonus,
+            autoPerSecond = 0,
             totalShopPurchases = safeAdd(current.totalShopPurchases, 1),
             happiness = (current.happiness + 2).coerceAtMost(100)
         )
@@ -1100,6 +1158,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             happiness = (s.happiness + 5).coerceAtMost(100),
             bond = (s.bond + 1).coerceAtMost(100),
             cleanliness = (s.cleanliness - 1).coerceAtLeast(0),
+            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1115,6 +1174,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             energy = (s.energy - 12).coerceAtLeast(0),
             cleanliness = (s.cleanliness - 3).coerceAtLeast(0),
             bond = (s.bond + 3).coerceAtMost(100),
+            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1127,6 +1187,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             energy = (s.energy + 30).coerceAtMost(100),
             happiness = (s.happiness + 3).coerceAtMost(100),
+            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1140,6 +1201,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             cleanliness = (s.cleanliness + 35).coerceAtMost(100),
             happiness = (s.happiness + 4).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
+            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1152,6 +1214,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             happiness = (s.happiness + 8).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
+            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1198,6 +1261,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             treats = safeAdd(s.treats, reward),
             lifetimeTreats = safeAdd(s.lifetimeTreats, reward),
+            bones = safeAdd(s.bones, PuppyEconomyV7.DAILY_BONES),
+            pupCoins = safeAdd(s.pupCoins, PuppyEconomyV7.DAILY_PUP_COINS),
             lastDailyClaimDay = today,
             dailyStreak = streak,
             happiness = (s.happiness + 8).coerceAtMost(100),
@@ -1220,6 +1285,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             treats = safeAdd(s.treats, goal.rewardTreats),
             lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
+            bones = safeAdd(s.bones, PuppyEconomyV7.DAILY_TASK_BONES),
+            pupCoins = safeAdd(s.pupCoins, PuppyEconomyV7.DAILY_TASK_PUP_COINS),
             claimedDailyTasks = s.claimedDailyTasks + id
         )
         saveState()
@@ -1256,8 +1323,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = current.copy(
             treats = 0,
             lifetimeTreats = 0,
+            bones = 0,
             clickPower = 1,
+            activeBonus = 0,
             autoPerSecond = 0,
+            legitimateTaps = 0,
             upgrades = V5_UPGRADES.associate { it.id to 0 },
             totalShopPurchases = 0,
             ticketInventory = TicketRarity.entries.associateWith { 0 },
@@ -1488,8 +1558,54 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
     fun setAccessory(value: String) {
         if (value !in ACCESSORIES) return
-        _state.update { it.copy(accessory = value) }
+        val current = _state.value
+        if (value != "None" && value !in current.ownedAccessories) return
+        _state.value = current.copy(accessory = value)
         saveState()
+    }
+
+    fun buyAccessoryWithPupCoins(accessory: String): Boolean {
+        val price = PuppyEconomyV7.accessoryPrice(accessory) ?: return false
+        val current = _state.value
+        if (accessory in current.ownedAccessories) return true
+        if (current.pupCoins < price) return false
+        _state.value = current.copy(
+            pupCoins = current.pupCoins - price,
+            ownedAccessories = current.ownedAccessories + accessory
+        )
+        saveState()
+        return true
+    }
+
+    fun buyUpgradeTicketWithPupCoins(rarity: TicketRarity): Boolean {
+        val current = _state.value
+        val purchased = current.ticketShopPurchases[rarity] ?: 0
+        val cost = PuppyEconomyV7.ticketShopCost(rarity, purchased)
+        val ownedTickets = current.ticketInventory[rarity] ?: 0
+        if (current.pupCoins < cost || ownedTickets >= MAX_TICKETS_PER_RARITY) return false
+        _state.value = current.copy(
+            pupCoins = current.pupCoins - cost,
+            ticketInventory = current.ticketInventory + (
+                rarity to (ownedTickets + 1).coerceAtMost(MAX_TICKETS_PER_RARITY)
+            ),
+            ticketShopPurchases = current.ticketShopPurchases + (
+                rarity to (purchased + 1).coerceAtLeast(0)
+            )
+        )
+        saveState()
+        return true
+    }
+
+    fun convertTreatsToCasinoChips(spendTreats: Long): Boolean {
+        val current = _state.value
+        val chips = PuppyEconomyV7.chipsForTreats(spendTreats) ?: return false
+        if (current.treats < spendTreats) return false
+        _state.value = current.copy(
+            treats = current.treats - spendTreats,
+            casinoChips = safeAdd(current.casinoChips, chips)
+        )
+        saveState()
+        return true
     }
 
     fun setHapticsEnabled(value: Boolean) { _state.update { it.copy(hapticsEnabled = value) }; saveState() }
@@ -1569,16 +1685,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         saveState()
     }
 
-    private fun rollTicketRarityV6(): TicketRarity {
-        val roll = Random.nextInt(1, 1001)
-        return when {
-            roll <= 680 -> TicketRarity.COMMON       // 68% of drops; about 1 common per 7.4 accepted taps
-            roll <= 920 -> TicketRarity.UNCOMMON    // 24% of drops; about 1 uncommon per 20.8 accepted taps
-            roll <= 980 -> TicketRarity.RARE        // 6% of drops; about 1 rare per 83 accepted taps
-            roll <= 997 -> TicketRarity.EPIC        // 1.7% of drops; about 1 epic per 294 accepted taps
-            else -> TicketRarity.LEGENDARY          // 0.3% of drops; about 1 legendary per 1,667 accepted taps
-        }
-    }
+    private fun rollTicketRarityV6(): TicketRarity =
+        PuppyEconomyV7.ticketRarityForRoll(Random.nextInt(10_000))
 
     private fun rollDailyDayIfNeeded() {
         val today = LocalDate.now().toEpochDay()
@@ -1689,9 +1797,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val clickPower = 1 + V5_UPGRADES
             .filter { it.effect == V5UpgradeEffect.CLICK }
             .sumOf { (it.amount + tapSkill) * (owned[it.id] ?: 0) }
-        val auto = V5_UPGRADES
-            .filter { it.effect == V5UpgradeEffect.AUTO }
-            .sumOf { (it.amount + autoSkill) * (owned[it.id] ?: 0) }
+        val activeBonus = PuppyEconomyV7.activeBonus(owned, autoSkill)
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
@@ -1716,13 +1822,26 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             puppyStyle = style,
             unlockedPuppies = unlocked,
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
+            ownedAccessories = (
+                prefs.getStringSet(KEY_OWNED_ACCESSORIES, emptySet())?.toSet().orEmpty() +
+                    setOf("None") +
+                    listOfNotNull(prefs.getString(KEY_ACCESSORY, null)?.takeIf { it in ACCESSORIES })
+            ),
             treats = prefs.getLong(KEY_TREATS, 0L).coerceAtLeast(0L),
             lifetimeTreats = prefs.getLong(KEY_LIFETIME, 0L).coerceAtLeast(0L),
+            bones = prefs.getLong(KEY_BONES, 0L).coerceAtLeast(0L),
+            pupCoins = prefs.getLong(KEY_PUP_COINS, 0L).coerceAtLeast(0L),
+            casinoChips = prefs.getLong(KEY_CASINO_CHIPS, 0L).coerceAtLeast(0L),
             clickPower = clickPower,
-            autoPerSecond = auto,
+            activeBonus = activeBonus,
+            autoPerSecond = 0,
+            legitimateTaps = prefs.getLong(KEY_LEGITIMATE_TAPS, totalTaps).coerceAtLeast(0L),
             upgrades = owned,
             totalShopPurchases = totalShop,
             ticketInventory = inventory,
+            ticketShopPurchases = TicketRarity.entries.associateWith { rarity ->
+                prefs.getInt(ticketShopPurchaseKey(rarity), 0).coerceAtLeast(0)
+            },
             totalTicketsFound = prefs.getLong(KEY_TOTAL_TICKETS_FOUND, 0L).coerceAtLeast(0L),
             happiness = (prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100) - elapsedMinutes / 3).coerceAtLeast(0),
             fullness = (prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100) - elapsedMinutes / 2).coerceAtLeast(0),
@@ -1762,11 +1881,19 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             putString(KEY_PUPPY_STYLE, s.puppyStyle)
             putStringSet(KEY_UNLOCKED_PUPPIES, s.unlockedPuppies)
             putString(KEY_ACCESSORY, s.accessory)
+            putStringSet(KEY_OWNED_ACCESSORIES, s.ownedAccessories)
             putLong(KEY_TREATS, s.treats)
             putLong(KEY_LIFETIME, s.lifetimeTreats)
+            putLong(KEY_BONES, s.bones)
+            putLong(KEY_PUP_COINS, s.pupCoins)
+            putLong(KEY_CASINO_CHIPS, s.casinoChips)
+            putLong(KEY_LEGITIMATE_TAPS, s.legitimateTaps)
             putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)
             putLong(KEY_TOTAL_TICKETS_FOUND, s.totalTicketsFound)
-            TicketRarity.entries.forEach { rarity -> putInt(ticketKey(rarity), s.ticketInventory[rarity] ?: 0) }
+            TicketRarity.entries.forEach { rarity ->
+                putInt(ticketKey(rarity), s.ticketInventory[rarity] ?: 0)
+                putInt(ticketShopPurchaseKey(rarity), s.ticketShopPurchases[rarity] ?: 0)
+            }
             if (clearUpgradeKeys) V5_UPGRADES.forEach { remove("upgrade_${it.id}") }
             s.upgrades.forEach { (id, count) -> putInt("upgrade_$id", count) }
             putInt(KEY_HAPPINESS, s.happiness)
@@ -1822,8 +1949,13 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         private const val KEY_PUPPY_STYLE = "puppy_style"
         private const val KEY_UNLOCKED_PUPPIES = "unlocked_puppies"
         private const val KEY_ACCESSORY = "accessory"
+        private const val KEY_OWNED_ACCESSORIES = "owned_accessories_v7"
         private const val KEY_TREATS = "treats"
         private const val KEY_LIFETIME = "lifetime_treats"
+        private const val KEY_BONES = "bones_v7"
+        private const val KEY_PUP_COINS = "pup_coins_v7"
+        private const val KEY_CASINO_CHIPS = "casino_chips_v7"
+        private const val KEY_LEGITIMATE_TAPS = "legitimate_taps_v7"
         private const val KEY_TOTAL_SHOP = "total_shop_purchases_v5"
         private const val KEY_TOTAL_TICKETS_FOUND = "total_tickets_found"
         private const val KEY_HAPPINESS = "happiness"
@@ -1877,6 +2009,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         private const val MAX_FAIR_PLAY_COOLDOWN_MS = 20_000L
 
         private fun ticketKey(rarity: TicketRarity) = "upgrade_ticket_${rarity.name.lowercase()}"
+        private fun ticketShopPurchaseKey(rarity: TicketRarity) =
+            "ticket_shop_purchase_${rarity.name.lowercase()}_v7"
         private fun skillKey(skill: PrestigeSkill) = "prestige_skill_${skill.name.lowercase()}_v6"
     }
 }
