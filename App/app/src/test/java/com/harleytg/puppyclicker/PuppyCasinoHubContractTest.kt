@@ -24,15 +24,21 @@ class PuppyCasinoHubContractTest {
     }
 
     @Test
-    fun allThreeGamesAreVisibleAndImplementedGamesHavePreviewRoutes() {
+    fun allSixCasinoGamesAreVisibleAndRoutedFromTheHub() {
         val source = source("PuppyCasinoHub.kt")
 
         assertTrue(source.contains("Puppy Slots"))
         assertTrue(source.contains("Puppy Roulette"))
         assertTrue(source.contains("Puppy Blackjack"))
+        assertTrue(source.contains("Pup Plinko"))
+        assertTrue(source.contains("Pup Scratchers"))
+        assertTrue(source.contains("Lucky Pup Wheel"))
         assertTrue(source.contains("onOpen = { page = \"slots\" }"))
         assertTrue(source.contains("onOpen = { page = \"roulette\" }"))
         assertTrue(source.contains("onOpen = { page = \"blackjack\" }"))
+        assertTrue(source.contains("onOpen = { page = \"plinko\" }"))
+        assertTrue(source.contains("onOpen = { page = \"scratchers\" }"))
+        assertTrue(source.contains("onOpen = { page = \"lucky_wheel\" }"))
         assertFalse(source.contains("beginCasinoRound("))
         assertFalse(source.contains("startSlotsSpin("))
         assertFalse(source.contains("startRouletteSpin("))
