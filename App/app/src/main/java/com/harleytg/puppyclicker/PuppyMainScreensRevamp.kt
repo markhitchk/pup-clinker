@@ -335,7 +335,7 @@ internal fun PuppyRevampedShopScreen(state: V6GameState, vm: PuppyClickerV6ViewM
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
-        PuppyMainPageHeader("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
+        PuppyMainPageHeader("Puppy Shop", "Progression upgrades, rare tickets, Pup Coins and Puppy Codes.")
         Spacer(Modifier.height(14.dp))
         PuppyWalletCard(state)
         Spacer(Modifier.height(12.dp))
@@ -349,24 +349,29 @@ internal fun PuppyRevampedShopScreen(state: V6GameState, vm: PuppyClickerV6ViewM
         }
 
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = tab == 0, onClick = { tab = 0 }, label = { Text("🍪 Cookie Upgrades") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = tab == 1, onClick = { tab = 1 }, label = { Text("🎟️ Ticket Upgrades") }, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = tab == 0, onClick = { tab = 0 }, label = { Text("🍪 Upgrades") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = tab == 1, onClick = { tab = 1 }, label = { Text("🎟️ Tickets") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = tab == 2, onClick = { tab = 2 }, label = { Text("🪙 Pup Coins") }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
 
-        if (tab == 0) {
-            V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
-                PuppyCookieUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(9.dp))
+        when (tab) {
+            0 -> {
+                V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
+                    PuppyCookieUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(9.dp))
+                }
             }
-        } else {
-            PuppyTicketInventoryCard(state)
-            Spacer(Modifier.height(10.dp))
-            V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
-                PuppyTicketUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(9.dp))
+            1 -> {
+                PuppyTicketInventoryCard(state)
+                Spacer(Modifier.height(10.dp))
+                V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
+                    PuppyTicketUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(9.dp))
+                }
             }
+            else -> PuppyPupCoinShop(state, vm)
         }
         Spacer(Modifier.height(20.dp))
     }
@@ -472,7 +477,7 @@ internal fun PuppyRevampedRewardsScreen(
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Daily Puppy Gift", fontWeight = FontWeight.Black)
-                        Text(nextReward.toString() + " treats + mood + bond", style = MaterialTheme.typography.bodySmall)
+                        Text(nextReward.toString() + " Treats + 2 Bones + 3 Pup Coins + mood + bond", style = MaterialTheme.typography.bodySmall)
                     }
                     Button(onClick = vm::claimDailyReward) {
                         Text("Claim")
@@ -523,7 +528,7 @@ internal fun PuppyRevampedRewardsScreen(
                 PuppyClaimedReward(
                     emoji = "🎁",
                     title = "Daily Puppy Gift",
-                    rewardText = "Treats + mood + bond"
+                    rewardText = "Treats + 2 Bones + 3 Pup Coins + mood + bond"
                 )
             }
             claimedGoals.forEach { goal ->
@@ -531,7 +536,7 @@ internal fun PuppyRevampedRewardsScreen(
                 PuppyClaimedReward(
                     emoji = goal.emoji,
                     title = goal.title,
-                    rewardText = goal.rewardTreats.toString() + " treats"
+                    rewardText = goal.rewardTreats.toString() + " Treats + 1 Bone + 1 Pup Coin"
                 )
             }
         }
@@ -581,7 +586,7 @@ internal fun PuppyRevampedRewardsScreen(
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text("Puppy Casino", fontWeight = FontWeight.Black)
-                        Text("Treat wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
+                        Text("Casino Chip wagers · Slots · Roulette · Blackjack", style = MaterialTheme.typography.bodySmall)
                         Text(
                             when {
                                 casinoRecoveryIssue != null ->
@@ -686,11 +691,16 @@ private fun PuppyWalletCard(state: V6GameState) {
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp)) {
-            PuppyMiniStat("🍪", state.treats.toString(), "Treats", Modifier.weight(1f))
-            PuppyMiniStat("🎟️", state.ticketsOwned.toString(), "Tickets", Modifier.weight(1f))
-            PuppyMiniStat("👆", state.clickPower.toString(), "Per tap", Modifier.weight(1f))
-            PuppyMiniStat("⏱️", state.autoPerSecond.toString(), "Per sec", Modifier.weight(1f))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 9.dp)) {
+            Row(Modifier.fillMaxWidth()) {
+                PuppyMiniStat("🍪", state.treats.toString(), "Treats", Modifier.weight(1f))
+                PuppyMiniStat("🦴", state.bones.toString(), "Bones", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth()) {
+                PuppyMiniStat("🪙", state.pupCoins.toString(), "Pup Coins", Modifier.weight(1f))
+                PuppyMiniStat("🐾", state.casinoChips.toString(), "Casino Chips", Modifier.weight(1f))
+            }
         }
     }
 }
@@ -792,13 +802,14 @@ private fun PuppyProgressCard(
 private fun PuppyCookieUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: PuppyClickerV6ViewModel) {
     val owned = state.upgrades[upgrade.id] ?: 0
     val cost = v6UpgradeTreatCost(state, upgrade)
+    val boneCost = v6UpgradeBoneCost(upgrade)
     PuppyUpgradeCard(
         emoji = upgrade.emoji,
         title = upgrade.name,
-        description = upgrade.description,
+        description = upgrade.description + " · Cost: " + cost + " 🍪 + " + boneCost + " 🦴",
         owned = owned,
-        buttonText = cost.toString() + " 🍪",
-        enabled = state.treats >= cost,
+        buttonText = "Buy",
+        enabled = state.treats >= cost && state.bones >= boneCost,
         onBuy = { vm.buyCookieUpgrade(upgrade) }
     )
 }
@@ -808,11 +819,16 @@ private fun PuppyTicketUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: P
     val rarity = upgrade.rarity ?: TicketRarity.COMMON
     val ticketCost = v6UpgradeTicketCost(state, upgrade)
     val treatCost = v6UpgradeTreatCost(state, upgrade)
-    val canBuy = (state.ticketInventory[rarity] ?: 0) >= ticketCost && state.treats >= treatCost
+    val boneCost = v6UpgradeBoneCost(upgrade)
+    val canBuy =
+        (state.ticketInventory[rarity] ?: 0) >= ticketCost &&
+            state.treats >= treatCost &&
+            state.bones >= boneCost
     PuppyUpgradeCard(
         emoji = upgrade.emoji,
         title = upgrade.name,
-        description = upgrade.description + " · " + rarity.displayName,
+        description = upgrade.description + " · " + rarity.displayName +
+            " · " + treatCost + " 🍪 + " + boneCost + " 🦴 + " + ticketCost + " ticket(s)",
         owned = state.upgrades[upgrade.id] ?: 0,
         buttonText = "Upgrade",
         enabled = canBuy,
@@ -861,13 +877,101 @@ private fun PuppyTicketInventoryCard(state: V6GameState) {
     ) {
         Column(Modifier.padding(14.dp)) {
             Text("🎟️ Ticket inventory", fontWeight = FontWeight.Black)
-            Text("Every 5th accepted tap awards one ticket.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Tickets are rare: about a 1-in-500 roll per legitimate accepted tap.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(7.dp))
             TicketRarity.entries.forEach { rarity ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                     Text(rarity.emoji + " " + rarity.displayName, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
                     Text("×" + (state.ticketInventory[rarity] ?: 0), fontWeight = FontWeight.Black)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PuppyPupCoinShop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("🪙 Pup Coin Shop", fontWeight = FontWeight.Black)
+            Text(
+                state.pupCoins.toString() + " Pup Coins · normal Shop currency, never Casino Chips",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    Text("Accessories", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+    PuppyEconomyV7.ACCESSORY_PRICES.forEach { (accessory, price) ->
+        val owned = accessory in state.ownedAccessories
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(accessory, fontWeight = FontWeight.Black)
+                    Text(
+                        if (owned) "Owned permanently" else price.toString() + " Pup Coins",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                when {
+                    state.accessory == accessory -> OutlinedButton(onClick = { vm.setAccessory("None") }) { Text("Unequip") }
+                    owned -> Button(onClick = { vm.setAccessory(accessory) }) { Text("Equip") }
+                    else -> Button(
+                        onClick = { vm.buyAccessoryWithPupCoins(accessory) },
+                        enabled = state.pupCoins >= price
+                    ) { Text("Buy") }
+                }
+            }
+        }
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("None", modifier = Modifier.weight(1f), fontWeight = FontWeight.Black)
+        OutlinedButton(
+            onClick = { vm.setAccessory("None") },
+            enabled = state.accessory != "None"
+        ) { Text(if (state.accessory == "None") "Equipped" else "Equip") }
+    }
+
+    Spacer(Modifier.height(10.dp))
+    Text("Upgrade Tickets", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+    Text(
+        "Each rarity's next price rises by 25% of its base price, capped at 6×.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    TicketRarity.entries.forEach { rarity ->
+        val owned = state.ticketInventory[rarity] ?: 0
+        val cost = PuppyEconomyV7.ticketShopPrice(
+            rarity,
+            state.ticketShopPurchases[rarity] ?: 0
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(rarity.emoji + " " + rarity.displayName, fontWeight = FontWeight.Black)
+                    Text("Owned: " + owned + " · Next: " + cost + " Pup Coins", style = MaterialTheme.typography.bodySmall)
+                }
+                Button(
+                    onClick = { vm.buyUpgradeTicketWithPupCoins(rarity) },
+                    enabled = state.pupCoins >= cost
+                ) { Text("Buy 1") }
             }
         }
     }
