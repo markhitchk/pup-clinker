@@ -285,7 +285,7 @@ private fun TreatHud(state: GameState) {
             HudDivider()
             HudMetric("👆", formatNumber(state.clickPower.toLong()), "tap")
             HudDivider()
-            HudMetric("⏱️", formatNumber(state.autoPerSecond.toLong()), "sec")
+            HudMetric("⚡", formatNumber(state.autoPerSecond.toLong()), "active /10")
         }
     }
 }
