@@ -169,6 +169,13 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             return
         }
 
+        if (settlement.earnedTreats <= 0L) {
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .apply()
+            return
+        }
+
         val lastSettledId = prefs.getString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, null)
         if (settlement.settlementId == lastSettledId) {
             prefs.edit()
