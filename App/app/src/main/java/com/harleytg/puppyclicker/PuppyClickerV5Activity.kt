@@ -310,7 +310,7 @@ private fun V5CarePanel(state: V5GameState, vm: PuppyClickerV5ViewModel) {
     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) {
         Column(Modifier.padding(12.dp)) {
             Text("Care bonus", fontWeight = FontWeight.Black)
-            Text(if (state.careScore >= 85) "Active: +10% automatic treats." else "Reach 85% wellness for +10% automatic treats.", style = MaterialTheme.typography.bodySmall)
+            Text("Care improves mood and bond; Treat income is active-play only.", style = MaterialTheme.typography.bodySmall)
             Text("Tap power is never boosted by care.", style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -673,7 +673,7 @@ private fun V5Wallet(state: V5GameState) {
             Spacer(Modifier.width(10.dp))
             V5MiniStat("👆", formatV5(state.clickPower.toLong(), state.compactNumbers), "per tap")
             Spacer(Modifier.width(10.dp))
-            V5MiniStat("⏱️", formatV5(state.autoPerSecond.toLong(), state.compactNumbers), "per sec")
+            V5MiniStat("⚡", formatV5(state.autoPerSecond.toLong(), state.compactNumbers), "10-tap bonus")
         }
     }
 }
