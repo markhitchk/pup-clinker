@@ -1750,6 +1750,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val editor = prefs.edit()
             .putLong(KEY_TREATS, result.state.treats)
             .putLong(KEY_LIFETIME, result.state.lifetimeTreats)
+            .putLong(KEY_CASINO_CHIPS, result.state.casinoChips)
             .putLong(KEY_TOTAL_TICKETS_FOUND, result.state.totalTicketsFound)
             .putStringSet(KEY_UNLOCKED_PUPPIES, result.state.unlockedPuppies)
         TicketRarity.entries.forEach { rarity ->
