@@ -131,6 +131,26 @@ class PuppyCasinoScreenTest {
     }
 
     @Test
+    fun pupCoinAccessoryPurchasePersistsOwnershipAndBlocksFreeEquip() {
+        check(prefs.edit().putLong("pup_coins_v7", 200L).commit())
+        val vm = PuppyClickerV6ViewModel(app)
+
+        vm.setAccessory("Bandana")
+        org.junit.Assert.assertEquals("None", vm.state.value.accessory)
+
+        org.junit.Assert.assertTrue(vm.buyAccessoryWithPupCoins("Bandana"))
+        org.junit.Assert.assertEquals(50L, vm.state.value.pupCoins)
+        org.junit.Assert.assertTrue("Bandana" in vm.state.value.ownedAccessories)
+
+        vm.setAccessory("Bandana")
+        org.junit.Assert.assertEquals("Bandana", vm.state.value.accessory)
+
+        val reloaded = PuppyClickerV6ViewModel(app)
+        org.junit.Assert.assertTrue("Bandana" in reloaded.state.value.ownedAccessories)
+        org.junit.Assert.assertEquals("Bandana", reloaded.state.value.accessory)
+    }
+
+    @Test
     fun systemRewardClaimIsIdempotentAcrossRepeatedClaims() {
         app.getSharedPreferences(PuppyNotificationHistory.PREFS_NAME, Context.MODE_PRIVATE)
             .edit().clear().commit()
