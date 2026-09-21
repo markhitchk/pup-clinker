@@ -61,16 +61,29 @@ def patch_view_model(source: str) -> str:
         "XP level curve",
     )
 
-    # Manual taps earn XP, independent of Treat multiplier size.
-    source = replace_once(
-        source,
-        '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
-            totalTaps = nextTotalTaps,''',
-        '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
+    # Manual taps earn XP, independent of Treat multiplier size. Economy V7 can add an
+    # active 10-tap Treat bonus, so accept either the legacy clickPower anchor or tapPayout.
+    v7_tap = '''            lifetimeTreats = safeAdd(current.lifetimeTreats, tapPayout),
+            totalTaps = nextTotalTaps,'''
+    if v7_tap in source:
+        source = replace_once(
+            source,
+            v7_tap,
+            '''            lifetimeTreats = safeAdd(current.lifetimeTreats, tapPayout),
             playerXp = PuppyProgression.addXp(current.playerXp, PuppyXpEvent.MANUAL_TAP),
             totalTaps = nextTotalTaps,''',
-        "manual tap XP",
-    )
+            "manual tap XP V7",
+        )
+    else:
+        source = replace_once(
+            source,
+            '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
+            totalTaps = nextTotalTaps,''',
+            '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
+            playerXp = PuppyProgression.addXp(current.playerXp, PuppyXpEvent.MANUAL_TAP),
+            totalTaps = nextTotalTaps,''',
+            "manual tap XP",
+        )
 
     # Every successful Care action settles +5 XP. Existing action guards remain authoritative.
     source = replace_all(
@@ -133,16 +146,28 @@ def patch_view_model(source: str) -> str:
         _state.value = s.copy(''',
         "daily task XP settlement",
     )
-    source = replace_once(
-        source,
-        '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
+    if "            bones = safeAdd(s.bones, PuppyEconomyV7.DAILY_TASK_BONES)," in source:
+        source = replace_once(
+            source,
+            '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
+            bones = safeAdd(s.bones, PuppyEconomyV7.DAILY_TASK_BONES),''',
+            '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
+            playerXp = xpSettlement.xp,
+            xpSettlementIds = xpSettlement.settlements,
+            bones = safeAdd(s.bones, PuppyEconomyV7.DAILY_TASK_BONES),''',
+            "daily task XP state V7",
+        )
+    else:
+        source = replace_once(
+            source,
+            '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
             claimedDailyTasks = s.claimedDailyTasks + id''',
-        '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
+            '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
             playerXp = xpSettlement.xp,
             xpSettlementIds = xpSettlement.settlements,
             claimedDailyTasks = s.claimedDailyTasks + id''',
-        "daily task XP state",
-    )
+            "daily task XP state",
+        )
 
     # New puppy ownership XP is a stable once-per-puppy settlement and is shared by every acquisition path.
     helper_anchor = "    private fun persistCasinoMutation("
@@ -421,6 +446,8 @@ def patch_view_model(source: str) -> str:
     # Harden claim consumption: synchronously clear the staged claim and persist the settlement ID
     # before mutating gameplay state, so duplicate lifecycle callbacks cannot settle it twice.
     def transform_afk_claim(body: str) -> str:
+        if "PuppyNotificationHistory.recordSystemReward(" in body:
+            return body
         old = '''        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
         if (amount <= 0L) return
         prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
@@ -656,6 +683,7 @@ def patch_activity(source: str) -> str:
                     }
                 }
             },
+            onClaimReward = { item -> vm.claimSystemReward(item.id) },
             onMarkAllRead = { PuppyNotificationHistory.markAllRead(context) }
         )
     }
