@@ -35,6 +35,7 @@ internal fun PuppyNotificationInboxDialog(
     items: List<PuppyNotificationItem>,
     onDismiss: () -> Unit,
     onOpenItem: (PuppyNotificationItem) -> Unit,
+    onClaimReward: (PuppyNotificationItem) -> Unit,
     onMarkAllRead: () -> Unit
 ) {
     AlertDialog(
@@ -98,6 +99,25 @@ internal fun PuppyNotificationInboxDialog(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+                                item.rewardButtonLabel?.let { label ->
+                                    Spacer(Modifier.height(8.dp))
+                                    if (item.hasClaimableReward) {
+                                        TextButton(
+                                            onClick = { onClaimReward(item) },
+                                            modifier = Modifier.align(Alignment.End)
+                                        ) {
+                                            Text(label, fontWeight = FontWeight.Black)
+                                        }
+                                    } else {
+                                        Text(
+                                            label,
+                                            modifier = Modifier.align(Alignment.End),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(
