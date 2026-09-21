@@ -11,7 +11,8 @@ enum class PuppyNotificationType {
     DAILY_REWARD,
     PARK_READY,
     APP_UPDATE,
-    ROSTER_UPDATE
+    ROSTER_UPDATE,
+    SYSTEM_REWARD
 }
 
 enum class PuppyNotificationRoute {
@@ -19,6 +20,13 @@ enum class PuppyNotificationRoute {
     REWARDS,
     ROSTER,
     RELEASE_HUB
+}
+
+enum class PuppyRewardCurrency(val displayName: String, val emoji: String) {
+    TREATS("Treats", "🍪"),
+    BONES("Bones", "🦴"),
+    PUP_COINS("Pup Coins", "🪙"),
+    CASINO_CHIPS("Casino Chips", "🐾")
 }
 
 data class PuppyNotificationItem(
@@ -29,8 +37,27 @@ data class PuppyNotificationItem(
     val createdAtMs: Long,
     val read: Boolean,
     val route: PuppyNotificationRoute,
-    val externalUrl: String? = null
-)
+    val externalUrl: String? = null,
+    val rewardCurrency: PuppyRewardCurrency? = null,
+    val rewardAmount: Long = 0L,
+    val claimed: Boolean = false
+) {
+    val hasClaimableReward: Boolean
+        get() =
+            type == PuppyNotificationType.SYSTEM_REWARD &&
+                rewardCurrency != null &&
+                rewardAmount > 0L &&
+                !claimed
+
+    val rewardButtonLabel: String?
+        get() = when {
+            type != PuppyNotificationType.SYSTEM_REWARD -> null
+            claimed -> "Claimed ✓"
+            rewardCurrency != null && rewardAmount > 0L ->
+                "Claim " + rewardAmount + " " + rewardCurrency.displayName
+            else -> null
+        }
+}
 
 internal object PuppyNotificationHistoryCodec {
     const val MAX_ITEMS = 100
@@ -50,13 +77,28 @@ internal object PuppyNotificationHistoryCodec {
         item: PuppyNotificationItem
     ): List<PuppyNotificationItem> {
         if (item.id.isBlank() || item.title.isBlank()) return normalize(items)
+        // Never replace an existing reward ID: its claimed/read state is authoritative.
         val existing = items.firstOrNull { it.id == item.id }
-        val candidate = if (existing == null) item else existing
+        val candidate = existing ?: item
         return normalize(items.filterNot { it.id == item.id } + candidate)
     }
 
     fun markRead(items: List<PuppyNotificationItem>, id: String): List<PuppyNotificationItem> =
         normalize(items.map { if (it.id == id) it.copy(read = true) else it })
+
+    fun markRewardClaimed(
+        items: List<PuppyNotificationItem>,
+        id: String
+    ): List<PuppyNotificationItem> =
+        normalize(
+            items.map {
+                if (it.id == id && it.type == PuppyNotificationType.SYSTEM_REWARD) {
+                    it.copy(read = true, claimed = true)
+                } else {
+                    it
+                }
+            }
+        )
 
     fun markAllRead(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
         normalize(items.map { if (it.read) it else it.copy(read = true) })
@@ -73,6 +115,11 @@ internal object PuppyNotificationHistoryCodec {
                 put("read", item.read)
                 put("route", item.route.name)
                 item.externalUrl?.takeIf { it.isNotBlank() }?.let { put("externalUrl", it) }
+                item.rewardCurrency?.let { put("rewardCurrency", it.name) }
+                if (item.rewardAmount > 0L) put("rewardAmount", item.rewardAmount)
+                if (item.type == PuppyNotificationType.SYSTEM_REWARD) {
+                    put("claimed", item.claimed)
+                }
             })
         }
         return array.toString()
@@ -92,8 +139,15 @@ internal object PuppyNotificationHistoryCodec {
                         PuppyNotificationType.valueOf(root.optString("type"))
                     }.getOrNull() ?: continue
                     val route = runCatching {
-                        PuppyNotificationRoute.valueOf(root.optString("route", PuppyNotificationRoute.NONE.name))
+                        PuppyNotificationRoute.valueOf(
+                            root.optString("route", PuppyNotificationRoute.NONE.name)
+                        )
                     }.getOrDefault(PuppyNotificationRoute.NONE)
+                    val rewardCurrency = root.optString("rewardCurrency")
+                        .takeIf { it.isNotBlank() }
+                        ?.let { rawCurrency ->
+                            runCatching { PuppyRewardCurrency.valueOf(rawCurrency) }.getOrNull()
+                        }
                     add(
                         PuppyNotificationItem(
                             id = id,
@@ -105,7 +159,10 @@ internal object PuppyNotificationHistoryCodec {
                             route = route,
                             externalUrl = root.optString("externalUrl")
                                 .trim()
-                                .takeIf { it.isNotBlank() }
+                                .takeIf { it.isNotBlank() },
+                            rewardCurrency = rewardCurrency,
+                            rewardAmount = root.optLong("rewardAmount", 0L).coerceAtLeast(0L),
+                            claimed = root.optBoolean("claimed", false)
                         )
                     )
                 }
@@ -131,6 +188,14 @@ internal object PuppyNotificationHistory {
     }
 
     @Synchronized
+    fun findById(context: Context, id: String): PuppyNotificationItem? {
+        if (id.isBlank()) return null
+        val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null))
+            .firstOrNull { it.id == id }
+    }
+
+    @Synchronized
     fun record(context: Context, item: PuppyNotificationItem) {
         val app = context.applicationContext
         val store = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -141,8 +206,49 @@ internal object PuppyNotificationHistory {
     }
 
     @Synchronized
+    fun recordSystemReward(
+        context: Context,
+        rewardId: String,
+        currency: PuppyRewardCurrency,
+        amount: Long,
+        title: String,
+        body: String,
+        createdAtMs: Long = System.currentTimeMillis()
+    ): Boolean {
+        if (rewardId.isBlank() || amount <= 0L || title.isBlank()) return false
+        val app = context.applicationContext
+        val store = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null))
+        val next = PuppyNotificationHistoryCodec.insert(
+            current,
+            PuppyNotificationItem(
+                id = rewardId,
+                type = PuppyNotificationType.SYSTEM_REWARD,
+                title = title,
+                body = body,
+                createdAtMs = createdAtMs.coerceAtLeast(0L),
+                read = false,
+                route = PuppyNotificationRoute.NONE,
+                rewardCurrency = currency,
+                rewardAmount = amount,
+                claimed = false
+            )
+        )
+        val committed = store.edit()
+            .putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next))
+            .commit()
+        if (committed) publish(next)
+        return committed
+    }
+
+    @Synchronized
     fun markRead(context: Context, id: String) {
         mutate(context) { PuppyNotificationHistoryCodec.markRead(it, id) }
+    }
+
+    @Synchronized
+    fun markRewardClaimed(context: Context, id: String) {
+        mutate(context) { PuppyNotificationHistoryCodec.markRewardClaimed(it, id) }
     }
 
     @Synchronized
@@ -155,9 +261,12 @@ internal object PuppyNotificationHistory {
         transform: (List<PuppyNotificationItem>) -> List<PuppyNotificationItem>
     ) {
         val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val next = transform(PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null)))
-        store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).apply()
-        publish(next)
+        val next = transform(
+            PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null))
+        )
+        if (store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).commit()) {
+            publish(next)
+        }
     }
 
     private fun publish(items: List<PuppyNotificationItem>) {
