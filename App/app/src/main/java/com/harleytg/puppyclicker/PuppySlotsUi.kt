@@ -287,7 +287,7 @@ internal fun PuppySlotsScreen(
         Spacer(Modifier.height(16.dp))
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Multipliers are the total Treat return, including the original wager.",
+            "Multipliers are the total Casino Chip return, including the original wager.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
