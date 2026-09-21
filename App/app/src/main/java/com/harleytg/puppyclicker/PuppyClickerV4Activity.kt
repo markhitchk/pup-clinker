@@ -265,7 +265,7 @@ private fun V4Wallet(state: GameState) {
             Spacer(Modifier.width(12.dp))
             V4MiniStat("👆", formatV4(state.clickPower.toLong(), state.compactNumbers), "per tap")
             Spacer(Modifier.width(12.dp))
-            V4MiniStat("⏱️", formatV4(state.autoPerSecond.toLong(), state.compactNumbers), "per sec")
+            V4MiniStat("⚡", formatV4(state.autoPerSecond.toLong(), state.compactNumbers), "Active /10")
         }
     }
 }
