@@ -307,7 +307,7 @@ internal fun PuppyRouletteScreen(
 
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Payout multipliers are total Treats returned, including the wager.",
+            "Payout multipliers are total Casino Chips returned, including the wager.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -355,15 +355,15 @@ internal fun PuppyRouletteScreen(
                 canPlayFeature &&
                     activeRound == null &&
                     PuppyRouletteEngine.isValidWager(wager) &&
-                    state.treats >= wager,
+                    state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Roulette Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Spin " + selectedBet.label + " · " + wager + " Treats"
+                    state.casinoChips < wager -> "Not Enough Chips"
+                    else -> "Spin " + selectedBet.label + " · " + wager + " Chips"
                 }
             )
         }
@@ -735,12 +735,12 @@ private fun RouletteWalletCard(state: V6GameState) {
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("🍪", fontSize = 30.sp)
+            Text("🐾", fontSize = 30.sp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
+                Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
                 Text(
-                    state.treats.toString() + " Treats",
+                    state.casinoChips.toString() + " Casino Chips",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black
                 )
@@ -885,9 +885,9 @@ private fun RouletteResultCard(outcome: PuppyRouletteOutcome) {
             Text(
                 if (outcome.won) {
                     "WIN · " + outcome.totalReturnMultiplier + "× · " +
-                        outcome.payoutTreats + " Treats returned"
+                        outcome.payoutTreats + " Chips returned"
                 } else {
-                    "No win · 0 Treats returned"
+                    "No win · 0 Chips returned"
                 },
                 color = Color.White,
                 fontWeight = FontWeight.Black,
@@ -914,7 +914,7 @@ private fun RouletteInterruptedWagerCard(
             Text("Interrupted Roulette wager", fontWeight = FontWeight.Black)
             Text(
                 (bet?.label ?: "Saved bet unavailable") +
-                    " · " + round.wagerTreats + " Treats",
+                    " · " + round.wagerTreats + " Chips",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
