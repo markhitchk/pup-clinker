@@ -65,6 +65,28 @@ class PuppyNotificationHistoryTest {
     }
 
     @Test
+    fun unclaimedSystemRewardSurvivesHistoryTrimming() {
+        val reward = PuppyNotificationItem(
+            id = "afk:protected",
+            type = PuppyNotificationType.SYSTEM_REWARD,
+            title = "AFK reward",
+            body = "claim",
+            createdAtMs = 1L,
+            read = false,
+            route = PuppyNotificationRoute.NONE,
+            rewardCurrency = PuppyRewardCurrency.TREATS,
+            rewardAmount = 500L
+        )
+        val noisy = (0 until 105).map { index ->
+            item("regular-$index", 1_000L + index)
+        }
+        val normalized = PuppyNotificationHistoryCodec.normalize(noisy + reward)
+
+        assertEquals(PuppyNotificationHistoryCodec.MAX_ITEMS, normalized.size)
+        assertTrue(normalized.any { it.id == reward.id && it.hasClaimableReward })
+    }
+
+    @Test
     fun equalTimestampUsesStableIdTieBreak() {
         val values = PuppyNotificationHistoryCodec.normalize(
             listOf(item("a", 10), item("c", 10), item("b", 10))
