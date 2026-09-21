@@ -187,7 +187,7 @@ internal fun PuppyScratchersScreen(
             revealAll = revealed,
             status = when {
                 display == null -> "Choose a card below to begin."
-                revealed -> "${display.prize.label} • ${display.payoutCasino Chips} Casino Chips returned"
+                revealed -> "${display.prize.label} • ${display.payoutTreats} Casino Chips returned"
                 round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
                     "Scratch with the Pup Coin • ${(scratchProgress * 100).toInt()}%"
                 else -> "Scratch to reveal."
@@ -212,7 +212,7 @@ internal fun PuppyScratchersScreen(
         Spacer(Modifier.height(16.dp))
         Text("Scratch cards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Every card keeps the published 91% Treat RTP, but each has a different prize distribution.",
+            "Every card keeps the published 91% Casino Chip RTP, but each has a different prize distribution.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -232,7 +232,7 @@ internal fun PuppyScratchersScreen(
                         label = {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("${card.emoji} ${card.shortName}", fontWeight = FontWeight.Bold)
-                                Text("${card.costCasino Chips} Casino Chips", style = MaterialTheme.typography.labelSmall)
+                                Text("${card.costTreats} Casino Chips", style = MaterialTheme.typography.labelSmall)
                             }
                         },
                         modifier = Modifier.weight(1f)
@@ -281,7 +281,7 @@ internal fun PuppyScratchersScreen(
             Column(Modifier.padding(14.dp)) {
                 Text("${displayCard.emoji} ${displayCard.name} odds", fontWeight = FontWeight.Black)
                 Text(
-                    "Expected Treat return: ${PuppyScratchersEngine.PUBLISHED_RTP_PERCENT}",
+                    "Expected Casino Chip return: ${PuppyScratchersEngine.PUBLISHED_RTP_PERCENT}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(6.dp))
@@ -296,7 +296,7 @@ internal fun PuppyScratchersScreen(
                 Text("• The outcome is committed before scratching.", style = MaterialTheme.typography.bodySmall)
                 Text("• 68% of the coating must be removed before automatic reveal.", style = MaterialTheme.typography.bodySmall)
                 Text("• Faster Pup Coin movement creates a slightly wider scratch trail.", style = MaterialTheme.typography.bodySmall)
-                Text("• All costs and payouts continue to use Casino Chips.", style = MaterialTheme.typography.bodySmall)
+                Text("• All costs and payouts use Casino Chips only.", style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -809,7 +809,7 @@ private fun ScratcherInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6
                 onClick = { vm.refundCasinoRound(round.roundId) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Refund ${round.wagerCasino Chips} Casino Chips")
+                Text("Refund ${round.wagerTreats} Casino Chips")
             }
         }
     }
