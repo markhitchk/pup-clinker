@@ -84,7 +84,8 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
                 prepareAfkReward(System.currentTimeMillis())
             }
         }
-        maybeShowWelcome(activity)
+        // Economy V7 routes AFK settlements into the local notification inbox.
+        // AfkWelcomeActivity remains packaged only for backward compatibility.
     }
 
     override fun onActivityStopped(activity: Activity) {
@@ -128,9 +129,24 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             return
         }
 
-        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-        if (backgroundAt <= 0L) return
+        // Migrate a claim that the legacy welcome activity had already staged but V6 had not
+        // consumed. Recording first and clearing second makes retries safe after process death.
+        val legacyClaim = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
+            .coerceIn(0L, 7_000L)
+        if (legacyClaim > 0L) {
+            val legacyClaimId = prefs.getString(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID, null)
+                ?.takeIf { it.isNotBlank() }
+                ?: "afk:legacy-claim:$legacyClaim"
+            recordAfkSystemReward(legacyClaimId, legacyClaim, now)
+            val cleared = prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_CLAIM_READY, 0L)
+                .remove(PuppyAfkPolicy.KEY_CLAIM_SETTLEMENT_ID)
+                .putString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, legacyClaimId)
+                .commit()
+            if (cleared) PupEyeSaveGuard.seal(this, prefs)
+        }
 
+        // Convert legacy pending AFK rewards directly into the new inbox format.
         val existingPending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
             .coerceIn(0L, 7_000L)
         if (existingPending > 0L) {
@@ -138,20 +154,25 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
                 .coerceIn(0L, PuppyAfkPolicy.MAX_AWAY_MS)
             val existingId = prefs.getString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, null)
                 ?.takeIf { it.isNotBlank() }
-                ?: "afk-legacy:$existingPending:$existingAway"
-            prefs.edit()
+                ?: "afk:legacy-pending:$existingPending:$existingAway"
+            recordAfkSystemReward(existingId, existingPending, now)
+            val cleared = prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, existingPending)
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, existingAway)
-                .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, existingId)
-                .apply()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+                .remove(PuppyAfkPolicy.KEY_PENDING_START)
+                .remove(PuppyAfkPolicy.KEY_PENDING_END)
+                .putString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, existingId)
+                .commit()
+            if (cleared) PupEyeSaveGuard.seal(this, prefs)
             return
         }
 
+        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+        if (backgroundAt <= 0L) return
         val settlement = PuppyAfkPolicy.prepare(backgroundAt, now)
-        if (settlement == null) {
-            // Backward/invalid clocks do not create rewards or leave an interval that can be
-            // replayed indefinitely on each foreground transition.
+        if (settlement == null || settlement.earnedTreats <= 0L) {
             prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
                 .apply()
@@ -159,22 +180,40 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
 
         val lastSettledId = prefs.getString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, null)
-        if (settlement.settlementId == lastSettledId) {
-            prefs.edit()
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-                .apply()
-            return
+        if (settlement.settlementId != lastSettledId) {
+            recordAfkSystemReward(
+                settlementId = settlement.settlementId,
+                amount = settlement.earnedTreats,
+                createdAtMs = now
+            )
         }
 
         val committed = prefs.edit()
             .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, settlement.earnedTreats)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, settlement.creditedAwayMs)
-            .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, settlement.settlementId)
-            .putLong(PuppyAfkPolicy.KEY_PENDING_START, settlement.startedAtMs)
-            .putLong(PuppyAfkPolicy.KEY_PENDING_END, settlement.endedAtMs)
+            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+            .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+            .remove(PuppyAfkPolicy.KEY_PENDING_START)
+            .remove(PuppyAfkPolicy.KEY_PENDING_END)
+            .putString(PuppyAfkPolicy.KEY_LAST_SETTLED_ID, settlement.settlementId)
             .commit()
         if (committed) PupEyeSaveGuard.seal(this, prefs)
+    }
+
+    private fun recordAfkSystemReward(
+        settlementId: String,
+        amount: Long,
+        createdAtMs: Long
+    ) {
+        PuppyNotificationHistory.recordSystemReward(
+            context = this,
+            id = settlementId,
+            title = "Your puppies saved some Treats!",
+            body = "Welcome back. Claim your saved Treats from this system message.",
+            currency = PuppyRewardCurrency.TREATS,
+            amount = amount,
+            createdAtMs = createdAtMs
+        )
     }
 
     private fun maybeShowWelcome(activity: Activity) {
