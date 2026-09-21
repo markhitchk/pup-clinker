@@ -187,7 +187,7 @@ internal fun PuppyScratchersScreen(
             revealAll = revealed,
             status = when {
                 display == null -> "Choose a card below to begin."
-                revealed -> "${display.prize.label} • ${display.payoutTreats} Treats returned"
+                revealed -> "${display.prize.label} • ${display.payoutCasino Chips} Casino Chips returned"
                 round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
                     "Scratch with the Pup Coin • ${(scratchProgress * 100).toInt()}%"
                 else -> "Scratch to reveal."
@@ -232,7 +232,7 @@ internal fun PuppyScratchersScreen(
                         label = {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("${card.emoji} ${card.shortName}", fontWeight = FontWeight.Bold)
-                                Text("${card.costTreats} Treats", style = MaterialTheme.typography.labelSmall)
+                                Text("${card.costCasino Chips} Casino Chips", style = MaterialTheme.typography.labelSmall)
                             }
                         },
                         modifier = Modifier.weight(1f)
@@ -258,15 +258,15 @@ internal fun PuppyScratchersScreen(
                 }
             },
             enabled = canPlayFeature && activeRound == null &&
-                PuppyScratchersEngine.isValidWager(wager) && state.treats >= wager,
+                PuppyScratchersEngine.isValidWager(wager) && state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Scratchers Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Buy ${selectedCard.name} · $wager Treats"
+                    state.casinoChips < wager -> "Not Enough Casino Chips"
+                    else -> "Buy ${selectedCard.name} · $wager Casino Chips"
                 }
             )
         }
@@ -296,7 +296,7 @@ internal fun PuppyScratchersScreen(
                 Text("• The outcome is committed before scratching.", style = MaterialTheme.typography.bodySmall)
                 Text("• 68% of the coating must be removed before automatic reveal.", style = MaterialTheme.typography.bodySmall)
                 Text("• Faster Pup Coin movement creates a slightly wider scratch trail.", style = MaterialTheme.typography.bodySmall)
-                Text("• All costs and payouts continue to use Treats.", style = MaterialTheme.typography.bodySmall)
+                Text("• All costs and payouts continue to use Casino Chips.", style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -780,10 +780,10 @@ private fun ScratcherWallet(state: V6GameState) {
         shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
+            Text("🐾", style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
+                Text("${state.casinoChips} Casino Chips", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             }
             Text(
                 PuppyScratchersEngine.PUBLISHED_RTP_PERCENT + " RTP",
@@ -809,7 +809,7 @@ private fun ScratcherInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6
                 onClick = { vm.refundCasinoRound(round.roundId) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Refund ${round.wagerTreats} Treats")
+                Text("Refund ${round.wagerCasino Chips} Casino Chips")
             }
         }
     }
