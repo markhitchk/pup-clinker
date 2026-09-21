@@ -141,7 +141,7 @@ internal fun PuppyScratchersScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Scratchers", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Pick a scratch card, then drag the Pup Coin across the coating. The coin has weighted movement and scratches a wider trail when you move it faster.",
+            "Pick a scratch card, then drag the Scratch Token across the coating. The coin has weighted movement and scratches a wider trail when you move it faster.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -162,14 +162,14 @@ internal fun PuppyScratchersScreen(
             ) {
                 Image(
                     painter = painterResource(R.drawable.pup_coin),
-                    contentDescription = "Pup Coin",
+                    contentDescription = "Scratch Token",
                     modifier = Modifier
                         .height(54.dp)
                         .aspectRatio(PUP_COIN_VISIBLE_ASPECT),
                     contentScale = ContentScale.Fit
                 )
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text("Pup Coin", fontWeight = FontWeight.Black)
+                    Text("Scratch Token", fontWeight = FontWeight.Black)
                     Text(
                         "Weighted drag • speed-sensitive scratch radius • physical coin rotation",
                         style = MaterialTheme.typography.bodySmall
@@ -189,7 +189,7 @@ internal fun PuppyScratchersScreen(
                 display == null -> "Choose a card below to begin."
                 revealed -> "${display.prize.label} • ${display.payoutTreats} Chips returned"
                 round?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED ->
-                    "Scratch with the Pup Coin • ${(scratchProgress * 100).toInt()}%"
+                    "Scratch with the Scratch Token • ${(scratchProgress * 100).toInt()}%"
                 else -> "Scratch to reveal."
             }
         )
@@ -745,7 +745,7 @@ private fun PupCoin(
 ) {
     Image(
         painter = painterResource(R.drawable.pup_coin),
-        contentDescription = "Pup Coin",
+        contentDescription = "Scratch Token",
         modifier = Modifier
             .offset {
                 IntOffset(
