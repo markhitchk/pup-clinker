@@ -58,7 +58,7 @@ class PuppyCasinoRewardEngineTest {
         assertEquals(1, application.state.ticketsOwned)
         assertEquals(1L, application.state.totalTicketsFound)
         assertEquals(1, application.ledger.dailyTicketAwards)
-        assertTrue("round_jackpot_01" in application.ledger.evaluatedRoundIds)
+        assertTrue("round_award_0044" in application.ledger.evaluatedRoundIds)
     }
 
     @Test
@@ -72,7 +72,7 @@ class PuppyCasinoRewardEngineTest {
         )
         val second = PuppyCasinoRewardEngine.apply(
             before = first.state,
-            settledRound = round("round_duplicate_1", payout = 10_000L),
+            settledRound = round("round_award_0040", payout = 10_000L),
             ledger = first.ledger,
             todayEpochDay = today
         )
@@ -98,7 +98,7 @@ class PuppyCasinoRewardEngineTest {
 
         assertEquals(PuppyCasinoRewardStatus.DAILY_CAP_REACHED, application.reward.status)
         assertEquals(0, application.state.ticketsOwned)
-        assertTrue("round_daily_cap1" in application.ledger.evaluatedRoundIds)
+        assertTrue("round_award_0001" in application.ledger.evaluatedRoundIds)
         assertEquals(
             PuppyCasinoRewardEngine.MAX_DAILY_CASINO_TICKETS,
             application.ledger.dailyTicketAwards
@@ -167,7 +167,7 @@ class PuppyCasinoRewardEngineTest {
         assertEquals(PuppyCasinoRewardStatus.AWARDED, application.reward.status)
         assertEquals(1, application.ledger.dailyTicketAwards)
         assertTrue("round_old_day_01" in application.ledger.evaluatedRoundIds)
-        assertTrue("round_new_day_01" in application.ledger.evaluatedRoundIds)
+        assertTrue("round_award_0034" in application.ledger.evaluatedRoundIds)
     }
 
     @Test
