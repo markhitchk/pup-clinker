@@ -746,9 +746,9 @@ private fun V6Wallet(state: V6GameState) {
     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
             V6MiniStat("🍪", formatV6(state.treats, state.compactNumbers), "Treats", Modifier.weight(1f))
-            V6MiniStat("🎟️", state.ticketsOwned.toString(), "Tickets", Modifier.weight(1f))
-            V6MiniStat("👆", formatV6(state.clickPower.toLong(), state.compactNumbers), "Per tap", Modifier.weight(1f))
-            V6MiniStat("⏱️", formatV6(state.autoPerSecond.toLong(), state.compactNumbers), "Per sec", Modifier.weight(1f))
+            V6MiniStat("🦴", formatV6(state.bones, state.compactNumbers), "Bones", Modifier.weight(1f))
+            V6MiniStat("🪙", formatV6(state.pupCoins, state.compactNumbers), "Pup Coins", Modifier.weight(1f))
+            V6MiniStat("🐾", formatV6(state.casinoChips, state.compactNumbers), "Casino Chips", Modifier.weight(1f))
         }
     }
 }
