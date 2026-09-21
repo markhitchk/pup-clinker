@@ -26,6 +26,10 @@ internal object PuppySaveCompatibility {
 
     private val longKeys = setOf(
         "treats",
+        "bones_v7",
+        "pup_coins_v7",
+        "casino_chips_v7",
+        "accepted_human_taps_v7",
         "lifetime_treats",
         "total_shop_purchases_v5",
         "total_tickets_found",
@@ -75,7 +79,9 @@ internal object PuppySaveCompatibility {
         "achievement_rewarded_v1",
         "xp_settlements_v1",
         "release_claim_ids_v1",
-        "profile_badge_ids_v1"
+        "profile_badge_ids_v1",
+        "owned_accessories_v7",
+        "system_reward_claims_v1"
     )
 
     fun normalizeMainSave(prefs: SharedPreferences): Boolean {
@@ -148,7 +154,8 @@ internal object PuppySaveCompatibility {
     private fun isExpectedIntKey(key: String): Boolean =
         key in explicitIntKeys ||
             key.startsWith("upgrade_") ||
-            key.startsWith("prestige_skill_")
+            key.startsWith("prestige_skill_") ||
+            key.startsWith("ticket_shop_purchase_")
 
     private fun numberToLong(value: Any?): Long? = when (value) {
         is Byte -> value.toLong()
