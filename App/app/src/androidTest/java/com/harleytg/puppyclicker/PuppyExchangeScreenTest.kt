@@ -36,7 +36,7 @@ class PuppyExchangeScreenTest {
 
         composeRule.onNodeWithText("Puppy Exchange").assertExists()
         composeRule.onNodeWithContentDescription("Exchange Friends tab").assertExists()
-        composeRule.onNodeWithText("Add Friend").assertExists()
+        composeRule.onNodeWithContentDescription("Add Friend").assertExists()
         composeRule.onNodeWithText("Connect").assertExists().performClick()
         composeRule.onNodeWithText("Gifts").assertExists()
         composeRule.onNodeWithText("Trade").assertExists()
