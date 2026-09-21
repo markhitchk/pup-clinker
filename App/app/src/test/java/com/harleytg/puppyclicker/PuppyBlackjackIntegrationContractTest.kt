@@ -38,11 +38,11 @@ class PuppyBlackjackIntegrationContractTest {
         val transactions = source("PuppyCasinoTransactions.kt")
 
         assertTrue(transactions.contains("fun updateAcceptedRound("))
-        assertTrue(transactions.contains("before.treats < additionalWagerTreats"))
+        assertTrue(transactions.contains("before.casinoChips < additionalWagerTreats"))
         assertTrue(transactions.contains("wagerTreats = totalWager"))
         assertTrue(transactions.contains("wagerPayload = payload"))
         assertTrue(transactions.contains("state = if (chargeAdditionalWager)"))
-        assertTrue(transactions.contains("before.copy(treats = before.treats - additionalWagerTreats)"))
+        assertTrue(transactions.contains("before.copy(casinoChips = before.casinoChips - additionalWagerTreats)"))
         assertTrue(transactions.contains("chargeAdditionalWager: Boolean = true"))
     }
 
