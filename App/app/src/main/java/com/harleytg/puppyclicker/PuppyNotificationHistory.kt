@@ -48,13 +48,21 @@ internal object PuppyNotificationHistoryCodec {
     val NEWEST_FIRST = compareByDescending<PuppyNotificationItem> { it.createdAtMs }
         .thenByDescending { it.id }
 
-    fun normalize(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
-        items.asSequence()
+    fun normalize(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> {
+        val deduped = items.asSequence()
             .filter { it.id.isNotBlank() && it.title.isNotBlank() }
             .sortedWith(NEWEST_FIRST)
             .distinctBy { it.id }
-            .take(MAX_ITEMS)
             .toList()
+        val protectedRewards = deduped.filter { it.hasClaimableReward }.take(MAX_ITEMS)
+        val protectedIds = protectedRewards.mapTo(hashSetOf()) { it.id }
+        val remaining = deduped
+            .asSequence()
+            .filterNot { it.id in protectedIds }
+            .take((MAX_ITEMS - protectedRewards.size).coerceAtLeast(0))
+            .toList()
+        return (protectedRewards + remaining).sortedWith(NEWEST_FIRST)
+    }
 
     fun insert(
         items: List<PuppyNotificationItem>,
