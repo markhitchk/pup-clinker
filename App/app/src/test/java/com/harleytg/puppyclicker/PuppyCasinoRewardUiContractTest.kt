@@ -43,4 +43,17 @@ class PuppyCasinoRewardUiContractTest {
         assertTrue(rewards.contains("V6_PUPPY_STYLES.associateBy"))
         assertTrue(rewards.contains("require(styles.all { it.redeemOnly })"))
     }
+    @Test
+    fun hubPublishesRareTicketBandsAndOnePerDayCap() {
+        val hub = source("PuppyCasinoHub.kt")
+        val rewards = source("PuppyCasinoRewards.kt")
+
+        assertTrue(hub.contains("profitable <2× 0.25%"))
+        assertTrue(hub.contains("100×+ 5%"))
+        assertTrue(hub.contains("No tier is guaranteed"))
+        assertTrue(hub.contains("At most 1 Casino-earned Upgrade Ticket"))
+        assertTrue(rewards.contains("const val MAX_DAILY_CASINO_TICKETS = 1"))
+        assertTrue(rewards.contains("ratioAtLeast(payout, wager, 100L) -> 500"))
+    }
+
 }
