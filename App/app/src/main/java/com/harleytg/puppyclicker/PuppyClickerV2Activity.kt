@@ -199,7 +199,7 @@ private fun V2PlayScreen(state: GameState, viewModel: GameViewModel) {
                 }
                 StatBlock("👆", formatValue(state.clickPower.toLong(), state.compactNumbers), "per tap")
                 Spacer(Modifier.width(14.dp))
-                StatBlock("⏱️", formatValue(state.autoPerSecond.toLong(), state.compactNumbers), "per sec")
+                StatBlock("⚡", formatValue(state.autoPerSecond.toLong(), state.compactNumbers), "Active /10")
             }
         }
 
