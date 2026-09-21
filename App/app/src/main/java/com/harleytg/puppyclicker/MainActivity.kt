@@ -783,7 +783,7 @@ private fun ShopScreen(state: GameState, viewModel: GameViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
-        ScreenHeader("Puppy Shop", "Upgrade taps and automatic treat production.")
+        ScreenHeader("Puppy Shop", "Upgrade taps and active 10-tap bonuses.")
         Spacer(Modifier.height(12.dp))
 
         Card(modifier = Modifier.fillMaxWidth()) {
