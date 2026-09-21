@@ -215,7 +215,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                     _state.update { it.copy(combo = 0) }
                 }
                 if (PuppyAppRuntime.isForeground && seconds % 120 == 0) decayNeeds()
-                if (seconds % 5 == 0) saveState()
             }
         }
     }
@@ -1070,7 +1069,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             ticketDropSerial = if (ticketDrop != null) current.ticketDropSerial + 1 else current.ticketDropSerial,
             totalTicketsFound = if (ticketDrop != null) safeAdd(current.totalTicketsFound, 1) else current.totalTicketsFound
         )
-        if (ticketDrop != null || boneDrop > 0L || pupCoinDrop > 0L) saveState()
+        // Persist the accepted tap from the active ViewModel instead of relying on a
+        // background save loop, which can let stale ViewModel instances overwrite newer state.
+        saveState()
     }
 
     fun buyCookieUpgrade(upgrade: V5Upgrade) {
