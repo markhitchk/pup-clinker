@@ -126,6 +126,10 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // The rendered Lucky Pup Wheel PNGs compile normally in debug, but AAPT2's
+            // release PNG cruncher can crash while recompressing them. Preserve the exact
+            // repository artwork and package it without destructive re-crunching.
+            isCrunchPngs = false
             signingConfigs.findByName("update")?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
