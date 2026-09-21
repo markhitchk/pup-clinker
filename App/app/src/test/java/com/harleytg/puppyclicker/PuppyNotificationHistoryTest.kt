@@ -52,4 +52,63 @@ class PuppyNotificationHistoryTest {
         assertFalse(one.first { it.id == "b" }.read)
         assertTrue(PuppyNotificationHistoryCodec.markAllRead(source).all { it.read })
     }
+    @Test
+    fun systemRewardJsonRoundTripPreservesCurrencyAmountAndClaimedState() {
+        val reward = PuppyNotificationItem(
+            id = "reward:afk:test",
+            type = PuppyNotificationType.SYSTEM_REWARD,
+            title = "Your puppies saved some Treats!",
+            body = "Claim it.",
+            createdAtMs = 42L,
+            read = false,
+            route = PuppyNotificationRoute.NONE,
+            rewardCurrency = PuppyRewardCurrency.TREATS,
+            rewardAmount = 500L,
+            claimed = false
+        )
+
+        val decoded = PuppyNotificationHistoryCodec.decode(
+            PuppyNotificationHistoryCodec.encode(listOf(reward))
+        ).single()
+
+        assertEquals(reward, decoded)
+        assertTrue(decoded.hasClaimableReward)
+        assertEquals("Claim 500 Treats", decoded.rewardButtonLabel)
+
+        val claimed = PuppyNotificationHistoryCodec.markRewardClaimed(
+            listOf(decoded),
+            decoded.id
+        ).single()
+        assertTrue(claimed.claimed)
+        assertTrue(claimed.read)
+        assertFalse(claimed.hasClaimableReward)
+        assertEquals("Claimed ✓", claimed.rewardButtonLabel)
+    }
+
+    @Test
+    fun duplicateSystemRewardIdKeepsExistingClaimState() {
+        val claimed = PuppyNotificationItem(
+            id = "reward:stable-id",
+            type = PuppyNotificationType.SYSTEM_REWARD,
+            title = "Reward",
+            body = "Already claimed",
+            createdAtMs = 10L,
+            read = true,
+            route = PuppyNotificationRoute.NONE,
+            rewardCurrency = PuppyRewardCurrency.BONES,
+            rewardAmount = 2L,
+            claimed = true
+        )
+        val replay = claimed.copy(
+            createdAtMs = 20L,
+            read = false,
+            claimed = false
+        )
+
+        val inserted = PuppyNotificationHistoryCodec.insert(listOf(claimed), replay).single()
+        assertEquals(claimed, inserted)
+        assertTrue(inserted.claimed)
+        assertFalse(inserted.hasClaimableReward)
+    }
+
 }
