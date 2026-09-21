@@ -1906,18 +1906,22 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val inventory = TicketRarity.entries.associateWith { rarity ->
             prefs.getInt(ticketKey(rarity), 0).coerceIn(0, MAX_TICKETS_PER_RARITY)
         }
+        val savedAccessory =
+            prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None"
+        val ownedAccessories = (
+            prefs.getStringSet(KEY_OWNED_ACCESSORIES, emptySet())
+                ?.filter { it in ACCESSORIES }
+                ?.toSet()
+                ?: emptySet()
+        ) + setOf("None", savedAccessory)
 
         return V6GameState(
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = style,
             unlockedPuppies = unlocked,
-            accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
-            ownedAccessories = (
-                prefs.getStringSet(KEY_OWNED_ACCESSORIES, setOf("None"))
-                    ?.filter { it in ACCESSORIES }
-                    ?.toSet()
-                    ?: setOf("None")
-            ) + "None",
+            accessory = savedAccessory,
+            // A pre-V7 selected accessory is grandfathered as owned so old saves never lose it.
+            ownedAccessories = ownedAccessories,
             treats = prefs.getLong(KEY_TREATS, 0L).coerceAtLeast(0L),
             bones = prefs.getLong(KEY_BONES, 0L).coerceAtLeast(0L),
             pupCoins = prefs.getLong(KEY_PUP_COINS, 0L).coerceAtLeast(0L),
