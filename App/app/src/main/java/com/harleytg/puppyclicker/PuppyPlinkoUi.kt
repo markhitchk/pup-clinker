@@ -110,7 +110,7 @@ internal fun PuppyPlinkoScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Drop a Treat ball through eight rows of pegs into one of nine blue-felt prize pockets. The path is committed before the animation.",
+            "Drop the Plinko ball through eight rows of pegs into one of nine blue-felt prize pockets. The path is committed before the animation.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -195,7 +195,7 @@ internal fun PuppyPlinkoScreen(
                 Text("• Eight saved left/right bounces determine one of nine bins.", style = MaterialTheme.typography.bodySmall)
                 Text("• Published RTP: ${PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT}.", style = MaterialTheme.typography.bodySmall)
                 Text("• The exact path, bin, multiplier and payout are committed before the ball moves.", style = MaterialTheme.typography.bodySmall)
-                Text("• All wagers and payouts use the existing Treat balance.", style = MaterialTheme.typography.bodySmall)
+                Text("• All wagers and payouts use the Casino Chip wallet.", style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -508,7 +508,7 @@ private fun PlinkoBoard(
                 }
             val y = baseY - bounceLift
 
-            // Paw-stamped Treat ball.
+            // Paw-stamped Plinko ball.
             drawCircle(
                 Color.Black.copy(alpha = 0.35f),
                 12.8f,
