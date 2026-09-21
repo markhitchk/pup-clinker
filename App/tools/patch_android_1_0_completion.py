@@ -352,7 +352,7 @@ def patch_view_model(source: str) -> str:
         body = replace_once(
             body,
             '''            putLong(KEY_LIFETIME, s.lifetimeTreats)
-            putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)''',
+            putLong(KEY_BONES, s.bones)''',
             '''            putLong(KEY_LIFETIME, s.lifetimeTreats)
             putLong(PuppyProgressionStore.KEY_PLAYER_XP, s.playerXp)
             putString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, PuppyProgressionStore.encodeBondMap(s.bondByPuppyId))
@@ -360,7 +360,7 @@ def patch_view_model(source: str) -> str:
             putStringSet(PuppyProgressionStore.KEY_XP_SETTLEMENTS, s.xpSettlementIds)
             putStringSet("release_claim_ids_v1", s.releaseClaimIds)
             putStringSet("profile_badge_ids_v1", s.profileBadgeIds)
-            putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)''',
+            putLong(KEY_BONES, s.bones)''',
             "save progression",
         )
         end = "        }.apply()\n"
