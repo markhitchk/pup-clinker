@@ -86,4 +86,36 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
         assertFalse(activity.contains("Offline Mode"))
         assertFalse(settings.contains("Offline Mode"))
     }
+    @Test
+    fun generatedSourcesRetainEconomyV7AfterAllPatchLayers() {
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        val transactions = generated("PuppyCasinoTransactions.kt")
+        val hub = generated("PuppyCasinoHub.kt")
+        val main = generated("PuppyMainScreensRevamp.kt")
+        val inbox = generated("PuppyNotificationInboxUi.kt")
+
+        assertTrue(vm.contains("val bones: Long = 0"))
+        assertTrue(vm.contains("val pupCoins: Long = 0"))
+        assertTrue(vm.contains("val casinoChips: Long = 0"))
+        assertTrue(vm.contains("val activeBonus: Int = 0"))
+        assertTrue(vm.contains("PuppyEconomyV7.TICKET_DROP_DENOMINATOR"))
+        assertFalse(vm.contains("current.autoPerSecond > 0"))
+
+        assertTrue(transactions.contains("before.copy(casinoChips = before.casinoChips - wagerTreats)"))
+        assertTrue(transactions.contains("state = before.copy(casinoChips = nextChips)"))
+        assertFalse(transactions.contains("lifetimeTreats = nextLifetime"))
+
+        assertTrue(hub.contains("Casino Chip Wallet"))
+        assertTrue(hub.contains("10 Treats = 1 Casino Chip"))
+        assertFalse(hub.contains("Treat Wallet"))
+
+        assertTrue(main.contains("🪙 Pup Coin Shop"))
+        assertTrue(main.contains("state.bones"))
+        assertTrue(main.contains("state.pupCoins"))
+        assertTrue(main.contains("state.casinoChips"))
+        assertFalse(main.contains(""Per sec""))
+
+        assertTrue(inbox.contains("item.hasClaimableReward"))
+    }
+
 }
