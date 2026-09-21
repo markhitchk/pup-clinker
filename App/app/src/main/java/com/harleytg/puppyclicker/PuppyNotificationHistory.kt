@@ -179,8 +179,9 @@ internal object PuppyNotificationHistory {
         val store = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val current = PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null))
         val next = PuppyNotificationHistoryCodec.insert(current, item)
-        store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).apply()
-        publish(next)
+        if (store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).commit()) {
+            publish(next)
+        }
     }
 
     @Synchronized
@@ -240,10 +241,9 @@ internal object PuppyNotificationHistory {
     ) {
         val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val next = transform(PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null)))
-        check(store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).commit()) {
-            "Unable to persist notification history"
+        if (store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).commit()) {
+            publish(next)
         }
-        publish(next)
     }
 
     private fun publish(items: List<PuppyNotificationItem>) {
