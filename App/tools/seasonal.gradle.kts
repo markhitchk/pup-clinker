@@ -27,6 +27,7 @@ tasks.named("generateProtectedPuppySources").configure {
     val puppyGachaPatch = rootProject.file("tools/patch_puppy_gacha.py")
     val androidOnePointZeroCorePatch = rootProject.file("tools/patch_android_1_0_completion.py")
     val androidOnePointZeroPatch = rootProject.file("tools/patch_android_1_0_runner.py")
+    val economyV7Patch = rootProject.file("tools/patch_economy_v7.py")
     inputs.files(
         rosterRevampPatch,
         seasonalPatch,
@@ -45,7 +46,8 @@ tasks.named("generateProtectedPuppySources").configure {
         compactViewportPatch,
         puppyGachaPatch,
         androidOnePointZeroCorePatch,
-        androidOnePointZeroPatch
+        androidOnePointZeroPatch,
+        economyV7Patch
     )
     doLast {
         val generatedSourceRoot = layout.buildDirectory
@@ -115,6 +117,11 @@ tasks.named("generateProtectedPuppySources").configure {
         // legacy-patch output, applies the 1.0 core transform, then performs narrow safety fixups.
         project.exec {
             commandLine("python3", androidOnePointZeroPatch.absolutePath, generatedSourceRoot)
+        }
+        // Economy V7 is the final invariant guard so no established patch can restore passive
+        // Treat income, Treat-based casino wallets, old ticket cadence, or unowned accessories.
+        project.exec {
+            commandLine("python3", economyV7Patch.absolutePath, generatedSourceRoot)
         }
     }
 }
