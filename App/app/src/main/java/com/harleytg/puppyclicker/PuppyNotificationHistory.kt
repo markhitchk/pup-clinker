@@ -11,7 +11,8 @@ enum class PuppyNotificationType {
     DAILY_REWARD,
     PARK_READY,
     APP_UPDATE,
-    ROSTER_UPDATE
+    ROSTER_UPDATE,
+    SYSTEM_REWARD
 }
 
 enum class PuppyNotificationRoute {
@@ -29,8 +30,18 @@ data class PuppyNotificationItem(
     val createdAtMs: Long,
     val read: Boolean,
     val route: PuppyNotificationRoute,
-    val externalUrl: String? = null
-)
+    val externalUrl: String? = null,
+    val rewardCurrency: PuppyRewardCurrency? = null,
+    val rewardAmount: Long = 0L,
+    val claimed: Boolean = false
+) {
+    val hasClaimableReward: Boolean
+        get() =
+            type == PuppyNotificationType.SYSTEM_REWARD &&
+                rewardCurrency != null &&
+                rewardAmount > 0L &&
+                !claimed
+}
 
 internal object PuppyNotificationHistoryCodec {
     const val MAX_ITEMS = 100
@@ -50,13 +61,32 @@ internal object PuppyNotificationHistoryCodec {
         item: PuppyNotificationItem
     ): List<PuppyNotificationItem> {
         if (item.id.isBlank() || item.title.isBlank()) return normalize(items)
+        // Never replace an existing settlement row. This preserves claimed/read state if the
+        // producer retries after a process restart.
         val existing = items.firstOrNull { it.id == item.id }
-        val candidate = if (existing == null) item else existing
+        val candidate = existing ?: item
         return normalize(items.filterNot { it.id == item.id } + candidate)
     }
 
+    fun findById(items: List<PuppyNotificationItem>, id: String): PuppyNotificationItem? =
+        items.firstOrNull { it.id == id }
+
     fun markRead(items: List<PuppyNotificationItem>, id: String): List<PuppyNotificationItem> =
         normalize(items.map { if (it.id == id) it.copy(read = true) else it })
+
+    fun markRewardClaimed(
+        items: List<PuppyNotificationItem>,
+        id: String
+    ): List<PuppyNotificationItem> =
+        normalize(
+            items.map { item ->
+                if (item.id == id && item.type == PuppyNotificationType.SYSTEM_REWARD) {
+                    item.copy(read = true, claimed = true)
+                } else {
+                    item
+                }
+            }
+        )
 
     fun markAllRead(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
         normalize(items.map { if (it.read) it else it.copy(read = true) })
@@ -73,6 +103,9 @@ internal object PuppyNotificationHistoryCodec {
                 put("read", item.read)
                 put("route", item.route.name)
                 item.externalUrl?.takeIf { it.isNotBlank() }?.let { put("externalUrl", it) }
+                item.rewardCurrency?.let { put("rewardCurrency", it.name) }
+                if (item.rewardAmount > 0L) put("rewardAmount", item.rewardAmount)
+                if (item.claimed) put("claimed", true)
             })
         }
         return array.toString()
@@ -92,8 +125,15 @@ internal object PuppyNotificationHistoryCodec {
                         PuppyNotificationType.valueOf(root.optString("type"))
                     }.getOrNull() ?: continue
                     val route = runCatching {
-                        PuppyNotificationRoute.valueOf(root.optString("route", PuppyNotificationRoute.NONE.name))
+                        PuppyNotificationRoute.valueOf(
+                            root.optString("route", PuppyNotificationRoute.NONE.name)
+                        )
                     }.getOrDefault(PuppyNotificationRoute.NONE)
+                    val rewardCurrency = root.optString("rewardCurrency")
+                        .takeIf { it.isNotBlank() }
+                        ?.let { rawCurrency ->
+                            runCatching { PuppyRewardCurrency.valueOf(rawCurrency) }.getOrNull()
+                        }
                     add(
                         PuppyNotificationItem(
                             id = id,
@@ -105,7 +145,10 @@ internal object PuppyNotificationHistoryCodec {
                             route = route,
                             externalUrl = root.optString("externalUrl")
                                 .trim()
-                                .takeIf { it.isNotBlank() }
+                                .takeIf { it.isNotBlank() },
+                            rewardCurrency = rewardCurrency,
+                            rewardAmount = root.optLong("rewardAmount", 0L).coerceAtLeast(0L),
+                            claimed = root.optBoolean("claimed", false)
                         )
                     )
                 }
@@ -141,8 +184,49 @@ internal object PuppyNotificationHistory {
     }
 
     @Synchronized
+    fun recordSystemReward(
+        context: Context,
+        id: String,
+        title: String,
+        body: String,
+        currency: PuppyRewardCurrency,
+        amount: Long,
+        createdAtMs: Long = System.currentTimeMillis()
+    ): PuppyNotificationItem? {
+        if (id.isBlank() || title.isBlank() || amount <= 0L) return null
+        val item = PuppyNotificationItem(
+            id = id,
+            type = PuppyNotificationType.SYSTEM_REWARD,
+            title = title,
+            body = body,
+            createdAtMs = createdAtMs.coerceAtLeast(0L),
+            read = false,
+            route = PuppyNotificationRoute.NONE,
+            rewardCurrency = currency,
+            rewardAmount = amount,
+            claimed = false
+        )
+        record(context, item)
+        return findById(context, id)
+    }
+
+    @Synchronized
+    fun findById(context: Context, id: String): PuppyNotificationItem? {
+        val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return PuppyNotificationHistoryCodec.findById(
+            PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null)),
+            id
+        )
+    }
+
+    @Synchronized
     fun markRead(context: Context, id: String) {
         mutate(context) { PuppyNotificationHistoryCodec.markRead(it, id) }
+    }
+
+    @Synchronized
+    fun markRewardClaimed(context: Context, id: String) {
+        mutate(context) { PuppyNotificationHistoryCodec.markRewardClaimed(it, id) }
     }
 
     @Synchronized
@@ -156,7 +240,9 @@ internal object PuppyNotificationHistory {
     ) {
         val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val next = transform(PuppyNotificationHistoryCodec.decode(store.getString(KEY_ITEMS, null)))
-        store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).apply()
+        check(store.edit().putString(KEY_ITEMS, PuppyNotificationHistoryCodec.encode(next)).commit()) {
+            "Unable to persist notification history"
+        }
         publish(next)
     }
 
