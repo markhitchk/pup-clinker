@@ -318,7 +318,7 @@ private fun AnimatedTreatHud(state: GameState) {
             }
             HudStat("👆", fmt(state.clickPower.toLong()), "tap")
             Spacer(Modifier.width(12.dp))
-            HudStat("⏱️", fmt(state.autoPerSecond.toLong()), "sec")
+            HudStat("⚡", fmt(state.autoPerSecond.toLong()), "active /10")
         }
     }
 }
