@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run Python patch regression tests
+      - name: Run Python patch regression tests including Economy V7
         run: python3 -m unittest tools.test_patch_puppy_exchange tools.test_patch_android_1_0_runner tools.test_patch_economy_v7
 
       - name: Set up Java 17
