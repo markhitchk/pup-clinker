@@ -313,9 +313,9 @@ private fun V6CarePanel(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     Spacer(Modifier.height(14.dp))
     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) {
         Column(Modifier.padding(12.dp)) {
-            Text("Care bonus", fontWeight = FontWeight.Black)
-            Text(if (state.careScore >= 85) "Active: +10% live automatic treats." else "Reach 85% wellness for +10% live automatic treats.", style = MaterialTheme.typography.bodySmall)
-            Text("Off-app AFK treats remain fixed at 1,000 per 24 hours.", style = MaterialTheme.typography.labelMedium)
+            Text("Active care rewards", fontWeight = FontWeight.Black)
+            Text("Every completed care action awards +1 Bone.", style = MaterialTheme.typography.bodySmall)
+            Text("AFK Treats are claimable from the notification inbox instead of being auto-deposited.", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -332,7 +332,7 @@ private fun V6DailyPanel(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Spacer(Modifier.width(10.dp))
             Column {
                 Text("${state.dailyStreak} day streak", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-                Text("Daily rewards give treats, never Upgrade Tickets.", style = MaterialTheme.typography.bodySmall)
+                Text("Daily rewards grant Treats, Bones and Pup Coins — never automatic Upgrade Tickets.", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -345,7 +345,7 @@ private fun V6DailyPanel(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Column(Modifier.weight(1f)) {
                 Text("Daily Puppy Gift", fontWeight = FontWeight.Black)
                 val nextReward = 150L + (if (state.lastDailyClaimDay == today - 1) state.dailyStreak + 1 else 1) * 25L + state.level * 10L
-                Text("${formatV6(nextReward, state.compactNumbers)} treats + mood + bond", style = MaterialTheme.typography.bodySmall)
+                Text("${formatV6(nextReward, state.compactNumbers)} Treats + 2 Bones + 3 Pup Coins", style = MaterialTheme.typography.bodySmall)
             }
             Button(onClick = vm::claimDailyReward, enabled = state.lastDailyClaimDay != today) {
                 Text(if (state.lastDailyClaimDay == today) "Claimed" else "Claim")
@@ -401,7 +401,7 @@ private fun V6DailyTask(id: String, title: String, description: String, progress
             LinearProgressIndicator({ pct }, Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Reward: ${formatV6(reward, state.compactNumbers)} 🍪", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                Text("Reward: ${formatV6(reward, state.compactNumbers)} 🍪 + 1 🦴 + 1 🪙", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
                 Button(onClick = { vm.claimDailyTask(id) }, enabled = complete && !claimed) { Text(if (claimed) "Claimed" else "Claim") }
             }
         }
@@ -416,7 +416,7 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     var pupsOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        V6Header("Puppy Shop", "Cookie upgrades, rarity-ticket upgrades and Puppy Codes.")
+        V6Header("Puppy Shop", "Active upgrades, rare tickets, Pup Coins and Puppy Codes.")
         Spacer(Modifier.height(12.dp))
         V6Wallet(state)
         Spacer(Modifier.height(10.dp))
@@ -426,28 +426,33 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         }
 
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = shopTab == 0, onClick = { shopTab = 0 }, label = { Text("🍪 Cookie Upgrades") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = shopTab == 1, onClick = { shopTab = 1 }, label = { Text("🎟️ Ticket Upgrades") }, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = shopTab == 0, onClick = { shopTab = 0 }, label = { Text("🍪 Upgrades") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = shopTab == 1, onClick = { shopTab = 1 }, label = { Text("🎟️ Tickets") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = shopTab == 2, onClick = { shopTab = 2 }, label = { Text("🪙 Pup Coins") }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
 
-        if (shopTab == 0) {
-            if ((state.prestigeSkills[PrestigeSkill.SMART_SHOPPER] ?: 0) > 0) {
-                Text("⭐ Smart Shopper discount active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(6.dp))
+        when (shopTab) {
+            0 -> {
+                if ((state.prestigeSkills[PrestigeSkill.SMART_SHOPPER] ?: 0) > 0) {
+                    Text("⭐ Smart Shopper discount active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(6.dp))
+                }
+                V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
+                    V6CookieUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(8.dp))
+                }
             }
-            V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
-                V6CookieUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(8.dp))
+            1 -> {
+                V6TicketInventory(state)
+                Spacer(Modifier.height(10.dp))
+                V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
+                    V6TicketUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(8.dp))
+                }
             }
-        } else {
-            V6TicketInventory(state)
-            Spacer(Modifier.height(10.dp))
-            V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
-                V6TicketUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(8.dp))
-            }
+            else -> PuppyPupCoinShop(state, vm)
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -466,6 +471,7 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 private fun V6CookieUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: PuppyClickerV6ViewModel) {
     val owned = state.upgrades[upgrade.id] ?: 0
     val cost = v6UpgradeTreatCost(state, upgrade)
+    val boneCost = v6UpgradeBoneCost(upgrade)
     val skill = if (upgrade.effect == V5UpgradeEffect.CLICK) state.prestigeSkills[PrestigeSkill.TAP_TRAINING] ?: 0 else state.prestigeSkills[PrestigeSkill.AUTO_TRAINING] ?: 0
     val actual = upgrade.amount + skill
     Card(Modifier.fillMaxWidth()) {
@@ -477,7 +483,10 @@ private fun V6CookieUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: Pupp
                 Text(if (skill > 0) "${upgrade.description} · Prestige value +$actual" else upgrade.description, style = MaterialTheme.typography.bodySmall)
                 Text("Owned $owned", style = MaterialTheme.typography.labelMedium)
             }
-            Button(onClick = { vm.buyCookieUpgrade(upgrade) }, enabled = state.treats >= cost) { Text("${formatV6(cost, state.compactNumbers)} 🍪") }
+            Button(
+                onClick = { vm.buyCookieUpgrade(upgrade) },
+                enabled = state.treats >= cost && state.bones >= boneCost
+            ) { Text("${formatV6(cost, state.compactNumbers)} 🍪 + $boneCost 🦴") }
         }
     }
 }
@@ -489,7 +498,8 @@ private fun V6TicketUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: Pupp
     val tickets = v6UpgradeTicketCost(state, upgrade)
     val ownedTickets = state.ticketInventory[rarity] ?: 0
     val treatFee = v6UpgradeTreatCost(state, upgrade)
-    val canBuy = ownedTickets >= tickets && state.treats >= treatFee
+    val boneCost = v6UpgradeBoneCost(upgrade)
+    val canBuy = ownedTickets >= tickets && state.treats >= treatFee && state.bones >= boneCost
     val skill = if (upgrade.effect == V5UpgradeEffect.CLICK) state.prestigeSkills[PrestigeSkill.TAP_TRAINING] ?: 0 else state.prestigeSkills[PrestigeSkill.AUTO_TRAINING] ?: 0
 
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = rarityContainerV6(rarity).copy(alpha = 0.68f))) {
@@ -508,7 +518,7 @@ private fun V6TicketUpgradeCard(state: V6GameState, upgrade: V5Upgrade, vm: Pupp
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Need $tickets · you have $ownedTickets", fontWeight = FontWeight.Bold)
-                    Text("+ ${formatV6(treatFee, state.compactNumbers)} 🍪 fee", style = MaterialTheme.typography.labelMedium)
+                    Text("+ ${formatV6(treatFee, state.compactNumbers)} 🍪 + $boneCost 🦴", style = MaterialTheme.typography.labelMedium)
                 }
                 Button(onClick = { vm.buyTicketUpgrade(upgrade) }, enabled = canBuy) { Text("Upgrade") }
             }
@@ -521,7 +531,7 @@ private fun V6TicketInventory(state: V6GameState) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(13.dp)) {
             Text("🎟️ Ticket inventory", fontWeight = FontWeight.Black)
-            Text("Every 5th accepted tap awards one ticket.", style = MaterialTheme.typography.bodySmall)
+            Text("Rare drop: about 1 Upgrade Ticket per 500 legitimate taps.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(7.dp))
             TicketRarity.entries.forEach { rarity ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
