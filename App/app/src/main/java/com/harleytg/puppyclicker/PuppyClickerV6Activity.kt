@@ -426,28 +426,33 @@ private fun V6Shop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         }
 
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = shopTab == 0, onClick = { shopTab = 0 }, label = { Text("🍪 Cookie Upgrades") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = shopTab == 1, onClick = { shopTab = 1 }, label = { Text("🎟️ Ticket Upgrades") }, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = shopTab == 0, onClick = { shopTab = 0 }, label = { Text("🍪 Upgrades") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = shopTab == 1, onClick = { shopTab = 1 }, label = { Text("🎟️ Tickets") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = shopTab == 2, onClick = { shopTab = 2 }, label = { Text("🪙 Pup Coins") }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(12.dp))
 
-        if (shopTab == 0) {
-            if ((state.prestigeSkills[PrestigeSkill.SMART_SHOPPER] ?: 0) > 0) {
-                Text("⭐ Smart Shopper discount active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(6.dp))
+        when (shopTab) {
+            0 -> {
+                if ((state.prestigeSkills[PrestigeSkill.SMART_SHOPPER] ?: 0) > 0) {
+                    Text("⭐ Smart Shopper discount active", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(6.dp))
+                }
+                V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
+                    V6CookieUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(8.dp))
+                }
             }
-            V5_UPGRADES.filter { it.type == V5UpgradeType.COOKIE }.forEach { upgrade ->
-                V6CookieUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(8.dp))
+            1 -> {
+                V6TicketInventory(state)
+                Spacer(Modifier.height(10.dp))
+                V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
+                    V6TicketUpgradeCard(state, upgrade, vm)
+                    Spacer(Modifier.height(8.dp))
+                }
             }
-        } else {
-            V6TicketInventory(state)
-            Spacer(Modifier.height(10.dp))
-            V5_UPGRADES.filter { it.type == V5UpgradeType.TICKET }.forEach { upgrade ->
-                V6TicketUpgradeCard(state, upgrade, vm)
-                Spacer(Modifier.height(8.dp))
-            }
+            else -> V6PupCoinShop(state, vm)
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -533,6 +538,75 @@ private fun V6TicketInventory(state: V6GameState) {
                     Text("×${state.ticketInventory[rarity] ?: 0}", fontWeight = FontWeight.Black)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun V6PupCoinShop(state: V6GameState, vm: PuppyClickerV6ViewModel) {
+    Text("🪙 Pup Coin Shop", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+    Text(
+        state.pupCoins.toString() + " Pup Coins · normal Shop currency, never Casino Chips",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(8.dp))
+
+    Text("Accessories", fontWeight = FontWeight.Black)
+    PuppyEconomyV7.ACCESSORY_PRICES.forEach { (accessory, price) ->
+        val owned = accessory in state.ownedAccessories
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(accessory, fontWeight = FontWeight.Bold)
+                Text(
+                    if (owned) "Owned permanently" else "$price Pup Coins",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+            when {
+                state.accessory == accessory ->
+                    OutlinedButton(onClick = { vm.setAccessory("None") }) { Text("Unequip") }
+                owned ->
+                    Button(onClick = { vm.setAccessory(accessory) }) { Text("Equip") }
+                else ->
+                    Button(
+                        onClick = { vm.buyAccessoryWithPupCoins(accessory) },
+                        enabled = state.pupCoins >= price
+                    ) { Text("Buy") }
+            }
+        }
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("None", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+        OutlinedButton(
+            onClick = { vm.setAccessory("None") },
+            enabled = state.accessory != "None"
+        ) { Text(if (state.accessory == "None") "Equipped" else "Equip") }
+    }
+
+    Spacer(Modifier.height(10.dp))
+    Text("Upgrade Tickets", fontWeight = FontWeight.Black)
+    TicketRarity.entries.forEach { rarity ->
+        val owned = state.ticketInventory[rarity] ?: 0
+        val price = PuppyEconomyV7.ticketShopPrice(
+            rarity,
+            state.ticketShopPurchases[rarity] ?: 0
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(rarity.emoji + " " + rarity.displayName, fontWeight = FontWeight.Bold)
+                Text("Owned: $owned · Next: $price Pup Coins", style = MaterialTheme.typography.labelMedium)
+            }
+            Button(
+                onClick = { vm.buyUpgradeTicketWithPupCoins(rarity) },
+                enabled = state.pupCoins >= price
+            ) { Text("Buy 1") }
         }
     }
 }
