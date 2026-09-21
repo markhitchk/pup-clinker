@@ -124,7 +124,7 @@ internal fun PuppyPlinkoScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 dropping -> "Ball in motion…"
-                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Treats returned"
+                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and drop the ball."
             }
         )
@@ -169,15 +169,15 @@ internal fun PuppyPlinkoScreen(
                 }
             },
             enabled = canPlayFeature && activeRound == null &&
-                PuppyPlinkoEngine.isValidWager(wager) && state.treats >= wager,
+                PuppyPlinkoEngine.isValidWager(wager) && state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Plinko Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Drop Ball · $wager Treats"
+                    state.casinoChips < wager -> "Not Enough Chips"
+                    else -> "Drop Ball · $wager Chips"
                 }
             )
         }
@@ -571,10 +571,10 @@ private fun PlinkoWallet(state: V6GameState) {
         shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
+            Text("🐾", style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
+                Text("${state.casinoChips} Casino Chips", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             }
             Text(PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT + " RTP", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
@@ -595,7 +595,7 @@ private fun PlinkoInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6Vie
             OutlinedButton(
                 onClick = { vm.refundCasinoRound(round.roundId) },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Refund ${round.wagerTreats} Treats") }
+            ) { Text("Refund ${round.wagerTreats} Chips") }
         }
     }
 }
