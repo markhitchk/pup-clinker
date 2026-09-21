@@ -24,6 +24,34 @@ class PuppyNotificationHistoryTest {
     }
 
     @Test
+    fun systemRewardJsonRoundTripPreservesClaimStateAndCurrency() {
+        val reward = PuppyNotificationItem(
+            id = "afk:100:200",
+            type = PuppyNotificationType.SYSTEM_REWARD,
+            title = "Your puppies saved some Treats!",
+            body = "Claim your reward.",
+            createdAtMs = 10L,
+            read = false,
+            route = PuppyNotificationRoute.NONE,
+            rewardCurrency = PuppyRewardCurrency.TREATS,
+            rewardAmount = 500L,
+            claimed = false
+        )
+        val decoded = PuppyNotificationHistoryCodec.decode(
+            PuppyNotificationHistoryCodec.encode(listOf(reward))
+        ).single()
+
+        assertEquals(PuppyRewardCurrency.TREATS, decoded.rewardCurrency)
+        assertEquals(500L, decoded.rewardAmount)
+        assertTrue(decoded.hasClaimableReward)
+
+        val claimed = PuppyNotificationHistoryCodec.markRewardClaimed(listOf(decoded), decoded.id).single()
+        assertTrue(claimed.claimed)
+        assertTrue(claimed.read)
+        assertFalse(claimed.hasClaimableReward)
+    }
+
+    @Test
     fun insertionDeduplicatesAndKeepsNewestHundred() {
         var values = emptyList<PuppyNotificationItem>()
         repeat(105) { index ->
