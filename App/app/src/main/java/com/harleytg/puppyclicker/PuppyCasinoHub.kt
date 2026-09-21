@@ -536,7 +536,7 @@ private fun CasinoRecoveryCard(
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Wager: " + round.wagerTreats + " Treats",
+                "Wager: " + round.wagerTreats + " Chips",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
