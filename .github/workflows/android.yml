@@ -48,6 +48,9 @@ jobs:
       - name: Run JVM regression tests
         run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
 
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+
       - name: Compile Android instrumentation tests
         run: gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 
