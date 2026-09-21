@@ -128,7 +128,7 @@ internal fun PuppyLuckyWheelScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Lucky Pup Wheel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Spin for Treat multipliers or a real eligible puppy unlock from the existing roster.",
+            "Spin for Casino Chip multipliers or a real eligible puppy unlock from the existing roster.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -213,7 +213,7 @@ internal fun PuppyLuckyWheelScreen(
             Column(Modifier.padding(14.dp)) {
                 Text("Published wheel", fontWeight = FontWeight.Black)
                 Text(
-                    "Treat-only expected return: ${PuppyLuckyWheelEngine.PUBLISHED_TREAT_RTP_PERCENT}. Puppy unlock value is separate.",
+                    "Casino Chip expected return: ${PuppyLuckyWheelEngine.PUBLISHED_TREAT_RTP_PERCENT}. Puppy unlock value is separate.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(6.dp))
