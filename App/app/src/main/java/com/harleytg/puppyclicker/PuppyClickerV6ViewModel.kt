@@ -1617,6 +1617,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             item.rewardCurrency == null ||
             item.rewardAmount <= 0L
         ) return false
+        if (item.claimed) return true
 
         val claimedIds = prefs.getStringSet(KEY_SYSTEM_REWARD_CLAIMS, emptySet())
             ?.toSet()
