@@ -723,7 +723,7 @@ private fun AnimatedParkCard(state: GameState, now: Long, viewModel: GameViewMod
 @Composable
 private fun AnimatedShopScreen(state: GameState, viewModel: GameViewModel) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp)) {
-        AnimatedSectionHeader("Puppy Shop", "Upgrade taps and automatic treat production.")
+        AnimatedSectionHeader("Puppy Shop", "Upgrade taps and active 10-tap bonuses.")
         Spacer(Modifier.height(12.dp))
         AnimatedTreatHud(state)
         Spacer(Modifier.height(12.dp))
