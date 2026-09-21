@@ -46,8 +46,36 @@ def patch_roster_screen(source: str) -> str:
 
     source = replace_once(
         source,
-        '''                    modifier = Modifier.weight(1f)\n                )\n            }\n        }\n\n        Spacer(Modifier.height(8.dp))\n        OutlinedTextField(''',
-        '''                    modifier = Modifier.height(if (compactRoster) 34.dp else 48.dp).weight(1f)\n                )\n            }\n        }\n\n        Spacer(Modifier.height(if (compactRoster) 5.dp else 8.dp))\n        OutlinedTextField(''',
+        '''                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            contentDescription = when (option) {
+                                RosterStatusFilter.ALL -> "Show all puppies"
+                                RosterStatusFilter.UNLOCKED -> "Show unlocked puppies"
+                                RosterStatusFilter.LOCKED -> "Show locked puppies"
+                            }
+                        }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(''',
+        '''                    modifier = Modifier.height(if (compactRoster) 34.dp else 48.dp)
+                        .weight(1f)
+                        .semantics {
+                            contentDescription = when (option) {
+                                RosterStatusFilter.ALL -> "Show all puppies"
+                                RosterStatusFilter.UNLOCKED -> "Show unlocked puppies"
+                                RosterStatusFilter.LOCKED -> "Show locked puppies"
+                            }
+                        }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(if (compactRoster) 5.dp else 8.dp))
+        OutlinedTextField(''',
         "shorter status filters",
     )
 
