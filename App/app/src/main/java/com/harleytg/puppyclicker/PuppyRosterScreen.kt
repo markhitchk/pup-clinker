@@ -162,7 +162,15 @@ internal fun PuppyRosterScreen(
                             maxLines = 1
                         )
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            contentDescription = when (option) {
+                                RosterStatusFilter.ALL -> "Show all puppies"
+                                RosterStatusFilter.UNLOCKED -> "Show unlocked puppies"
+                                RosterStatusFilter.LOCKED -> "Show locked puppies"
+                            }
+                        }
                 )
             }
         }
