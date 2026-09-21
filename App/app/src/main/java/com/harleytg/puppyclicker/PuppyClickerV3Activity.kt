@@ -305,7 +305,7 @@ private fun WalletCard(state: GameState) {
             Spacer(Modifier.width(13.dp))
             MiniStat("👆", formatV3(state.clickPower.toLong(), state.compactNumbers), "per tap")
             Spacer(Modifier.width(13.dp))
-            MiniStat("⏱️", formatV3(state.autoPerSecond.toLong(), state.compactNumbers), "per sec")
+            MiniStat("⚡", formatV3(state.autoPerSecond.toLong(), state.compactNumbers), "Active /10")
         }
     }
 }
