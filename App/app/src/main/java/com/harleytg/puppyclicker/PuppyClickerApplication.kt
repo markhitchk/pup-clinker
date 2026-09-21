@@ -128,9 +128,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             return
         }
 
-        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-        if (backgroundAt <= 0L) return
-
+        // Migrate a legacy pending AFK settlement into the notification inbox first.
         val existingPending = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
             .coerceIn(0L, 7_000L)
         if (existingPending > 0L) {
@@ -139,19 +137,32 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             val existingId = prefs.getString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, null)
                 ?.takeIf { it.isNotBlank() }
                 ?: "afk-legacy:$existingPending:$existingAway"
-            prefs.edit()
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, existingPending)
-                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, existingAway)
-                .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, existingId)
-                .apply()
+            val recorded = PuppyNotificationHistory.recordSystemReward(
+                context = this,
+                rewardId = existingId,
+                currency = PuppyRewardCurrency.TREATS,
+                amount = existingPending,
+                title = "Your puppies saved some Treats!",
+                body = "Welcome back. Claim your saved Treats from this system message."
+            )
+            if (recorded) {
+                prefs.edit()
+                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                    .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                    .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+                    .remove(PuppyAfkPolicy.KEY_PENDING_START)
+                    .remove(PuppyAfkPolicy.KEY_PENDING_END)
+                    .apply()
+            }
             return
         }
 
+        val backgroundAt = prefs.getLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+        if (backgroundAt <= 0L) return
+
         val settlement = PuppyAfkPolicy.prepare(backgroundAt, now)
         if (settlement == null) {
-            // Backward/invalid clocks do not create rewards or leave an interval that can be
-            // replayed indefinitely on each foreground transition.
             prefs.edit()
                 .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
                 .apply()
@@ -166,15 +177,28 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             return
         }
 
-        val committed = prefs.edit()
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, settlement.earnedTreats)
-            .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, settlement.creditedAwayMs)
-            .putString(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID, settlement.settlementId)
-            .putLong(PuppyAfkPolicy.KEY_PENDING_START, settlement.startedAtMs)
-            .putLong(PuppyAfkPolicy.KEY_PENDING_END, settlement.endedAtMs)
-            .commit()
-        if (committed) PupEyeSaveGuard.seal(this, prefs)
+        // New AFK rewards are inbox settlements, never an automatic wallet deposit and never
+        // routed through AfkWelcomeActivity.
+        val recorded = PuppyNotificationHistory.recordSystemReward(
+            context = this,
+            rewardId = settlement.settlementId,
+            currency = PuppyRewardCurrency.TREATS,
+            amount = settlement.earnedTreats,
+            title = "Your puppies saved some Treats!",
+            body = "Welcome back. Claim your saved Treats from this system message.",
+            createdAtMs = settlement.endedAtMs
+        )
+        if (recorded) {
+            prefs.edit()
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_BACKGROUND_AT, 0L)
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_PENDING, 0L)
+                .putLong(PuppyClickerV5ViewModel.KEY_AFK_AWAY_MS, 0L)
+                .remove(PuppyAfkPolicy.KEY_PENDING_SETTLEMENT_ID)
+                .remove(PuppyAfkPolicy.KEY_PENDING_START)
+                .remove(PuppyAfkPolicy.KEY_PENDING_END)
+                .apply()
+            PupEyeSaveGuard.seal(this, prefs)
+        }
     }
 
     private fun maybeShowWelcome(activity: Activity) {
