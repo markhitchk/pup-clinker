@@ -625,8 +625,8 @@ private fun CasinoRewardsCard(
             Spacer(Modifier.height(7.dp))
 
             Text(
-                "Drop chance: <2× profit return 5% · 2× 10% · 5× 20% · " +
-                    "20× 35% · 100×+ guaranteed.",
+                "Drop chance: profitable <2× 0.25% · 2×–<5× 0.5% · " +
+                    "5×–<20× 1% · 20×–<100× 2% · 100×+ 5%.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
