@@ -71,12 +71,12 @@ val PUPPY_STYLES = listOf(
 
 val UPGRADES = listOf(
     Upgrade("better_treats", "Better Treats", "+1 treat per tap", 25, UpgradeEffect.CLICK, 1, "🦴"),
-    Upgrade("chew_toy", "Chew Toy", "+1 treat every second", 75, UpgradeEffect.AUTO, 1, "🧸"),
+    Upgrade("chew_toy", "Chew Toy", "+1 bonus treat every 10 active taps", 75, UpgradeEffect.AUTO, 1, "🧸"),
     Upgrade("golden_bowl", "Golden Bowl", "+5 treats per tap", 350, UpgradeEffect.CLICK, 5, "🥣"),
-    Upgrade("playmate", "Playmate", "+5 treats every second", 700, UpgradeEffect.AUTO, 5, "🐕"),
+    Upgrade("playmate", "Playmate", "+5 bonus treats every 10 active taps", 700, UpgradeEffect.AUTO, 5, "🐕"),
     Upgrade("puppy_power", "Puppy Power", "+25 treats per tap", 2_500, UpgradeEffect.CLICK, 25, "⚡"),
-    Upgrade("dog_park_crew", "Dog Park Crew", "+25 treats every second", 5_000, UpgradeEffect.AUTO, 25, "🌳"),
-    Upgrade("treat_factory", "Treat Factory", "+100 treats every second", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
+    Upgrade("dog_park_crew", "Dog Park Crew", "+25 bonus treats every 10 active taps", 5_000, UpgradeEffect.AUTO, 25, "🌳"),
+    Upgrade("treat_factory", "Treat Factory", "+100 bonus treats every 10 active taps", 25_000, UpgradeEffect.AUTO, 100, "🏭"),
     Upgrade("legendary_snacks", "Legendary Snacks", "+100 treats per tap", 40_000, UpgradeEffect.CLICK, 100, "✨")
 )
 
@@ -207,7 +207,7 @@ val MISSIONS = listOf(
     Mission("combo_15", "Stay in the Groove", "Reach a 15 tap combo.", 400) { it.bestCombo >= 15 },
     Mission("care_5", "Good Pup Parent", "Complete 5 care actions.", 500) { it.careActions >= 5 },
     Mission("level_5", "Growing Up", "Reach level 5.", 750) { it.level >= 5 },
-    Mission("auto_25", "Treat Machine", "Reach 25 treats per second.", 1_000) { it.autoPerSecond >= 25 }
+    Mission("auto_25", "Active Training", "Reach 25 active-bonus Treats.", 1_000) { it.autoPerSecond >= 25 }
 )
 
 data class RedeemOutcome(val success: Boolean, val message: String)
@@ -237,13 +237,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 delay(1_000)
                 seconds += 1
                 val now = System.currentTimeMillis()
-                val current = _state.value
-
-                if (current.autoPerSecond > 0) {
-                    val moodBonus = if (current.careScore >= 80) current.autoPerSecond / 5 else 0
-                    addTreats((current.autoPerSecond + moodBonus).toLong())
-                }
-
+                // Legacy AUTO ownership is now an active 10-tap bonus, never timer income.
                 if (_state.value.combo > 0 && now - _state.value.lastTapMs > COMBO_TIMEOUT_MS) {
                     _state.update { it.copy(combo = 0) }
                 }
@@ -299,8 +293,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             1
         }
 
-        val reward = current.clickPower.toLong()
         val nextTotalTaps = safeAdd(current.totalTaps, 1)
+        val reward = safeAdd(
+            current.clickPower.toLong(),
+            if (!suspiciousThisTap && nextTotalTaps % 10L == 0L) current.autoPerSecond.toLong() else 0L
+        )
         val energyLoss = if (nextTotalTaps % 8L == 0L) 1 else 0
         val happinessGain = if (nextTotalTaps % 12L == 0L) 1 else 0
 
@@ -608,8 +605,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
-        val elapsedSeconds = ((now - lastSeen).coerceAtLeast(0) / 1_000).coerceAtMost(MAX_OFFLINE_SECONDS)
-        val offlineEarned = safeMultiply(autoPerSecond.toLong(), elapsedSeconds)
+        // Economy V7 removes AUTO-derived offline income; fixed AFK rewards are handled by V6.
+        val offlineEarned = 0L
         val savedTreats = prefs.getLong(KEY_TREATS, 0).coerceAtLeast(0)
         val savedLifetime = prefs.getLong(KEY_LIFETIME, 0).coerceAtLeast(0)
         val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000).coerceAtMost(180)
@@ -631,8 +628,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
             puppyStyle = selectedStyle,
             unlockedPuppies = unlocked,
-            treats = safeAdd(savedTreats, offlineEarned),
-            lifetimeTreats = safeAdd(savedLifetime, offlineEarned),
+            treats = savedTreats,
+            lifetimeTreats = savedLifetime,
             clickPower = clickPower,
             autoPerSecond = autoPerSecond,
             upgrades = owned,
