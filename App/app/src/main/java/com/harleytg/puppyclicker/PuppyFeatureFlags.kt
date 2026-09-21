@@ -93,7 +93,7 @@ internal object PuppyFeatureFlags {
         ),
         "puppy_casino" to PuppyFeatureFlag(
             "puppy_casino", true, true, "released", null,
-            "Puppy Casino", "Treat-wager casino games backed by the existing Puppy Clicker economy."
+            "Puppy Casino", "Casino Chip games isolated from normal Puppy Clicker progression."
         ),
         "casino_slots" to PuppyFeatureFlag(
             "casino_slots", true, true, "released", null,
@@ -101,7 +101,7 @@ internal object PuppyFeatureFlags {
         ),
         "casino_roulette" to PuppyFeatureFlag(
             "casino_roulette", true, true, "released", null,
-            "Puppy Roulette", "Single-zero roulette using Treat wagers."
+            "Puppy Roulette", "Single-zero roulette using Casino Chip wagers."
         ),
         "casino_blackjack" to PuppyFeatureFlag(
             "casino_blackjack", true, true, "released", null,
@@ -109,15 +109,15 @@ internal object PuppyFeatureFlags {
         ),
         "casino_plinko" to PuppyFeatureFlag(
             "casino_plinko", true, true, "released", null,
-            "Pup Plinko", "Eight-row Treat Plinko with committed bounce paths."
+            "Pup Plinko", "Eight-row Casino Chip Plinko with committed bounce paths."
         ),
         "casino_scratchers" to PuppyFeatureFlag(
             "casino_scratchers", true, true, "released", null,
-            "Pup Scratchers", "Six committed-prize scratch cards with weighted Pup Coin physics."
+            "Pup Scratchers", "Six committed-prize scratch cards using Casino Chips."
         ),
         "casino_lucky_wheel" to PuppyFeatureFlag(
             "casino_lucky_wheel", true, true, "released", null,
-            "Lucky Pup Wheel", "Prize wheel with Treat rewards and eligible puppy unlocks."
+            "Lucky Pup Wheel", "Prize wheel with Casino Chip rewards and eligible puppy unlocks."
         )
     )
 
