@@ -417,8 +417,9 @@ private fun SlotsMachineCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
-        color = Color(0xFF17191F),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 2.dp
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(10.dp),
@@ -429,11 +430,11 @@ private fun SlotsMachineCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
             ) {
-                val machineWidth = maxWidth * 0.82f
+                val machineWidth = maxWidth * 0.84f
                 val machineHeight =
                     machineWidth * (SLOTS_MACHINE_VISIBLE_HEIGHT / SLOTS_MACHINE_VISIBLE_WIDTH)
-                val machineLeft = maxWidth * 0.05f
-                val machineTop = maxHeight * 0.10f
+                val machineLeft = maxWidth * 0.03f
+                val machineTop = maxHeight * 0.07f
 
                 val mascotWidth = machineWidth * 0.48f
                 val mascotHeight = mascotWidth * (131f / 180f)
@@ -469,6 +470,8 @@ private fun SlotsMachineCard(
                 )
 
                 repeat(PuppySlotsEngine.REEL_COUNT) { index ->
+                    val reelLeft = SLOTS_REEL_LEFTS.getOrNull(index) ?: return@repeat
+                    val reelWidth = SLOTS_REEL_WIDTHS.getOrNull(index) ?: return@repeat
                     val idleSymbol = when (index) {
                         0 -> PuppySlotSymbol.TREAT
                         1 -> PuppySlotSymbol.PUPPY
@@ -481,10 +484,10 @@ private fun SlotsMachineCard(
                         animationsEnabled = animationsEnabled,
                         modifier = Modifier
                             .offset(
-                                x = machineLeft + machineWidth * SLOTS_REEL_LEFTS[index],
+                                x = machineLeft + machineWidth * reelLeft,
                                 y = machineTop + machineHeight * SLOTS_REEL_TOP
                             )
-                            .width(machineWidth * SLOTS_REEL_WIDTHS[index])
+                            .width(machineWidth * reelWidth)
                             .height(machineHeight * SLOTS_REEL_HEIGHT)
                     )
                 }
@@ -495,7 +498,7 @@ private fun SlotsMachineCard(
                     contentDescription = null,
                     modifier = Modifier
                         .offset(
-                            x = machineLeft + machineWidth * 0.91f,
+                            x = machineLeft + machineWidth * 0.875f,
                             y = machineTop + machineHeight * 0.49f
                         )
                         .width(leverBaseWidth)
@@ -509,29 +512,29 @@ private fun SlotsMachineCard(
                     onPull = onLeverPull,
                     modifier = Modifier
                         .offset(
-                            x = machineLeft + machineWidth * 0.91f,
+                            x = machineLeft + machineWidth * 0.875f,
                             y = machineTop + machineHeight * 0.16f
                         )
-                        .width(machineWidth * 0.15f)
-                        .height(machineWidth * 0.15f * (180f / 66f))
+                        .width(machineWidth * 0.14f)
+                        .height(machineWidth * 0.14f * (180f / 66f))
                 )
 
                 val glowColor = MaterialTheme.colorScheme.primary
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     if (reelsSpinning || winReady) {
                         val alphaBase = if (winReady) 0.80f else 0.42f
-                        SLOTS_REEL_LEFTS.indices.forEach { index ->
+                        SLOTS_REEL_LEFTS.zip(SLOTS_REEL_WIDTHS).forEach { (reelLeft, reelWidth) ->
                             drawRoundRect(
                                 color = glowColor.copy(
                                     alpha = alphaBase *
                                         if (animationsEnabled) lightPulse else 0.65f
                                 ),
                                 topLeft = Offset(
-                                    x = (machineLeft + machineWidth * SLOTS_REEL_LEFTS[index]).toPx(),
+                                    x = (machineLeft + machineWidth * reelLeft).toPx(),
                                     y = (machineTop + machineHeight * SLOTS_REEL_TOP).toPx()
                                 ),
                                 size = Size(
-                                    width = (machineWidth * SLOTS_REEL_WIDTHS[index]).toPx(),
+                                    width = (machineWidth * reelWidth).toPx(),
                                     height = (machineHeight * SLOTS_REEL_HEIGHT).toPx()
                                 ),
                                 cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
@@ -548,12 +551,12 @@ private fun SlotsMachineCard(
                 reelsSpinning -> {
                     Text(
                         "Reel 1 → Reel 2 → Reel 3",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         "Result reveals after the final reel locks.",
-                        color = Color.White.copy(alpha = 0.70f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -565,27 +568,27 @@ private fun SlotsMachineCard(
                     }
                     Text(
                         resultText,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         display.payoutTreats.toString() + " Chips returned",
-                        color = Color.White.copy(alpha = 0.82f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
                 roundState == PuppyCasinoRoundState.WAGER_ACCEPTED -> {
                     Text(
                         "Wager accepted. Outcome not committed.",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 else -> {
                     Text(
                         "Choose a wager and pull the machine.",
-                        color = Color.White.copy(alpha = 0.82f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
