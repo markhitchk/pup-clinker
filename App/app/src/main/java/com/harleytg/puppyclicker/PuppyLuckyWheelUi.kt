@@ -142,11 +142,12 @@ internal fun PuppyLuckyWheelScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 spinning -> "Wheel spinning…"
-                showResult && display!!.prize == LuckyPupWheelPrize.PUPPY_UNLOCK -> {
-                    val style = V6_PUPPY_STYLES.firstOrNull { it.id == display.puppyStyleId }
-                    "PUP UNLOCK • ${style?.name ?: display.puppyStyleId.orEmpty()}"
+                showResult && display?.prize == LuckyPupWheelPrize.PUPPY_UNLOCK -> {
+                    val style = V6_PUPPY_STYLES.firstOrNull { it.id == display?.puppyStyleId }
+                    "PUP UNLOCK • ${style?.name ?: display?.puppyStyleId.orEmpty()}"
                 }
-                showResult -> "${display!!.prize.label} • ${display.payoutTreats} Chips returned"
+                showResult && display != null ->
+                    "${display.prize.label} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and spin."
             }
         )
