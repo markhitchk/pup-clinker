@@ -446,15 +446,17 @@ private fun RouletteWheel(
         contentAlignment = Alignment.Center
     ) {
         // Static illustrated bowl/frame. It never rotates.
-        Image(
-            painter = painterResource(R.drawable.puppy_roulette_wheel_base),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.puppy_roulette_wheel_base,
+            maxDimensionPx = 900,
             contentDescription = null,
             modifier = Modifier.size(190.dp)
         )
 
         // Only the numbered rotor rotates.
-        Image(
-            painter = painterResource(R.drawable.puppy_roulette_rotor),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.puppy_roulette_rotor,
+            maxDimensionPx = 900,
             contentDescription = "European roulette rotor",
             modifier = Modifier
                 .size(154.dp)
@@ -549,8 +551,9 @@ private fun RouletteColorBoard(
                 .fillMaxWidth()
                 .aspectRatio(ROULETTE_TABLE_WIDTH / ROULETTE_TABLE_HEIGHT)
         ) {
-            Image(
-                painter = painterResource(R.drawable.puppy_roulette_table),
+            PuppyCasinoSampledImage(
+                drawableRes = R.drawable.puppy_roulette_table,
+                maxDimensionPx = 1000,
                 contentDescription = "Puppy Roulette betting table",
                 modifier = Modifier.fillMaxSize()
             )
