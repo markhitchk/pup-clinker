@@ -299,8 +299,9 @@ private fun BlackjackCartoonTable(
             .fillMaxWidth()
             .aspectRatio(1122f / 1402f)
     ) {
-        Image(
-            painter = painterResource(R.drawable.puppy_blackjack_table),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.puppy_blackjack_table,
+            maxDimensionPx = 720,
             contentDescription = "Puppy Blackjack table",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
@@ -382,8 +383,9 @@ private fun BlackjackActionPanel(
             .aspectRatio(1192f / 900f)
             .animateContentSize(animationSpec = tween(260))
     ) {
-        Image(
-            painter = painterResource(R.drawable.wooden_paw_themed_game_panel),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.wooden_paw_themed_game_panel,
+            maxDimensionPx = 720,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
@@ -468,8 +470,9 @@ private fun BlackjackImageButton(
     width: Dp,
     height: Dp
 ) {
-    Image(
-        painter = painterResource(drawable),
+    PuppyCasinoSampledImage(
+        drawableRes = drawable,
+        maxDimensionPx = 480,
         contentDescription = contentDescription,
         modifier = Modifier
             .offset(x = x, y = y)
@@ -492,8 +495,9 @@ private fun BlackjackWalletCard(state: V6GameState) {
             .fillMaxWidth()
             .aspectRatio(1400f / 467f)
     ) {
-        Image(
-            painter = painterResource(R.drawable.treat_wallet_puppy_banner),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.treat_wallet_puppy_banner,
+            maxDimensionPx = 720,
             contentDescription = "Casino Chip Wallet",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
@@ -572,11 +576,11 @@ private fun BlackjackPlayingCard(
                 scaleY = 0.80f + (0.20f * reveal.value)
             }
     ) {
-        Image(
-            painter = painterResource(
+        PuppyCasinoSampledImage(
+            drawableRes =
                 if (card == null) R.drawable.glossy_blue_paw_print_card_back
-                else R.drawable.blank_glossy_cream_card_panel
-            ),
+                else R.drawable.blank_glossy_cream_card_panel,
+            maxDimensionPx = 520,
             contentDescription = card?.label ?: "Hidden dealer card",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
