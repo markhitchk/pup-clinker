@@ -44,7 +44,7 @@ class PuppyRosterScreenTest {
         composeRule.onNodeWithText("Search puppies or ID").assertExists()
         composeRule.onNodeWithContentDescription("Sort puppies").assertExists()
         composeRule.onNodeWithContentDescription("Show favorites only").assertExists()
-        composeRule.onNodeWithText("⚙️").assertExists()
+        composeRule.onNodeWithContentDescription("Open Puppy Exchange").assertExists()
     }
 
     @Test
