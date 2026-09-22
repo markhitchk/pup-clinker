@@ -40,8 +40,8 @@ internal object PuppyAchievementsV6 {
             "big_taps", "Big Taps", "Reach 25 Treats per tap.", "💪", 25, REWARD
         ) { it.clickPower.toLong() },
         PuppyAchievementDefinition(
-            "auto_pup", "Automatic Pup", "Reach 10 Treats per second.", "⏱️", 10, REWARD
-        ) { it.autoPerSecond.toLong() },
+            "auto_pup", "Bone Collector", "Collect 50 Bones through active play.", "🦴", 50, REWARD
+        ) { it.bones },
         PuppyAchievementDefinition(
             "happy_home", "Happy Home", "Keep all four care meters at 90 or higher.", "💖", 90, REWARD
         ) { minOf(it.happiness, it.fullness, it.energy, it.cleanliness).toLong() },

@@ -10,13 +10,19 @@ class PuppyCasinoHubContractTest {
         File("src/main/java/com/harleytg/puppyclicker/" + name).readText()
 
     @Test
-    fun hubUsesExistingTreatAndTicketEconomy() {
+    fun hubUsesCasinoChipWalletAndOneWayTreatExchange() {
         val source = source("PuppyCasinoHub.kt")
 
-        assertTrue(source.contains("Treat Wallet"))
+        assertTrue(source.contains("Casino Chip Wallet"))
+        assertTrue(source.contains("state.casinoChips"))
         assertTrue(source.contains("state.treats"))
-        assertTrue(source.contains("state.ticketsOwned"))
-        assertTrue(source.contains("No chips or second wallet"))
+        assertTrue(source.contains("500L to 50L"))
+        assertTrue(source.contains("2_500L to 250L"))
+        assertTrue(source.contains("10_000L to 1_000L"))
+        assertTrue(source.contains("vm.convertTreatsToCasinoChips(treats)"))
+        assertTrue(source.contains("Chips cannot be converted back to Treats."))
+        assertFalse(source.contains("Treat Wallet"))
+        assertFalse(source.contains("No chips or second wallet"))
     }
 
     @Test

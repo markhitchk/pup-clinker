@@ -85,6 +85,8 @@ class PuppyCasinoScreenTest {
         composeRule.onNodeWithText(
             "Simulated gambling • No real-money wagering or cash prizes."
         ).assertExists()
+        composeRule.onNodeWithText("Casino Chip Wallet").assertExists()
+        composeRule.onNodeWithText("🐾 Get Casino Chips").assertExists()
         composeRule.onNodeWithText("Puppy Slots").assertExists()
         composeRule.onNodeWithText("Puppy Roulette").assertExists()
         composeRule.onNodeWithText("Puppy Blackjack").assertExists()
@@ -109,7 +111,7 @@ class PuppyCasinoScreenTest {
             ),
             completedRoundIds = emptyList()
         )
-        editor.putLong("treats", 900L)
+        editor.putLong("casino_chips_v7", 900L)
         check(editor.commit())
 
         val vm = PuppyClickerV6ViewModel(app)
@@ -126,6 +128,56 @@ class PuppyCasinoScreenTest {
 
         composeRule.onNodeWithText("Interrupted casino round").assertExists()
         composeRule.onNodeWithText("Refund Accepted Wager").assertExists()
+    }
+
+    @Test
+    fun pupCoinAccessoryPurchasePersistsOwnershipAndBlocksFreeEquip() {
+        check(prefs.edit().putLong("pup_coins_v7", 200L).commit())
+        val vm = PuppyClickerV6ViewModel(app)
+
+        vm.setAccessory("Bandana")
+        org.junit.Assert.assertEquals("None", vm.state.value.accessory)
+
+        org.junit.Assert.assertTrue(vm.buyAccessoryWithPupCoins("Bandana"))
+        org.junit.Assert.assertEquals(50L, vm.state.value.pupCoins)
+        org.junit.Assert.assertTrue("Bandana" in vm.state.value.ownedAccessories)
+
+        vm.setAccessory("Bandana")
+        org.junit.Assert.assertEquals("Bandana", vm.state.value.accessory)
+
+        val reloaded = PuppyClickerV6ViewModel(app)
+        org.junit.Assert.assertTrue("Bandana" in reloaded.state.value.ownedAccessories)
+        org.junit.Assert.assertEquals("Bandana", reloaded.state.value.accessory)
+    }
+
+    @Test
+    fun systemRewardClaimIsIdempotentAcrossRepeatedClaims() {
+        app.getSharedPreferences(PuppyNotificationHistory.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        PuppyNotificationHistory.initialize(app)
+        val rewardId = "test-system-reward-idempotency"
+        PuppyNotificationHistory.recordSystemReward(
+            context = app,
+            id = rewardId,
+            title = "System reward",
+            body = "Claim this reward.",
+            currency = PuppyRewardCurrency.TREATS,
+            amount = 500L,
+            createdAtMs = 1234L
+        )
+
+        val vm = PuppyClickerV6ViewModel(app)
+        org.junit.Assert.assertTrue(vm.claimSystemReward(rewardId))
+        org.junit.Assert.assertEquals(500L, vm.state.value.treats)
+        org.junit.Assert.assertEquals(500L, vm.state.value.lifetimeTreats)
+
+        org.junit.Assert.assertTrue(vm.claimSystemReward(rewardId))
+        org.junit.Assert.assertEquals(500L, vm.state.value.treats)
+        org.junit.Assert.assertEquals(500L, vm.state.value.lifetimeTreats)
+
+        val claimed = PuppyNotificationHistory.findById(app, rewardId)
+        org.junit.Assert.assertTrue(claimed?.claimed == true)
+        org.junit.Assert.assertTrue(claimed?.read == true)
     }
 
     @Test
@@ -150,7 +202,7 @@ class PuppyCasinoScreenTest {
 
         composeRule.onNodeWithText("⚠️ Casino recovery protection").assertExists()
         composeRule.onNodeWithText(
-            "New wagers are blocked to protect your Treat balance.",
+            "New wagers are blocked to protect your Casino Chip balance.",
             substring = true
         ).assertExists()
     }

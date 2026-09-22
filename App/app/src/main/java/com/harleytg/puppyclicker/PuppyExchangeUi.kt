@@ -39,6 +39,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -397,7 +399,10 @@ internal fun PuppyExchangeScreen(
                 FilterChip(
                     selected = tab == item,
                     onClick = { tab = item },
-                    label = { Text(item.title) }
+                    label = { Text(item.title) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Exchange ${item.title} tab"
+                    }
                 )
             }
         }
@@ -679,7 +684,10 @@ private fun ExchangeFriendsPanel(
         }
         Button(
             onClick = onAddFriend,
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.semantics {
+                contentDescription = if (peer == null) "Add Friend" else "Send Friend Request"
+            }
         ) {
             Text(if (peer == null) "👤+ Add Friend" else "Send Request", fontWeight = FontWeight.Bold)
         }

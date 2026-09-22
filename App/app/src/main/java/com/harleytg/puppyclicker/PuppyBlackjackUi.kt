@@ -216,7 +216,7 @@ internal fun PuppyBlackjackScreen(
             BlackjackActionPanel(
                 roundState = roundState,
                 activeHand = activeHand,
-                treats = state.treats,
+                chips = state.casinoChips,
                 onHit = { message = commandMessage(vm.blackjackHit()) },
                 onStand = { message = commandMessage(vm.blackjackStand()) },
                 onDouble = { message = commandMessage(vm.blackjackDouble()) },
@@ -257,14 +257,14 @@ internal fun PuppyBlackjackScreen(
                 enabled =
                     canPlayFeature &&
                         PuppyBlackjackEngine.isValidInitialWager(wager) &&
-                        state.treats >= wager,
+                        state.casinoChips >= wager,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     when {
                         !canPlayFeature -> "Blackjack Locked"
-                        state.treats < wager -> "Not Enough Treats"
-                        else -> "Deal for " + wager + " Treats"
+                        state.casinoChips < wager -> "Not Enough Chips"
+                        else -> "Deal for " + wager + " Chips"
                     }
                 )
             }
@@ -368,7 +368,7 @@ private fun BlackjackCartoonTable(
 private fun BlackjackActionPanel(
     roundState: PuppyBlackjackState,
     activeHand: PuppyBlackjackHand?,
-    treats: Long,
+    chips: Long,
     onHit: () -> Unit,
     onStand: () -> Unit,
     onDouble: () -> Unit,
@@ -399,7 +399,7 @@ private fun BlackjackActionPanel(
         )
 
         Text(
-            (activeHand?.wagerTreats ?: 0L).toString() + " Treats",
+            (activeHand?.wagerTreats ?: 0L).toString() + " Chips",
             modifier = Modifier.offset(x = maxWidth * 0.70f, y = maxHeight * 0.14f),
             color = Color.White,
             fontWeight = FontWeight.Black
@@ -433,7 +433,7 @@ private fun BlackjackActionPanel(
             enabled =
                 PuppyBlackjackEngine.canDouble(roundState) &&
                     activeHand != null &&
-                    treats >= activeHand.wagerTreats,
+                    chips >= activeHand.wagerTreats,
             onClick = onDouble,
             x = maxWidth * 0.055f,
             y = maxHeight * 0.62f,
@@ -447,7 +447,7 @@ private fun BlackjackActionPanel(
             enabled =
                 PuppyBlackjackEngine.canSplit(roundState) &&
                     activeHand != null &&
-                    treats >= activeHand.wagerTreats,
+                    chips >= activeHand.wagerTreats,
             onClick = onSplit,
             x = maxWidth * 0.515f,
             y = maxHeight * 0.62f,
@@ -494,13 +494,13 @@ private fun BlackjackWalletCard(state: V6GameState) {
     ) {
         Image(
             painter = painterResource(R.drawable.treat_wallet_puppy_banner),
-            contentDescription = "Treat Wallet",
+            contentDescription = "Casino Chip Wallet",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
         )
 
         Text(
-            state.treats.toString() + " Treats",
+            state.casinoChips.toString() + " Casino Chips",
             modifier = Modifier.offset(x = maxWidth * 0.23f, y = maxHeight * 0.49f),
             color = Color(0xFF2C261E),
             style = MaterialTheme.typography.titleMedium,
@@ -656,7 +656,7 @@ private fun BlackjackHandCard(
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    hand.wagerTreats.toString() + " Treats",
+                    hand.wagerTreats.toString() + " Chips",
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )

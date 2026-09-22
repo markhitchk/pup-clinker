@@ -199,12 +199,12 @@ internal fun PuppySlotsScreen(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("🍪", fontSize = 30.sp)
+                Text("🐾", fontSize = 30.sp)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Treat Wallet", fontWeight = FontWeight.Black)
+                    Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
                     Text(
-                        state.treats.toString() + " Treats",
+                        state.casinoChips.toString() + " Casino Chips",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black
                     )
@@ -240,7 +240,7 @@ internal fun PuppySlotsScreen(
                 canPlayFeature &&
                     activeRound == null &&
                     PuppySlotsEngine.isValidWager(wager) &&
-                    state.treats >= wager,
+                    state.casinoChips >= wager,
             leverPullToken = leverPullToken,
             onLeverPull = startSlotsRound
         )
@@ -263,7 +263,7 @@ internal fun PuppySlotsScreen(
                         onClick = { vm.refundCasinoRound(slotsRound.roundId) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Refund " + slotsRound.wagerTreats + " Treats")
+                        Text("Refund " + slotsRound.wagerTreats + " Chips")
                     }
                 }
             }
@@ -287,7 +287,7 @@ internal fun PuppySlotsScreen(
         Spacer(Modifier.height(16.dp))
         Text("Wager", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
         Text(
-            "Multipliers are the total Treat return, including the original wager.",
+            "Multipliers are the total Casino Chip return, including the original wager.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -315,15 +315,15 @@ internal fun PuppySlotsScreen(
                 canPlayFeature &&
                     activeRound == null &&
                     PuppySlotsEngine.isValidWager(wager) &&
-                    state.treats >= wager,
+                    state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Slots Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Pull Lever · " + wager + " Treats"
+                    state.casinoChips < wager -> "Not Enough Chips"
+                    else -> "Pull Lever · " + wager + " Chips"
                 }
             )
         }
@@ -570,7 +570,7 @@ private fun SlotsMachineCard(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        display.payoutTreats.toString() + " Treats returned",
+                        display.payoutTreats.toString() + " Chips returned",
                         color = Color.White.copy(alpha = 0.82f),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -730,11 +730,11 @@ private fun SlotsRulesCard() {
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "• No matching pair returns 0 Treats.",
+                "• No matching pair returns 0 Chips.",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "• The Ticket symbol is visual in Slots; this engine pays Treats only.",
+                "• The Ticket symbol is visual in Slots; this engine pays Casino Chips only.",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(

@@ -79,7 +79,7 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(scratchers.contains("detectDragGestures("))
         assertTrue(scratchers.contains("REVEAL_THRESHOLD"))
         assertTrue(scratchers.contains("revealAll = revealed"))
-        assertTrue(scratchers.contains("Pup Coin"))
+        assertTrue(scratchers.contains("Scratch Token"))
         assertTrue(scratchers.contains("speedBoost"))
         assertTrue(scratchers.contains("coinRotation"))
         assertTrue(scratchers.contains("contentAlignment = Alignment.TopStart"))

@@ -38,13 +38,13 @@ class PuppyRosterScreenTest {
         }
 
         composeRule.onNodeWithText("Puppy Roster").assertExists()
-        composeRule.onNodeWithText("All").assertExists()
-        composeRule.onNodeWithText("Unlocked").assertExists()
-        composeRule.onNodeWithText("Locked").assertExists()
+        composeRule.onNodeWithContentDescription("Show all puppies").assertExists()
+        composeRule.onNodeWithContentDescription("Show unlocked puppies").assertExists()
+        composeRule.onNodeWithContentDescription("Show locked puppies").assertExists()
         composeRule.onNodeWithText("Search puppies or ID").assertExists()
         composeRule.onNodeWithContentDescription("Sort puppies").assertExists()
         composeRule.onNodeWithContentDescription("Show favorites only").assertExists()
-        composeRule.onNodeWithContentDescription("Open settings").assertExists()
+        composeRule.onNodeWithContentDescription("Open Puppy Exchange").assertExists()
     }
 
     @Test

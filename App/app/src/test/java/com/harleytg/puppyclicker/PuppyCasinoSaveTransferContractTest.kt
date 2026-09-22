@@ -134,6 +134,6 @@ class PuppyCasinoSaveTransferContractTest {
         assertTrue(viewModel.contains("if (_casinoRecoveryIssue.value != null)"))
         assertTrue(viewModel.contains("PuppyCasinoTransactionFailure.CORRUPT_SAVE"))
         assertTrue(hub.contains("Casino recovery protection"))
-        assertTrue(hub.contains("New wagers are blocked to protect your Treat balance"))
+        assertTrue(hub.contains("New wagers are blocked to protect your Casino Chip balance"))
     }
 }

@@ -61,8 +61,8 @@ class PuppySlotsIntegrationContractTest {
 
         assertTrue(ui.contains("Published payout table"))
         assertTrue(ui.contains("Published reel weights"))
-        assertTrue(ui.contains("total Treat return, including the original wager"))
-        assertTrue(ui.contains("The Ticket symbol is visual in Slots; this engine pays Treats only."))
+        assertTrue(ui.contains("total Casino Chip return, including the original wager"))
+        assertTrue(ui.contains("The Ticket symbol is visual in Slots; this engine pays Casino Chips only."))
         assertTrue(ui.contains("PUBLISHED_RTP_PERCENT"))
     }
 }

@@ -40,6 +40,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -110,7 +111,7 @@ internal fun PuppyPlinkoScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Drop a Treat ball through eight rows of pegs into one of nine blue-felt prize pockets. The path is committed before the animation.",
+            "Drop the Plinko ball through eight rows of pegs into one of nine blue-felt prize pockets. The path is committed before the animation.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -124,7 +125,7 @@ internal fun PuppyPlinkoScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 dropping -> "Ball in motion…"
-                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Treats returned"
+                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and drop the ball."
             }
         )
@@ -169,15 +170,15 @@ internal fun PuppyPlinkoScreen(
                 }
             },
             enabled = canPlayFeature && activeRound == null &&
-                PuppyPlinkoEngine.isValidWager(wager) && state.treats >= wager,
+                PuppyPlinkoEngine.isValidWager(wager) && state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Plinko Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Drop Ball · $wager Treats"
+                    state.casinoChips < wager -> "Not Enough Chips"
+                    else -> "Drop Ball · $wager Chips"
                 }
             )
         }
@@ -195,7 +196,7 @@ internal fun PuppyPlinkoScreen(
                 Text("• Eight saved left/right bounces determine one of nine bins.", style = MaterialTheme.typography.bodySmall)
                 Text("• Published RTP: ${PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT}.", style = MaterialTheme.typography.bodySmall)
                 Text("• The exact path, bin, multiplier and payout are committed before the ball moves.", style = MaterialTheme.typography.bodySmall)
-                Text("• All wagers and payouts use the existing Treat balance.", style = MaterialTheme.typography.bodySmall)
+                Text("• All wagers and payouts use the Casino Chip wallet.", style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -508,7 +509,7 @@ private fun PlinkoBoard(
                 }
             val y = baseY - bounceLift
 
-            // Paw-stamped Treat ball.
+            // Paw-stamped Plinko ball.
             drawCircle(
                 Color.Black.copy(alpha = 0.35f),
                 12.8f,
@@ -571,10 +572,10 @@ private fun PlinkoWallet(state: V6GameState) {
         shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
+            Text("🐾", style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
+                Text("${state.casinoChips} Casino Chips", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             }
             Text(PuppyPlinkoEngine.PUBLISHED_RTP_PERCENT + " RTP", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
@@ -595,7 +596,7 @@ private fun PlinkoInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6Vie
             OutlinedButton(
                 onClick = { vm.refundCasinoRound(round.roundId) },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Refund ${round.wagerTreats} Treats") }
+            ) { Text("Refund ${round.wagerTreats} Chips") }
         }
     }
 }

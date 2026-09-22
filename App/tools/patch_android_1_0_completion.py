@@ -61,13 +61,11 @@ def patch_view_model(source: str) -> str:
         "XP level curve",
     )
 
-    # Manual taps earn XP, independent of Treat multiplier size.
+    # Manual taps earn XP, independent of Treat multiplier / active-bonus size.
     source = replace_once(
         source,
-        '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
-            totalTaps = nextTotalTaps,''',
-        '''            lifetimeTreats = safeAdd(current.lifetimeTreats, current.clickPower.toLong()),
-            playerXp = PuppyProgression.addXp(current.playerXp, PuppyXpEvent.MANUAL_TAP),
+        '''            totalTaps = nextTotalTaps,''',
+        '''            playerXp = PuppyProgression.addXp(current.playerXp, PuppyXpEvent.MANUAL_TAP),
             totalTaps = nextTotalTaps,''',
         "manual tap XP",
     )
@@ -135,10 +133,8 @@ def patch_view_model(source: str) -> str:
     )
     source = replace_once(
         source,
-        '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
-            claimedDailyTasks = s.claimedDailyTasks + id''',
-        '''            lifetimeTreats = safeAdd(s.lifetimeTreats, goal.rewardTreats),
-            playerXp = xpSettlement.xp,
+        '''            claimedDailyTasks = s.claimedDailyTasks + id''',
+        '''            playerXp = xpSettlement.xp,
             xpSettlementIds = xpSettlement.settlements,
             claimedDailyTasks = s.claimedDailyTasks + id''',
         "daily task XP state",
@@ -356,7 +352,7 @@ def patch_view_model(source: str) -> str:
         body = replace_once(
             body,
             '''            putLong(KEY_LIFETIME, s.lifetimeTreats)
-            putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)''',
+            putLong(KEY_BONES, s.bones)''',
             '''            putLong(KEY_LIFETIME, s.lifetimeTreats)
             putLong(PuppyProgressionStore.KEY_PLAYER_XP, s.playerXp)
             putString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, PuppyProgressionStore.encodeBondMap(s.bondByPuppyId))
@@ -364,7 +360,7 @@ def patch_view_model(source: str) -> str:
             putStringSet(PuppyProgressionStore.KEY_XP_SETTLEMENTS, s.xpSettlementIds)
             putStringSet("release_claim_ids_v1", s.releaseClaimIds)
             putStringSet("profile_badge_ids_v1", s.profileBadgeIds)
-            putLong(KEY_TOTAL_SHOP, s.totalShopPurchases)''',
+            putLong(KEY_BONES, s.bones)''',
             "save progression",
         )
         end = "        }.apply()\n"
@@ -421,6 +417,8 @@ def patch_view_model(source: str) -> str:
     # Harden claim consumption: synchronously clear the staged claim and persist the settlement ID
     # before mutating gameplay state, so duplicate lifecycle callbacks cannot settle it twice.
     def transform_afk_claim(body: str) -> str:
+        if "PuppyNotificationHistory.recordSystemReward(" in body:
+            return body
         old = '''        val amount = prefs.getLong(KEY_AFK_CLAIM_READY, 0L).coerceAtLeast(0L)
         if (amount <= 0L) return
         prefs.edit().putLong(KEY_AFK_CLAIM_READY, 0L).apply()
@@ -656,6 +654,7 @@ def patch_activity(source: str) -> str:
                     }
                 }
             },
+            onClaimReward = { item -> vm.claimSystemReward(item.id) },
             onMarkAllRead = { PuppyNotificationHistory.markAllRead(context) }
         )
     }

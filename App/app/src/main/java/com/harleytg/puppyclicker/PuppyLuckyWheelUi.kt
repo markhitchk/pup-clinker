@@ -128,7 +128,7 @@ internal fun PuppyLuckyWheelScreen(
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Lucky Pup Wheel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
-            "Spin for Treat multipliers or a real eligible puppy unlock from the existing roster.",
+            "Spin for Casino Chip multipliers or a real eligible puppy unlock from the existing roster.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -146,7 +146,7 @@ internal fun PuppyLuckyWheelScreen(
                     val style = V6_PUPPY_STYLES.firstOrNull { it.id == display.puppyStyleId }
                     "PUP UNLOCK • ${style?.name ?: display.puppyStyleId.orEmpty()}"
                 }
-                showResult -> "${display!!.prize.label} • ${display.payoutTreats} Treats returned"
+                showResult -> "${display!!.prize.label} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and spin."
             }
         )
@@ -190,15 +190,15 @@ internal fun PuppyLuckyWheelScreen(
                 }
             },
             enabled = canPlayFeature && activeRound == null &&
-                PuppyLuckyWheelEngine.isValidWager(wager) && state.treats >= wager,
+                PuppyLuckyWheelEngine.isValidWager(wager) && state.casinoChips >= wager,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 when {
                     !canPlayFeature -> "Wheel Locked"
                     activeRound != null -> "Round In Progress"
-                    state.treats < wager -> "Not Enough Treats"
-                    else -> "Spin Wheel · $wager Treats"
+                    state.casinoChips < wager -> "Not Enough Chips"
+                    else -> "Spin Wheel · $wager Chips"
                 }
             )
         }
@@ -213,7 +213,7 @@ internal fun PuppyLuckyWheelScreen(
             Column(Modifier.padding(14.dp)) {
                 Text("Published wheel", fontWeight = FontWeight.Black)
                 Text(
-                    "Treat-only expected return: ${PuppyLuckyWheelEngine.PUBLISHED_TREAT_RTP_PERCENT}. Puppy unlock value is separate.",
+                    "Casino Chip expected return: ${PuppyLuckyWheelEngine.PUBLISHED_TREAT_RTP_PERCENT}. Puppy unlock value is separate.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(Modifier.height(6.dp))
@@ -447,10 +447,10 @@ private fun WheelWallet(state: V6GameState) {
         shadowElevation = 2.dp
     ) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🍪", style = MaterialTheme.typography.headlineSmall)
+            Text("🐾", style = MaterialTheme.typography.headlineSmall)
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text("${state.treats} Treats", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
+                Text("${state.casinoChips} Casino Chips", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             }
             Text("2% PUP", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
@@ -472,7 +472,7 @@ private fun WheelInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6View
                 onClick = { vm.refundCasinoRound(round.roundId) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Refund ${round.wagerTreats} Treats")
+                Text("Refund ${round.wagerTreats} Chips")
             }
         }
     }

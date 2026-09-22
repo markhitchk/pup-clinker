@@ -48,6 +48,9 @@ jobs:
       - name: Run JVM regression tests
         run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
 
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+
       - name: Compile Android instrumentation tests
         run: gradle --no-daemon :app:assembleDebugAndroidTest --stacktrace
 
@@ -177,9 +180,4 @@ jobs:
           working-directory: App
           script: |
             adb logcat -c
-            if ! gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace; then
-              echo "::group::Instrumentation crash logcat"
-              adb logcat -d -v threadtime '*:E' AndroidRuntime:I ActivityManager:I TestRunner:I || true
-              echo "::endgroup::"
-              exit 1
-            fi
+            gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace || { echo "::group::Instrumentation crash logcat"; adb logcat -d -v threadtime '*:E' AndroidRuntime:I ActivityManager:I TestRunner:I || true; echo "::endgroup::"; exit 1; }

@@ -11,7 +11,7 @@ class PuppyCasinoTransactionEngineTest {
 
     @Test
     fun disabledCasinoBlocksOnlyNewWagers() {
-        val before = V6GameState(treats = 1_000, lifetimeTreats = 5_000)
+        val before = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 1_000)
         val blocked = PuppyCasinoTransactionEngine.acceptWager(
             before, null, emptyList(), roundId, PuppyCasinoGame.SLOTS,
             100, false, 1000
@@ -22,22 +22,23 @@ class PuppyCasinoTransactionEngineTest {
     }
 
     @Test
-    fun acceptingWagerDeductsTreatsWithoutChangingLifetimeTreats() {
-        val before = V6GameState(treats = 1_000, lifetimeTreats = 5_000)
+    fun acceptingWagerDeductsCasinoChipsWithoutTouchingProgression() {
+        val before = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 1_000)
         val accepted = PuppyCasinoTransactionEngine.acceptWager(
             before, null, emptyList(), roundId, PuppyCasinoGame.ROULETTE,
             250, true, 1000
         )
         assertTrue(accepted.success)
-        assertEquals(750L, accepted.state.treats)
+        assertEquals(750L, accepted.state.casinoChips)
+        assertEquals(777L, accepted.state.treats)
         assertEquals(5_000L, accepted.state.lifetimeTreats)
         assertEquals(PuppyCasinoRoundState.WAGER_ACCEPTED, accepted.activeRound?.state)
-        assertEquals(250L, accepted.activeRound?.wagerTreats)
+        assertEquals(250L, accepted.activeRound?.wagerChips)
     }
 
     @Test
     fun onlyOneCasinoRoundCanBeActiveAtATime() {
-        val before = V6GameState(treats = 1_000)
+        val before = V6GameState(treats = 777, casinoChips = 1_000)
         val active = PuppyCasinoRound(
             "round_active_01", PuppyCasinoGame.SLOTS, 100,
             PuppyCasinoRoundState.WAGER_ACCEPTED, 1000
@@ -52,8 +53,8 @@ class PuppyCasinoTransactionEngineTest {
     }
 
     @Test
-    fun activeRoundUpdateCanAtomicallyAddWagerAndPayload() {
-        val before = V6GameState(treats = 900, lifetimeTreats = 5_000)
+    fun blackjackAdditionalWagerUsesCasinoChips() {
+        val before = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 900)
         val active = PuppyCasinoRound(
             roundId = roundId,
             game = PuppyCasinoGame.BLACKJACK,
@@ -73,15 +74,16 @@ class PuppyCasinoTransactionEngineTest {
         )
 
         assertTrue(updated.success)
-        assertEquals(800L, updated.state.treats)
-        assertEquals(200L, updated.activeRound?.wagerTreats)
-        assertEquals("{\"step\":2}", updated.activeRound?.wagerPayload)
+        assertEquals(800L, updated.state.casinoChips)
+        assertEquals(777L, updated.state.treats)
         assertEquals(5_000L, updated.state.lifetimeTreats)
+        assertEquals(200L, updated.activeRound?.wagerChips)
+        assertEquals("{\"step\":2}", updated.activeRound?.wagerPayload)
     }
 
     @Test
-    fun activeRoundUpdateRejectsExtraWagerWithoutFunds() {
-        val before = V6GameState(treats = 50)
+    fun additionalWagerRejectsInsufficientCasinoChips() {
+        val before = V6GameState(treats = 10_000, casinoChips = 50)
         val active = PuppyCasinoRound(
             roundId = roundId,
             game = PuppyCasinoGame.BLACKJACK,
@@ -101,14 +103,14 @@ class PuppyCasinoTransactionEngineTest {
         )
 
         assertFalse(updated.success)
-        assertEquals(PuppyCasinoTransactionFailure.INSUFFICIENT_TREATS, updated.failure)
+        assertEquals(PuppyCasinoTransactionFailure.INSUFFICIENT_CHIPS, updated.failure)
         assertEquals(before, updated.state)
         assertEquals(active, updated.activeRound)
     }
 
     @Test
-    fun outcomeIsCommittedBeforeSettlementAndDoesNotChangeBalance() {
-        val afterWager = V6GameState(treats = 900, lifetimeTreats = 5_000)
+    fun outcomeCommitDoesNotChangeAnyWalletBalance() {
+        val afterWager = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 900)
         val active = PuppyCasinoRound(
             roundId, PuppyCasinoGame.BLACKJACK, 100,
             PuppyCasinoRoundState.WAGER_ACCEPTED, 1000
@@ -120,12 +122,12 @@ class PuppyCasinoTransactionEngineTest {
         assertTrue(committed.success)
         assertEquals(afterWager, committed.state)
         assertEquals(PuppyCasinoRoundState.OUTCOME_COMMITTED, committed.activeRound?.state)
-        assertEquals(250L, committed.activeRound?.payoutTreats)
+        assertEquals(250L, committed.activeRound?.payoutChips)
     }
 
     @Test
-    fun blackjackExampleReturns250AndCountsOnly150ProfitAsLifetime() {
-        val afterWager = V6GameState(treats = 900, lifetimeTreats = 5_000)
+    fun payoutCreditsCasinoChipsAndNeverLifetimeTreats() {
+        val afterWager = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 900)
         val committed = PuppyCasinoRound(
             roundId = roundId,
             game = PuppyCasinoGame.BLACKJACK,
@@ -140,15 +142,16 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, committed, emptyList(), roundId
         )
         assertTrue(settled.success)
-        assertEquals(1_150L, settled.state.treats)
-        assertEquals(5_150L, settled.state.lifetimeTreats)
+        assertEquals(1_150L, settled.state.casinoChips)
+        assertEquals(777L, settled.state.treats)
+        assertEquals(5_000L, settled.state.lifetimeTreats)
         assertNull(settled.activeRound)
         assertTrue(roundId in settled.completedRoundIds)
     }
 
     @Test
-    fun losingRoundSettlesWithoutIncreasingLifetimeTreats() {
-        val afterWager = V6GameState(treats = 900, lifetimeTreats = 5_000)
+    fun losingRoundLeavesProgressionUntouched() {
+        val afterWager = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 900)
         val committed = PuppyCasinoRound(
             roundId = roundId,
             game = PuppyCasinoGame.ROULETTE,
@@ -163,13 +166,14 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, committed, emptyList(), roundId
         )
         assertTrue(settled.success)
-        assertEquals(900L, settled.state.treats)
+        assertEquals(900L, settled.state.casinoChips)
+        assertEquals(777L, settled.state.treats)
         assertEquals(5_000L, settled.state.lifetimeTreats)
     }
 
     @Test
-    fun acceptedRoundCanRefundAfterFeatureDisable() {
-        val afterWager = V6GameState(treats = 900, lifetimeTreats = 5_000)
+    fun acceptedRoundRefundReturnsCasinoChipsAfterFeatureDisable() {
+        val afterWager = V6GameState(treats = 777, lifetimeTreats = 5_000, casinoChips = 900)
         val accepted = PuppyCasinoRound(
             roundId, PuppyCasinoGame.SLOTS, 100,
             PuppyCasinoRoundState.WAGER_ACCEPTED, 1000
@@ -178,7 +182,8 @@ class PuppyCasinoTransactionEngineTest {
             afterWager, accepted, emptyList(), roundId
         )
         assertTrue(refunded.success)
-        assertEquals(1_000L, refunded.state.treats)
+        assertEquals(1_000L, refunded.state.casinoChips)
+        assertEquals(777L, refunded.state.treats)
         assertEquals(5_000L, refunded.state.lifetimeTreats)
         assertNull(refunded.activeRound)
     }
@@ -195,11 +200,12 @@ class PuppyCasinoTransactionEngineTest {
             payoutTreats = 200,
             outcomeCommittedAtMs = 1500
         )
+        val before = V6GameState(treats = 777, casinoChips = 900)
         val refunded = PuppyCasinoTransactionEngine.refund(
-            V6GameState(treats = 900), committed, emptyList(), roundId
+            before, committed, emptyList(), roundId
         )
         val secondOutcome = PuppyCasinoTransactionEngine.commitOutcome(
-            V6GameState(treats = 900), committed, emptyList(), roundId,
+            before, committed, emptyList(), roundId,
             "{\"symbols\":[\"OTHER\"]}", 999, 2000
         )
         assertFalse(refunded.success)
@@ -211,7 +217,7 @@ class PuppyCasinoTransactionEngineTest {
     @Test
     fun completedRoundIdPreventsDuplicateSettlement() {
         val result = PuppyCasinoTransactionEngine.settle(
-            V6GameState(treats = 1_000), null, listOf(roundId), roundId
+            V6GameState(treats = 777, casinoChips = 1_000), null, listOf(roundId), roundId
         )
         assertFalse(result.success)
         assertEquals(PuppyCasinoTransactionFailure.DUPLICATE_ROUND, result.failure)
@@ -226,9 +232,10 @@ class PuppyCasinoTransactionEngineTest {
             PuppyCasinoRoundState.WAGER_ACCEPTED, 1000
         )
         val refunded = PuppyCasinoTransactionEngine.refund(
-            V6GameState(treats = 900), accepted, prior, roundId
+            V6GameState(treats = 777, casinoChips = 900), accepted, prior, roundId
         )
         assertTrue(refunded.success)
+        assertEquals(1_000L, refunded.state.casinoChips)
         assertEquals(PuppyCasinoTransactionEngine.MAX_COMPLETED_ROUND_IDS, refunded.completedRoundIds.size)
         assertEquals(roundId, refunded.completedRoundIds.last())
     }

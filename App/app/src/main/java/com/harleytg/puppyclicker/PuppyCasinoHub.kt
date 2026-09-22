@@ -206,7 +206,7 @@ internal fun PuppyCasinoHub(
             fontWeight = FontWeight.Black
         )
         Text(
-            "Treat-based games using your existing Puppy Clicker economy.",
+            "Casino Chip games isolated from normal Puppy Clicker progression.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -219,7 +219,7 @@ internal fun PuppyCasinoHub(
 
         Spacer(Modifier.height(14.dp))
 
-        CasinoWalletCard(state)
+        CasinoWalletCard(state, vm)
 
         Spacer(Modifier.height(12.dp))
 
@@ -238,7 +238,7 @@ internal fun PuppyCasinoHub(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "No chips or second wallet: every wager and payout uses Treats.",
+                    "All wagers, payouts, refunds and extra wagers use Casino Chips only.",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -264,7 +264,7 @@ internal fun PuppyCasinoHub(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "New wagers are blocked to protect your Treat balance. Restore a known-good .pupsave or use the existing full local-data reset if you intentionally want to discard the damaged save.",
+                        "New wagers are blocked to protect your Casino Chip balance. Restore a known-good .pupsave or use the existing full local-data reset if you intentionally want to discard the damaged save.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -320,7 +320,7 @@ internal fun PuppyCasinoHub(
         CasinoGameCard(
             emoji = "📍",
             title = "Pup Plinko",
-            detail = "Drop a Treat ball through eight rows of pegs into published multiplier bins.",
+            detail = "Drop the Plinko ball through eight rows of pegs into published multiplier bins.",
             flag = plinkoFlag,
             canStart = plinkoCanStart,
             onOpen = { page = "plinko" }
@@ -342,7 +342,7 @@ internal fun PuppyCasinoHub(
         CasinoGameCard(
             emoji = "🎡",
             title = "Lucky Pup Wheel",
-            detail = "Spin for Treat multipliers or a casino-eligible puppy unlock.",
+            detail = "Spin for Casino Chip multipliers or a casino-eligible puppy unlock.",
             flag = luckyWheelFlag,
             canStart = luckyWheelCanStart,
             onOpen = { page = "lucky_wheel" }
@@ -388,34 +388,55 @@ internal fun PuppyCasinoHub(
 }
 
 @Composable
-private fun CasinoWalletCard(state: V6GameState) {
+private fun CasinoWalletCard(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("🍪", fontSize = 34.sp)
-            Column(Modifier.weight(1f)) {
-                Text("Treat Wallet", fontWeight = FontWeight.Black)
-                Text(
-                    state.treats.toString() + " Treats",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black
-                )
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("🐾", fontSize = 34.sp)
+                Column(Modifier.weight(1f)) {
+                    Text("Casino Chip Wallet", fontWeight = FontWeight.Black)
+                    Text(
+                        "${state.casinoChips} Casino Chips",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "${state.treats} Treats available for exchange",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("Tickets", style = MaterialTheme.typography.labelSmall)
-                Text(
-                    "🎟️ " + state.ticketsOwned,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+
+            Spacer(Modifier.height(12.dp))
+            Text("🐾 Get Casino Chips", fontWeight = FontWeight.Black)
+            Text(
+                "Casino Chips are isolated from progression. Chips cannot be converted back to Treats.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            listOf(
+                500L to 50L,
+                2_500L to 250L,
+                10_000L to 1_000L
+            ).forEach { (treats, chips) ->
+                OutlinedButton(
+                    onClick = { vm.convertTreatsToCasinoChips(treats) },
+                    enabled = state.treats >= treats,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                ) {
+                    Text("$treats Treats → $chips Chips")
+                }
             }
         }
     }
@@ -515,7 +536,7 @@ private fun CasinoRecoveryCard(
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "Wager: " + round.wagerTreats + " Treats",
+                "Wager: " + round.wagerTreats + " Chips",
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
@@ -604,8 +625,8 @@ private fun CasinoRewardsCard(
             Spacer(Modifier.height(7.dp))
 
             Text(
-                "Drop chance: <2× profit return 5% · 2× 10% · 5× 20% · " +
-                    "20× 35% · 100×+ guaranteed.",
+                "Drop chance: profitable <2× 0.25% · 2×–<5× 0.5% · " +
+                    "5×–<20× 1% · 20×–<100× 2% · 100×+ 5%.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
