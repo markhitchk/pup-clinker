@@ -36,8 +36,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -80,6 +80,31 @@ private const val SCRATCH_BORDER_WIDTH = 1426f
 private const val SCRATCH_BORDER_HEIGHT = 1077f
 private const val PUP_COIN_VISIBLE_ASPECT = 960f / 973f
 
+private class ScratchGridState {
+    private val cells = BooleanArray(SCRATCH_CELL_COUNT)
+
+    var count by mutableIntStateOf(0)
+        private set
+
+    fun isMarked(index: Int): Boolean =
+        index in cells.indices && cells[index]
+
+    fun mark(index: Int): Int {
+        if (index !in cells.indices || cells[index]) return 0
+        cells[index] = true
+        return 1
+    }
+
+    fun commitAdded(added: Int) {
+        if (added > 0) count = (count + added).coerceAtMost(SCRATCH_CELL_COUNT)
+    }
+
+    fun clear() {
+        cells.fill(false)
+        count = 0
+    }
+}
+
 @Composable
 internal fun PuppyScratchersScreen(
     state: V6GameState,
@@ -107,8 +132,8 @@ internal fun PuppyScratchersScreen(
         ?: PuppyScratchersEngine.cardTypes.first()
     val displayCard = round?.let { PuppyScratchersEngine.cardForWager(it.wagerTreats) }
         ?: selectedCard
-    val scratched = remember(round?.roundId) { mutableStateMapOf<Int, Boolean>() }
-    val scratchProgress = scratched.size.toFloat() / SCRATCH_CELL_COUNT.toFloat()
+    val scratched = remember(round?.roundId) { ScratchGridState() }
+    val scratchProgress = scratched.count.toFloat() / SCRATCH_CELL_COUNT.toFloat()
 
     LaunchedEffect(round?.roundId) {
         if (round != null) revealed = false
@@ -152,26 +177,27 @@ internal fun PuppyScratchersScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+            color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 2.dp
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(R.drawable.pup_coin),
+                PuppyCasinoSampledImage(
+                    drawableRes = R.drawable.pup_coin,
+                    maxDimensionPx = 420,
                     contentDescription = "Scratch Token",
                     modifier = Modifier
-                        .height(54.dp)
+                        .height(46.dp)
                         .aspectRatio(PUP_COIN_VISIBLE_ASPECT),
                     contentScale = ContentScale.Fit
                 )
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     Text("Scratch Token", fontWeight = FontWeight.Black)
                     Text(
-                        "Weighted drag • speed-sensitive scratch radius • physical coin rotation",
+                        "Drag to scratch • faster movement makes a wider trail",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -307,7 +333,7 @@ internal fun PuppyScratchersScreen(
 private fun ScratcherCartoonStage(
     card: PuppyScratcherCardType,
     outcome: PuppyScratcherOutcome?,
-    scratched: MutableMap<Int, Boolean>,
+    scratched: ScratchGridState,
     enabled: Boolean,
     revealAll: Boolean,
     status: String
@@ -334,8 +360,9 @@ private fun ScratcherCartoonStage(
                 )
         )
 
-        Image(
-            painter = painterResource(R.drawable.puppy_scratch_play_border),
+        PuppyCasinoSampledImage(
+            drawableRes = R.drawable.puppy_scratch_play_border,
+            maxDimensionPx = 900,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
@@ -366,7 +393,7 @@ private fun ScratcherCartoonStage(
 private fun ScratcherCard(
     card: PuppyScratcherCardType,
     outcome: PuppyScratcherOutcome?,
-    scratched: MutableMap<Int, Boolean>,
+    scratched: ScratchGridState,
     enabled: Boolean,
     revealAll: Boolean,
     modifier: Modifier = Modifier
@@ -400,24 +427,32 @@ private fun ScratcherCard(
                             listOf(Color.White.copy(alpha = 0.45f), Color.Transparent, Color(0xFFFFD965).copy(alpha = 0.10f))
                         )
                     )
-                    .padding(18.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val symbols = outcome?.symbols ?: listOf("?", "?", "?")
-                symbols.forEach { symbol ->
+                symbols.take(3).forEach { symbol ->
                     Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color.White.copy(alpha = 0.70f),
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.78f),
                         border = BorderStroke(1.dp, Color(0xFFD7B557).copy(alpha = 0.55f)),
-                        shadowElevation = 2.dp
+                        shadowElevation = 1.dp
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(symbol, style = MaterialTheme.typography.displaySmall)
-                            Text("PRIZE", color = Color(0xFF2F3A36), fontWeight = FontWeight.Black)
+                            Text(symbol, style = MaterialTheme.typography.headlineMedium)
+                            Text(
+                                "PRIZE",
+                                color = Color(0xFF2F3A36),
+                                fontWeight = FontWeight.Black,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
@@ -455,11 +490,12 @@ private fun ScratcherCard(
                             )
                         }
 
-                        fun markPoint(position: Offset, speedPxPerMs: Float) {
+                        fun markPoint(position: Offset, speedPxPerMs: Float): Int {
                             val cellW = size.width.toFloat() / SCRATCH_COLUMNS.toFloat()
                             val cellH = size.height.toFloat() / SCRATCH_ROWS.toFloat()
                             val radius = scratchRadius(speedPxPerMs)
                             val radiusSquared = radius * radius
+                            var added = 0
 
                             for (row in 0 until SCRATCH_ROWS) {
                                 for (col in 0 until SCRATCH_COLUMNS) {
@@ -468,11 +504,11 @@ private fun ScratcherCard(
                                     val dx = centerX - position.x
                                     val dy = centerY - position.y
                                     if ((dx * dx) + (dy * dy) <= radiusSquared) {
-                                        val index = row * SCRATCH_COLUMNS + col
-                                        if (index !in scratched) scratched[index] = true
+                                        added += scratched.mark(row * SCRATCH_COLUMNS + col)
                                     }
                                 }
                             }
+                            return added
                         }
 
                         fun markSegment(from: Offset, to: Offset, speedPxPerMs: Float) {
@@ -481,10 +517,11 @@ private fun ScratcherCard(
                             val distance = sqrt((dx * dx) + (dy * dy))
                             val spacing = maxOf(4f, scratchRadius(speedPxPerMs) * 0.42f)
                             val steps = ceil(distance / spacing).toInt().coerceAtLeast(1)
+                            var added = 0
 
                             for (step in 1..steps) {
                                 val t = step.toFloat() / steps.toFloat()
-                                markPoint(
+                                added += markPoint(
                                     Offset(
                                         x = from.x + (dx * t),
                                         y = from.y + (dy * t)
@@ -492,6 +529,7 @@ private fun ScratcherCard(
                                     speedPxPerMs
                                 )
                             }
+                            scratched.commitAdded(added)
                         }
 
                         detectDragGestures(
@@ -500,7 +538,7 @@ private fun ScratcherCard(
                                 coinPosition = clampedStart
                                 coinRotation = 0f
                                 lastPointerTimeMillis = 0L
-                                markPoint(clampedStart, 0f)
+                                scratched.commitAdded(markPoint(clampedStart, 0f))
                             },
                             onDragEnd = {
                                 coinRotation *= 0.28f
@@ -556,7 +594,7 @@ private fun ScratcherCard(
                 for (row in 0 until SCRATCH_ROWS) {
                     for (col in 0 until SCRATCH_COLUMNS) {
                         val index = row * SCRATCH_COLUMNS + col
-                        if (index in scratched) {
+                        if (scratched.isMarked(index)) {
                             drawRect(
                                 color = Color.Transparent,
                                 topLeft = Offset(col * cellW, row * cellH),
@@ -743,8 +781,9 @@ private fun PupCoin(
     diameter: androidx.compose.ui.unit.Dp,
     rotation: Float
 ) {
-    Image(
-        painter = painterResource(R.drawable.pup_coin),
+    PuppyCasinoSampledImage(
+        drawableRes = R.drawable.pup_coin,
+        maxDimensionPx = 420,
         contentDescription = "Scratch Token",
         modifier = Modifier
             .offset {
