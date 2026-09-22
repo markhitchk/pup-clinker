@@ -128,7 +128,8 @@ internal fun PuppyPlinkoScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 dropping -> "Ball in motion…"
-                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Chips returned"
+                showResult && display != null ->
+                    "Landed on ${display.multiplierLabel} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and drop the ball."
             }
         )
