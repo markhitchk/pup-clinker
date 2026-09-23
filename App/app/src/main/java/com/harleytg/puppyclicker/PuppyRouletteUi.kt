@@ -171,7 +171,16 @@ internal fun PuppyRouletteScreen(
         delay(if (state.animationsEnabled) 2_600 else 250)
         revealFinishedRoundId = round.roundId
 
-        val settled = vm.settleCasinoRound(round.roundId)
+        val settled = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.ROULETTE,
+            "settle"
+        ) {
+            vm.settleCasinoRound(round.roundId)
+        }.getOrNull()
+        if (settled == null) {
+            message = "Roulette recovered from a runtime error while settling the round."
+            return@LaunchedEffect
+        }
         if (!settled.success) {
             message = "Unable to settle the saved Roulette round: " +
                 (settled.failure?.name ?: "unknown error")
@@ -280,7 +289,13 @@ internal fun PuppyRouletteScreen(
                 RouletteInterruptedWagerCard(
                     round = round,
                     bet = recoveredBet,
-                    onRefund = { vm.refundCasinoRound(round.roundId) }
+                    onRefund = {
+                PuppyCasinoRuntimeGuard.run(PuppyCasinoGame.ROULETTE, "refund") {
+                    vm.refundCasinoRound(round.roundId)
+                }.onFailure {
+                    message = "Roulette recovered from a runtime error while refunding the round."
+                }
+            }
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -332,11 +347,18 @@ internal fun PuppyRouletteScreen(
         Button(
             onClick = {
                 message = null
-                val result = vm.startRouletteSpin(
-                    bet = selectedBet,
-                    wagerTreats = wager
-                )
-                if (!result.success) {
+                val result = PuppyCasinoRuntimeGuard.run(
+                    PuppyCasinoGame.ROULETTE,
+                    "start"
+                ) {
+                    vm.startRouletteSpin(
+                        bet = selectedBet,
+                        wagerTreats = wager
+                    )
+                }.getOrNull()
+                if (result == null) {
+                    message = "Roulette recovered from a runtime error. No new spin was started."
+                } else if (!result.success) {
                     message = when (result.failure) {
                         PuppyRouletteStartFailure.INVALID_WAGER -> "Invalid Roulette wager."
                         PuppyRouletteStartFailure.INVALID_BET -> "Invalid Roulette bet."
