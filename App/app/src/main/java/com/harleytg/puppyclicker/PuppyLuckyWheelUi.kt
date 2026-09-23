@@ -102,7 +102,16 @@ internal fun PuppyLuckyWheelScreen(
         revealFinishedRoundId = null
         delay(if (state.animationsEnabled) 2_650 else 250)
         revealFinishedRoundId = savedRound.roundId
-        val settled = vm.settleCasinoRound(savedRound.roundId)
+        val settled = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.LUCKY_WHEEL,
+            "settle"
+        ) {
+            vm.settleCasinoRound(savedRound.roundId)
+        }.getOrNull()
+        if (settled == null) {
+            message = "Lucky Pup Wheel recovered from a runtime error while settling the round."
+            return@LaunchedEffect
+        }
         if (!settled.success) {
             message = "Unable to settle the saved wheel spin: " +
                 (settled.failure?.name ?: "unknown error")
@@ -142,11 +151,12 @@ internal fun PuppyLuckyWheelScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 spinning -> "Wheel spinning…"
-                showResult && display!!.prize == LuckyPupWheelPrize.PUPPY_UNLOCK -> {
+                showResult && display?.prize == LuckyPupWheelPrize.PUPPY_UNLOCK -> {
                     val style = V6_PUPPY_STYLES.firstOrNull { it.id == display.puppyStyleId }
                     "PUP UNLOCK • ${style?.name ?: display.puppyStyleId.orEmpty()}"
                 }
-                showResult -> "${display!!.prize.label} • ${display.payoutTreats} Chips returned"
+                showResult && display != null ->
+                    "${display.prize.label} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and spin."
             }
         )
@@ -183,8 +193,15 @@ internal fun PuppyLuckyWheelScreen(
         Button(
             onClick = {
                 message = null
-                val result = vm.startLuckyPupWheel(wager)
-                if (!result.success) {
+                val result = PuppyCasinoRuntimeGuard.run(
+                    PuppyCasinoGame.LUCKY_WHEEL,
+                    "start"
+                ) {
+                    vm.startLuckyPupWheel(wager)
+                }.getOrNull()
+                if (result == null) {
+                    message = "Lucky Pup Wheel recovered from a runtime error. No new spin was started."
+                } else if (!result.success) {
                     message = "Wheel spin blocked: " +
                         (result.transactionFailure?.name ?: result.failure?.name ?: "unknown error")
                 }
@@ -469,7 +486,11 @@ private fun WheelInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6View
             Text("The wager was accepted before a wheel outcome was committed.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { vm.refundCasinoRound(round.roundId) },
+                onClick = {
+            PuppyCasinoRuntimeGuard.run(PuppyCasinoGame.LUCKY_WHEEL, "refund") {
+                vm.refundCasinoRound(round.roundId)
+            }
+        },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Refund ${round.wagerTreats} Chips")
