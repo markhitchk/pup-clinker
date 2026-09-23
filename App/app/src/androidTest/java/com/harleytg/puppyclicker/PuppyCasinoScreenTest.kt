@@ -206,4 +206,41 @@ class PuppyCasinoScreenTest {
             substring = true
         ).assertExists()
     }
+
+    @Test
+    fun everyCasinoGameScreenRendersWithoutCrashing() {
+        val vm = PuppyClickerV6ViewModel(app)
+        val currentGame = androidx.compose.runtime.mutableStateOf(PuppyCasinoGame.SLOTS)
+
+        composeRule.setContent {
+            MaterialTheme {
+                when (currentGame.value) {
+                    PuppyCasinoGame.SLOTS -> PuppySlotsScreen(vm.state.value, vm, {})
+                    PuppyCasinoGame.ROULETTE -> PuppyRouletteScreen(vm.state.value, vm, {})
+                    PuppyCasinoGame.BLACKJACK -> PuppyBlackjackScreen(vm.state.value, vm, {})
+                    PuppyCasinoGame.PLINKO -> PuppyPlinkoScreen(vm.state.value, vm, {})
+                    PuppyCasinoGame.SCRATCHERS -> PuppyScratchersScreen(vm.state.value, vm, {})
+                    PuppyCasinoGame.LUCKY_WHEEL -> PuppyLuckyWheelScreen(vm.state.value, vm, {})
+                }
+            }
+        }
+
+        val screens = listOf(
+            PuppyCasinoGame.SLOTS to "Puppy Slots",
+            PuppyCasinoGame.ROULETTE to "Puppy Roulette",
+            PuppyCasinoGame.BLACKJACK to "Puppy Blackjack",
+            PuppyCasinoGame.PLINKO to "Pup Plinko",
+            PuppyCasinoGame.SCRATCHERS to "Pup Scratchers",
+            PuppyCasinoGame.LUCKY_WHEEL to "Lucky Pup Wheel"
+        )
+
+        screens.forEach { (game, title) ->
+            composeRule.runOnUiThread {
+                currentGame.value = game
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText(title).assertExists()
+        }
+    }
+
 }
