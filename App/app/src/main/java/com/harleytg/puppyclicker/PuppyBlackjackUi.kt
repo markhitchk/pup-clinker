@@ -81,6 +81,23 @@ internal fun PuppyBlackjackScreen(
     var lastOutcomePayload by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
 
+    fun runBlackjackCommand(
+        actionName: String,
+        action: () -> PuppyBlackjackCommandResult
+    ) {
+        val result = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.BLACKJACK,
+            actionName
+        ) {
+            action()
+        }.getOrNull()
+        message = if (result == null) {
+            "Blackjack recovered from a runtime error while processing $actionName."
+        } else {
+            commandMessage(result)
+        }
+    }
+
     val blackjackRound = activeRound?.takeIf { it.game == PuppyCasinoGame.BLACKJACK }
     val roundState = remember(blackjackRound?.wagerPayload) {
         PuppyBlackjackStateCodec.decodeAndValidate(blackjackRound?.wagerPayload)
@@ -111,7 +128,16 @@ internal fun PuppyBlackjackScreen(
             round.state == PuppyCasinoRoundState.WAGER_ACCEPTED &&
             savedState.complete
         ) {
-            val finalized = vm.finalizePendingBlackjackRound()
+            val finalized = PuppyCasinoRuntimeGuard.run(
+                PuppyCasinoGame.BLACKJACK,
+                "finalize"
+            ) {
+                vm.finalizePendingBlackjackRound()
+            }.getOrNull()
+            if (finalized == null) {
+                message = "Blackjack recovered from a runtime error while finalizing the hand."
+                return@LaunchedEffect
+            }
             if (!finalized.success) {
                 message = "Unable to commit the completed Blackjack hand: " +
                     (finalized.failure?.name ?: "unknown error")
@@ -137,7 +163,16 @@ internal fun PuppyBlackjackScreen(
             lastOutcomePayload = round.outcomePayload
             delay(if (state.animationsEnabled) 1_500 else 250)
 
-            val settled = vm.settleCasinoRound(round.roundId)
+            val settled = PuppyCasinoRuntimeGuard.run(
+                PuppyCasinoGame.BLACKJACK,
+                "settle"
+            ) {
+                vm.settleCasinoRound(round.roundId)
+            }.getOrNull()
+            if (settled == null) {
+                message = "Blackjack recovered from a runtime error while settling the hand."
+                return@LaunchedEffect
+            }
             if (!settled.success) {
                 message = "Unable to settle the saved Blackjack round: " +
                     (settled.failure?.name ?: "unknown error")
@@ -217,10 +252,10 @@ internal fun PuppyBlackjackScreen(
                 roundState = roundState,
                 activeHand = activeHand,
                 chips = state.casinoChips,
-                onHit = { message = commandMessage(vm.blackjackHit()) },
-                onStand = { message = commandMessage(vm.blackjackStand()) },
-                onDouble = { message = commandMessage(vm.blackjackDouble()) },
-                onSplit = { message = commandMessage(vm.blackjackSplit()) }
+                onHit = { runBlackjackCommand("hit") { vm.blackjackHit() } },
+                onStand = { runBlackjackCommand("stand") { vm.blackjackStand() } },
+                onDouble = { runBlackjackCommand("double") { vm.blackjackDouble() } },
+                onSplit = { runBlackjackCommand("split") { vm.blackjackSplit() } }
             )
         } else if (activeRound == null) {
             Spacer(Modifier.height(16.dp))
@@ -253,7 +288,11 @@ internal fun PuppyBlackjackScreen(
             Spacer(Modifier.height(10.dp))
 
             Button(
-                onClick = { message = commandMessage(vm.startBlackjackRound(wager)) },
+                onClick = {
+                    runBlackjackCommand("start") {
+                        vm.startBlackjackRound(wager)
+                    }
+                },
                 enabled =
                     canPlayFeature &&
                         PuppyBlackjackEngine.isValidInitialWager(wager) &&
