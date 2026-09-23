@@ -115,6 +115,7 @@ internal fun PuppyCasinoHub(
     }
 
     LaunchedEffect(showCasinoWarning, page) {
+        PuppyCasinoRuntimeGuard.markPage(page)
         if (!showCasinoWarning && page == "hub" && !reportedCasinoOpen) {
             reportedCasinoOpen = true
             PuppySupportReporting.reportTelemetry(context, "casino_open")
