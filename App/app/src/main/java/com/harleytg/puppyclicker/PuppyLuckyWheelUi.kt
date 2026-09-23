@@ -312,129 +312,108 @@ private fun LuckyWheelBoard(
     modifier: Modifier = Modifier
 ) {
     val rotation = remember { Animatable(0f) }
-    val pointerBounce = remember { Animatable(0f) }
     val prizes = LuckyPupWheelPrize.entries
-    val weights = remember { prizes.map { it.weightPercent.toFloat() } }
+    val colors = listOf(
+        Color(0xFF34A9ED),
+        Color(0xFF788592),
+        Color(0xFF14B985),
+        Color(0xFF18A1E7),
+        Color(0xFF8B45E6),
+        Color(0xFFFFC239),
+        Color(0xFF24B8D5)
+    )
+    val palette = puppyCasinoCartoonPalette()
+    val primary = MaterialTheme.colorScheme.primary
+    val paint = remember {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textAlign = Paint.Align.CENTER
+            textSize = 26f
+            typeface = Typeface.DEFAULT_BOLD
+        }
+    }
 
     LaunchedEffect(spinKey, outcome?.segmentIndex, animationsEnabled) {
-        val result = outcome
-        if (result == null) {
-            rotation.snapTo(0f)
-            pointerBounce.snapTo(0f)
-            return@LaunchedEffect
-        }
-
-        val centerAngle = PuppyCasinoCartoonMath.segmentCenterDegrees(
-            weights = weights,
-            index = result.segmentIndex
-        )
+        val result = outcome ?: return@LaunchedEffect
+        val weights = prizes.map { it.weightPercent.toFloat() }
+        val centerAngle = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, result.segmentIndex)
         val target = 360f * 6f + (-90f - centerAngle)
-
         if (!animationsEnabled || spinKey == null) {
             rotation.snapTo(target)
-            pointerBounce.snapTo(0f)
         } else {
             rotation.snapTo(0f)
-            pointerBounce.snapTo(0f)
-
-            launch {
-                repeat(18) { click ->
-                    val bounce = 13f - (click * 0.35f).coerceAtMost(6f)
-                    pointerBounce.animateTo(-bounce, tween(30))
-                    pointerBounce.animateTo(4f, tween(38))
-                    pointerBounce.animateTo(0f, tween(32))
-                    delay(25L + click * 2L)
-                }
-            }
-
-            rotation.animateTo(
-                target,
-                animationSpec = tween(2_500, easing = FastOutSlowInEasing)
-            )
+            rotation.animateTo(target, tween(2_500, easing = FastOutSlowInEasing))
         }
     }
 
-    BoxWithConstraints(
-        modifier = modifier.aspectRatio(420f / 447f)
-    ) {
-        val wheelSize = maxWidth * 0.82f
-        val wheelX = (maxWidth - wheelSize) * 0.5f
-        val wheelY = maxHeight * 0.075f
+    Box(modifier.fillMaxWidth().height(245.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(224.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f + 4f)
+            val outerRadius = size.minDimension * 0.49f
+            val rimRadius = outerRadius * 0.92f
+            val topLeft = Offset(center.x - rimRadius, center.y - rimRadius)
+            val wheelSize = Size(rimRadius * 2f, rimRadius * 2f)
 
-        Box(
-            modifier = Modifier
-                .offset(x = wheelX, y = wheelY)
-                .size(wheelSize)
-                .graphicsLayer {
-                    rotationZ = rotation.value
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(R.drawable.puppy_lucky_wheel_disc),
-                contentDescription = "Lucky Pup Wheel prize disc",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.FillBounds
+            drawCircle(
+                color = palette.shadow.copy(alpha = 0.42f),
+                radius = outerRadius,
+                center = Offset(center.x + 3f, center.y + 7f)
             )
+            drawCircle(palette.woodLight, outerRadius, center)
+            drawCircle(primary, outerRadius * 0.93f, center)
+            drawCircle(Color.White.copy(alpha = 0.20f), outerRadius * 0.87f, center, style = Stroke(4f))
 
+            var cursor = -90f
             prizes.forEachIndexed { index, prize ->
-                val angleDegrees = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, index)
-                val angleRadians = angleDegrees * PI / 180.0
-                val labelRadius = wheelSize * 0.29f
-                val labelWidth = wheelSize * 0.19f
-                val x = wheelSize * 0.5f +
-                    labelRadius * cos(angleRadians).toFloat() -
-                    labelWidth * 0.5f
-                val y = wheelSize * 0.5f +
-                    labelRadius * sin(angleRadians).toFloat() -
-                    10.dp
-
-                Text(
-                    text = luckyWheelSegmentLabel(prize),
-                    modifier = Modifier
-                        .offset(x = x, y = y)
-                        .width(labelWidth),
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 10.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    maxLines = 1
+                val sweep = prize.weightPercent * 3.6f
+                val start = cursor + rotation.value
+                drawArc(
+                    color = colors[index % colors.size],
+                    startAngle = start,
+                    sweepAngle = sweep + 0.35f,
+                    useCenter = true,
+                    topLeft = topLeft,
+                    size = wheelSize
                 )
+                drawArc(
+                    color = Color.White.copy(alpha = 0.12f),
+                    startAngle = start,
+                    sweepAngle = sweep + 0.35f,
+                    useCenter = true,
+                    topLeft = topLeft,
+                    size = Size(wheelSize.width, wheelSize.height * 0.88f)
+                )
+                val angle = (start + sweep / 2f) * PI / 180.0
+                val labelRadius = rimRadius * 0.68f
+                val x = center.x + cos(angle).toFloat() * labelRadius
+                val y = center.y + sin(angle).toFloat() * labelRadius
+                drawContext.canvas.nativeCanvas.drawText(prize.emoji, x, y + 9f, paint)
+                cursor += sweep
             }
+
+            repeat(16) { index ->
+                val angle = index * (2.0 * PI / 16.0)
+                val studRadius = outerRadius * 0.86f
+                val x = center.x + cos(angle).toFloat() * studRadius
+                val y = center.y + sin(angle).toFloat() * studRadius
+                drawCircle(palette.goldDeep.copy(alpha = 0.35f), 6f, Offset(x + 1.5f, y + 2f))
+                drawCircle(palette.gold, 5f, Offset(x, y))
+                drawCircle(Color.White.copy(alpha = 0.75f), 1.7f, Offset(x - 1.5f, y - 1.5f))
+            }
+
+            drawCircle(palette.shadow.copy(alpha = 0.28f), rimRadius * 0.31f, Offset(center.x + 2f, center.y + 4f))
+            drawCircle(primary, rimRadius * 0.30f, center)
+            drawCircle(Color.White.copy(alpha = 0.26f), rimRadius * 0.26f, center, style = Stroke(3f))
         }
 
-        Image(
-            painter = painterResource(R.drawable.puppy_lucky_wheel_frame),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
+        Text(
+            "▼",
+            color = Color(0xFFE74D56),
+            fontSize = 34.sp,
+            modifier = Modifier.align(Alignment.TopCenter)
         )
-
-        Image(
-            painter = painterResource(R.drawable.puppy_lucky_wheel_pointer),
-            contentDescription = "Lucky Pup Wheel pointer",
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = maxHeight * 0.018f)
-                .width(maxWidth * 0.12f)
-                .aspectRatio(100f / 160f)
-                .graphicsLayer {
-                    rotationZ = pointerBounce.value
-                    transformOrigin = TransformOrigin(0.5f, 0.12f)
-                },
-            contentScale = ContentScale.FillBounds
-        )
+        Text("🐾", fontSize = 31.sp)
     }
-}
-
-private fun luckyWheelSegmentLabel(prize: LuckyPupWheelPrize): String = when (prize) {
-    LuckyPupWheelPrize.MISS -> "MISS"
-    LuckyPupWheelPrize.HALF -> "0.5×"
-    LuckyPupWheelPrize.REFUND -> "1×"
-    LuckyPupWheelPrize.DOUBLE -> "2×"
-    LuckyPupWheelPrize.FIVE_X -> "5×"
-    LuckyPupWheelPrize.TEN_X -> "10×"
-    LuckyPupWheelPrize.PUPPY_UNLOCK -> "PUP"
 }
 
 @Composable
