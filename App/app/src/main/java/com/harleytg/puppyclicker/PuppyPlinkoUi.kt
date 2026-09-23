@@ -88,7 +88,16 @@ internal fun PuppyPlinkoScreen(
         revealFinishedRoundId = null
         delay(if (state.animationsEnabled) 2_200 else 250)
         revealFinishedRoundId = round.roundId
-        val settled = vm.settleCasinoRound(round.roundId)
+        val settled = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.PLINKO,
+            "settle"
+        ) {
+            vm.settleCasinoRound(round.roundId)
+        }.getOrNull()
+        if (settled == null) {
+            message = "Plinko recovered from a runtime error while settling the round."
+            return@LaunchedEffect
+        }
         if (!settled.success) {
             message = "Unable to settle the saved Plinko round: " +
                 (settled.failure?.name ?: "unknown error")
@@ -128,7 +137,8 @@ internal fun PuppyPlinkoScreen(
             animationsEnabled = state.animationsEnabled,
             status = when {
                 dropping -> "Ball in motion…"
-                showResult -> "Landed on ${display!!.multiplierLabel} • ${display.payoutTreats} Chips returned"
+                showResult && display != null ->
+                    "Landed on ${display.multiplierLabel} • ${display.payoutTreats} Chips returned"
                 else -> "Choose a wager and drop the ball."
             }
         )
@@ -179,8 +189,15 @@ internal fun PuppyPlinkoScreen(
             label = dropLabel,
             onClick = {
                 message = null
-                val result = vm.startPlinkoDrop(wager)
-                if (!result.success) {
+                val result = PuppyCasinoRuntimeGuard.run(
+                    PuppyCasinoGame.PLINKO,
+                    "start"
+                ) {
+                    vm.startPlinkoDrop(wager)
+                }.getOrNull()
+                if (result == null) {
+                    message = "Plinko recovered from a runtime error. No new drop was started."
+                } else if (!result.success) {
                     message = "Plinko drop blocked: " +
                         (result.transactionFailure?.name ?: result.failure?.name ?: "unknown error")
                 }
@@ -466,7 +483,11 @@ private fun PlinkoInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6Vie
             Text("The wager was accepted before an outcome was committed.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { vm.refundCasinoRound(round.roundId) },
+                onClick = {
+            PuppyCasinoRuntimeGuard.run(PuppyCasinoGame.PLINKO, "refund") {
+                vm.refundCasinoRound(round.roundId)
+            }
+        },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Refund ${round.wagerTreats} Chips") }
         }
