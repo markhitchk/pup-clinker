@@ -1,6 +1,6 @@
 # Puppy Clicker — Terms of Use
 
-> **Effective date:** September 9, 2026
+> **Effective date:** September 24, 2026
 
 These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**. By using Puppy Clicker, you agree to these terms.
 
@@ -31,13 +31,15 @@ Puppy Clicker uses **PupEye** fair-play protections. PupEye may detect:
 - Save ownership or registered-installation mismatches
 - Other behavior that attempts to manipulate normal gameplay
 
-When suspicious activity is detected, the app may:
+When suspicious activity is detected, the app or Puppy Clicker's Supabase-backed PupEye service may:
 
 - Reject suspicious input
 - Apply temporary cooldowns
 - Restore a last-known-good save
 - Quarantine a modified save
-- Record local fair-play strikes
+- Reject an older save generation or replayed protected transaction
+- Require Support review or a Support-authorized device migration
+- Record fair-play or integrity events
 
 ## 3. Saves and Backups
 
@@ -88,7 +90,9 @@ These terms do not transfer ownership of those materials to you.
 
 Puppy Clicker may connect to services such as **GitHub** to retrieve streamed assets, legal documents, or configuration data.
 
-**Discord OAuth** is used for player signup and is also subject to Discord's terms and privacy practices. Puppy Clicker requests the Discord `identify` permission for this signup flow.
+**Supabase** provides Puppy Clicker's backend account, installation-registration, save-generation, protected-transaction, and device-migration infrastructure.
+
+**Discord OAuth** is used for player signup and community-role verification and is also subject to Discord's terms and privacy practices. Discord authorization results are verified through Puppy Clicker's Supabase backend before privileged role access is trusted.
 
 ## 8. Availability and Changes
 
