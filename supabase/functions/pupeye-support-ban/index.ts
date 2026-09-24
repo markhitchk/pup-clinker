@@ -1,4 +1,5 @@
 import { withSupabase } from "npm:@supabase/server";
+import { sendBanEventBestEffort } from "../_shared/discord-ban-notify.ts";
 import {
   HttpError,
   errorResponse,
@@ -80,6 +81,9 @@ async function issueBan(admin: AdminClient, body: Record<string, unknown>) {
 
   await revokeSessionsForTargets(admin, input.targets as Array<Record<string, unknown>>);
   const row = Array.isArray(data) ? data[0] : data;
+  if (typeof row?.event_id === "number") {
+    await sendBanEventBestEffort(admin, row.event_id);
+  }
   return json(200, {
     ok: true,
     banId: row?.public_ban_id ?? null,
@@ -119,6 +123,9 @@ async function updateBan(admin: AdminClient, body: Record<string, unknown>, acti
   });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
+  if (typeof row?.event_id === "number") {
+    await sendBanEventBestEffort(admin, row.event_id);
+  }
   return json(200, {
     ok: true,
     banId: row?.public_ban_id ?? null,
@@ -146,6 +153,9 @@ async function attachTarget(admin: AdminClient, body: Record<string, unknown>) {
   if (error) throw error;
   await revokeSessionsForTargets(admin, [target as Record<string, unknown>]);
   const row = Array.isArray(data) ? data[0] : data;
+  if (typeof row?.event_id === "number") {
+    await sendBanEventBestEffort(admin, row.event_id);
+  }
   return json(200, { ok: true, targetId: row?.target_id ?? null, eventId: row?.event_id ?? null });
 }
 
@@ -160,6 +170,9 @@ async function revokeBan(admin: AdminClient, body: Record<string, unknown>) {
   });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
+  if (typeof row?.event_id === "number") {
+    await sendBanEventBestEffort(admin, row.event_id);
+  }
   return json(200, { ok: true, banId: row?.public_ban_id ?? null, eventId: row?.event_id ?? null });
 }
 
@@ -221,6 +234,7 @@ async function recordAppeal(admin: AdminClient, body: Record<string, unknown>) {
     .select("id")
     .single();
   if (error) throw error;
+  await sendBanEventBestEffort(admin, data.id);
   return json(200, { ok: true, eventId: data.id, appealState: state });
 }
 
