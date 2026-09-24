@@ -538,13 +538,47 @@ private fun BlackjackWalletCard(state: V6GameState) {
             contentScale = ContentScale.FillBounds
         )
 
-        Text(
-            state.casinoChips.toString() + " Casino Chips",
-            modifier = Modifier.offset(x = maxWidth * 0.23f, y = maxHeight * 0.49f),
-            color = Color(0xFF2C261E),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black
+        BlackjackWalletCopy(
+            casinoChips = state.casinoChips,
+            modifier = Modifier
+                .offset(x = maxWidth * 0.205f, y = maxHeight * 0.34f)
+                .width(maxWidth * 0.41f)
+                .height(maxHeight * 0.43f)
         )
+    }
+}
+
+@Composable
+private fun BlackjackWalletCopy(
+    casinoChips: Long,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xFFFFFBF1).copy(alpha = 0.98f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "Casino Chip Wallet",
+                color = Color(0xFF2C261E),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            Text(
+                "$casinoChips Casino Chips",
+                color = Color(0xFF2C261E),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
     }
 }
 
