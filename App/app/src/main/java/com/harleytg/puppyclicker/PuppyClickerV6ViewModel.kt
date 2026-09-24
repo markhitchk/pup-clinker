@@ -202,6 +202,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     init {
         rollDailyDayIfNeeded()
         consumeClaimedAfkReward()
+        unlockDiscordRolePuppy()
         viewModelScope.launch {
             var seconds = 0
             while (isActive) {
@@ -1509,9 +1510,16 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             if (allKnownPuppies.isEmpty()) return false
 
             PuppyDeveloperPreferences.setUnlocked(app, true)
+            val nextUnlocked = current.unlockedPuppies + allKnownPuppies
+            val nextAccessories = current.ownedAccessories + ACCESSORIES
+            if (
+                nextUnlocked == current.unlockedPuppies &&
+                nextAccessories == current.ownedAccessories
+            ) return true
+
             _state.value = current.copy(
-                unlockedPuppies = current.unlockedPuppies + allKnownPuppies,
-                ownedAccessories = current.ownedAccessories + ACCESSORIES
+                unlockedPuppies = nextUnlocked,
+                ownedAccessories = nextAccessories
             )
             saveState()
             return true
