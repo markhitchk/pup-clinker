@@ -135,8 +135,11 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(roster.contains("PuppyNotificationCenter.notifyRosterUpdated("))
         assertTrue(notifications.contains("DynamicPuppyRoster.refreshIfDue(app)"))
         assertTrue(notifications.contains("NOTIFY_ROSTER = 42104"))
+        assertTrue(notifications.contains("NOTIFY_TEST = 42105"))
         assertTrue(notifications.contains("NOTIFY_SYSTEM_REWARD_BASE = 42200"))
+        assertTrue(notifications.contains("postTestNotification("))
         assertTrue(notifications.contains("notifySystemRewardAvailable("))
+        assertTrue(notifications.contains("id != NOTIFY_TEST"))
         assertTrue(notifications.contains("New puppy added to the roster"))
     }
 
