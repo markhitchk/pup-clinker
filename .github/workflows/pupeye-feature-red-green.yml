@@ -26,7 +26,18 @@ jobs:
           if (( ${#files[@]} )); then
             deno test --allow-all "${files[@]}"
           fi
+      - name: Detect database changes
+        id: db_changes
+        shell: bash
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -Eq '^supabase/(migrations/|tests/.*\.sql$)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Start local Supabase
+        if: steps.db_changes.outputs.changed == 'true'
         run: supabase start
       - name: Run PupEye database tests
+        if: steps.db_changes.outputs.changed == 'true'
         run: supabase test db supabase/tests/pupeye_global_bans_test.sql
