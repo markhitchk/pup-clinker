@@ -1,6 +1,7 @@
-import { withSupabase } from "npm:@supabase/server";
 import {
   HttpError,
+  assertPublishableRequest,
+  createAdminClient,
   audit,
   authenticateSession,
   errorResponse,
@@ -10,11 +11,11 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 
-export default {
-  fetch: withSupabase({ auth: "publishable" }, async (req, ctx) => {
-    try {
+Deno.serve(async (req: Request) => {
+  try {
+    assertPublishableRequest(req);
       const envelope = verifyEnvelope(await req.json(), "save-checkpoint");
-      const admin = ctx.supabaseAdmin;
+      const admin = createAdminClient();
       const session = await authenticateSession(req, admin, envelope);
       const generation = requiredNumber(envelope.payload.generation, "generation");
       const supportCode = requiredString(envelope.payload.supportCode, "supportCode").slice(0, 32);
@@ -75,8 +76,7 @@ export default {
       if (headError) throw headError;
 
       return json(200, { ok: true, generation });
-    } catch (error) {
-      return errorResponse(error);
-    }
-  }),
-};
+  } catch (error) {
+    return errorResponse(error);
+  }
+});
