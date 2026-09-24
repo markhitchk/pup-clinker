@@ -307,10 +307,12 @@ private fun PlinkoBoard(
     BoxWithConstraints(modifier = modifier) {
         val rows = PuppyPlinkoEngine.ROWS
         val travelSegments = rows + 1
+        // Keep the live path inside the cabinet's inner playfield instead of
+        // using the artwork's full outer-frame width.
         val centerX = maxWidth * 0.50f
-        val xStep = maxWidth * 0.04675f
-        val launchY = maxHeight * 0.19f
-        val pocketCenterY = maxHeight * 0.884f
+        val xStep = maxWidth * 0.0395f
+        val launchY = maxHeight * 0.205f
+        val pocketCenterY = maxHeight * 0.835f
         val segmentGap = (pocketCenterY - launchY) / travelSegments.toFloat()
 
         val path = outcome?.pathRight ?: emptyList()
@@ -335,14 +337,18 @@ private fun PlinkoBoard(
         val bounceLift =
             if (completedRows < rows) maxHeight * 0.009f * segmentArc else 0.dp
         val ballY = baseY - bounceLift
-        val ballSize = maxWidth * 0.115f
+        val ballSize = maxWidth * 0.10f
 
         // Layered gameplay stack. The live ball remains a separate moving PNG so
         // committed paths/recovery math are unchanged by the visual conversion.
         Image(
             painter = painterResource(R.drawable.puppy_plinko_pegs),
             contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = maxHeight * 0.105f)
+                .fillMaxWidth(0.84f)
+                .fillMaxHeight(0.73f),
             contentScale = ContentScale.FillBounds
         )
 
