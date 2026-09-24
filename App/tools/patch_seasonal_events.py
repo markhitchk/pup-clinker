@@ -35,7 +35,8 @@ def patch_view_model(source: str) -> str:
         viewModelScope.launch {
             DynamicPuppyRoster.groups.collect { syncDynamicFreePuppies() }
         }
-        rollDailyDayIfNeeded()''',
+        rollDailyDayIfNeeded()
+        refreshSeasonalEvents()''',
         'dynamic free roster observer')
     source = replace_once(source, '                seconds++\n                consumeClaimedAfkReward()',
         '                seconds++\n                if (seconds % 30 == 0) refreshSeasonalEvents()\n                consumeClaimedAfkReward()', 'event clock')
@@ -50,10 +51,22 @@ def patch_view_model(source: str) -> str:
         }
     }
 
-    fun refreshSeasonalEvents() = seasonalStore.refreshClock()
+    fun refreshSeasonalEvents() {
+        seasonalStore.refreshClock()
+        syncSeasonalAutoUnlocks()
+    }
 
-    fun setSeasonalBirthday(month: Int, day: Int): Boolean = seasonalStore.saveBirthday(month, day)
-    fun clearSeasonalBirthday() = seasonalStore.clearBirthday()
+    fun setSeasonalBirthday(month: Int, day: Int): Boolean {
+        val saved = seasonalStore.saveBirthday(month, day)
+        if (saved) refreshSeasonalEvents()
+        return saved
+    }
+
+    fun clearSeasonalBirthday() {
+        seasonalStore.clearBirthday()
+        refreshSeasonalEvents()
+    }
+
     fun dismissSeasonalIntro() = seasonalStore.dismissIntro()
     fun markSeasonalSeen(cycle: String) = seasonalStore.markSeen(cycle)
 
@@ -64,24 +77,27 @@ def patch_view_model(source: str) -> str:
         )
     }
 
-    fun claimSeasonalPuppy(id: String): V6RedeemOutcome {
-        val event = SeasonalPuppyEvents.find(id)
-            ?: return V6RedeemOutcome(false, "Unknown seasonal puppy.")
-        val window = activeSeasonalWindow(id)
-            ?: return V6RedeemOutcome(false, SeasonalPuppyEvents.availability(
-                event, Instant.now(), ZoneId.systemDefault(), seasonalSettings.value.birthday
-            ))
-        val current = _state.value
-        if (id in current.unlockedPuppies) {
-            return V6RedeemOutcome(false, "${event.title} is already in your collection.")
+    private fun syncSeasonalAutoUnlocks() {
+        val now = Instant.now()
+        val zone = ZoneId.systemDefault()
+        val birthday = seasonalSettings.value.birthday
+
+        SeasonalPuppyEvents.events.forEach { event ->
+            val window = SeasonalPuppyEvents.activeWindow(event, now, zone, birthday)
+                ?: return@forEach
+            val current = _state.value
+            if (event.puppyId in current.unlockedPuppies) return@forEach
+
+            _state.value = current.copy(
+                unlockedPuppies = current.unlockedPuppies + event.puppyId
+            )
+            saveState()
+            PuppyNotificationCenter.notifySeasonalPuppyUnlocked(
+                context = getApplication<Application>(),
+                event = event,
+                window = window
+            )
         }
-        _state.value = current.copy(
-            unlockedPuppies = current.unlockedPuppies + id,
-            puppyStyle = id
-        )
-        saveState()
-        seasonalStore.markSeen(window.cycle)
-        return V6RedeemOutcome(true, "${event.title} unlocked permanently!")
     }
 
     fun redeemCode(rawCode: String): V6RedeemOutcome {''', 'seasonal and dynamic ViewModel methods')
