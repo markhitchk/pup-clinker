@@ -102,6 +102,15 @@ class DynamicPuppyRosterTest {
     }
 
     @Test
+    fun discordPupStartupAssetUsesDedicatedStreamingFolder() {
+        val asset = DynamicPuppyRoster.asset("v2_discord_pup")
+        requireNotNull(asset)
+        assertEquals("discord_rewards", asset.folder)
+        assertEquals("v2_discord_pup.png", asset.fileName)
+        assertEquals("Discord Rewards", asset.groupTitle)
+    }
+
+    @Test
     fun assetStreamAndGroupStreamDescribeTheSameStartupRoster() {
         val assetIds = DynamicPuppyRoster.assets.value.map { it.style.id }.toSet()
         val groupedIds = DynamicPuppyRoster.groups.value
