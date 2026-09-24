@@ -777,9 +777,6 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             vm.unlockDiscordRolePuppy()
         }
     }
-    var discordIdInput by rememberSaveable(account?.id) {
-        mutableStateOf(account?.id.orEmpty())
-    }
     var unlockMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Card(
@@ -850,34 +847,23 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Verify server role", fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Enter your Discord user ID. Puppy Clicker then verifies your role in the configured Discord server through OAuth.",
+                "Puppy Clicker verifies the Discord account returned by OAuth and checks its configured server role through Pupeye. You do not need to enter a Discord user ID.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
             StatusLine("Server ID", DiscordSignupAuth.GUILD_ID)
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = discordIdInput,
-                onValueChange = { value ->
-                    discordIdInput = value.filter(Char::isDigit).take(20)
-                    unlockMessage = null
-                },
-                label = { Text("Discord User ID") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            account?.let { StatusLine("Account", "@" + it.username) }
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
                     unlockMessage = null
                     DiscordSignupAuth.startSignup(
                         context = context,
-                        expectedDiscordId = discordIdInput,
                         verifyGuildRole = true
                     )
                 },
-                enabled = !busy && DiscordSignupAuth.isDiscordSnowflake(discordIdInput),
+                enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (busy) "Waiting for Discord…" else "Verify Server Role")
