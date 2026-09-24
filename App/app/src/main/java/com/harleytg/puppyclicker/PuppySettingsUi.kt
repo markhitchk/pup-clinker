@@ -1556,6 +1556,11 @@ private fun PupEyeSettings(state: V6GameState) {
     }
     val branding = PupEyeAssetStream.status(context)
     val fairPlayEnforced = PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(context)
+    val backend = SupabasePupEyeClient.backendState(context)
+    val supportCode = remember {
+        runCatching { PupEyeAuthority.supportInstallationCode(context) }
+            .getOrDefault("Unavailable")
+    }
 
     val currentProtected =
         integrityStatus == "Verified" && externalStatus == "Verified"
@@ -1587,6 +1592,8 @@ private fun PupEyeSettings(state: V6GameState) {
     StatusLine("Save file integrity", integrityStatus)
     StatusLine("Android/data save integrity", externalStatus)
     StatusLine("Device-bound encryption", "Configured")
+    StatusLine("Supabase authority", backend.state.replace('_', ' '))
+    StatusLine("Support installation code", supportCode)
     StatusLine("Save integrity protection", "Always Active")
     StatusLine(
         "Fair-play enforcement",
@@ -1604,6 +1611,17 @@ private fun PupEyeSettings(state: V6GameState) {
             "History: " + it,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    backend.lastError?.let {
+        Text(
+            "Server: " + it,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (backend.blocksProtectedGameplay) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
         )
     }
     Spacer(Modifier.height(8.dp))
