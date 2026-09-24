@@ -92,6 +92,7 @@ internal object DiscordSignupAuth {
     private const val KEY_GUILD_ID = "discord_guild_id"
     private const val KEY_GUILD_ROLE = "discord_guild_role"
     private const val KEY_GUILD_VERIFIED_AT = "discord_guild_verified_at"
+    private const val KEY_AUTH_V2_MIGRATION_NOTICE_SHOWN = "discord_auth_v2_migration_notice_shown"
     private const val KEY_PENDING_STATE = "oauth_pending_state"
     private const val KEY_PENDING_VERIFIER = "oauth_pending_verifier"
     private const val KEY_PENDING_EXPECTED_DISCORD_ID = "oauth_pending_expected_discord_id"
@@ -351,7 +352,42 @@ internal object DiscordSignupAuth {
                 account = account,
                 guildAccess = guildAccess
             )
+            notifyLegacyDiscordAuthUpgradeIfNeeded(context, account, guildAccess)
             initialized = true
+        }
+    }
+
+    internal fun shouldNotifyLegacyAuthUpgrade(
+        account: DiscordPlayerAccount?,
+        guildAccess: DiscordGuildAccess?,
+        noticeShown: Boolean
+    ): Boolean = account != null && guildAccess == null && !noticeShown
+
+    private fun notifyLegacyDiscordAuthUpgradeIfNeeded(
+        context: Context,
+        account: DiscordPlayerAccount?,
+        guildAccess: DiscordGuildAccess?
+    ) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val shown = prefs.getBoolean(KEY_AUTH_V2_MIGRATION_NOTICE_SHOWN, false)
+        if (!shouldNotifyLegacyAuthUpgrade(account, guildAccess, shown)) return
+
+        val noticeId = "discord-auth-v2-reauthorize"
+        PuppyNotificationHistory.record(
+            context,
+            PuppyNotificationItem(
+                id = noticeId,
+                type = PuppyNotificationType.APP_UPDATE,
+                title = "Discord verification updated",
+                body = "You connected Discord before server-role verification was added. Re-authorize in Settings → Discord to verify your server role and unlock Discord Pup if you are a Pup Member.",
+                createdAtMs = System.currentTimeMillis(),
+                read = false,
+                route = PuppyNotificationRoute.NONE
+            )
+        )
+        PuppyNotificationCenter.notifyDiscordAuthUpgrade(context)
+        if (PuppyNotificationHistory.findById(context, noticeId) != null) {
+            prefs.edit().putBoolean(KEY_AUTH_V2_MIGRATION_NOTICE_SHOWN, true).apply()
         }
     }
 
