@@ -62,6 +62,51 @@ internal object PupEyeAuthority {
     }
 
     @Synchronized
+    fun signedEnvelope(
+        context: Context,
+        action: String,
+        payload: JSONObject
+    ): JSONObject {
+        val cleanAction = action.trim().lowercase().take(48)
+        require(cleanAction.matches(Regex("[a-z0-9_-]+"))) { "Invalid Pupeye request action" }
+
+        val keyPair = signingKeyPair()
+        val installId = installationId(context)
+        val keyId = publicKeyId(keyPair.public.encoded)
+        val generation = currentGeneration(context)
+        val timestamp = System.currentTimeMillis()
+        val nonce = UUID.randomUUID().toString()
+        val signature = Signature.getInstance("SHA256withECDSA").run {
+            initSign(keyPair.private)
+            update(
+                requestSignatureBytes(
+                    action = cleanAction,
+                    installId = installId,
+                    keyId = keyId,
+                    generation = generation,
+                    timestamp = timestamp,
+                    nonce = nonce,
+                    payload = payload
+                )
+            )
+            sign()
+        }
+
+        return JSONObject().apply {
+            put("schema", 1)
+            put("action", cleanAction)
+            put("installationId", installId)
+            put("deviceKeyId", keyId)
+            put("generation", generation)
+            put("timestampEpochMs", timestamp)
+            put("nonce", nonce)
+            put("publicKey", b64(keyPair.public.encoded))
+            put("payload", JSONObject(payload.toString()))
+            put("signature", b64(signature))
+        }
+    }
+
+    @Synchronized
     fun noteSealedState(context: Context) {
         val state = loadState(context)
         val next = state.optLong("generation", 1L)
@@ -70,6 +115,7 @@ internal object PupEyeAuthority {
         state.put("generation", next)
         state.put("lastSealedAtEpochMs", System.currentTimeMillis())
         saveState(context, state)
+        SupabasePupEyeClient.queueSaveCheckpoint(context, "seal")
     }
 
     @Synchronized
@@ -281,7 +327,30 @@ internal object PupEyeAuthority {
 
     fun isGameplayAllowed(context: Context): Boolean {
         if (hardFlags(context).isNotEmpty()) return false
-        return PupEyeEconomyLedger.verify(context)
+        if (!PupEyeEconomyLedger.verify(context)) return false
+        return SupabasePupEyeClient.serverAllowsProtectedGameplay(context)
+    }
+
+    private fun requestSignatureBytes(
+        action: String,
+        installId: String,
+        keyId: String,
+        generation: Long,
+        timestamp: Long,
+        nonce: String,
+        payload: JSONObject
+    ): ByteArray {
+        val signed = buildString {
+            append("PuppyClicker/PupEye/request/v1\n")
+            append(action).append('\n')
+            append(installId).append('\n')
+            append(keyId).append('\n')
+            append(generation).append('\n')
+            append(timestamp).append('\n')
+            append(nonce).append('\n')
+            append(canonicalJson(payload))
+        }
+        return signed.toByteArray(Charsets.UTF_8)
     }
 
     private fun signatureBytes(
@@ -481,6 +550,13 @@ internal object PupEyeEconomyLedger {
 
         root.put("records", records)
         save(context, root)
+        SupabasePupEyeClient.queueEconomyTransaction(
+            context = context,
+            transactionId = transactionId,
+            source = cleanSource,
+            details = cleanDetails,
+            generation = generation
+        )
         true
     }.getOrElse { error ->
         runCatching {
