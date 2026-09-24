@@ -328,53 +328,66 @@ private fun ScratcherCartoonStage(
     revealAll: Boolean,
     status: String
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(SCRATCH_BORDER_WIDTH / SCRATCH_BORDER_HEIGHT)
-    ) {
-        ScratcherCard(
-            card = card,
-            outcome = outcome,
-            scratched = scratched,
-            enabled = enabled,
-            revealAll = revealAll,
-            modifier = Modifier
-                .offset(
-                    x = maxWidth * (200f / SCRATCH_BORDER_WIDTH),
-                    y = maxHeight * (482f / SCRATCH_BORDER_HEIGHT)
-                )
-                .size(
-                    width = maxWidth * (1013f / SCRATCH_BORDER_WIDTH),
-                    height = maxHeight * (443f / SCRATCH_BORDER_HEIGHT)
-                )
-        )
+    val stageModifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(SCRATCH_BORDER_WIDTH / SCRATCH_BORDER_HEIGHT)
 
-        Image(
-            painter = painterResource(R.drawable.puppy_scratch_play_border),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
-        )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        BoxWithConstraints(modifier = stageModifier) {
+            ScratcherCard(
+                card = card,
+                outcome = outcome,
+                scratched = scratched,
+                enabled = enabled,
+                revealAll = revealAll,
+                modifier = Modifier
+                    .offset(
+                        x = maxWidth * (200f / SCRATCH_BORDER_WIDTH),
+                        y = maxHeight * (482f / SCRATCH_BORDER_HEIGHT)
+                    )
+                    .size(
+                        width = maxWidth * (1013f / SCRATCH_BORDER_WIDTH),
+                        height = maxHeight * (443f / SCRATCH_BORDER_HEIGHT)
+                    )
+            )
+
+            Image(
+                painter = painterResource(R.drawable.puppy_scratch_play_border),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.FillBounds
+            )
+        }
 
         if (status != "Choose a card below to begin.") {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = maxHeight * 0.018f),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xCC075843)
-            ) {
-                Text(
-                    status,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.labelMedium,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Spacer(Modifier.height(6.dp))
+            ScratcherStatusStrip(status)
         }
+    }
+}
+
+@Composable
+private fun ScratcherStatusStrip(status: String) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF075843),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+        shadowElevation = 2.dp
+    ) {
+        Text(
+            status,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
