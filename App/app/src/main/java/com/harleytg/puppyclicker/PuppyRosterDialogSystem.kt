@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -290,56 +291,83 @@ private fun PuppyDialogIdentity(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f)
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp)
         ) {
-            StreamedPuppyPortrait(
-                styleId = asset.style.id,
-                size = portraitSize,
-                unlocked = unlocked,
-                background = MaterialTheme.colorScheme.surface,
-                retryToken = retryToken
-            )
+            val compactIdentity = maxWidth < 340.dp
+            val resolvedPortraitSize = if (compactIdentity && portraitSize > 112.dp) {
+                112.dp
+            } else {
+                portraitSize
+            }
+            val statusLabel = when {
+                current -> "Current"
+                unlocked -> "Unlocked"
+                else -> "🔒 Locked"
+            }
 
-            Spacer(Modifier.width(14.dp))
-
-            Column(Modifier.weight(1f)) {
-                Text(
-                    displayName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StreamedPuppyPortrait(
+                    styleId = asset.style.id,
+                    size = resolvedPortraitSize,
+                    unlocked = unlocked,
+                    background = MaterialTheme.colorScheme.surface,
+                    retryToken = retryToken
                 )
 
-                if (displayName != asset.style.name) {
+                Spacer(Modifier.width(if (compactIdentity) 10.dp else 14.dp))
+
+                Column(Modifier.weight(1f)) {
                     Text(
-                        "Original: ${asset.style.name}",
+                        displayName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (displayName != asset.style.name) {
+                        Text(
+                            "Original: ${asset.style.name}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Text(
+                        asset.assetId,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
 
-                Text(
-                    asset.assetId,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    Spacer(Modifier.height(8.dp))
 
-                Spacer(Modifier.height(8.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    PuppyDialogPill(asset.groupTitle)
-                    PuppyDialogPill(
-                        when {
-                            current -> "Current"
-                            unlocked -> "Unlocked"
-                            else -> "🔒 Locked"
+                    if (compactIdentity) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            PuppyDialogPill(asset.groupTitle)
+                            PuppyDialogPill(statusLabel)
                         }
-                    )
+                    } else {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            PuppyDialogPill(asset.groupTitle)
+                            PuppyDialogPill(statusLabel)
+                        }
+                    }
                 }
             }
         }
@@ -354,9 +382,14 @@ private fun PuppyDialogPill(text: String) {
     ) {
         Text(
             text,
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            modifier = Modifier
+                .widthIn(max = 190.dp)
+                .padding(horizontal = 9.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
