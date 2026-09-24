@@ -11,6 +11,7 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
+import { sendBanEventBestEffort } from "../_shared/discord-ban-notify.ts";
 
 Deno.serve(async (req: Request) => {
   try {
@@ -60,12 +61,53 @@ Deno.serve(async (req: Request) => {
         throw new HttpError(401, "PLAYER_NOT_FOUND", "Pupeye player record was not found.");
       }
 
-      await assertGlobalEnforcementAllowed(admin, {
-        player: exactInstallationPlayer,
-        installation: exactInstallation,
-        discordUserId: exactInstallationPlayer.discord_user_id ?? null,
-        requestAction: "register",
-      });
+      try {
+        await assertGlobalEnforcementAllowed(admin, {
+          player: exactInstallationPlayer,
+          installation: exactInstallation,
+          discordUserId: exactInstallationPlayer.discord_user_id ?? null,
+          requestAction: "register",
+        });
+      } catch (error) {
+        if (
+          error instanceof HttpError &&
+          error.code === "GLOBAL_BANNED" &&
+          (
+            exactInstallationPlayer.player_id !== playerId ||
+            exactInstallationPlayer.friend_code !== friendCode
+          )
+        ) {
+          const ban = error.details.ban as Record<string, unknown> | undefined;
+          const publicBanId = typeof ban?.id === "string" ? ban.id : null;
+          if (publicBanId) {
+            const { data: banRow } = await admin.from("pupeye_global_bans")
+              .select("id")
+              .eq("public_ban_id", publicBanId)
+              .maybeSingle();
+            if (banRow?.id) {
+              const { data: event } = await admin.from("pupeye_ban_events")
+                .insert({
+                  ban_uuid: banRow.id,
+                  event_code: "NEW_ACCOUNT_BLOCKED_ON_BANNED_DEVICE",
+                  actor: "system",
+                  detail: {
+                    attemptedPlayerId: playerId.slice(0, 80),
+                    attemptedFriendCode: friendCode.slice(0, 40),
+                    installationId: envelope.installationId,
+                    platform,
+                  },
+                  discord_delivery_status: "pending",
+                })
+                .select("id")
+                .single();
+              if (typeof event?.id === "number") {
+                await sendBanEventBestEffort(admin, event.id);
+              }
+            }
+          }
+        }
+        throw error;
+      }
 
       if (
         exactInstallationPlayer.player_id !== playerId ||
