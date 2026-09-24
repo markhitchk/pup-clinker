@@ -766,6 +766,7 @@ private fun ProfileSettings(
 private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
     val account = discord.account
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
@@ -885,14 +886,29 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                     val rewardNames = rewardIds.map { rewardId ->
                         V2_PUPPY_STYLES.firstOrNull { it.id == rewardId }?.name ?: rewardId
                     }
-                    val allOwned = rewardIds.all { it in state.unlockedPuppies }
+                    val developerPuppyIds = if (access.role == DiscordGuildRole.DEVELOPER) {
+                        (
+                            V6_PUPPY_IDS +
+                                rosterGroups.flatMap { group -> group.puppies.map { it.id } }
+                            ).toSet()
+                    } else {
+                        emptySet()
+                    }
+                    val allOwned = if (access.role == DiscordGuildRole.DEVELOPER) {
+                        developerPuppyIds.all { it in state.unlockedPuppies } &&
+                            PuppyClickerV6ViewModel.ACCESSORIES.all { it in state.ownedAccessories }
+                    } else {
+                        rewardIds.all { it in state.unlockedPuppies }
+                    }
+
                     StatusLine(
-                        if (access.role == DiscordGuildRole.DEVELOPER) "Inherited rewards" else "V2 reward",
+                        if (access.role == DiscordGuildRole.DEVELOPER) "Discord rewards" else "V2 reward",
                         rewardNames.joinToString(", ")
                     )
                     if (access.role == DiscordGuildRole.DEVELOPER) {
+                        StatusLine("Developer puppies", developerPuppyIds.size.toString())
                         Text(
-                            "Developer inherits every configured Discord role puppy reward.",
+                            "Developer access unlocks every currently known puppy, every wearable accessory, and Developer Options. It does not alter currency, XP, achievements, or other progression.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -902,7 +918,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                         onClick = {
                             unlockMessage = if (vm.unlockDiscordRolePuppy()) {
                                 if (access.role == DiscordGuildRole.DEVELOPER) {
-                                    "All configured Discord role rewards unlocked."
+                                    "Developer content unlocked."
                                 } else {
                                     "Discord V2 puppy unlocked."
                                 }
@@ -917,7 +933,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                             if (allOwned) {
                                 "Already Unlocked ✓"
                             } else if (access.role == DiscordGuildRole.DEVELOPER) {
-                                "Unlock All Discord Rewards"
+                                "Unlock Developer Content"
                             } else {
                                 "Unlock ${rewardNames.first()}"
                             }
