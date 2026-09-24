@@ -65,6 +65,7 @@ class PuppyEconomyV7SourceContractTest {
         val app = source("PuppyClickerApplication.kt")
         val notifications = source("PuppyNotificationHistory.kt")
         assertTrue(app.contains("PuppyNotificationHistory.recordSystemReward("))
+        assertTrue(app.contains("PuppyNotificationCenter.notifySystemRewardAvailable("))
         assertTrue(notifications.contains("SYSTEM_REWARD"))
         assertTrue(notifications.contains("hasClaimableReward"))
         assertTrue(notifications.contains("markRewardClaimed"))
