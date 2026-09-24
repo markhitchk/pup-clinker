@@ -20,8 +20,12 @@ private-keys/
 node_modules/
 dist/
 coverage/
+
+# Root .env contains public Discord IDs only and is intentionally versioned.
+# Secret/local environment files remain ignored.
 .env
 .env.*
+!/.env
 !.env.example
 __pycache__/
 *.py[cod]
