@@ -81,8 +81,12 @@ internal object ExistingPlayerPupEyeUpgrade {
             .putInt(KEY_APPLIED_VERSION, CURRENT_VERSION)
             .apply()
 
-        SupabasePupEyeClient.initialize(app)
     }
+
+    internal fun wasApplied(context: Context): Boolean =
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_APPLIED_VERSION, 0) >= CURRENT_VERSION
 
     internal fun shouldRunExistingPlayerUpgrade(
         setupComplete: Boolean,
