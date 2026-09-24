@@ -51,6 +51,17 @@ internal object PupEyeAuthority {
         loadState(context).optLong("generation", 1L).coerceAtLeast(1L)
 
     @Synchronized
+    fun supportInstallationCode(context: Context): String {
+        val installId = installationId(context)
+        val keyId = publicKeyId(signingKeyPair().public.encoded)
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(("$installId|$keyId").toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02X".format(it.toInt() and 0xff) }
+            .take(16)
+        return "PUP-" + digest.chunked(4).joinToString("-")
+    }
+
+    @Synchronized
     fun noteSealedState(context: Context) {
         val state = loadState(context)
         val next = state.optLong("generation", 1L)
