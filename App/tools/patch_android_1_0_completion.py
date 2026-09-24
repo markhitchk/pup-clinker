@@ -566,7 +566,7 @@ def patch_notifications(source: str) -> str:
         historyItemFor(context, id, title, text)?.let { item ->
             PuppyNotificationHistory.record(context, item)
         }
-        if (PuppyAppRuntime.isForeground || !canNotify(context)) return
+        if ((PuppyAppRuntime.isForeground && id != NOTIFY_TEST) || !canNotify(context)) return
         val openApp = PendingIntent.getActivity(''',
         "notification post history",
     )
