@@ -207,15 +207,16 @@ internal object PupEyeSaveGuard {
     private var authorizedWritePending = false
 
     fun noteAuthorizedPreferenceChange(context: Context) {
+        if (authorizedWritePending) return
         authorizedWritePending = true
-        // Persist the marker separately from the game save. If Android kills the
-        // process before the debounced encrypted seal runs, the next launch can
-        // distinguish that legitimate write from an out-of-process save edit.
+        // Persist once per dirty window. saveState() changes many keys at a time,
+        // so avoiding one write per key keeps this marker inexpensive while commit()
+        // makes it survive an abrupt process stop before the debounced seal.
         context.applicationContext
             .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, true)
-            .apply()
+            .commit()
     }
 
     private fun hasAuthorizedPreferenceChange(context: Context): Boolean =
@@ -275,7 +276,7 @@ internal object PupEyeSaveGuard {
                 .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
-                .apply()
+                .commit()
             true
         }.getOrDefault(false)
 
