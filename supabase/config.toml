@@ -27,3 +27,7 @@ verify_jwt = false
 # Signed installation status refresh; no active Pupeye session is required.
 [functions.pupeye-enforcement-status]
 verify_jwt = false
+
+# Signed authenticated portable-save content attestation.
+[functions.pupeye-save-attestation]
+verify_jwt = false
