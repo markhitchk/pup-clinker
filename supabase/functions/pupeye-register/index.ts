@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
         .update({ active: false, revoked_at: new Date().toISOString() })
         .eq("id", activeInstallation.id);
 
-      const reputation = await createDeviceReputation(admin, platform, appVersion);
+      const reputation = await createDeviceReputation(admin, platform, appVersion ?? null);
       const { data: migratedInstallation, error: migratedError } = await admin
         .from("pupeye_installations")
         .insert({
@@ -311,7 +311,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const reputation = await createDeviceReputation(admin, platform, appVersion);
+    const reputation = await createDeviceReputation(admin, platform, appVersion ?? null);
     const { data: installation, error: installationError } = await admin
       .from("pupeye_installations")
       .insert({
