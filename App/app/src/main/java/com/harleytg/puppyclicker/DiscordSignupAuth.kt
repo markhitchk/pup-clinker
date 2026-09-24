@@ -118,6 +118,12 @@ internal object DiscordSignupAuth {
 
     fun isConnected(context: Context): Boolean = account(context) != null
 
+    internal fun hasPersistedAccount(context: Context): Boolean {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return !prefs.getString(KEY_DISCORD_ID, null).isNullOrBlank() &&
+            !prefs.getString(KEY_USERNAME, null).isNullOrBlank()
+    }
+
     fun isCallback(uri: Uri?): Boolean =
         uri != null &&
             uri.scheme.equals(CALLBACK_SCHEME, ignoreCase = true) &&
