@@ -108,7 +108,18 @@ Expected: FAIL because the global-ban tables/functions do not exist.
 
 - [ ] **Step 3: Create the migration with the exact domain constraints**
 
-Use the repository's next migration file and define the tables with this shape:
+Create the migration through the Supabase CLI first, then normalize it to this repository's sequential naming convention:
+
+```bash
+supabase migration new pupeye_global_bans
+MIGRATION="$(find supabase/migrations -maxdepth 1 -type f -name '*_pupeye_global_bans.sql' | sort | tail -1)"
+test -n "$MIGRATION"
+if [ "$MIGRATION" != "supabase/migrations/20260924_000002_pupeye_global_bans.sql" ]; then
+  mv "$MIGRATION" supabase/migrations/20260924_000002_pupeye_global_bans.sql
+fi
+```
+
+Define the tables with this shape:
 
 ```sql
 create table public.pupeye_device_reputation (
@@ -452,6 +463,17 @@ Expected: FAIL because the shared module does not exist.
 Use a public-safe ban shape only:
 
 ```ts
+type GlobalBanRow = {
+  public_ban_id: string;
+  kind: "temporary" | "permanent";
+  status: "active" | "expired" | "revoked";
+  reason_code?: string;
+  public_reason?: string;
+  issued_at: string;
+  expires_at: string | null;
+  device_wide?: boolean;
+};
+
 export type PublicGlobalBan = {
   id: string;
   kind: "temporary" | "permanent";
@@ -1798,7 +1820,7 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.117.0
 
       - uses: denoland/setup-deno@v2
         with:
@@ -1813,8 +1835,6 @@ jobs:
       - name: Run Edge Function tests
         run: deno test --allow-all supabase/functions/tests/
 ```
-
-If CI reproducibility requires pinning a Supabase CLI version discovered during execution, replace `latest` with that verified version before commit.
 
 - [ ] **Step 3: Run all local Supabase tests**
 
