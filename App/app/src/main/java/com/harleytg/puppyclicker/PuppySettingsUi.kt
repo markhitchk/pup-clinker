@@ -147,7 +147,7 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
 
         SettingsDestination.PROFILE -> SettingsSubpage(
             title = "Profile",
-            subtitle = "Username, birthday, and Puppy Clicker identity.",
+            subtitle = "Identity, progression, XP, achievements, and birthday.",
             onBack = { open(SettingsDestination.HOME) }
         ) {
             ProfileSettings(vm, ui)
@@ -1369,6 +1369,11 @@ private fun PupEyeSettings(state: V6GameState) {
     val branding = PupEyeAssetStream.status(context)
     val fairPlayEnforced = PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(context)
 
+    val currentProtected =
+        integrityStatus == "Verified" && externalStatus == "Verified"
+    val currentWarning =
+        integrityStatus == "Warning" || externalStatus == "Warning"
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         StreamedPupEyeBranding(Modifier.size(54.dp), "PupEye Protection")
         Spacer(Modifier.width(10.dp))
@@ -1377,11 +1382,15 @@ private fun PupEyeSettings(state: V6GameState) {
             Text(
                 when {
                     checking -> "Checking"
-                    integrityStatus == "Verified" && externalStatus == "Verified" -> "Protected"
-                    security.tamperEvents > 0 -> "Warning"
-                    else -> "Available"
+                    currentProtected -> "Protected"
+                    currentWarning -> "Attention needed"
+                    else -> "Ready to check"
                 },
-                color = if (security.tamperEvents > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                color = when {
+                    currentWarning -> MaterialTheme.colorScheme.error
+                    currentProtected -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 fontWeight = FontWeight.Bold
             )
         }
@@ -1401,9 +1410,17 @@ private fun PupEyeSettings(state: V6GameState) {
     )
     StatusLine("PupEye branding", if (branding.ready) "Ready (cached/streamed)" else "Unavailable")
     StatusLine("Confirmed clicker cooldowns", state.pupEyeStrikes.toString())
-    StatusLine("Save integrity events", security.tamperEvents.toString())
+    StatusLine("Previous integrity events", security.tamperEvents.toString())
     security.lastReason?.takeIf { security.tamperEvents > 0 }?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        Text(
+            "Most recent recorded event: " + it,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (currentWarning) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
     }
     Spacer(Modifier.height(8.dp))
     Button(
