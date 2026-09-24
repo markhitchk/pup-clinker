@@ -29,6 +29,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("background Android/data save") { ExternalGameSave.write(this, prefs) }
     }
     private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        // Mark this change as an authorized in-process save before the debounced
+        // encrypted seal catches up. PupEye still detects edits made outside this path.
+        PupEyeSaveGuard.noteAuthorizedPreferenceChange()
         // One saveState() changes many keys. Debounce those callbacks into one encrypted write/seal.
         mainHandler.removeCallbacks(externalSaveWriter)
         mainHandler.postDelayed(externalSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
