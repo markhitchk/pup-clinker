@@ -114,6 +114,9 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
 
         assertTrue(rewards.contains("PuppyMonthlyRewards.schedule.collectAsState()"))
         assertTrue(rewards.contains("PuppyMonthlyRewards.currentGoals(todayDate)"))
+        assertTrue(rewards.contains("val nextGoal = todayGoals.firstOrNull"))
+        assertTrue(rewards.contains("nextGoal?.progress(state)"))
+        assertTrue(!rewards.contains("val target = 75L"))
         assertTrue(rewards.contains("Text(\"Claimed\""))
         assertTrue(rewards.contains("PuppyClaimedReward("))
         assertTrue(stream.contains("assets/rewards"))
@@ -132,6 +135,8 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(roster.contains("PuppyNotificationCenter.notifyRosterUpdated("))
         assertTrue(notifications.contains("DynamicPuppyRoster.refreshIfDue(app)"))
         assertTrue(notifications.contains("NOTIFY_ROSTER = 42104"))
+        assertTrue(notifications.contains("NOTIFY_SYSTEM_REWARD_BASE = 42200"))
+        assertTrue(notifications.contains("notifySystemRewardAvailable("))
         assertTrue(notifications.contains("New puppy added to the roster"))
     }
 
