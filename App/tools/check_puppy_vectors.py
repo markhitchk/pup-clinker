@@ -16,7 +16,7 @@ from xml.etree import ElementTree as ET
 
 ANDROID = "http://schemas.android.com/apk/res/android"
 V1 = "classic golden poodle spotty midnight cloud aurora cocoa snowball galaxy neon_buddy golden_night halloween santa birthday dev_pup secret_snoot classic_forever".split()
-V2 = "v2_frost v2_honey v2_biscuit v2_onyx v2_domino v2_chestnut v2_prism v2_flurry".split()
+V2 = "v2_frost v2_honey v2_biscuit v2_onyx v2_domino v2_chestnut v2_prism v2_flurry v2_discord_pup".split()
 ARITY = dict(zip("MmLlHhVvCcSsQqTtAaZz", [2,2,2,2,1,1,1,1,6,6,4,4,4,4,2,2,7,7,0,0]))
 TOKEN = re.compile(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?")
 COLOR = re.compile(r"#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\Z")
@@ -167,7 +167,7 @@ def main():
         errors.append("Roster mismatch: missing=%s unexpected=%s" % (sorted(expected - actual), sorted(actual - expected)))
     if len({r["sha256"] for r in results if r["file"].startswith("v1_")}) != 18:
         errors.append("V1 artwork must contain 18 distinct source files")
-    report = {"ok": not errors, "v1_expected": 18, "v2_expected": 8, "assets": results, "errors": errors}
+    report = {"ok": not errors, "v1_expected": len(V1), "v2_expected": len(V2), "assets": results, "errors": errors}
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
