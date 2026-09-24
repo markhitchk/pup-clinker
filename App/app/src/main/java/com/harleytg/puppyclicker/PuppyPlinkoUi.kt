@@ -311,9 +311,11 @@ private fun PlinkoBoard(
         // Keep the live path inside the cabinet's inner playfield instead of
         // using the artwork's full outer-frame width.
         val centerX = maxWidth * 0.50f
-        val xStep = maxWidth * 0.0395f
+        // Adjacent bins are two left/right half-steps apart. 0.042 matches
+        // the visible nine-bin overlay after its horizontal artwork padding.
+        val xStep = maxWidth * 0.042f
         val launchY = maxHeight * 0.205f
-        val pocketCenterY = maxHeight * 0.835f
+        val pocketCenterY = maxHeight * 0.89f
         val segmentGap = (pocketCenterY - launchY) / travelSegments.toFloat()
 
         val path = outcome?.pathRight ?: emptyList()
