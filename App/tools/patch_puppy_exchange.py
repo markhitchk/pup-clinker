@@ -71,8 +71,8 @@ def patch_roster_screen(source: str) -> str:
     )
     source = replace_once(
         source,
-        '''    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }''',
-        '''    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }\n    val compactRoster = LocalPuppyViewport.current.isCompact''',
+        '''    var dialogRoute by rememberSaveable { mutableStateOf<String?>(null) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }''',
+        '''    var dialogRoute by rememberSaveable { mutableStateOf<String?>(null) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }\n    val compactRoster = LocalPuppyViewport.current.isCompact''',
         "compact roster breakpoint",
     )
     source = replace_once(
@@ -95,8 +95,8 @@ def patch_roster_screen(source: str) -> str:
     )
     source = replace_once(
         source,
-        '''                onUnlockInfo = { unlockInfoId = asset.style.id },\n                onRename = { renameOpen = true },\n                onAccessory = vm::setAccessory\n            )''',
-        '''                onUnlockInfo = { unlockInfoId = asset.style.id },\n                onRename = { renameOpen = true },\n                onAccessory = vm::setAccessory,\n                compact = compactRoster\n            )''',
+        '''                onUnlockInfo = { openDialog(PuppyRosterDialogMode.UNLOCK, asset.style.id) },\n                onRename = { openDialog(PuppyRosterDialogMode.RENAME, asset.style.id) },\n                onAccessory = vm::setAccessory\n            )''',
+        '''                onUnlockInfo = { openDialog(PuppyRosterDialogMode.UNLOCK, asset.style.id) },\n                onRename = { openDialog(PuppyRosterDialogMode.RENAME, asset.style.id) },\n                onAccessory = vm::setAccessory,\n                compact = compactRoster\n            )''',
         "compact selected puppy panel call",
     )
 
@@ -148,8 +148,9 @@ private fun SelectedPuppyPanel(
                 }
                 Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
                 Column(Modifier.weight(1f)) {
+                    val displayName = if (active) state.puppyName.ifBlank { asset.style.name } else asset.style.name
                     Text(
-                        asset.style.name,
+                        displayName,
                         style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -244,7 +245,7 @@ private fun SelectedPuppyPanel(
     source = replace_function(
         source,
         "@Composable\nprivate fun PuppyRosterCard(",
-        "@Composable\nprivate fun PuppyPreviewDialog(",
+        "private fun rosterSortLabel",
         '''@Composable
 private fun PuppyRosterCard(
     card: RosterCardModel,
