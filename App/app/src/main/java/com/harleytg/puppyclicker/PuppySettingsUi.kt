@@ -55,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -770,6 +771,12 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val account = discord.account
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
+    val rosterRevision = rosterGroups.sumOf { it.puppies.size }
+    LaunchedEffect(discord.guildAccess?.verifiedAtMs, rosterRevision) {
+        if (discord.guildAccess != null) {
+            vm.unlockDiscordRolePuppy()
+        }
+    }
     var discordIdInput by rememberSaveable(account?.id) {
         mutableStateOf(account?.id.orEmpty())
     }
