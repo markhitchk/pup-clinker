@@ -37,7 +37,8 @@ internal enum class PuppyGachaPayment {
 internal enum class PuppyGachaFailure {
     NOT_ENOUGH_TREATS,
     NOT_ENOUGH_TICKETS,
-    NO_ELIGIBLE_PUPPIES
+    NO_ELIGIBLE_PUPPIES,
+    PUPEYE_BLOCKED
 }
 
 internal data class PuppyGachaPullResult(
@@ -186,6 +187,8 @@ internal fun PuppyGachaScreen(
                     "You need " + PuppyGachaEngine.COST_COMMON_TICKETS + " Common Ticket."
                 PuppyGachaFailure.NO_ELIGIBLE_PUPPIES ->
                     "No eligible puppies are available right now."
+                PuppyGachaFailure.PUPEYE_BLOCKED ->
+                    "Pupeye blocked this Gacha pull because protected progression needs Support review."
                 null -> "The capsule machine could not complete the pull."
             }
         }
