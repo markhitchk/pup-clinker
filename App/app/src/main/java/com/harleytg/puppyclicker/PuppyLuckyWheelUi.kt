@@ -397,7 +397,8 @@ private fun LuckyWheelBoard(
             LuckyWheelSegmentLabels(
                 prizes = prizes,
                 weights = weights,
-                wheelSize = wheelSize
+                wheelSize = wheelSize,
+                wheelRotationDegrees = rotation.value
             )
         }
 
@@ -429,7 +430,8 @@ private fun LuckyWheelBoard(
 private fun LuckyWheelSegmentLabels(
     prizes: List<LuckyPupWheelPrize>,
     weights: List<Float>,
-    wheelSize: androidx.compose.ui.unit.Dp
+    wheelSize: androidx.compose.ui.unit.Dp,
+    wheelRotationDegrees: Float
 ) {
     Box(modifier = Modifier.size(wheelSize)) {
         prizes.forEachIndexed { index, prize ->
@@ -452,7 +454,6 @@ private fun LuckyWheelSegmentLabels(
             val y = wheelSize * 0.5f +
                 labelRadius * sin(angleRadians).toFloat() -
                 8.dp
-            val radialRotation = angleDegrees + 90f
 
             Text(
                 text = luckyWheelSegmentLabel(prize),
@@ -460,16 +461,22 @@ private fun LuckyWheelSegmentLabels(
                     .offset(x = x, y = y)
                     .width(labelWidth)
                     .graphicsLayer {
-                        // Labels stay attached to their prize slices and point radially inward.
-                        rotationZ = radialRotation
-                    },
+                        // The label position follows its slice, while the copy stays upright
+                        // so even the narrow 10x / PUP slices remain readable during a spin.
+                        rotationZ = -wheelRotationDegrees
+                    }
+                    .background(
+                        Color.Black.copy(alpha = 0.42f),
+                        RoundedCornerShape(4.dp)
+                    )
+                    .padding(horizontal = 2.dp, vertical = 1.dp),
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = when {
-                    prize.weightPercent <= 2 -> 6.sp
-                    prize.weightPercent <= 5 -> 7.sp
-                    prize.weightPercent <= 10 -> 8.sp
-                    else -> 9.sp
+                    prize.weightPercent <= 2 -> 7.sp
+                    prize.weightPercent <= 5 -> 8.sp
+                    prize.weightPercent <= 10 -> 9.sp
+                    else -> 10.sp
                 },
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1
