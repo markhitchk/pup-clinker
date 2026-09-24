@@ -368,6 +368,7 @@ internal object DiscordSignupAuth {
         account: DiscordPlayerAccount?,
         guildAccess: DiscordGuildAccess?
     ) {
+        if (ExistingPlayerPupEyeUpgrade.wasApplied(context)) return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val shown = prefs.getBoolean(KEY_AUTH_V2_MIGRATION_NOTICE_SHOWN, false)
         if (!shouldNotifyLegacyAuthUpgrade(account, guildAccess, shown)) return
