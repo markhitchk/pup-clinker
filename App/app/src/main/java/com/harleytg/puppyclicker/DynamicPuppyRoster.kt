@@ -83,15 +83,16 @@ internal object DynamicPuppyRoster {
             )
         }
         val v2 = V2_PUPPY_STYLES.map { style ->
+            val discordReward = style.id == "v2_discord_pup"
             PuppyRosterAsset(
                 style = style,
                 assetId = style.id,
-                folder = "v2",
+                folder = if (discordReward) DISCORD_REWARDS_FOLDER else "v2",
                 fileName = "${style.id}.png",
                 free = !style.redeemOnly,
-                groupId = "v2",
-                groupTitle = "V2 Puppies",
-                groupOrder = 2
+                groupId = if (discordReward) DISCORD_REWARDS_FOLDER else "v2",
+                groupTitle = if (discordReward) "Discord Rewards" else "V2 Puppies",
+                groupOrder = if (discordReward) 3 else 2
             )
         }
         v1 + v2
