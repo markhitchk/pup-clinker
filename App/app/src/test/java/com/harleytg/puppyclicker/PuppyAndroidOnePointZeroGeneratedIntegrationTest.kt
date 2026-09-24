@@ -95,6 +95,35 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
     }
 
     @Test
+    fun generatedNavigationHandlesBackOneLevelAtATime() {
+        val activity = generated("PuppyClickerV6Activity.kt")
+        val settings = generated("PuppySettingsUi.kt")
+        val casino = generated("PuppyCasinoHub.kt")
+        val console = generated("PuppyDeveloperConsole.kt")
+
+        assertTrue(activity.contains("BackHandler(enabled = releaseHubOpen || internalDestination != null)"))
+        assertTrue(activity.contains("if (releaseHubOpen)"))
+        assertTrue(settings.contains("BackHandler(enabled = developerConsoleOpen || destination != SettingsDestination.HOME)"))
+        assertTrue(casino.contains("BackHandler(enabled = page != \"hub\")"))
+        assertTrue(console.contains("BackHandler(onBack = onBack)"))
+    }
+
+    @Test
+    fun discordPupAndDeveloperEntitlementsSurviveGeneratedSources() {
+        val roster = generated("DynamicPuppyRoster.kt")
+        val vm = generated("PuppyClickerV6ViewModel.kt")
+        val settings = generated("PuppySettingsUi.kt")
+        val console = generated("PuppyDeveloperConsole.kt")
+
+        assertTrue(roster.contains("folder = if (discordReward) DISCORD_REWARDS_FOLDER else \"v2\""))
+        assertTrue(vm.contains("access.role == DiscordGuildRole.DEVELOPER"))
+        assertTrue(vm.contains("ownedAccessories = current.ownedAccessories + ACCESSORIES"))
+        assertTrue(settings.contains("Unlock Developer Content"))
+        assertTrue(console.contains("Runtime snapshot"))
+        assertTrue(console.contains("Discord Pup source"))
+    }
+
+    @Test
     fun existingInternalRoutesRemainPresent() {
         val activity = generated("PuppyClickerV6Activity.kt")
         assertTrue(activity.contains("PuppyInternalDestination.GACHA -> PuppyGachaScreen("))
