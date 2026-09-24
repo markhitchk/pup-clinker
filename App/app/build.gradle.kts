@@ -56,6 +56,16 @@ requiredPublicDiscordSettings.forEach { key ->
     }
 }
 
+val requiredPublicSupabaseSettings = listOf(
+    "SUPABASE_URL",
+    "SUPABASE_PUBLISHABLE_KEY"
+)
+requiredPublicSupabaseSettings.forEach { key ->
+    require(publicRepoSetting(key).isNotBlank()) {
+        "Missing public Supabase configuration: $key"
+    }
+}
+
 val v1ProtectedPuppyIds = listOf(
     "classic",
     "golden",
@@ -143,6 +153,8 @@ android {
         buildConfigField("String", "DISCORD_UNLOCK_ADMIN_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_ADMIN_PUPPY_ID")))
         buildConfigField("String", "DISCORD_UNLOCK_PUP_MEMBERS_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_PUP_MEMBERS_PUPPY_ID")))
         buildConfigField("String", "DISCORD_UNLOCK_GUEST_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_GUEST_PUPPY_ID")))
+        buildConfigField("String", "SUPABASE_URL", quotedBuildConfig(publicRepoSetting("SUPABASE_URL")))
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", quotedBuildConfig(publicRepoSetting("SUPABASE_PUBLISHABLE_KEY")))
     }
 
     signingConfigs {
