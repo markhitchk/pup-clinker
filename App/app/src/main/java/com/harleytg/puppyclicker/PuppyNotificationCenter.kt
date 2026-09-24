@@ -48,6 +48,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_UPDATE = 42103
     private const val NOTIFY_ROSTER = 42104
     private const val NOTIFY_TEST = 42105
+    private const val NOTIFY_DISCORD_AUTH_UPGRADE = 42106
     private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
@@ -271,6 +272,20 @@ internal object PuppyNotificationCenter {
             id = NOTIFY_TEST,
             title = "Puppy Clicker notifications are working 🐾",
             text = "This is a test notification from Puppy Clicker."
+        )
+    }
+
+    internal fun notifyDiscordAuthUpgrade(context: Context) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).updateNotifications) return
+        post(
+            context = app,
+            channel = CHANNEL_UPDATES,
+            id = NOTIFY_DISCORD_AUTH_UPGRADE,
+            title = "Discord verification updated",
+            text = "Re-authorize Discord in Settings to verify your server role and unlock Discord Pup."
         )
     }
 
