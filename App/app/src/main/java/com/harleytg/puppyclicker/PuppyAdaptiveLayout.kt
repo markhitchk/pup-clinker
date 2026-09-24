@@ -14,11 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-internal enum class PuppyWindowClass {
+enum class PuppyWindowWidthClass {
     COMPACT,
     MEDIUM,
     EXPANDED
 }
+
+internal typealias PuppyWindowClass = PuppyWindowWidthClass
 
 internal enum class PuppyHeightClass {
     SHORT,
@@ -72,11 +74,16 @@ internal object PuppyAdaptiveLayout {
     const val REGULAR_HEIGHT_DP = 600f
     const val TALL_HEIGHT_DP = 840f
 
-    fun classify(widthDp: Float): PuppyWindowClass = when {
-        widthDp < MEDIUM_WIDTH_DP -> PuppyWindowClass.COMPACT
-        widthDp < EXPANDED_WIDTH_DP -> PuppyWindowClass.MEDIUM
-        else -> PuppyWindowClass.EXPANDED
+    fun widthClass(widthDp: Float): PuppyWindowWidthClass = when {
+        widthDp < MEDIUM_WIDTH_DP -> PuppyWindowWidthClass.COMPACT
+        widthDp < EXPANDED_WIDTH_DP -> PuppyWindowWidthClass.MEDIUM
+        else -> PuppyWindowWidthClass.EXPANDED
     }
+
+    fun classify(widthDp: Float): PuppyWindowWidthClass = widthClass(widthDp)
+
+    fun useRosterTwoPane(widthClass: PuppyWindowWidthClass): Boolean =
+        widthClass == PuppyWindowWidthClass.EXPANDED
 
     fun classifyHeight(heightDp: Float): PuppyHeightClass = when {
         heightDp < REGULAR_HEIGHT_DP -> PuppyHeightClass.SHORT
