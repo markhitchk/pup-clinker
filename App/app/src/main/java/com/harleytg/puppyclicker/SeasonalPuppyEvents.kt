@@ -4,7 +4,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.MonthDay
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -29,9 +28,9 @@ data class SeasonalPuppyEvent(
 /** Calendar rules are independent of Android, the renderer, and the game save. */
 object SeasonalPuppyEvents {
     val events = listOf(
-        SeasonalPuppyEvent("halloween", "Pumpkin Pup", "🎃", "Halloween celebration", 10, 24, 11, 1),
-        SeasonalPuppyEvent("santa", "Santa Paws", "🎄", "Christmas celebration", 12, 1, 1, 1),
-        SeasonalPuppyEvent("birthday", "Birthday Buddy", "🎂", "Your birthday celebration")
+        SeasonalPuppyEvent("halloween", "Pumpkin Pup", "🎃", "Halloween", 10, 31, 11, 1),
+        SeasonalPuppyEvent("santa", "Santa Paws", "🎄", "Christmas", 12, 25, 12, 26),
+        SeasonalPuppyEvent("birthday", "Birthday Buddy", "🎂", "Your birthday")
     )
 
     fun find(puppyId: String): SeasonalPuppyEvent? = events.firstOrNull { it.puppyId == puppyId }
@@ -59,8 +58,8 @@ object SeasonalPuppyEvents {
             (event.endMonth == event.startMonth && event.endDay <= event.startDay)) year + 1 else year
         val endDate = LocalDate.of(endYear, event.endMonth, event.endDay)
         return SeasonalWindow(
-            startDate.atStartOfDay(ZoneOffset.UTC).toInstant(),
-            endDate.atStartOfDay(ZoneOffset.UTC).toInstant(),
+            startDate.atStartOfDay(zone).toInstant(),
+            endDate.atStartOfDay(zone).toInstant(),
             "${event.puppyId}-$year"
         )
     }
@@ -87,7 +86,7 @@ object SeasonalPuppyEvents {
     fun availability(event: SeasonalPuppyEvent, now: Instant, zone: ZoneId, birthday: MonthDay?): String {
         if (event.isBirthday && birthday == null) return "Add your birthday to activate this event."
         val active = activeWindow(event, now, zone, birthday)
-        if (active != null) return "Available now · ends ${formatLocal(active.end, zone)}"
+        if (active != null) return "Automatic unlock active · ends ${formatLocal(active.end, zone)}"
         val next = nextWindow(event, now, zone, birthday) ?: return "Schedule unavailable"
         return "Next: ${formatLocal(next.start, zone)} – ${formatLocal(next.end, zone)}"
     }
