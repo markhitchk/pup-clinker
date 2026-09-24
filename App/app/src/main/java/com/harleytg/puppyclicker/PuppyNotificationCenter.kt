@@ -47,6 +47,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_EVENT = 42102
     private const val NOTIFY_UPDATE = 42103
     private const val NOTIFY_ROSTER = 42104
+    private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
     private const val WORK_NOW = "puppy_notification_now_v1"
@@ -256,6 +257,27 @@ internal object PuppyNotificationCenter {
             id = NOTIFY_ROSTER,
             title = title,
             text = text
+        )
+    }
+
+    internal fun notifySystemRewardAvailable(
+        context: Context,
+        settlementId: String,
+        amount: Long
+    ) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (PuppyAppRuntime.isForeground || !canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).gameEventNotifications) return
+        if (amount <= 0L || settlementId.isBlank()) return
+
+        val suffix = (settlementId.hashCode() and 0x7fffffff) % 700
+        post(
+            context = app,
+            channel = CHANNEL_REWARDS,
+            id = NOTIFY_SYSTEM_REWARD_BASE + suffix,
+            title = "Your puppies saved some Treats!",
+            text = "Claim " + amount + " saved Treats from the Puppy Clicker notification inbox."
         )
     }
 
@@ -478,6 +500,10 @@ internal object PuppyNotificationCenter {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openApp)
             .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setGroup("puppy_clicker")
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(id, notification)
