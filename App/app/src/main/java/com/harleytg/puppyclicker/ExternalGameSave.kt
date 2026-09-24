@@ -70,6 +70,7 @@ object ExternalGameSave {
                 }
 
                 File(directory, LEGACY_FILE_NAME).takeIf { it.exists() }?.delete()
+                PupEyeSaveGuard.markExternalIntegrity(context, true)
                 if (failureLogGate.markSuccess()) {
                     Log.i(TAG, "Encrypted Android/data mirror recovered")
                 }
@@ -86,12 +87,19 @@ object ExternalGameSave {
     }
 
     fun verifyExisting(context: Context): Boolean {
-        val externalRoot = context.getExternalFilesDir(null) ?: return true
+        val externalRoot = context.getExternalFilesDir(null)
+        if (externalRoot == null) {
+            PupEyeSaveGuard.markExternalIntegrity(context, true)
+            return true
+        }
         return verifyExisting(context, File(File(externalRoot, DIRECTORY_NAME), FILE_NAME))
     }
 
     private fun verifyExisting(context: Context, target: File): Boolean {
-        if (!target.isFile) return true
+        if (!target.isFile) {
+            PupEyeSaveGuard.markExternalIntegrity(context, true)
+            return true
+        }
         return runCatching {
             val plain = PuppySaveCrypto.decryptDevice(target.readBytes())
             val document = JSONObject(plain.toString(Charsets.UTF_8))
@@ -102,8 +110,10 @@ object ExternalGameSave {
                 require(username.isNotBlank()) { "Missing protected player username" }
                 require(identity.optString("deviceModel").isNotBlank()) { "Missing protected device model" }
             }
+            PupEyeSaveGuard.markExternalIntegrity(context, true)
             true
         }.getOrElse { error ->
+            PupEyeSaveGuard.markExternalIntegrity(context, false)
             if (classifySaveCryptoFailure(error) == SaveCryptoFailureKind.TAMPER) {
                 PupEyeSaveGuard.recordTamper(
                     context,
