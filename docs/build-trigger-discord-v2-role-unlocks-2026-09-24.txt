@@ -1,0 +1,2 @@
+CI validation for Discord V2 role unlocks.
+Base: 15bac13c731f6cba255fff1094c18542ee27f30c
