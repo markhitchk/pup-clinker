@@ -24,7 +24,8 @@ internal data class DiscordPlayerAccount(
     val id: String,
     val username: String,
     val globalName: String?,
-    val avatarHash: String?
+    val avatarHash: String?,
+    val email: String?
 ) {
     val displayName: String
         get() = globalName?.takeIf { it.isNotBlank() } ?: username
@@ -47,20 +48,26 @@ internal data class DiscordSignupState(
 /**
  * Discord-backed Puppy Clicker signup.
  *
- * The app is a public mobile OAuth client and therefore uses PKCE. The Discord access token is
- * intentionally kept only long enough to call /users/@me and is never persisted. Puppy Clicker's
- * Player ID and Friend Code remain device-bound and independent of Discord.
+ * The app is a public mobile OAuth client and therefore uses PKCE. Authorization requests use
+ * identify, email, guilds, guilds.join, and guilds.members.read. The Discord access token is
+ * intentionally kept only long enough for the current authorization session and is never persisted.
+ * This class currently reads /users/@me; guild-scoped operations can use the same authorized flow
+ * when a specific Puppy Clicker guild/community target is configured.
+ *
+ * Puppy Clicker's Player ID and Friend Code remain device-bound and independent of Discord.
  */
 internal object DiscordSignupAuth {
     const val CLIENT_ID = "1547982688898777118"
     const val CALLBACK_SCHEME = "discord-1547982688898777118"
     const val REDIRECT_URI = "$CALLBACK_SCHEME:/authorize/callback"
+    const val OAUTH_SCOPES = "identify email guilds guilds.join guilds.members.read"
 
     private const val PREFS = "puppy_discord_signup_v1"
     private const val KEY_DISCORD_ID = "discord_id"
     private const val KEY_USERNAME = "discord_username"
     private const val KEY_GLOBAL_NAME = "discord_global_name"
     private const val KEY_AVATAR_HASH = "discord_avatar_hash"
+    private const val KEY_EMAIL = "discord_email"
     private const val KEY_LINKED_AT = "discord_linked_at"
     private const val KEY_PENDING_STATE = "oauth_pending_state"
     private const val KEY_PENDING_VERIFIER = "oauth_pending_verifier"
@@ -210,6 +217,7 @@ internal object DiscordSignupAuth {
             .remove(KEY_USERNAME)
             .remove(KEY_GLOBAL_NAME)
             .remove(KEY_AVATAR_HASH)
+            .remove(KEY_EMAIL)
             .remove(KEY_LINKED_AT)
             .remove(KEY_PENDING_STATE)
             .remove(KEY_PENDING_VERIFIER)
@@ -226,7 +234,7 @@ internal object DiscordSignupAuth {
             "client_id" to CLIENT_ID,
             "response_type" to "code",
             "redirect_uri" to REDIRECT_URI,
-            "scope" to "identify",
+            "scope" to OAUTH_SCOPES,
             "state" to oauthState,
             "code_challenge" to codeChallenge,
             "code_challenge_method" to "S256"
@@ -263,7 +271,8 @@ internal object DiscordSignupAuth {
             id = id,
             username = username,
             globalName = prefs.getString(KEY_GLOBAL_NAME, null),
-            avatarHash = prefs.getString(KEY_AVATAR_HASH, null)
+            avatarHash = prefs.getString(KEY_AVATAR_HASH, null),
+            email = prefs.getString(KEY_EMAIL, null)
         )
     }
 
@@ -274,6 +283,7 @@ internal object DiscordSignupAuth {
             .putString(KEY_USERNAME, account.username)
             .putString(KEY_GLOBAL_NAME, account.globalName)
             .putString(KEY_AVATAR_HASH, account.avatarHash)
+            .putString(KEY_EMAIL, account.email)
             .putLong(KEY_LINKED_AT, System.currentTimeMillis())
             .apply()
     }
@@ -345,7 +355,8 @@ internal object DiscordSignupAuth {
             id = id,
             username = username,
             globalName = payload.optString("global_name").takeIf { it.isNotBlank() && it != "null" },
-            avatarHash = payload.optString("avatar").takeIf { it.isNotBlank() && it != "null" }
+            avatarHash = payload.optString("avatar").takeIf { it.isNotBlank() && it != "null" },
+            email = payload.optString("email").takeIf { it.isNotBlank() && it != "null" }
         )
     }
 
