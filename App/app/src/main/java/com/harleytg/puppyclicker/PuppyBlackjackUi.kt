@@ -428,21 +428,29 @@ private fun BlackjackActionPanel(
             contentScale = ContentScale.FillBounds
         )
 
-        Text(
-            "Hand " + (roundState.activeHandIndex + 1) +
-                " · " + (activeValue?.total ?: 0) + " points",
-            modifier = Modifier.offset(x = maxWidth * 0.07f, y = maxHeight * 0.11f),
-            color = Color.White,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black
-        )
-
-        Text(
-            (activeHand?.wagerTreats ?: 0L).toString() + " Chips",
-            modifier = Modifier.offset(x = maxWidth * 0.70f, y = maxHeight * 0.11f),
-            color = Color.White,
-            fontWeight = FontWeight.Black
-        )
+        Row(
+            modifier = Modifier
+                .offset(x = maxWidth * 0.07f, y = maxHeight * 0.10f)
+                .width(maxWidth * 0.86f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Hand " + (roundState.activeHandIndex + 1) +
+                    " · " + (activeValue?.total ?: 0) + " points",
+                modifier = Modifier.weight(1f),
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            Text(
+                (activeHand?.wagerTreats ?: 0L).toString() + " Chips",
+                color = Color.White,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
 
         BlackjackImageButton(
             drawable = R.drawable.glossy_blue_hit_button,
@@ -603,8 +611,8 @@ private fun BlackjackCardRow(
                     animationToken = id.toString() + ":" + hidden,
                     animationsEnabled = animationsEnabled,
                     dealDelayMs = index * 120L,
-                    cardWidth = if (compact) 42.dp else 58.dp,
-                    cardHeight = if (compact) 58.dp else 78.dp
+                    cardWidth = if (compact) 36.dp else 58.dp,
+                    cardHeight = if (compact) 50.dp else 78.dp
                 )
             }
         }
@@ -623,6 +631,7 @@ private fun BlackjackPlayingCard(
     val red =
         card != null &&
             card.suit in setOf(PuppyBlackjackSuit.DIAMONDS, PuppyBlackjackSuit.HEARTS)
+    val compactCard = cardWidth <= 40.dp
     val reveal = remember { Animatable(1f) }
 
     LaunchedEffect(animationToken, animationsEnabled) {
@@ -666,19 +675,26 @@ private fun BlackjackPlayingCard(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 7.dp, top = 5.dp),
+                    .padding(
+                        start = if (compactCard) 5.dp else 7.dp,
+                        top = if (compactCard) 3.dp else 5.dp
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     card.rankLabel,
                     color = cardColor,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = if (compactCard) {
+                        MaterialTheme.typography.labelSmall
+                    } else {
+                        MaterialTheme.typography.labelMedium
+                    },
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     card.suit.symbol,
                     color = cardColor,
-                    fontSize = 13.sp,
+                    fontSize = if (compactCard) 10.sp else 13.sp,
                     fontWeight = FontWeight.Black
                 )
             }
@@ -687,7 +703,7 @@ private fun BlackjackPlayingCard(
                 card.suit.symbol,
                 modifier = Modifier.align(Alignment.Center),
                 color = cardColor,
-                fontSize = 24.sp,
+                fontSize = if (compactCard) 18.sp else 24.sp,
                 fontWeight = FontWeight.Black
             )
         }
@@ -725,7 +741,7 @@ private fun BlackjackHandCard(
         ),
         shadowElevation = if (active) 3.dp else 0.dp
     ) {
-        Column(Modifier.padding(horizontal = 7.dp, vertical = 5.dp)) {
+        Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Hand " + (index + 1),
