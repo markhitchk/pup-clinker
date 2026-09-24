@@ -47,6 +47,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_EVENT = 42102
     private const val NOTIFY_UPDATE = 42103
     private const val NOTIFY_ROSTER = 42104
+    private const val NOTIFY_TEST = 42105
     private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
@@ -260,6 +261,19 @@ internal object PuppyNotificationCenter {
         )
     }
 
+    fun postTestNotification(context: Context) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        post(
+            context = app,
+            channel = CHANNEL_EVENTS,
+            id = NOTIFY_TEST,
+            title = "Puppy Clicker notifications are working 🐾",
+            text = "This is a test notification from Puppy Clicker."
+        )
+    }
+
     internal fun notifySystemRewardAvailable(
         context: Context,
         settlementId: String,
@@ -268,7 +282,7 @@ internal object PuppyNotificationCenter {
         val app = context.applicationContext
         createChannels(app)
         if (PuppyAppRuntime.isForeground || !canNotify(app)) return
-        if (!PuppyUiPreferences.current(app).gameEventNotifications) return
+        if (!PuppyUiPreferences.current(app).dailyRewardNotifications) return
         if (amount <= 0L || settlementId.isBlank()) return
 
         val suffix = (settlementId.hashCode() and 0x7fffffff) % 700
