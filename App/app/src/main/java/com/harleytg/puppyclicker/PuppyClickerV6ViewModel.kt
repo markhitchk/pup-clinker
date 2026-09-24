@@ -1481,6 +1481,17 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         saveState()
     }
 
+    fun receiveExchangePuppy(puppyId: String): Boolean {
+        val asset = DynamicPuppyRoster.asset(puppyId) ?: return false
+        val policy = asset.transferPolicy
+        if (!policy.giftable || policy.bound) return false
+        val current = _state.value
+        if (asset.style.id in current.unlockedPuppies) return true
+        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
+        saveState()
+        return true
+    }
+
     fun unlockDiscordRolePuppy(): Boolean {
         val access = DiscordSignupAuth.observe(getApplication()).value.guildAccess ?: return false
         if (access.guildId != DiscordSignupAuth.GUILD_ID) return false
@@ -1490,17 +1501,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val current = _state.value
         if (puppyId in current.unlockedPuppies) return true
         _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
-        saveState()
-        return true
-    }
-
-    fun receiveExchangePuppy(puppyId: String): Boolean {
-        val asset = DynamicPuppyRoster.asset(puppyId) ?: return false
-        val policy = asset.transferPolicy
-        if (!policy.giftable || policy.bound) return false
-        val current = _state.value
-        if (asset.style.id in current.unlockedPuppies) return true
-        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + asset.style.id)
         saveState()
         return true
     }
