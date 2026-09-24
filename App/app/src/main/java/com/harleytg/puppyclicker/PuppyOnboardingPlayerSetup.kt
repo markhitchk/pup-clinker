@@ -405,7 +405,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Puppy Clicker only uses Discord's identify permission. Your Player ID, Friend Code, progress, and save remain local.",
+                    "Discord access requests identity, email, server list, server-join authorization, and your member profile for community features. Your Player ID, Friend Code, progress, and save remain local.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
