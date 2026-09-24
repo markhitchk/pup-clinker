@@ -11,18 +11,25 @@ import {
   createSupabaseAttestationStore,
   processSaveAttestation,
 } from "./handler.ts";
-import { validateSaveAttestationRequest } from "./policy.ts";
+import {
+  assertAttestationGeneration,
+  validateSaveAttestationRequest,
+} from "./policy.ts";
 
 Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
     const envelope = verifyEnvelope(await req.json(), "save-attestation");
     const input = validateSaveAttestationRequest(envelope.payload);
-    if (input.generation !== envelope.generation) {
+    try {
+      assertAttestationGeneration(input.generation, envelope.generation);
+    } catch (error) {
       throw new HttpError(
         400,
         "SAVE_GENERATION_MISMATCH",
-        "Save attestation generation does not match the signed PupEye request.",
+        error instanceof Error
+          ? error.message
+          : "Invalid Puppy Clicker save generation.",
       );
     }
 
