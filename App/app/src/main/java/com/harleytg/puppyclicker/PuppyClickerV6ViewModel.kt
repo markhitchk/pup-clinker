@@ -1500,7 +1500,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         val current = _state.value
         if (puppyId in current.unlockedPuppies) return true
-        _state.value = current.copy(unlockedPuppies = current.unlockedPuppies + puppyId)
+        val nextUnlocked = current.unlockedPuppies + puppyId
+        _state.value = current.copy(unlockedPuppies = nextUnlocked)
         saveState()
         return true
     }
