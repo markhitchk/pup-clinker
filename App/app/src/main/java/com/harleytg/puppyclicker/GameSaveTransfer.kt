@@ -56,6 +56,12 @@ internal object GameSaveTransfer {
     fun export(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
         require(password.length >= 8) { "Backup password must be at least 8 characters" }
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        require(PupEyeSaveGuard.verifyAndRecover(context, mainPrefs)) {
+            "Pupeye could not authenticate the current protected save."
+        }
+        require(PupEyeAuthority.isGameplayAllowed(context)) {
+            "Pupeye has locked protected progression because an integrity flag requires Support review."
+        }
         val mainStore = SecurePreferenceCodec.encode(mainPrefs)
         val casinoValidation =
             PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
@@ -74,6 +80,9 @@ internal object GameSaveTransfer {
             put("exportedAtEpochMs", System.currentTimeMillis())
             put("identity", PuppyPlayerIdentity.metadata(context))
             put("stores", stores)
+            // Added last: the proof signs the canonical payload above and binds it to
+            // this installation's non-exportable Android Keystore signing key.
+            put("pupeye", PupEyeAuthority.createTransferProof(context, this))
         }
         val encrypted = PuppySaveCrypto.encryptTransfer(
             payload.toString().toByteArray(Charsets.UTF_8),
@@ -106,7 +115,9 @@ internal object GameSaveTransfer {
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
 
         if (root.optString("format") == LEGACY_FORMAT) {
-            importLegacy(context, root)
+            throw IllegalArgumentException(
+                "Legacy unauthenticated saves require Puppy Clicker Support migration before they can be imported."
+            )
         } else {
             require(password.length >= 8) { "Enter the backup password used for this save" }
             val plain = try {
@@ -119,6 +130,11 @@ internal object GameSaveTransfer {
             require(payload.optString("format") == PAYLOAD_FORMAT) { "Invalid decrypted save payload" }
             require(payload.optInt("version") == PAYLOAD_VERSION) { "Unsupported save payload version" }
 
+            val pupeyeVerification = PupEyeAuthority.verifyTransfer(context, payload)
+            require(pupeyeVerification.accepted) {
+                pupeyeVerification.message ?: "Pupeye could not authenticate this save."
+            }
+
             val identity = payload.optJSONObject("identity")
                 ?: error("Encrypted save is missing player identity")
             validateImportedIdentity(context, identity)
@@ -128,6 +144,10 @@ internal object GameSaveTransfer {
                 disallowedCasinoRoundIds = consumedCasinoRoundIds
             )
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
+            PupEyeAuthority.acceptVerifiedTransfer(
+                context = context,
+                generation = pupeyeVerification.generation
+            )
         }
 
         if (preserveIncompleteSetup) {
@@ -169,6 +189,15 @@ internal object GameSaveTransfer {
         val importedDevice = identity.optString("deviceModel").trim().lowercase()
         require(importedUsername.isNotBlank()) { "Encrypted save has no valid username" }
         require(importedDevice.isNotBlank()) { "Encrypted save has no source device model" }
+
+        val importedPlayerId = identity.optString("playerId")
+        val importedFriendCode = identity.optString("friendCode")
+        require(importedPlayerId == PuppyPlayerIdentity.playerId(context)) {
+            "This save is registered to a different Puppy Clicker Player ID. Contact Support for a device transfer."
+        }
+        require(importedFriendCode == PuppyPlayerIdentity.friendCode(context)) {
+            "This save is registered to a different Puppy Clicker Friend Code. Contact Support for a device transfer."
+        }
 
         val currentUsername = PuppyPlayerIdentity.username(context)
         if (currentUsername != "localplayer" && currentUsername != importedUsername) {
@@ -362,7 +391,7 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                 Text("Choose .pupsave")
             }
             Text(
-                "Import keeps this device's Player ID and Friend Code. The save's display username and game progress are restored.",
+                "Pupeye accepts authenticated saves only for this registered installation. Moving progress to another device requires Puppy Clicker Support authorization.",
                 style = MaterialTheme.typography.labelSmall
             )
         }
@@ -530,7 +559,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
             }
             Spacer(Modifier.size(7.dp))
             Text(
-                "Automatic Android/data saves are device-bound by Android Keystore. Portable v3 backups require the password and reject a different configured username.",
+                "Automatic saves are device-bound by Android Keystore. Portable v3 backups also carry a Pupeye installation signature and monotonic save generation; another device requires Support-authorized migration.",
                 style = MaterialTheme.typography.labelSmall
             )
             Text(
