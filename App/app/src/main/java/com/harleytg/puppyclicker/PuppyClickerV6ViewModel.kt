@@ -1495,12 +1495,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun unlockDiscordRolePuppy(): Boolean {
         val access = DiscordSignupAuth.observe(getApplication()).value.guildAccess ?: return false
         if (access.guildId != DiscordSignupAuth.GUILD_ID) return false
-        val puppyId = DiscordSignupAuth.unlockPuppyIdFor(access.role) ?: return false
-        if (puppyId !in V2_PUPPY_IDS) return false
+        val puppyIds = DiscordSignupAuth.unlockPuppyIdsFor(access.role)
+        if (puppyIds.isEmpty() || puppyIds.any { it !in V2_PUPPY_IDS }) return false
 
         val current = _state.value
-        if (puppyId in current.unlockedPuppies) return true
-        val nextUnlocked = current.unlockedPuppies + puppyId
+        val nextUnlocked = current.unlockedPuppies + puppyIds
+        if (nextUnlocked == current.unlockedPuppies) return true
         _state.value = current.copy(unlockedPuppies = nextUnlocked)
         saveState()
         return true
