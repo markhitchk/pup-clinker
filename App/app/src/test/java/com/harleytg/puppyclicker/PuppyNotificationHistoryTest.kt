@@ -101,5 +101,9 @@ class PuppyNotificationHistoryTest {
         assertTrue(one.first { it.id == "a" }.read)
         assertFalse(one.first { it.id == "b" }.read)
         assertTrue(PuppyNotificationHistoryCodec.markAllRead(source).all { it.read })
+
+        val mixed = listOf(item("read", 4, read = true), item("unread", 3, read = false))
+        val cleared = PuppyNotificationHistoryCodec.clearRead(mixed)
+        assertEquals(listOf("unread"), cleared.map { it.id })
     }
 }
