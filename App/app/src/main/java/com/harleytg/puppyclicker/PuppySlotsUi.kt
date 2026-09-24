@@ -451,16 +451,16 @@ private fun SlotsMachineCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
             ) {
-                val machineWidth = maxWidth * 0.82f
+                val machineWidth = maxWidth * 0.78f
                 val machineHeight =
                     machineWidth * (SLOTS_MACHINE_VISIBLE_HEIGHT / SLOTS_MACHINE_VISIBLE_WIDTH)
-                val machineLeft = maxWidth * 0.05f
-                val machineTop = maxHeight * 0.10f
+                val machineLeft = maxWidth * 0.06f
+                val machineTop = maxHeight * 0.14f
 
                 val mascotWidth = machineWidth * 0.48f
                 val mascotHeight = mascotWidth * (131f / 180f)
                 val mascotLeft = machineLeft + machineWidth * 0.26f
-                val mascotTop = machineTop - machineHeight * 0.07f
+                val mascotTop = machineTop - machineHeight * 0.16f
 
                 // Mascot sits behind the cabinet marquee so the artwork remains layered.
                 Image(
