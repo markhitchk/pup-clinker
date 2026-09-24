@@ -28,13 +28,21 @@ The username:
 - Is stored locally
 - May be included inside encrypted save files so the app can identify which local player a save belongs to
 
-## 3. Device Model in Encrypted Saves
+## 3. Device and Installation Security Metadata
 
 Encrypted save metadata may contain a coarse manufacturer/model label for the Android device that created the save.
 
-This label is kept inside the encrypted save payload and is not intended to be displayed publicly.
+PupEye also creates security metadata that is specific to the Puppy Clicker installation, including:
 
-Puppy Clicker does **not** store the following for save ownership:
+- A random Puppy Clicker installation ID
+- A public signing-key fingerprint
+- A monotonic save generation number
+- Random save and economy transaction identifiers
+- Integrity-event and protected economy-ledger information
+
+The corresponding private signing key is generated in Android Keystore and is not exported in portable saves. The installation ID and signing-key fingerprint are app security identifiers, not hardware serial numbers.
+
+Puppy Clicker does **not** use the following for save ownership:
 
 - IMEI
 - Hardware serial number
@@ -47,11 +55,14 @@ Puppy Clicker does **not** store the following for save ownership:
 
 Automatic `Android/data` saves use authenticated encryption and Android Keystore protection. Portable backups may use password-based authenticated encryption.
 
-Authentication failures or unauthorized modifications may be recorded locally by **PupEye** and may cause a save to be:
+Authentication failures, save rollback attempts, ownership mismatches, duplicate protected transactions, or unauthorized modifications may be recorded locally by **PupEye** and may cause a save or protected gameplay operation to be:
 
 - Rejected
 - Quarantined
 - Restored from a last-known-good state
+- Blocked pending Support review
+
+Portable backups are authenticated to the Puppy Clicker installation that created them. Moving protected progress to another device requires a Support-authorized migration flow.
 
 ## 5. PupEye Fair-Play Information
 
