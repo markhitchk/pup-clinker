@@ -35,6 +35,13 @@ class PuppyCasinoScreenshotUiContractTest {
     }
 
     @Test
+    fun slotsMascotIsNotBuriedBehindTheMachineMarquee() {
+        val slots = source("PuppySlotsUi.kt")
+
+        assertTrue(slots.contains("val mascotTop = machineTop - machineHeight * 0.16f"))
+    }
+
+    @Test
     fun plinkoLabelsShareTheExactBinOverlayGeometry() {
         val plinko = source("PuppyPlinkoUi.kt")
 
