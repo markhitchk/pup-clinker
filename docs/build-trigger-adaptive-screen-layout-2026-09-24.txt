@@ -1,0 +1,2 @@
+CI validation for app-wide adaptive screen sizing and compact notification inbox.
+Base: 386bc7a5dc3a398867d945e0255bb8e457c746ac
