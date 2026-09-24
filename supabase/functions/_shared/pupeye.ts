@@ -1,4 +1,4 @@
-import { createHash, createPublicKey, createVerify, randomBytes } from "node:crypto";
+import { createHash, createPublicKey, createVerify } from "node:crypto";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 export type AdminClient = any;
@@ -97,8 +97,28 @@ export function sha256Hex(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function encodeBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
 export function randomSessionToken(): string {
-  return randomBytes(32).toString("base64url");
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return encodeBase64Url(bytes);
 }
 
 export function verifyEnvelope(
@@ -126,7 +146,7 @@ export function verifyEnvelope(
     throw new Error("Pupeye request timestamp is outside the allowed window");
   }
 
-  const publicKeyBytes = Buffer.from(publicKey, "base64");
+  const publicKeyBytes = decodeBase64(publicKey);
   if (sha256Hex(publicKeyBytes) !== deviceKeyId) {
     throw new Error("Pupeye device key fingerprint mismatch");
   }
@@ -150,7 +170,7 @@ export function verifyEnvelope(
     format: "der",
     type: "spki",
   });
-  if (!verifier.verify(key, Buffer.from(signature, "base64"))) {
+  if (!verifier.verify(key, decodeBase64(signature))) {
     throw new Error("Pupeye request signature is invalid");
   }
 
