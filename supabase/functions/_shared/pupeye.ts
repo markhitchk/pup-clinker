@@ -285,6 +285,7 @@ export class HttpError extends Error {
     public status: number,
     public code: string,
     message: string,
+    public details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -293,7 +294,11 @@ export class HttpError extends Error {
 export function errorResponse(error: unknown): Response {
   if (error instanceof HttpError) {
     console.error("[PupEye]", error.code, error.message);
-    return json(error.status, { code: error.code, message: error.message });
+    return json(error.status, {
+      code: error.code,
+      message: error.message,
+      ...error.details,
+    });
   }
   const message = error instanceof Error ? error.message : "Unexpected Pupeye backend error";
   console.error("[PupEye] PUPEYE_REQUEST_INVALID", message);
