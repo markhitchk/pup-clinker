@@ -208,6 +208,9 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 delay(1_000)
                 seconds++
                 consumeClaimedAfkReward()
+                // Keep Today's Goals and their claim ledger correct even if the app
+                // remains open across local midnight.
+                if (seconds % 30 == 0) rollDailyDayIfNeeded()
 
                 val now = System.currentTimeMillis()
                 // No passive Treat generation. AUTO upgrades are active 10-tap bonuses.
