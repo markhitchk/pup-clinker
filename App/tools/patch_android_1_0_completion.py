@@ -815,12 +815,13 @@ def patch_settings(source: str) -> str:
 
     OutlinedTextField(
         value = username,'''
-    source = replace_once(
-        source,
-        profile_editor_anchor,
-        profile_progression,
-        "profile progression placement",
-    )
+    if profile_editor_anchor in source:
+        source = replace_once(
+            source,
+            profile_editor_anchor,
+            profile_progression,
+            "profile progression placement",
+        )
 
     source += '''
 
