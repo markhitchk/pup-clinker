@@ -1,6 +1,7 @@
-import { withSupabase } from "npm:@supabase/server";
 import {
   HttpError,
+  assertPublishableRequest,
+  createAdminClient,
   audit,
   errorResponse,
   issueSession,
@@ -10,9 +11,9 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 
-export default {
-  fetch: withSupabase({ auth: "publishable" }, async (req, ctx) => {
-    try {
+Deno.serve(async (req: Request) => {
+  try {
+    assertPublishableRequest(req);
       const envelope = verifyEnvelope(await req.json(), "register");
       const payload = envelope.payload;
       const playerId = requiredString(payload.playerId, "playerId");
@@ -22,7 +23,7 @@ export default {
       const deviceModel = optionalString(payload.deviceModel)?.slice(0, 64);
       const platform = optionalString(payload.platform)?.slice(0, 24) ?? "android";
       const appVersion = optionalString(payload.appVersion)?.slice(0, 32);
-      const admin = ctx.supabaseAdmin;
+      const admin = createAdminClient();
 
       const { data: byPlayerId, error: playerIdError } = await admin
         .from("pupeye_players").select("*").eq("player_id", playerId).maybeSingle();
@@ -233,8 +234,7 @@ export default {
         backendPlayerId: player.id,
         backendInstallationId: installation.id,
       });
-    } catch (error) {
-      return errorResponse(error);
-    }
-  }),
-};
+  } catch (error) {
+    return errorResponse(error);
+  }
+});
