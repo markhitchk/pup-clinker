@@ -397,8 +397,7 @@ private fun LuckyWheelBoard(
             LuckyWheelSegmentLabels(
                 prizes = prizes,
                 weights = weights,
-                wheelSize = wheelSize,
-                wheelRotationDegrees = rotation.value
+                wheelSize = wheelSize
             )
         }
 
@@ -430,26 +429,30 @@ private fun LuckyWheelBoard(
 private fun LuckyWheelSegmentLabels(
     prizes: List<LuckyPupWheelPrize>,
     weights: List<Float>,
-    wheelSize: androidx.compose.ui.unit.Dp,
-    wheelRotationDegrees: Float
+    wheelSize: androidx.compose.ui.unit.Dp
 ) {
     Box(modifier = Modifier.size(wheelSize)) {
         prizes.forEachIndexed { index, prize ->
             val angleDegrees = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, index)
             val angleRadians = angleDegrees * PI / 180.0
-            val compactSlice = prize.weightPercent <= 8
             val labelRadius = wheelSize * when {
-                prize.weightPercent <= 2 -> 0.39f
-                compactSlice -> 0.34f
-                else -> 0.29f
+                prize.weightPercent <= 2 -> 0.38f
+                prize.weightPercent <= 5 -> 0.335f
+                prize.weightPercent <= 10 -> 0.30f
+                else -> 0.27f
             }
-            val labelWidth = wheelSize * if (compactSlice) 0.14f else 0.18f
+            val labelWidth = wheelSize * when {
+                prize.weightPercent <= 2 -> 0.12f
+                prize.weightPercent <= 5 -> 0.14f
+                else -> 0.17f
+            }
             val x = wheelSize * 0.5f +
                 labelRadius * cos(angleRadians).toFloat() -
                 labelWidth * 0.5f
             val y = wheelSize * 0.5f +
                 labelRadius * sin(angleRadians).toFloat() -
-                9.dp
+                8.dp
+            val radialRotation = angleDegrees + 90f
 
             Text(
                 text = luckyWheelSegmentLabel(prize),
@@ -457,12 +460,17 @@ private fun LuckyWheelSegmentLabels(
                     .offset(x = x, y = y)
                     .width(labelWidth)
                     .graphicsLayer {
-                        // The label center follows its rotating slice, but the copy remains upright.
-                        rotationZ = -wheelRotationDegrees
+                        // Labels stay attached to their prize slices and point radially inward.
+                        rotationZ = radialRotation
                     },
                 color = Color.White,
                 fontWeight = FontWeight.Black,
-                fontSize = if (compactSlice) 8.sp else 9.sp,
+                fontSize = when {
+                    prize.weightPercent <= 2 -> 6.sp
+                    prize.weightPercent <= 5 -> 7.sp
+                    prize.weightPercent <= 10 -> 8.sp
+                    else -> 9.sp
+                },
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1
             )
