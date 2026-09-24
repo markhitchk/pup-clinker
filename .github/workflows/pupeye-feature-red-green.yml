@@ -1,0 +1,32 @@
+name: PupEye Feature RED-GREEN
+
+on:
+  push:
+    branches: [pupeye-global-ban]
+
+permissions:
+  contents: read
+
+jobs:
+  supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Start local Supabase
+        run: supabase start
+      - name: Run PupEye database tests
+        run: supabase test db supabase/tests/pupeye_global_bans_test.sql
+      - name: Run PupEye Edge Function tests when present
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(supabase/functions/tests/*-test.ts)
+          if (( ${#files[@]} )); then
+            deno test --allow-all "${files[@]}"
+          fi
