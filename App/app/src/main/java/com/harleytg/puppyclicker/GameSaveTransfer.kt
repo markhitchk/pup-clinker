@@ -74,16 +74,20 @@ internal object GameSaveTransfer {
             put(MAIN_PREFS, mainStore)
             put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
         }
-        val payload = JSONObject().apply {
+        val unsignedPayload = JSONObject().apply {
             put("format", PAYLOAD_FORMAT)
             put("version", PAYLOAD_VERSION)
             put("package", context.packageName)
             put("exportedAtEpochMs", System.currentTimeMillis())
             put("identity", PuppyPlayerIdentity.metadata(context))
             put("stores", stores)
+        }
+        val payloadHash = PupEyeAuthority.transferPayloadHash(unsignedPayload)
+        val proof = PupEyeAuthority.createTransferProof(context, unsignedPayload)
+        val payload = JSONObject(unsignedPayload.toString()).apply {
             // Added last: the proof signs the canonical payload above and binds it to
             // this installation's non-exportable Android Keystore signing key.
-            put("pupeye", PupEyeAuthority.createTransferProof(context, this))
+            put("pupeye", proof)
         }
         val encrypted = PuppySaveCrypto.encryptTransfer(
             payload.toString().toByteArray(Charsets.UTF_8),
@@ -93,6 +97,12 @@ internal object GameSaveTransfer {
         val output = context.contentResolver.openOutputStream(uri, "wt")
             ?: error("Unable to open the selected export file")
         output.use { it.write(encrypted) }
+        SupabasePupEyeClient.queueSaveAttestation(
+            context = context,
+            saveId = proof.getString("saveId"),
+            generation = proof.getLong("generation"),
+            payloadHashSha256 = payloadHash
+        )
         SaveTransferResult(true, "Encrypted save exported for ${PuppyPlayerIdentity.username(context)}.")
     }.getOrElse { error ->
         SaveTransferResult(false, "Export failed: ${error.message ?: "unknown error"}")
@@ -112,6 +122,7 @@ internal object GameSaveTransfer {
             addAll(PuppyCasinoPuppyRewardPersistence.load(currentMainPrefs).evaluatedRoundIds)
         }
         val preserveIncompleteSetup = !PuppyUiPreferences.current(context).setupComplete
+        var importedAttestation: Triple<String, Long, String>? = null
         val bytes = readBounded(context, uri)
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
 
@@ -135,6 +146,14 @@ internal object GameSaveTransfer {
             require(pupeyeVerification.accepted) {
                 pupeyeVerification.message ?: "Pupeye could not authenticate this save."
             }
+            val proof = payload.getJSONObject("pupeye")
+            val unsignedPayload =
+                JSONObject(payload.toString()).apply { remove("pupeye") }
+            importedAttestation = Triple(
+                proof.getString("saveId"),
+                proof.getLong("generation"),
+                PupEyeAuthority.transferPayloadHash(unsignedPayload)
+            )
 
             val identity = payload.optJSONObject("identity")
                 ?: error("Encrypted save is missing player identity")
@@ -158,6 +177,14 @@ internal object GameSaveTransfer {
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         PupEyeSaveGuard.seal(context, mainPrefs)
         ExternalGameSave.write(context, mainPrefs)
+        importedAttestation?.let { (saveId, generation, payloadHash) ->
+            SupabasePupEyeClient.queueSaveAttestation(
+                context = context,
+                saveId = saveId,
+                generation = generation,
+                payloadHashSha256 = payloadHash
+            )
+        }
         SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Your protected progress is ready to reload.")
     }.getOrElse { error ->
         SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
