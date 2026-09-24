@@ -5,23 +5,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,6 +58,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private val FavoriteRed = Color(0xFFD32F2F)
@@ -76,7 +82,7 @@ internal fun PuppyRosterScreen(
     var previewId by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmUseId by rememberSaveable { mutableStateOf<String?>(null) }
     var unlockInfoId by rememberSaveable { mutableStateOf<String?>(null) }
-    var renameOpen by rememberSaveable { mutableStateOf(false) }
+    var renameId by rememberSaveable { mutableStateOf<String?>(null) }
     val retryTokens = remember { mutableStateMapOf<String, Int>() }
 
     val categories = remember(assets) { dynamicRosterCategories(assets) }
@@ -279,7 +285,7 @@ internal fun PuppyRosterScreen(
                 },
                 onUse = { confirmUseId = asset.style.id },
                 onUnlockInfo = { unlockInfoId = asset.style.id },
-                onRename = { renameOpen = true },
+                onRename = { renameId = asset.style.id },
                 onAccessory = vm::setAccessory
             )
         }
@@ -337,6 +343,8 @@ internal fun PuppyRosterScreen(
             PuppyPreviewDialog(
                 asset = asset,
                 unlocked = id in state.unlockedPuppies,
+                current = id == state.puppyStyle,
+                activeName = state.puppyName,
                 onDismiss = { previewId = null }
             )
         }
@@ -359,56 +367,29 @@ internal fun PuppyRosterScreen(
     unlockInfoId?.let { id ->
         assets.firstOrNull { it.style.id == id }?.let { asset ->
             asset.unlockSource?.let { source ->
-                AlertDialog(
-                    onDismissRequest = { unlockInfoId = null },
-                    title = { Text("How to Unlock") },
-                    text = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            StreamedPuppyPortrait(
-                                styleId = asset.style.id,
-                                size = 96.dp,
-                                unlocked = false,
-                                background = MaterialTheme.colorScheme.surfaceVariant,
-                                retryToken = retryTokens[id] ?: 0
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(asset.style.name, fontWeight = FontWeight.Black)
-                            Text(asset.assetId, style = MaterialTheme.typography.labelMedium)
-                            Text(asset.groupTitle, style = MaterialTheme.typography.labelMedium)
-                            Spacer(Modifier.height(10.dp))
-                            Text(source)
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { unlockInfoId = null }) { Text("Close") }
-                    }
+                PuppyUnlockDialog(
+                    asset = asset,
+                    source = source,
+                    retryToken = retryTokens[id] ?: 0,
+                    onDismiss = { unlockInfoId = null }
                 )
             }
         }
     }
 
-    if (renameOpen) {
-        var name by rememberSaveable { mutableStateOf(state.puppyName) }
-        AlertDialog(
-            onDismissRequest = { renameOpen = false },
-            title = { Text("Rename puppy") },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(18) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
+    renameId?.let { id ->
+        assets.firstOrNull { it.style.id == id }?.let { asset ->
+            RenamePuppyDialog(
+                asset = asset,
+                currentName = state.puppyName,
+                retryToken = retryTokens[id] ?: 0,
+                onDismiss = { renameId = null },
+                onSave = { name ->
                     vm.renamePuppy(name)
-                    renameOpen = false
-                }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { renameOpen = false }) { Text("Cancel") }
-            }
-        )
+                    renameId = null
+                }
+            )
+        }
     }
 }
 
@@ -455,7 +436,15 @@ private fun SelectedPuppyPanel(
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(asset.style.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    val displayName = if (active) state.puppyName.ifBlank { asset.style.name } else asset.style.name
+                    Text(displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    if (active && displayName != asset.style.name) {
+                        Text(
+                            "Original: ${asset.style.name}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text(asset.assetId, style = MaterialTheme.typography.labelMedium)
                     Text(asset.groupTitle, style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(5.dp))
@@ -617,60 +606,312 @@ private fun PuppyRosterCard(
 }
 
 @Composable
+private fun RosterModal(
+    title: String,
+    subtitle: String? = null,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            val dialogMaxHeight = (maxHeight - 12.dp).coerceAtLeast(260.dp)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 460.dp)
+                    .heightIn(max = dialogMaxHeight),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black
+                            )
+                            subtitle?.takeIf { it.isNotBlank() }?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.semantics { contentDescription = "Close" }
+                        ) {
+                            Text("✕", fontSize = 20.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RosterInfoPill(text: String) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+    ) {
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
 private fun PuppyPreviewDialog(
     asset: PuppyRosterAsset,
     unlocked: Boolean,
+    current: Boolean,
+    activeName: String,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                asset.style.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
+    val displayName = if (current) activeName.ifBlank { asset.style.name } else asset.style.name
+    val subtitle = if (displayName != asset.style.name) {
+        "${asset.style.name} · ${asset.assetId}"
+    } else {
+        asset.assetId
+    }
+
+    RosterModal(
+        title = displayName,
+        subtitle = subtitle,
+        onDismiss = onDismiss
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            StreamedPuppyPortrait(
+                styleId = asset.style.id,
+                size = 184.dp,
+                unlocked = unlocked,
+                background = MaterialTheme.colorScheme.surfaceVariant
             )
-        },
-        text = {
-            Column(
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            RosterInfoPill(asset.groupTitle)
+            RosterInfoPill(
+                when {
+                    current -> "Current Puppy"
+                    unlocked -> "Unlocked"
+                    else -> "🔒 Locked"
+                }
+            )
+        }
+
+        asset.style.description.takeIf { it.isNotBlank() }?.let { description ->
+            Spacer(Modifier.height(14.dp))
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)
             ) {
-                StreamedPuppyPortrait(
-                    styleId = asset.style.id,
-                    size = 220.dp,
-                    unlocked = unlocked,
-                    background = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(Modifier.height(12.dp))
                 Text(
-                    asset.assetId,
+                    description,
+                    modifier = Modifier.padding(14.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Done")
+        }
+    }
+}
+
+@Composable
+private fun PuppyUnlockDialog(
+    asset: PuppyRosterAsset,
+    source: String,
+    retryToken: Int,
+    onDismiss: () -> Unit
+) {
+    RosterModal(
+        title = "How to Unlock",
+        subtitle = asset.assetId,
+        onDismiss = onDismiss
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StreamedPuppyPortrait(
+                styleId = asset.style.id,
+                size = 92.dp,
+                unlocked = false,
+                background = MaterialTheme.colorScheme.surfaceVariant,
+                retryToken = retryToken
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    asset.style.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(Modifier.height(4.dp))
+                RosterInfoPill(asset.groupTitle)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "🔒 Locked",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
+        ) {
+            Column(Modifier.padding(15.dp)) {
+                Text(
+                    "Unlock requirement",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(source, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Close")
+        }
+    }
+}
+
+@Composable
+private fun RenamePuppyDialog(
+    asset: PuppyRosterAsset,
+    currentName: String,
+    retryToken: Int,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    val metadataName = asset.style.name
+    var name by rememberSaveable(asset.style.id, currentName) {
+        mutableStateOf(currentName.ifBlank { metadataName }.take(18))
+    }
+    val cleanedName = name.trim().replace("\n", " ").take(18)
+
+    RosterModal(
+        title = "Rename puppy",
+        subtitle = asset.assetId,
+        onDismiss = onDismiss
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StreamedPuppyPortrait(
+                styleId = asset.style.id,
+                size = 76.dp,
+                unlocked = true,
+                background = MaterialTheme.colorScheme.surfaceVariant,
+                retryToken = retryToken
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Original name",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(5.dp))
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
-                ) {
-                    Text(
-                        asset.groupTitle,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    if (unlocked) "Unlocked" else "🔒 Locked",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    metadataName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    "Custom names stay attached to this puppy.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
         }
-    )
+
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it.replace("\n", " ").take(18) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Puppy name") },
+            supportingText = { Text("${name.length}/18") }
+        )
+
+        TextButton(
+            onClick = { name = metadataName.take(18) }
+        ) {
+            Text("Use original name: $metadataName")
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel")
+            }
+            Button(
+                onClick = { onSave(cleanedName) },
+                enabled = cleanedName.isNotBlank(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Save")
+            }
+        }
+    }
 }
 
 @Composable
@@ -680,31 +921,45 @@ private fun UsePuppyConfirmation(
     onCancel: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text("Use Puppy?") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                StreamedPuppyPortrait(
-                    styleId = asset.style.id,
-                    size = 112.dp,
-                    unlocked = true,
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    retryToken = retryToken
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(asset.style.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(5.dp))
-                Text("Make ${asset.style.name} your active puppy?")
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) { Text("Use Puppy") }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel) { Text("Cancel") }
+    RosterModal(
+        title = "Use ${asset.style.name}?",
+        subtitle = asset.assetId,
+        onDismiss = onCancel
+    ) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            StreamedPuppyPortrait(
+                styleId = asset.style.id,
+                size = 132.dp,
+                unlocked = true,
+                background = MaterialTheme.colorScheme.surfaceVariant,
+                retryToken = retryToken
+            )
         }
-    )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Make ${asset.style.name} your active puppy?",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel")
+            }
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Use Puppy")
+            }
+        }
+    }
 }
 
 private fun rosterSortLabel(sort: RosterSort): String = when (sort) {
