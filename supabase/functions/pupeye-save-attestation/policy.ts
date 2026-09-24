@@ -57,3 +57,15 @@ export function classifySaveAttestation(input: {
     ? "TEMPORARY_GLOBAL_BAN"
     : "REVIEW";
 }
+
+
+export function assertAttestationGeneration(
+  attestedGeneration: number,
+  signedEnvelopeGeneration: number,
+): void {
+  if (attestedGeneration > signedEnvelopeGeneration) {
+    throw new Error(
+      "Save attestation generation cannot exceed the signed request generation.",
+    );
+  }
+}
