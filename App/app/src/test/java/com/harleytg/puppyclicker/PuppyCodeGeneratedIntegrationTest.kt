@@ -38,4 +38,37 @@ class PuppyCodeGeneratedIntegrationTest {
         val parsed = PuppyCodeCatalog.parse(catalogue.readText())
         assertTrue(parsed.codesByHash.isNotEmpty())
     }
+
+    @Test
+    fun discordRolePuppiesStayOutOfRedeemCatalogue() {
+        val catalogue = listOf(
+            File("../../assets/redeem-codes.json"),
+            File("../assets/redeem-codes.json"),
+            File("assets/redeem-codes.json")
+        ).firstOrNull(File::isFile)
+            ?: error("assets/redeem-codes.json was not found")
+
+        val parsed = PuppyCodeCatalog.parse(catalogue.readText())
+        val puppyIds = parsed.codesByHash.values
+            .flatMap { definition -> definition.rewards }
+            .filterIsInstance<PuppyCodeReward.Puppy>()
+            .mapTo(mutableSetOf()) { it.puppyId }
+
+        assertFalse("Discord Pup must remain auth-only", "v2_discord_pup" in puppyIds)
+        assertFalse("V2 Dev Pup must remain Discord Developer-role only", "v2_dev_pup" in puppyIds)
+        assertFalse("HarleyTG V2 puppy must remain on its special unlock path", "v2_harleytg" in puppyIds)
+
+        listOf(
+            "v2_frost",
+            "v2_honey",
+            "v2_biscuit",
+            "v2_onyx",
+            "v2_domino",
+            "v2_chestnut",
+            "v2_prism",
+            "v2_flurry"
+        ).forEach { puppyId ->
+            assertTrue("Expected live Puppy Code reward for $puppyId", puppyId in puppyIds)
+        }
+    }
 }
