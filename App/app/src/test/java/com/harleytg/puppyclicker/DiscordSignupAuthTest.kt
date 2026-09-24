@@ -47,11 +47,36 @@ class DiscordSignupAuthTest {
     }
 
     @Test
-    fun developerDiscordRoleMapsToV2DevPup() {
+    fun discordRolesMapToConfiguredV2Puppies() {
         assertEquals("v2_dev_pup", DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.DEVELOPER))
         assertNull(DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.ADMIN))
-        assertNull(DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.PUP_MEMBER))
+        assertEquals("v2_discord_pup", DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.PUP_MEMBER))
         assertNull(DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.GUEST))
+    }
+
+    @Test
+    fun legacyDiscordAccountGetsOneMigrationNoticeUntilServerRoleIsVerified() {
+        val account = DiscordPlayerAccount(
+            id = "1547298673006747678",
+            username = "puppy-member",
+            globalName = null,
+            avatarHash = null,
+            email = null
+        )
+        assertTrue(DiscordSignupAuth.shouldNotifyLegacyAuthUpgrade(account, null, false))
+        assertTrue(!DiscordSignupAuth.shouldNotifyLegacyAuthUpgrade(account, null, true))
+        assertTrue(
+            !DiscordSignupAuth.shouldNotifyLegacyAuthUpgrade(
+                account,
+                DiscordGuildAccess(
+                    guildId = DiscordSignupAuth.GUILD_ID,
+                    role = DiscordGuildRole.PUP_MEMBER,
+                    verifiedAtMs = 1L
+                ),
+                false
+            )
+        )
+        assertTrue(!DiscordSignupAuth.shouldNotifyLegacyAuthUpgrade(null, null, false))
     }
 
     @Test
