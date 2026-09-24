@@ -37,8 +37,9 @@ internal fun PuppyRevampedPlayScreen(
     val scope = rememberCoroutineScope()
     val animatePuppy = LocalPuppyAnimatedUi.current && state.animationsEnabled
     val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
-    val todayGoals = remember(rewardSchedule) {
-        PuppyMonthlyRewards.currentGoals(LocalDate.now())
+    val rewardToday = LocalDate.now()
+    val todayGoals = remember(rewardSchedule, rewardToday) {
+        PuppyMonthlyRewards.currentGoals(rewardToday)
     }
     val nextGoal = todayGoals.firstOrNull { it.id !in state.claimedDailyTasks }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
