@@ -1493,12 +1493,33 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun unlockDiscordRolePuppy(): Boolean {
-        val access = DiscordSignupAuth.observe(getApplication()).value.guildAccess ?: return false
+        val app = getApplication<Application>()
+        val access = DiscordSignupAuth.observe(app).value.guildAccess ?: return false
         if (access.guildId != DiscordSignupAuth.GUILD_ID) return false
+
+        val current = _state.value
+        if (access.role == DiscordGuildRole.DEVELOPER) {
+            // Developer is a privileged test/content entitlement: unlock every puppy currently
+            // known by the roster plus every wearable accessory, without modifying currencies,
+            // XP, achievements, streaks, or other progression counters.
+            val allKnownPuppies = (
+                V6_PUPPY_IDS +
+                    DynamicPuppyRoster.groups.value.flatMap { group -> group.puppies.map { it.id } }
+                ).toSet()
+            if (allKnownPuppies.isEmpty()) return false
+
+            PuppyDeveloperPreferences.setUnlocked(app, true)
+            _state.value = current.copy(
+                unlockedPuppies = current.unlockedPuppies + allKnownPuppies,
+                ownedAccessories = current.ownedAccessories + ACCESSORIES
+            )
+            saveState()
+            return true
+        }
+
         val puppyIds = DiscordSignupAuth.unlockPuppyIdsFor(access.role)
         if (puppyIds.isEmpty() || puppyIds.any { it !in V2_PUPPY_IDS }) return false
 
-        val current = _state.value
         val nextUnlocked = current.unlockedPuppies + puppyIds
         if (nextUnlocked == current.unlockedPuppies) return true
         _state.value = current.copy(unlockedPuppies = nextUnlocked)
