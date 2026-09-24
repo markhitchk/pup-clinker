@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, createVerify } from "node:crypto";
+import type { Buffer as NodeBuffer } from "node:buffer";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 export type AdminClient = any;
@@ -166,7 +167,10 @@ export function verifyEnvelope(
   verifier.update(material);
   verifier.end();
   const key = createPublicKey({
-    key: publicKeyBytes,
+    // Deno's Node compatibility runtime accepts Uint8Array here, while its
+    // Node type declarations currently narrow this field to Buffer. Keep the
+    // runtime value as Uint8Array so we never depend on the Node Buffer global.
+    key: publicKeyBytes as unknown as NodeBuffer,
     format: "der",
     type: "spki",
   });
