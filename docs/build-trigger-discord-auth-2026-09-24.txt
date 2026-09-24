@@ -1,0 +1,2 @@
+CI build trigger for Discord OAuth scope update.
+Base: 9e6e32d2e2855b515db9b605b51c072b2ea5c951
