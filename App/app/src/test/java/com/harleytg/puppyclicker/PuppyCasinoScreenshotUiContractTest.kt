@@ -14,9 +14,9 @@ class PuppyCasinoScreenshotUiContractTest {
         val wheel = source("PuppyLuckyWheelUi.kt")
 
         assertTrue(wheel.contains("LuckyWheelSegmentLabels("))
-        assertTrue(wheel.contains("val radialRotation = angleDegrees + 90f"))
-        assertTrue(wheel.contains("rotationZ = radialRotation"))
-        assertFalse(wheel.contains("rotationZ = -wheelRotationDegrees"))
+        assertTrue(wheel.contains("wheelRotationDegrees = rotation.value"))
+        assertTrue(wheel.contains("rotationZ = -wheelRotationDegrees"))
+        assertTrue(wheel.contains("Color.Black.copy(alpha = 0.42f)"))
     }
 
     @Test
