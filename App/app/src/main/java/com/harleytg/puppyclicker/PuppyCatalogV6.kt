@@ -32,7 +32,8 @@ val V2_PUPPY_STYLES = listOf(
     PuppyStyle("v2_prism", "Prism", "🔮", "V2 pastel purple, teal and cream fluffy puppy.", redeemOnly = true),
     PuppyStyle("v2_flurry", "Flurry", "🌨️", "V2 fluffy snow-white puppy with a curled tail.", redeemOnly = true),
     PuppyStyle("v2_harleytg", "HarleyTG Puppy", "🐾", "Fluffy golden-cream puppy with cyan-blue eyes and a raised waving paw.", redeemOnly = true),
-    PuppyStyle("v2_dev_pup", "Dev Pup", "💻", "V2 developer pup with a black hoodie, mask, cyan accents, and coding theme.", redeemOnly = true)
+    PuppyStyle("v2_dev_pup", "Dev Pup", "💻", "V2 developer pup with a black hoodie, mask, cyan accents, and coding theme.", redeemOnly = true),
+    PuppyStyle("v2_discord_pup", "Discord Pup", "💬", "V2 community pup with indigo fur, sky-blue highlights, and a Pup Member tag.", redeemOnly = true)
 )
 
 val V6_PUPPY_STYLES = V1_PUPPY_STYLES + V2_PUPPY_STYLES + EXTRA_PUPPY_STYLES
