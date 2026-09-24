@@ -62,6 +62,7 @@ internal object DynamicPuppyRoster {
     private const val REFRESH_INTERVAL_MS = 60L * 60L * 1_000L
     private const val RETRY_INTERVAL_MS = 5L * 60L * 1_000L
     private const val LOOP_INTERVAL_MS = 60L * 60L * 1_000L
+    private const val DISCORD_REWARDS_FOLDER = "discord_rewards"
     private val folderRegex = Regex("v[3-9][0-9]*")
     private val idRegex = Regex("[a-z0-9_]{1,64}")
     private val fileRegex = Regex("[A-Za-z0-9._-]{1,128}\\.png")
@@ -214,7 +215,12 @@ internal object DynamicPuppyRoster {
                     val item = directories.getJSONObject(index)
                     if (item.optString("type") != "dir") continue
                     val name = item.optString("name")
-                    if (name == "v2" || name == "test" || folderRegex.matches(name)) add(name)
+                    if (
+                        name == "v2" ||
+                        name == "test" ||
+                        name == DISCORD_REWARDS_FOLDER ||
+                        folderRegex.matches(name)
+                    ) add(name)
                 }
             }.distinct().sortedWith(compareBy<String> {
                 if (it == "test") Int.MAX_VALUE else it.removePrefix("v").toIntOrNull() ?: Int.MAX_VALUE - 1
@@ -246,7 +252,12 @@ internal object DynamicPuppyRoster {
     }
 
     internal fun parseManifest(folder: String, text: String): List<PuppyRosterAsset> {
-        require(folder == "v2" || folder == "test" || folderRegex.matches(folder)) { "Unsupported dynamic folder" }
+        require(
+            folder == "v2" ||
+                folder == "test" ||
+                folder == DISCORD_REWARDS_FOLDER ||
+                folderRegex.matches(folder)
+        ) { "Unsupported dynamic folder" }
         val root = JSONObject(text)
         val puppies = root.getJSONArray("puppies")
         if (puppies.length() > MAX_DYNAMIC_PUPPIES) throw IOException("Too many dynamic puppies")
@@ -254,11 +265,20 @@ internal object DynamicPuppyRoster {
         val roster = root.optString("roster").trim()
         val groupTitle = when {
             folder == "test" -> "Test Puppies"
+            folder == DISCORD_REWARDS_FOLDER -> "Discord Rewards"
             roster.isNotBlank() -> "${roster.uppercase()} Puppies"
             else -> "${folder.uppercase()} Puppies"
         }
-        val groupOrder = if (folder == "test") Int.MAX_VALUE else folder.removePrefix("v").toIntOrNull() ?: Int.MAX_VALUE - 1
-        val requiredPrefix = if (folder == "test") "test_" else "${folder}_"
+        val groupOrder = when (folder) {
+            "test" -> Int.MAX_VALUE
+            DISCORD_REWARDS_FOLDER -> 3
+            else -> folder.removePrefix("v").toIntOrNull() ?: Int.MAX_VALUE - 1
+        }
+        val requiredPrefix = when (folder) {
+            "test" -> "test_"
+            DISCORD_REWARDS_FOLDER -> "v2_"
+            else -> "${folder}_"
+        }
         val seen = HashSet<String>()
 
         return buildList {
@@ -279,9 +299,19 @@ internal object DynamicPuppyRoster {
                     }
                 }
                 if (name.isBlank() || name.length > 80) throw IOException("Invalid dynamic puppy name")
-                val emoji = item.optString("emoji").trim().ifBlank { if (folder == "test") "🧪" else "🐾" }
+                val emoji = item.optString("emoji").trim().ifBlank {
+                    when (folder) {
+                        "test" -> "🧪"
+                        DISCORD_REWARDS_FOLDER -> "💬"
+                        else -> "🐾"
+                    }
+                }
                 val description = item.optString("description").trim().ifBlank {
-                    if (folder == "test") "Free test roster puppy." else "${groupTitle.removeSuffix(" Puppies")} roster puppy."
+                    when (folder) {
+                        "test" -> "Free test roster puppy."
+                        DISCORD_REWARDS_FOLDER -> "Discord-authenticated Pup Member reward."
+                        else -> "${groupTitle.removeSuffix(" Puppies")} roster puppy."
+                    }
                 }
                 if (description.length > 240) throw IOException("Dynamic puppy description is too long")
 
@@ -339,7 +369,15 @@ internal object DynamicPuppyRoster {
             val folder = item.getString("folder")
             val fileName = item.getString("fileName")
             if (!idRegex.matches(styleId) || styleId != assetId || !seen.add(styleId)) throw IOException("Invalid cached style")
-            if (!(folder == "v2" || folder == "test" || folderRegex.matches(folder)) || !fileRegex.matches(fileName)) throw IOException("Invalid cached asset path")
+            if (
+                !(
+                    folder == "v2" ||
+                        folder == "test" ||
+                        folder == DISCORD_REWARDS_FOLDER ||
+                        folderRegex.matches(folder)
+                    ) ||
+                !fileRegex.matches(fileName)
+            ) throw IOException("Invalid cached asset path")
             val free = item.getBoolean("free")
             val redeemOnly = if (free) false else item.getBoolean("redeemOnly")
             result += PuppyRosterAsset(
