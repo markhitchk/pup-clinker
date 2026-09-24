@@ -17,3 +17,8 @@ verify_jwt = false
 # Support/admin only. @supabase/server requires a Supabase secret key.
 [functions.pupeye-support-migrate]
 verify_jwt = false
+
+
+# Support/admin only. The handler requires Supabase secret authentication.
+[functions.pupeye-support-ban]
+verify_jwt = false
