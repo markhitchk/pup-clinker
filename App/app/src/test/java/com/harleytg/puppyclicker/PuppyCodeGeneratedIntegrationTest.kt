@@ -57,6 +57,9 @@ class PuppyCodeGeneratedIntegrationTest {
         assertFalse("Discord Pup must remain auth-only", "v2_discord_pup" in puppyIds)
         assertFalse("V2 Dev Pup must remain Discord Developer-role only", "v2_dev_pup" in puppyIds)
         assertFalse("HarleyTG V2 puppy must remain on its special unlock path", "v2_harleytg" in puppyIds)
+        assertFalse("Pumpkin Pup must remain date-only", "halloween" in puppyIds)
+        assertFalse("Santa Paws must remain date-only", "santa" in puppyIds)
+        assertFalse("Birthday Buddy must remain birthday-only", "birthday" in puppyIds)
 
         listOf(
             "v2_frost",
