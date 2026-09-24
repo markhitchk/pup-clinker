@@ -308,9 +308,9 @@ private fun PlinkoBoard(
         val rows = PuppyPlinkoEngine.ROWS
         val travelSegments = rows + 1
         val centerX = maxWidth * 0.50f
-        val xStep = maxWidth * 0.04f
+        val xStep = maxWidth * 0.04675f
         val launchY = maxHeight * 0.19f
-        val pocketCenterY = maxHeight * 0.80f
+        val pocketCenterY = maxHeight * 0.884f
         val segmentGap = (pocketCenterY - launchY) / travelSegments.toFloat()
 
         val path = outcome?.pathRight ?: emptyList()
@@ -374,22 +374,41 @@ private fun PlinkoBoard(
             contentScale = ContentScale.FillBounds
         )
 
-        Image(
-            painter = painterResource(R.drawable.puppy_plinko_bins),
-            contentDescription = "Plinko prize bins",
+        PlinkoBinsOverlay(
+            outcome = outcome,
+            progress = progress.value,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth(0.88f)
                 .padding(bottom = maxHeight * 0.028f)
-                .aspectRatio(4f),
+                .aspectRatio(4f)
+        )
+    }
+}
+
+@Composable
+private fun PlinkoBinsOverlay(
+    outcome: PuppyPlinkoOutcome?,
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier) {
+        Image(
+            painter = painterResource(R.drawable.puppy_plinko_bins),
+            contentDescription = "Plinko prize bins",
+            modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillBounds
         )
 
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.75f)
-                .align(Alignment.BottomCenter)
-                .padding(bottom = maxHeight * 0.095f),
+                .fillMaxSize()
+                .padding(
+                    start = maxWidth * (56f / 800f),
+                    end = maxWidth * (56f / 800f),
+                    top = maxHeight * 0.24f,
+                    bottom = maxHeight * 0.16f
+                ),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -397,7 +416,7 @@ private fun PlinkoBoard(
                 val selected =
                     outcome != null &&
                         index == outcome.binIndex &&
-                        progress.value >= 0.92f
+                        progress >= 0.92f
                 Text(
                     text =
                         if (value % 100 == 0) {
@@ -408,6 +427,8 @@ private fun PlinkoBoard(
                     color = Color.White,
                     fontWeight = FontWeight.Black,
                     fontSize = if (selected) 10.sp else 9.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 1,
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer {
