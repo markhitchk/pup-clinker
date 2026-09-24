@@ -111,6 +111,14 @@ class DynamicPuppyRosterTest {
     }
 
     @Test
+    fun discordPupRemoteUrlUsesDedicatedRawAsset() {
+        assertEquals(
+            "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/discord_rewards/v2_discord_pup.png",
+            RemotePuppyAssets.remoteUrlFor("v2_discord_pup")
+        )
+    }
+
+    @Test
     fun assetStreamAndGroupStreamDescribeTheSameStartupRoster() {
         val assetIds = DynamicPuppyRoster.assets.value.map { it.style.id }.toSet()
         val groupedIds = DynamicPuppyRoster.groups.value
