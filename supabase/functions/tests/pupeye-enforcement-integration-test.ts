@@ -72,13 +72,14 @@ function fakeAdmin(options: {
   integrityState?: string;
   ban?: Record<string, unknown> | null;
   deviceReputationUuid?: string | null;
+  deviceKeyId: string;
 }) {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
   const installation = {
     id: "33333333-3333-4333-8333-333333333333",
     player_uuid: "44444444-4444-4444-8444-444444444444",
     installation_id: "11111111-1111-4111-8111-111111111111",
-    device_key_id: "device-key-placeholder",
+    device_key_id: options.deviceKeyId,
     device_reputation_uuid: options.deviceReputationUuid ?? null,
     integrity_state: options.integrityState ?? "clean",
     platform: "android",
@@ -147,6 +148,7 @@ Deno.test("signed status returns global ban for a recognized device reputation",
   const verified = verifyEnvelope(signedEnvelope(identity, "enforcement-status"), "enforcement-status");
   const deviceReputationUuid = "55555555-5555-4555-8555-555555555555";
   const admin = fakeAdmin({
+    deviceKeyId: identity.deviceKeyId,
     deviceReputationUuid,
     ban: {
       ban_uuid: "66666666-6666-4666-8666-666666666666",
@@ -161,9 +163,7 @@ Deno.test("signed status returns global ban for a recognized device reputation",
     },
   });
   // Match the generated key to the fake installation after signature verification.
-  const result = await resolveVerifiedEnforcementStatus(admin, verified, {
-    installationDeviceKeyOverrideForTest: identity.deviceKeyId,
-  });
+  const result = await resolveVerifiedEnforcementStatus(admin, verified);
   assertEquals(result.status, 403);
   assertEquals(result.body.code, "GLOBAL_BANNED");
   assertEquals((result.body.ban as Record<string, unknown>).id, "PGB-DEVICE-0001");
@@ -174,10 +174,12 @@ Deno.test("signed status returns global ban for a recognized device reputation",
 Deno.test("weak device metadata without a reputation target does not propagate a ban", async () => {
   const identity = signingIdentity();
   const verified = verifyEnvelope(signedEnvelope(identity, "enforcement-status"), "enforcement-status");
-  const admin = fakeAdmin({ ban: null, deviceReputationUuid: null });
-  const result = await resolveVerifiedEnforcementStatus(admin, verified, {
-    installationDeviceKeyOverrideForTest: identity.deviceKeyId,
+  const admin = fakeAdmin({
+    deviceKeyId: identity.deviceKeyId,
+    ban: null,
+    deviceReputationUuid: null,
   });
+  const result = await resolveVerifiedEnforcementStatus(admin, verified);
   assertEquals(result.status, 200);
   assertEquals(result.body.state, "ALLOWED");
 });
@@ -185,10 +187,12 @@ Deno.test("weak device metadata without a reputation target does not propagate a
 Deno.test("review state returns REVIEW_REQUIRED", async () => {
   const identity = signingIdentity();
   const verified = verifyEnvelope(signedEnvelope(identity, "enforcement-status"), "enforcement-status");
-  const admin = fakeAdmin({ playerStatus: "review", ban: null });
-  const result = await resolveVerifiedEnforcementStatus(admin, verified, {
-    installationDeviceKeyOverrideForTest: identity.deviceKeyId,
+  const admin = fakeAdmin({
+    deviceKeyId: identity.deviceKeyId,
+    playerStatus: "review",
+    ban: null,
   });
+  const result = await resolveVerifiedEnforcementStatus(admin, verified);
   assertEquals(result.status, 409);
   assertEquals(result.body.code, "REVIEW_REQUIRED");
 });
