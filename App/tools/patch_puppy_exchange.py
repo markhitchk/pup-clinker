@@ -65,12 +65,6 @@ def patch_dynamic_roster(source: str) -> str:
 def patch_roster_screen(source: str) -> str:
     source = replace_once(
         source,
-        "import androidx.compose.ui.res.painterResource\n",
-        "import androidx.compose.ui.platform.LocalConfiguration\nimport androidx.compose.ui.res.painterResource\n",
-        "compact roster configuration import",
-    )
-    source = replace_once(
-        source,
         '''    onUseConfirmed: (String) -> Unit,\n    onOpenSettings: () -> Unit\n) {''',
         '''    onUseConfirmed: (String) -> Unit,\n    onOpenSettings: () -> Unit,\n    onOpenExchange: () -> Unit = {}\n) {''',
         "roster exchange callback",
@@ -78,7 +72,7 @@ def patch_roster_screen(source: str) -> str:
     source = replace_once(
         source,
         '''    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }''',
-        '''    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }\n    val compactRoster = LocalConfiguration.current.screenWidthDp < 600''',
+        '''    var renameOpen by rememberSaveable { mutableStateOf(false) }\n    val retryTokens = remember { mutableStateMapOf<String, Int>() }\n    val compactRoster = LocalPuppyViewport.current.isCompact''',
         "compact roster breakpoint",
     )
     source = replace_once(
@@ -261,7 +255,7 @@ private fun PuppyRosterCard(
     onToggleFavorite: () -> Unit,
     onRetryArtwork: () -> Unit
 ) {
-    val compact = LocalConfiguration.current.screenWidthDp < 600
+    val compact = LocalPuppyViewport.current.isCompact
     val shape = RoundedCornerShape(if (compact) 16.dp else 18.dp)
     val borderColor = if (inspected) MaterialTheme.colorScheme.primary else Color.Transparent
     Card(
