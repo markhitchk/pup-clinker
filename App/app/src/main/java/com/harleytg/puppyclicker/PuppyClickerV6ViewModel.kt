@@ -231,6 +231,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     ): PuppyCasinoTransactionResult {
         val current = _state.value
         val completed = PuppyCasinoPersistence.loadCompletedRoundIds(prefs)
+        if (!PupEyeAuthority.isGameplayAllowed(getApplication<Application>())) {
+            return PuppyCasinoTransactionResult(
+                success = false,
+                state = current,
+                activeRound = _casinoRound.value,
+                completedRoundIds = completed,
+                failure = PuppyCasinoTransactionFailure.CORRUPT_SAVE
+            )
+        }
         if (_casinoRecoveryIssue.value != null) {
             return PuppyCasinoTransactionResult(
                 success = false,
@@ -1404,6 +1413,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
     @Synchronized
     internal fun pullPuppyGacha(payment: PuppyGachaPayment): PuppyGachaPullResult {
+        val app = getApplication<Application>()
+        if (!PupEyeAuthority.isGameplayAllowed(app)) {
+            return PuppyGachaPullResult(
+                success = false,
+                payment = payment,
+                failure = PuppyGachaFailure.PUPEYE_BLOCKED
+            )
+        }
+
         val current = _state.value
         val styles = DynamicPuppyRoster.groups.value.flatMap { it.puppies }
         val candidates = PuppyGachaEngine.pullPool(
@@ -1451,6 +1469,30 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             failure = PuppyGachaFailure.NO_ELIGIBLE_PUPPIES
         )
         val isNewUnlock = selected.id !in current.unlockedPuppies
+        val gachaTransactionId = PupEyeEconomyLedger.newTransactionId("gacha")
+        val gachaRecorded = PupEyeEconomyLedger.recordGacha(
+            context = app,
+            transactionId = gachaTransactionId,
+            payment = payment,
+            puppyId = selected.id,
+            costTreats = if (payment == PuppyGachaPayment.TREATS) {
+                PuppyGachaEngine.COST_TREATS
+            } else {
+                0L
+            },
+            costTickets = if (payment == PuppyGachaPayment.COMMON_TICKET) {
+                PuppyGachaEngine.COST_COMMON_TICKETS
+            } else {
+                0
+            }
+        )
+        if (!gachaRecorded) {
+            return PuppyGachaPullResult(
+                success = false,
+                payment = payment,
+                failure = PuppyGachaFailure.PUPEYE_BLOCKED
+            )
+        }
 
         val nextInventory = if (payment == PuppyGachaPayment.COMMON_TICKET) {
             current.ticketInventory + (
@@ -1931,6 +1973,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 failure = PuppyCasinoTransactionFailure.PERSISTENCE_FAILED
             )
         }
+
+        // Casino state is committed first. If the protected ledger cannot authenticate
+        // or append this transition, Pupeye hard-flags progression so no further Casino
+        // or Gacha economy mutations are accepted until Support review.
+        PupEyeEconomyLedger.recordCasinoResult(
+            context = getApplication<Application>(),
+            completedBefore = completedBefore,
+            result = result
+        )
 
         _state.value = result.state
         _casinoRound.value = result.activeRound
