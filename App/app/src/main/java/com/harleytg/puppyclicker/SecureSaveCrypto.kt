@@ -293,6 +293,10 @@ internal object PupEyeSaveGuard {
                 .edit()
                 .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
                 .commit()
+            // Every authenticated last-known-good seal advances Pupeye's monotonic
+            // save generation. Portable backups can therefore detect valid-but-old
+            // rollback attempts instead of relying on encryption alone.
+            PupEyeAuthority.noteSealedState(context)
             true
         }.getOrDefault(false)
 
