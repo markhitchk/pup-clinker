@@ -83,21 +83,23 @@ That information is handled under the hosting provider's own policies.
 
 ## 7. Discord Signup
 
-Puppy Clicker uses **Discord OAuth** for new player signup and requests only the `identify` permission.
+Puppy Clicker uses **Discord OAuth** for player signup and community features. The authorization flow requests the following scopes:
 
-After successful authorization, Puppy Clicker may read:
+- `identify`
+- `email`
+- `guilds`
+- `guilds.join`
+- `guilds.members.read`
+
+After successful authorization, Puppy Clicker may read account identity information including:
 
 - Discord user ID
 - Username
 - Display name, when available
 - Avatar identifier, when available
+- Email address, when Discord returns it for the authorized account
 
-That account metadata is stored locally so the app can remember which Discord account completed signup.
-
-Puppy Clicker:
-
-- Does **not** request the Discord email scope for this flow
-- Does **not** persist the Discord OAuth access token after retrieving the account identity
+The account identity metadata used by Puppy Clicker is stored locally so the app can remember which Discord account completed signup. The requested guild scopes authorize community/server features, but the app does not persist the Discord OAuth access token after the authorization session.
 
 The Discord account does not replace Puppy Clicker's device-bound **Player ID** or **Friend Code**. Those local identifiers continue to be used for Puppy Clicker trading, gifting, save ownership, and related local game features.
 
