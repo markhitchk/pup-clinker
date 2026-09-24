@@ -225,10 +225,12 @@ def patch_view_model(source: str) -> str:
     )
     source = replace_all(
         source,
-        '''            puppyStyle = nextStyle
+        '''            puppyStyle = nextStyle,
+            puppyName = nextName
         )
         saveState()''',
         '''            puppyStyle = nextStyle,
+            puppyName = nextName,
             bond = PuppyProgression.bondFor(current.bondByPuppyId, nextStyle)
         )
         _state.value = awardNewPuppyXp(current, _state.value)
@@ -239,10 +241,14 @@ def patch_view_model(source: str) -> str:
 
     source = replace_once(
         source,
-        '''        _state.value = s.copy(puppyStyle = id)
+        '''        _state.value = s.copy(
+            puppyStyle = id,
+            puppyName = nextName
+        )
         saveState()''',
         '''        _state.value = s.copy(
             puppyStyle = id,
+            puppyName = nextName,
             bond = PuppyProgression.bondFor(s.bondByPuppyId, id)
         )
         saveState()''',
