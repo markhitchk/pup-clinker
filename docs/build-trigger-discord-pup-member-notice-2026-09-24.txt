@@ -1,0 +1,2 @@
+CI validation for Discord Pup Member unlock and legacy Discord auth migration notification.
+Base: 22127bc39bdbf8eee1aa8dfd19b3739e335636b1
