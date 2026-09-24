@@ -118,7 +118,7 @@ internal object PupEyeAuthority {
             val saveId = proof.getString("saveId")
             val createdAt = proof.getLong("createdAtEpochMs")
             val publicKeyBytes = Base64.decode(proof.getString("publicKey"), Base64.NO_WRAP)
-            val signatureBytes = Base64.decode(proof.getString("signature"), Base64.NO_WRAP)
+            val signatureValue = Base64.decode(proof.getString("signature"), Base64.NO_WRAP)
 
             require(publicKeyId(publicKeyBytes) == keyId) {
                 "Pupeye device-key fingerprint mismatch"
@@ -139,10 +139,10 @@ internal object PupEyeAuthority {
                         createdAt = createdAt
                     )
                 )
-                verify(signatureBytes)
+                verify(signatureValue)
             }
             if (!validSignature) {
-                recordHardFlag(context, "SAVE_SIGNATURE_INVALID", "Portable save signature failed verification")
+                recordEvent(context, "SAVE_SIGNATURE_INVALID", "Portable save signature failed verification")
                 return PupEyeTransferVerification(
                     accepted = false,
                     message = "Pupeye rejected this save because its authenticated signature is invalid."
@@ -179,7 +179,7 @@ internal object PupEyeAuthority {
 
             val localGeneration = currentGeneration(context)
             if (generation < localGeneration) {
-                recordHardFlag(
+                recordEvent(
                     context,
                     "SAVE_ROLLBACK",
                     "Rejected generation $generation while local generation is $localGeneration"
@@ -197,7 +197,7 @@ internal object PupEyeAuthority {
                 message = "Authenticated Puppy Clicker save verified by Pupeye."
             )
         }.getOrElse { error ->
-            recordHardFlag(
+            recordEvent(
                 context,
                 "SAVE_PROOF_INVALID",
                 error.message ?: "Pupeye transfer proof could not be validated"
@@ -246,7 +246,7 @@ internal object PupEyeAuthority {
         val flags = jsonStringSet(state.optJSONArray("hardFlags"))
             .toMutableSet()
         flags += sanitizeCode(code)
-        state.put("hardFlags", JSONArray(flags.sorted()))
+        state.put("hardFlags", JSONArray(flags.sorted().take(MAX_HARD_FLAGS)))
         val events = state.optJSONArray("events") ?: JSONArray()
         events.put(
             JSONObject().apply {
@@ -513,7 +513,7 @@ internal object PupEyeEconomyLedger {
         if (active != null) {
             return record(
                 context = context,
-                transactionId = "casino:${active.roundId}:${active.state.name}",
+                transactionId = "casino:${active.roundId}:${active.state.name}:${UUID.randomUUID()}",
                 source = "CASINO",
                 details = "game=${active.game.name};state=${active.state.name};wager=${active.wagerTreats};payout=${active.payoutTreats}"
             )
