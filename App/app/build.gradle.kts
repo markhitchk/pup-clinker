@@ -85,8 +85,7 @@ val v2ProtectedPuppyIds = listOf(
     "v2_domino",
     "v2_chestnut",
     "v2_prism",
-    "v2_flurry",
-    "v2_discord_pup"
+    "v2_flurry"
 )
 
 val PUPPY_KEY_MASK_A = "f382c0752e0bda1c7ac539661e2a2eb12a01202e848a1f2fd925bceddd3e9ca8"
