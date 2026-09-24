@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -430,6 +431,10 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
+    val supportInstallationCode = remember {
+        runCatching { PupEyeAuthority.supportInstallationCode(context) }
+            .getOrDefault("Unavailable")
+    }
     var password by rememberSaveable {
         mutableStateOf(PuppyBackupPasswordStore.get(context).orEmpty())
     }
@@ -561,6 +566,11 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
             Text(
                 "Automatic saves are device-bound by Android Keystore. Portable v3 backups also carry a Pupeye installation signature and monotonic save generation; another device requires Support-authorized migration.",
                 style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                "PupEye Support Installation Code: $supportInstallationCode",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
             )
             Text(
                 "No IMEI, serial number, Android ID, phone number, or account token is stored.",
