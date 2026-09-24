@@ -63,6 +63,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("monthly rewards stream") { PuppyMonthlyRewards.initialize(this) }
         startupSafely("redeem code stream") { StreamedRedeemCodes.initialize(this) }
         startupSafely("notification history") { PuppyNotificationHistory.initialize(this) }
+        startupSafely("Discord auth migration") { DiscordSignupAuth.observe(this) }
         startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
 
