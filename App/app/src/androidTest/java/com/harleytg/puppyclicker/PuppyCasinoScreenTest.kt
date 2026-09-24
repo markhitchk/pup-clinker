@@ -3,6 +3,7 @@ package com.harleytg.puppyclicker
 import android.app.Application
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
@@ -95,6 +96,60 @@ class PuppyCasinoScreenTest {
         composeRule.onNodeWithText("Lucky Pup Wheel").assertExists()
         composeRule.onNodeWithText("🎟️ Casino Upgrade Tickets").assertExists()
         composeRule.onNodeWithText("🐶 Casino Puppy Rewards").assertExists()
+    }
+
+    @Test
+    fun allCasinoGameScreensRenderWithoutCrashing() {
+        val vm = PuppyClickerV6ViewModel(app)
+        val selectedGame = mutableStateOf(PuppyCasinoGame.SLOTS)
+
+        composeRule.setContent {
+            MaterialTheme {
+                when (selectedGame.value) {
+                    PuppyCasinoGame.SLOTS ->
+                        PuppySlotsScreen(vm.state.value, vm, onBack = {})
+                    PuppyCasinoGame.ROULETTE ->
+                        PuppyRouletteScreen(vm.state.value, vm, onBack = {})
+                    PuppyCasinoGame.BLACKJACK ->
+                        PuppyBlackjackScreen(vm.state.value, vm, onBack = {})
+                    PuppyCasinoGame.PLINKO ->
+                        PuppyPlinkoScreen(vm.state.value, vm, onBack = {})
+                    PuppyCasinoGame.SCRATCHERS ->
+                        PuppyScratchersScreen(vm.state.value, vm, onBack = {})
+                    PuppyCasinoGame.LUCKY_WHEEL ->
+                        PuppyLuckyWheelScreen(vm.state.value, vm, onBack = {})
+                }
+            }
+        }
+
+        val expectedTitles = listOf(
+            PuppyCasinoGame.SLOTS to "Puppy Slots",
+            PuppyCasinoGame.ROULETTE to "Puppy Roulette",
+            PuppyCasinoGame.BLACKJACK to "Puppy Blackjack",
+            PuppyCasinoGame.PLINKO to "Pup Plinko",
+            PuppyCasinoGame.SCRATCHERS to "Pup Scratchers",
+            PuppyCasinoGame.LUCKY_WHEEL to "Lucky Pup Wheel"
+        )
+
+        expectedTitles.forEach { (game, title) ->
+            composeRule.runOnIdle {
+                selectedGame.value = game
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText(title).assertExists()
+        }
+    }
+
+    @Test
+    fun casinoRuntimeGuardContainsUnexpectedCommandExceptions() {
+        val result = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.SLOTS,
+            "instrumentation_failure"
+        ) {
+            error("intentional casino runtime guard test")
+        }
+
+        org.junit.Assert.assertTrue(result.isFailure)
     }
 
     @Test

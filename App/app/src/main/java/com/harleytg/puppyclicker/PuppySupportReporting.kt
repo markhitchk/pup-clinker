@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.SecureRandom
@@ -73,6 +75,8 @@ internal object PuppySupportReporting {
     private const val REPORT_PREFS = "puppy_support_reporting_v1"
     private const val KEY_LAST_PREPARED_REPORT_ID = "last_prepared_report_id"
     private const val KEY_LAST_PREPARED_REPORT_TIME = "last_prepared_report_time"
+    private const val KEY_LAST_CRASH = "last_crash"
+    private const val KEY_LAST_CRASH_TIME = "last_crash_time"
     private const val MAX_REPORT_DIAGNOSTIC_ENTRIES = 30
     private const val MAX_REPORT_DIAGNOSTIC_MESSAGE_CHARS = 300
     private const val USER_REPORT_WEBHOOK_IV_B64 = "zys1g4ENIYNeiKi7"
@@ -87,9 +91,94 @@ internal object PuppySupportReporting {
     private val initialized = AtomicBoolean(false)
     private val reportRandom = SecureRandom()
 
+    @Volatile
+    private var previousCrashHandler: Thread.UncaughtExceptionHandler? = null
+
     fun initialize(context: Context) {
+        val app = context.applicationContext
+        if (!initialized.compareAndSet(false, true)) return
+
+        previousCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            captureCrashLocally(app, thread, throwable)
+
+            val previous = previousCrashHandler
+            if (previous != null) {
+                previous.uncaughtException(thread, throwable)
+            } else {
+                runCatching {
+                    Log.e(TAG, "Uncaught exception with no previous Android crash handler", throwable)
+                }
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+        }
+
+        if (PuppyUiPreferences.current(app).crashReportsEnabled) {
+            lastCrashSummary(app)?.let { crash ->
+                PuppyDebugLog.e(
+                    TAG,
+                    "Previous local crash is available for support diagnostics: " +
+                        crash.lineSequence().firstOrNull().orEmpty().take(MAX_MESSAGE_CHARS)
+                )
+            }
+        }
+    }
+
+    fun lastCrashSummary(context: Context): String? =
         context.applicationContext
-        initialized.compareAndSet(false, true)
+            .getSharedPreferences(REPORT_PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_CRASH, null)
+            ?.takeIf { it.isNotBlank() }
+
+    private fun captureCrashLocally(
+        context: Context,
+        thread: Thread,
+        throwable: Throwable
+    ) {
+        runCatching {
+            val app = context.applicationContext
+            if (!PuppyUiPreferences.current(app).crashReportsEnabled) {
+                return@runCatching
+            }
+
+            val stack = StringWriter().also { writer ->
+                PrintWriter(writer).use { printer ->
+                    throwable.printStackTrace(printer)
+                }
+            }.toString().take(MAX_STACK_CHARS)
+
+            val summary = buildString {
+                appendLine("PUPPY CLICKER LOCAL CRASH")
+                appendLine("Timestamp: ${Instant.now()}")
+                appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                appendLine("Android SDK: ${Build.VERSION.SDK_INT}")
+                appendLine("Device: ${PuppyPlayerIdentity.deviceModel()}")
+                appendLine("Thread: ${thread.name.take(80)}")
+                appendLine("Casino page: ${PuppyCasinoRuntimeGuard.currentPage()}")
+                appendLine("Exception: ${throwable.javaClass.name}")
+                throwable.message?.takeIf { it.isNotBlank() }?.let {
+                    appendLine("Message: ${it.take(MAX_MESSAGE_CHARS)}")
+                }
+                appendLine()
+                append(stack)
+            }.take(MAX_STACK_CHARS)
+
+            app.getSharedPreferences(REPORT_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_CRASH, summary)
+                .putLong(KEY_LAST_CRASH_TIME, System.currentTimeMillis())
+                .commit()
+
+            PuppyDebugLog.e(
+                TAG,
+                "Captured local crash on casino page ${PuppyCasinoRuntimeGuard.currentPage()}",
+                throwable
+            )
+        }.onFailure { captureFailure ->
+            runCatching {
+                Log.e(TAG, "Unable to persist local crash diagnostics", captureFailure)
+            }
+        }
     }
 
     fun reportTelemetry(
@@ -178,6 +267,14 @@ internal object PuppySupportReporting {
                         appendLine(
                             "${entry.timestampMs} ${entry.level.shortName}/${entry.tag}: ${message}"
                         )
+                    }
+                }
+
+                if (ui.crashReportsEnabled) {
+                    lastCrashSummary(app)?.let { crash ->
+                        appendLine()
+                        appendLine("LAST LOCAL CRASH — CRASH COLLECTION CONSENT ENABLED")
+                        appendLine(crash.take(MAX_STACK_CHARS))
                     }
                 }
             }

@@ -125,7 +125,16 @@ internal fun PuppyScratchersScreen(
         }
         lastOutcome = outcome
         revealed = true
-        val settled = vm.settleCasinoRound(savedRound.roundId)
+        val settled = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.SCRATCHERS,
+            "settle"
+        ) {
+            vm.settleCasinoRound(savedRound.roundId)
+        }.getOrNull()
+        if (settled == null) {
+            message = "Scratchers recovered from a runtime error while settling the round."
+            return@LaunchedEffect
+        }
         if (!settled.success) {
             message = "Unable to settle the saved Scratcher: " +
                 (settled.failure?.name ?: "unknown error")
@@ -249,8 +258,15 @@ internal fun PuppyScratchersScreen(
                 message = null
                 revealed = false
                 scratched.clear()
-                val result = vm.startScratcher(wager)
-                if (result.success) {
+                val result = PuppyCasinoRuntimeGuard.run(
+                    PuppyCasinoGame.SCRATCHERS,
+                    "start"
+                ) {
+                    vm.startScratcher(wager)
+                }.getOrNull()
+                if (result == null) {
+                    message = "Scratchers recovered from a runtime error. No new card was started."
+                } else if (result.success) {
                     lastOutcome = result.outcome
                 } else {
                     message = "Scratcher blocked: " +
@@ -806,7 +822,11 @@ private fun ScratcherInterruptedCard(round: PuppyCasinoRound, vm: PuppyClickerV6
             Text("The card cost was accepted before a result was committed.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { vm.refundCasinoRound(round.roundId) },
+                onClick = {
+            PuppyCasinoRuntimeGuard.run(PuppyCasinoGame.SCRATCHERS, "refund") {
+                vm.refundCasinoRound(round.roundId)
+            }
+        },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Refund ${round.wagerTreats} Chips")

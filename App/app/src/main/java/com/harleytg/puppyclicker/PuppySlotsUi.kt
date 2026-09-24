@@ -133,7 +133,16 @@ internal fun PuppySlotsScreen(
         delay(if (state.animationsEnabled) 2_350 else 250)
         revealFinishedRoundId = round.roundId
 
-        val settled = vm.settleCasinoRound(round.roundId)
+        val settled = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.SLOTS,
+            "settle"
+        ) {
+            vm.settleCasinoRound(round.roundId)
+        }.getOrNull()
+        if (settled == null) {
+            message = "Slots recovered from a runtime error while settling the round."
+            return@LaunchedEffect
+        }
         if (!settled.success) {
             message = "Unable to settle the saved Slots round: " +
                 (settled.failure?.name ?: "unknown error")
@@ -149,8 +158,15 @@ internal fun PuppySlotsScreen(
 
     val startSlotsRound: () -> Unit = {
         message = null
-        val result = vm.startSlotsSpin(wager)
-        if (result.success) {
+        val result = PuppyCasinoRuntimeGuard.run(
+            PuppyCasinoGame.SLOTS,
+            "start"
+        ) {
+            vm.startSlotsSpin(wager)
+        }.getOrNull()
+        if (result == null) {
+            message = "Slots recovered from a runtime error. No new spin was started."
+        } else if (result.success) {
             leverPullToken += 1L
         } else {
             message = when (result.failure) {
@@ -260,7 +276,13 @@ internal fun PuppySlotsScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(
-                        onClick = { vm.refundCasinoRound(slotsRound.roundId) },
+                        onClick = {
+                    PuppyCasinoRuntimeGuard.run(PuppyCasinoGame.SLOTS, "refund") {
+                        vm.refundCasinoRound(slotsRound.roundId)
+                    }.onFailure {
+                        message = "Slots recovered from a runtime error while refunding the round."
+                    }
+                },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Refund " + slotsRound.wagerTreats + " Chips")
