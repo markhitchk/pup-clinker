@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -65,11 +66,15 @@ private val InboxClaimGreen = Color(0xFF33AC55)
 private val InboxClaimGreenDark = Color(0xFF268A42)
 private val InboxRewardBorder = Color(0xFFFFD36A)
 
-private enum class PuppyInboxFilter(val label: String, val emoji: String) {
-    ALL("All", ""),
-    REWARDS("Rewards", "🎁"),
-    PUPPIES("Puppies", "🐾"),
-    SYSTEM("System", "⚙️")
+private enum class PuppyInboxFilter(
+    val label: String,
+    val compactLabel: String,
+    val emoji: String
+) {
+    ALL("All", "All", ""),
+    REWARDS("Rewards", "Rewards", "🎁"),
+    PUPPIES("Puppies", "Pup", "🐾"),
+    SYSTEM("System", "System", "⚙️")
 }
 
 private enum class PuppyInboxDay(val label: String) {
@@ -87,6 +92,8 @@ internal fun PuppyNotificationInboxDialog(
     onMarkAllRead: () -> Unit
 ) {
     val context = LocalContext.current
+    val viewport = LocalPuppyViewport.current
+    val compact = viewport.isCompact || viewport.isShort
     var filter by remember { mutableStateOf(PuppyInboxFilter.ALL) }
     val unread = items.count { !it.read }
     val visibleItems = remember(items, filter) {
@@ -108,24 +115,32 @@ internal fun PuppyNotificationInboxDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 24.dp),
+                .padding(
+                    horizontal = if (compact) 8.dp else viewport.horizontalPadding,
+                    vertical = if (viewport.isShort) 8.dp else 18.dp
+                ),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.96f)
-                    .fillMaxHeight(0.90f),
+                    .widthIn(max = viewport.dialogMaxWidth)
+                    .fillMaxWidth()
+                    .fillMaxHeight(if (viewport.isShort) 0.96f else 0.90f),
                 shape = RoundedCornerShape(30.dp),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 20.dp,
                 tonalElevation = 4.dp
             ) {
                 Column {
-                    PuppyInboxHeader(onDismiss = onDismiss)
+                    PuppyInboxHeader(
+                        compact = compact,
+                        onDismiss = onDismiss
+                    )
 
                     PuppyInboxFilterBar(
                         selected = filter,
                         unread = unread,
+                        compact = compact,
                         onSelect = { filter = it }
                     )
 
@@ -178,8 +193,8 @@ internal fun PuppyNotificationInboxDialog(
                                         )
                                     )
                                 )
-                                .padding(horizontal = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(9.dp)
+                                .padding(horizontal = if (compact) 9.dp else 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp)
                         ) {
                             groupedItems.forEach { (group, groupItems) ->
                                 item(key = "group-${group.name}") {
@@ -195,6 +210,7 @@ internal fun PuppyNotificationInboxDialog(
                                     PuppyNotificationCard(
                                         item = item,
                                         group = group,
+                                        compact = compact,
                                         onOpen = { onOpenItem(item) },
                                         onClaimReward = { onClaimReward(item) }
                                     )
@@ -207,6 +223,7 @@ internal fun PuppyNotificationInboxDialog(
                     PuppyInboxActions(
                         hasRead = items.any { it.read },
                         hasUnread = unread > 0,
+                        compact = compact,
                         onClearRead = { PuppyNotificationHistory.clearRead(context) },
                         onMarkAllRead = onMarkAllRead
                     )
@@ -217,7 +234,10 @@ internal fun PuppyNotificationInboxDialog(
 }
 
 @Composable
-private fun PuppyInboxHeader(onDismiss: () -> Unit) {
+private fun PuppyInboxHeader(
+    compact: Boolean,
+    onDismiss: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -226,15 +246,18 @@ private fun PuppyInboxHeader(onDismiss: () -> Unit) {
                     listOf(InboxPurple, InboxPurpleDeep)
                 )
             )
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(
+                horizontal = if (compact) 14.dp else 18.dp,
+                vertical = if (compact) 9.dp else 12.dp
+            )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(58.dp),
-                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.size(if (compact) 46.dp else 58.dp),
+                shape = RoundedCornerShape(if (compact) 14.dp else 18.dp),
                 color = Color.White.copy(alpha = 0.88f)
             ) {
                 Image(
@@ -248,20 +271,20 @@ private fun PuppyInboxHeader(onDismiss: () -> Unit) {
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(if (compact) 9.dp else 12.dp))
 
             Text(
                 "Notifications",
                 modifier = Modifier.weight(1f),
                 color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 maxLines = 1
             )
 
             Surface(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(if (compact) 42.dp else 46.dp)
                     .semantics { contentDescription = "Close notifications" }
                     .clip(CircleShape)
                     .clickable(role = Role.Button, onClick = onDismiss),
@@ -270,7 +293,7 @@ private fun PuppyInboxHeader(onDismiss: () -> Unit) {
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.36f))
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("✕", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("✕", color = Color.White, fontSize = if (compact) 21.sp else 24.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -281,20 +304,24 @@ private fun PuppyInboxHeader(onDismiss: () -> Unit) {
 private fun PuppyInboxFilterBar(
     selected: PuppyInboxFilter,
     unread: Int,
+    compact: Boolean,
     onSelect: (PuppyInboxFilter) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
+            .padding(
+                horizontal = if (compact) 9.dp else 14.dp,
+                vertical = if (compact) 8.dp else 12.dp
+            ),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 7.dp)
     ) {
         PuppyInboxFilter.entries.forEach { value ->
             val isSelected = selected == value
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 42.dp)
+                    .heightIn(min = if (compact) 38.dp else 42.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .clickable(role = Role.Button) { onSelect(value) },
                 shape = RoundedCornerShape(20.dp),
@@ -305,16 +332,19 @@ private fun PuppyInboxFilterBar(
                 )
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp),
+                    modifier = Modifier.padding(
+                        horizontal = if (compact) 5.dp else 8.dp,
+                        vertical = if (compact) 7.dp else 9.dp
+                    ),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (value.emoji.isNotBlank()) {
-                        Text(value.emoji, fontSize = 15.sp)
-                        Spacer(Modifier.width(4.dp))
+                        Text(value.emoji, fontSize = if (compact) 14.sp else 15.sp)
+                        Spacer(Modifier.width(if (compact) 3.dp else 4.dp))
                     }
                     Text(
-                        value.label,
+                        if (compact) value.compactLabel else value.label,
                         color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
@@ -345,6 +375,7 @@ private fun PuppyInboxFilterBar(
 private fun PuppyNotificationCard(
     item: PuppyNotificationItem,
     group: PuppyInboxDay,
+    compact: Boolean,
     onOpen: () -> Unit,
     onClaimReward: () -> Unit
 ) {
@@ -367,18 +398,18 @@ private fun PuppyNotificationCard(
                     if (body.isNotBlank()) append(". $body")
                 }
             },
-        shape = RoundedCornerShape(21.dp),
+        shape = RoundedCornerShape(if (compact) 16.dp else 21.dp),
         border = if (claimable) BorderStroke(1.5.dp, InboxRewardBorder) else null,
         colors = CardDefaults.cardColors(containerColor = container),
         elevation = CardDefaults.cardElevation(defaultElevation = if (claimable) 3.dp else 1.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(if (compact) 9.dp else 12.dp),
             verticalAlignment = Alignment.Top
         ) {
             Surface(
-                modifier = Modifier.size(54.dp),
-                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.size(if (compact) 42.dp else 54.dp),
+                shape = RoundedCornerShape(if (compact) 13.dp else 16.dp),
                 color = when (item.type) {
                     PuppyNotificationType.SYSTEM_REWARD,
                     PuppyNotificationType.DAILY_REWARD -> Color(0xFFFFF1C7)
@@ -388,11 +419,11 @@ private fun PuppyNotificationCard(
                 }
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(item.emoji(), fontSize = 25.sp)
+                    Text(item.emoji(), fontSize = if (compact) 21.sp else 25.sp)
                 }
             }
 
-            Spacer(Modifier.width(11.dp))
+            Spacer(Modifier.width(if (compact) 8.dp else 11.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -410,7 +441,7 @@ private fun PuppyNotificationCard(
                     Spacer(Modifier.width(6.dp))
                     Text(
                         item.timestamp(group),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
@@ -426,10 +457,10 @@ private fun PuppyNotificationCard(
 
                 val body = item.displayBody()
                 if (body.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(if (compact) 2.dp else 4.dp))
                     Text(
                         body,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -439,7 +470,7 @@ private fun PuppyNotificationCard(
                     item.rewardCurrency != null &&
                     item.rewardAmount > 0L
                 ) {
-                    Spacer(Modifier.height(9.dp))
+                    Spacer(Modifier.height(if (compact) 5.dp else 9.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -452,8 +483,11 @@ private fun PuppyNotificationCard(
                             ) {
                                 Text(
                                     "Claimed ✓",
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(
+                                        horizontal = if (compact) 10.dp else 14.dp,
+                                        vertical = if (compact) 5.dp else 8.dp
+                                    ),
+                                    style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -471,7 +505,7 @@ private fun PuppyNotificationCard(
                                 Text("🦴", fontSize = 15.sp)
                                 Spacer(Modifier.width(5.dp))
                                 Text(
-                                    "Claim ${item.rewardCurrency.displayName}",
+                                    if (compact) "Claim" else "Claim ${item.rewardCurrency.displayName}",
                                     fontWeight = FontWeight.Black
                                 )
                             }
@@ -487,14 +521,18 @@ private fun PuppyNotificationCard(
 private fun PuppyInboxActions(
     hasRead: Boolean,
     hasUnread: Boolean,
+    compact: Boolean,
     onClearRead: () -> Unit,
     onMarkAllRead: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(
+                horizontal = if (compact) 9.dp else 14.dp,
+                vertical = if (compact) 8.dp else 12.dp
+            ),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp)
     ) {
         OutlinedButton(
             onClick = onClearRead,
