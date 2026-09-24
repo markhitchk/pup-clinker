@@ -61,3 +61,14 @@ When adding a new Puppy Code:
 5. Bump the catalogue `revision`.
 6. Keep role-auth, event-only, developer-only, and other special-path puppies out of the catalogue unless their unlock policy is intentionally changed.
 7. Run the Android/JVM regression suite before release.
+
+
+## Date-locked automatic puppy unlocks
+
+These puppies are not Puppy Code rewards:
+
+- `halloween` / Pumpkin Pup — automatically unlocks on **October 31** in the player's local time zone.
+- `santa` / Santa Paws — automatically unlocks on **December 25** in the player's local time zone.
+- `birthday` / Birthday Buddy — automatically unlocks on the locally saved birthday month/day.
+
+The app records an in-app notification when the unlock is applied. When Game Event notifications are enabled, the background notification sweep also alerts the player on the eligible date. Once unlocked, the puppy remains permanently owned.
