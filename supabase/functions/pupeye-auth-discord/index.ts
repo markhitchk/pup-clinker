@@ -8,6 +8,7 @@ import {
   requiredString,
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
+import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 
 const GUILD_ID = Deno.env.get("PUPPY_DISCORD_GUILD_ID") ?? "1547285473397837985";
 const ROLE_DEVELOPER_ID = Deno.env.get("PUPPY_DISCORD_ROLE_DEVELOPER_ID") ?? "1547298673006747678";
@@ -50,6 +51,16 @@ Deno.serve(async (req: Request) => {
       const profile = await profileResponse.json();
       const discordId = requiredString(profile.id, "Discord user ID");
       const username = requiredString(profile.username, "Discord username");
+
+      // Discord identity becomes authoritative only after Discord /users/@me succeeds.
+      // Check any global Discord target before persisting the link or granting a role.
+      await assertGlobalEnforcementAllowed(admin, {
+        session: session.session,
+        player: session.player,
+        installation: session.installation,
+        discordUserId: discordId,
+        requestAction: "auth-discord",
+      });
 
       const { data: alreadyLinked, error: linkedError } = await admin
         .from("pupeye_players")
@@ -95,6 +106,15 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       }).eq("id", session.player.id);
       if (updateError) throw updateError;
+
+      const { error: linkError } = await admin.from("pupeye_identity_links").insert({
+        link_type: "PLAYER_DISCORD",
+        player_uuid: session.player.id,
+        discord_user_id: discordId,
+        confidence: "authoritative",
+        evidence_code: "DISCORD_OAUTH_USERS_ME",
+      });
+      if (linkError && linkError.code !== "23505") throw linkError;
 
       return json(200, {
         discord: {
