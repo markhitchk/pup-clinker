@@ -347,23 +347,42 @@ internal fun PuppyRosterScreen(
         val asset = id?.let { puppyId -> assets.firstOrNull { it.style.id == puppyId } }
 
         if (mode != null && id != null && asset != null) {
-            PuppyRosterDialog(
-                mode = mode,
-                asset = asset,
-                unlocked = id in state.unlockedPuppies,
-                current = id == state.puppyStyle,
-                activeName = state.puppyName,
-                retryToken = retryTokens[id] ?: 0,
-                onDismiss = { dialogRoute = null },
-                onUse = {
-                    dialogRoute = null
-                    onUseConfirmed(id)
-                },
-                onRename = { name ->
-                    vm.renamePuppy(name)
-                    dialogRoute = null
-                }
-            )
+            if (mode == PuppyRosterDialogMode.PREVIEW) {
+                PuppyViewerDialog(
+                    asset = asset,
+                    state = state,
+                    retryToken = retryTokens[id] ?: 0,
+                    onDismiss = { dialogRoute = null },
+                    onUse = { openDialog(PuppyRosterDialogMode.USE, id) },
+                    onToggleFavorite = { vm.toggleFavoritePuppy(id) },
+                    onRetryArtwork = {
+                        retryTokens[id] = (retryTokens[id] ?: 0) + 1
+                    },
+                    onRename = if (id == state.puppyStyle) {
+                        { openDialog(PuppyRosterDialogMode.RENAME, id) }
+                    } else {
+                        null
+                    }
+                )
+            } else {
+                PuppyRosterDialog(
+                    mode = mode,
+                    asset = asset,
+                    unlocked = id in state.unlockedPuppies,
+                    current = id == state.puppyStyle,
+                    activeName = state.puppyName,
+                    retryToken = retryTokens[id] ?: 0,
+                    onDismiss = { dialogRoute = null },
+                    onUse = {
+                        dialogRoute = null
+                        onUseConfirmed(id)
+                    },
+                    onRename = { name ->
+                        vm.renamePuppy(name)
+                        dialogRoute = null
+                    }
+                )
+            }
         } else {
             LaunchedEffect(route) { dialogRoute = null }
         }
