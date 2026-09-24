@@ -1,0 +1,17 @@
+{
+  "roster": "Discord Rewards",
+  "ownership": "reward",
+  "count": 1,
+  "puppies": [
+    {
+      "number": 1,
+      "name": "Discord Pup",
+      "asset_id": "v2_discord_pup",
+      "file": "v2_discord_pup.png",
+      "emoji": "💬",
+      "description": "V2 Discord reward puppy unlocked for verified Pup Members through Discord authentication.",
+      "free": false,
+      "redeem_only": true
+    }
+  ]
+}
