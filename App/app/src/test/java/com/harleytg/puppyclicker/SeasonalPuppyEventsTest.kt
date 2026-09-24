@@ -13,26 +13,28 @@ class SeasonalPuppyEventsTest {
     private val christmas = SeasonalPuppyEvents.find("santa")!!
     private val birthday = SeasonalPuppyEvents.find("birthday")!!
 
-    @Test fun halloweenUsesExclusiveUtcEnd() {
-        assertNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-10-23T23:59:59Z"), utc, null))
-        assertNotNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-10-24T00:00:00Z"), utc, null))
-        assertNotNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-10-31T23:59:59Z"), utc, null))
-        assertNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-11-01T00:00:00Z"), utc, null))
+    @Test fun halloweenUnlocksOnlyOnLocalHalloween() {
+        val la = ZoneId.of("America/Los_Angeles")
+        assertNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-10-31T06:59:59Z"), la, null))
+        assertNotNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-10-31T07:00:00Z"), la, null))
+        assertNotNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-11-01T06:59:59Z"), la, null))
+        assertNull(SeasonalPuppyEvents.activeWindow(halloween, Instant.parse("2026-11-01T07:00:00Z"), la, null))
     }
 
-    @Test fun christmasCrossesNewYearAndRecurs() {
-        val now = Instant.parse("2027-01-01T00:00:00Z")
-        assertNull(SeasonalPuppyEvents.activeWindow(christmas, now, utc, null))
-        assertEquals("santa-2027", SeasonalPuppyEvents.nextWindow(christmas, now, utc, null)!!.cycle)
-        assertEquals("santa-2026", SeasonalPuppyEvents.activeWindow(christmas, Instant.parse("2026-12-31T23:59:59Z"), utc, null)!!.cycle)
+    @Test fun christmasUnlocksOnlyOnLocalChristmasDay() {
+        val la = ZoneId.of("America/Los_Angeles")
+        assertNull(SeasonalPuppyEvents.activeWindow(christmas, Instant.parse("2026-12-25T07:59:59Z"), la, null))
+        assertNotNull(SeasonalPuppyEvents.activeWindow(christmas, Instant.parse("2026-12-25T08:00:00Z"), la, null))
+        assertNotNull(SeasonalPuppyEvents.activeWindow(christmas, Instant.parse("2026-12-26T07:59:59Z"), la, null))
+        assertNull(SeasonalPuppyEvents.activeWindow(christmas, Instant.parse("2026-12-26T08:00:00Z"), la, null))
     }
 
-    @Test fun holidayInstantIsIdenticalAcrossZones() {
-        val now = Instant.parse("2026-10-24T00:00:00Z")
+    @Test fun holidayWindowFollowsUsersLocalCalendar() {
+        val instant = Instant.parse("2026-10-31T01:00:00Z")
         val la = ZoneId.of("America/Los_Angeles")
         val tokyo = ZoneId.of("Asia/Tokyo")
-        assertEquals(SeasonalPuppyEvents.activeWindow(halloween, now, la, null), SeasonalPuppyEvents.activeWindow(halloween, now, tokyo, null))
-        assertEquals("2026-10-23T17:00-07:00[America/Los_Angeles]", now.atZone(la).toString())
+        assertNull(SeasonalPuppyEvents.activeWindow(halloween, instant, la, null))
+        assertNotNull(SeasonalPuppyEvents.activeWindow(halloween, instant, tokyo, null))
     }
 
     @Test fun birthdayUsesLocalMidnightNotUtcMidnight() {
