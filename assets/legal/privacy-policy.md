@@ -1,6 +1,6 @@
 # Puppy Clicker — Privacy Policy
 
-> **Effective date:** September 9, 2026
+> **Effective date:** September 24, 2026
 
 This Privacy Policy explains how **Puppy Clicker**, provided by **Harley's Studios**, handles information in the Android app.
 
@@ -73,9 +73,27 @@ PupEye may process local security information such as:
 - Save-integrity results
 - Related local security state
 
-These checks are designed to detect likely automated clicking or unauthorized save modification and operate locally unless a future online feature expressly states otherwise.
+These checks are designed to detect likely automated clicking or unauthorized save modification. PupEye now also uses Puppy Clicker's Supabase backend to register the app installation, compare save generations, reject replayed protected transactions, and support authorized device migration. Local timing samples used for click-pattern detection are not uploaded as part of the current Supabase integration.
 
-## 6. Streamed Content and Network Requests
+## 6. Supabase Account and PupEye Service
+
+Puppy Clicker may send the following limited information to the Puppy Clicker Supabase project for account security and PupEye enforcement:
+
+- Puppy Clicker Player ID and Friend Code
+- Local username
+- Random installation ID and Support Installation Code
+- Public device signing key and its fingerprint
+- Coarse device model, Android platform label, and app version
+- Highest authenticated save generation
+- Protected Casino/Gacha transaction IDs, source labels, and bounded transaction details
+- PupEye integrity/review event codes
+- Discord identity and derived Puppy Clicker server role after Discord authorization
+
+The corresponding Android Keystore private signing key is not uploaded. Discord OAuth access tokens are used transiently for server verification and are not intentionally stored by Puppy Clicker or in the PupEye database.
+
+Supabase may process ordinary network information, including IP address and request metadata, under Supabase's own privacy and security practices.
+
+## 7. Streamed Content and Network Requests
 
 Puppy Clicker may contact **GitHub-hosted resources** to retrieve:
 
@@ -92,7 +110,7 @@ When the app makes those requests, the hosting provider may receive ordinary net
 
 That information is handled under the hosting provider's own policies.
 
-## 7. Discord Signup
+## 8. Discord Signup
 
 Puppy Clicker uses **Discord OAuth** for player signup and community features. The authorization flow requests the following scopes:
 
@@ -110,19 +128,19 @@ After successful authorization, Puppy Clicker may read account identity informat
 - Avatar identifier, when available
 - Email address, when Discord returns it for the authorized account
 
-The account identity metadata used by Puppy Clicker is stored locally so the app can remember which Discord account completed signup. For Discord V2 unlock verification, Puppy Clicker may also read the authorized user's member record for the configured Puppy Clicker server and compare its role IDs with the app's public role configuration. The app stores only the derived verified role tier, configured server ID, and verification time for this feature; it does not persist the Discord OAuth access token or the full server member response.
+The account identity metadata used by Puppy Clicker is stored locally and may also be stored in the Puppy Clicker Supabase project. Discord authorization is verified by a Puppy Clicker Supabase Edge Function before the account or configured Puppy Clicker server role is trusted. The app stores only the derived verified role tier, configured server ID, and verification time for this feature; it does not persist the Discord OAuth access token or the full server member response.
 
 The Discord account does not replace Puppy Clicker's device-bound **Player ID** or **Friend Code**. Those local identifiers continue to be used for Puppy Clicker trading, gifting, save ownership, and related local game features.
 
-## 8. Data Sharing
+## 9. Data Sharing
 
 Puppy Clicker does **not** sell local game-save data.
 
 Local usernames, encrypted save contents, and local PupEye state are not intentionally shared with advertisers.
 
-Third-party hosting providers may process normal network metadata when streamed resources are requested.
+Third-party hosting providers may process normal network metadata when streamed resources are requested. Supabase processes the account/security records described above to provide Puppy Clicker's backend account and PupEye services.
 
-## 9. Retention and Deletion
+## 10. Retention and Deletion
 
 Local Puppy Clicker information remains on the device until it is:
 
@@ -133,13 +151,15 @@ Local Puppy Clicker information remains on the device until it is:
 
 Exported backup files remain wherever the user chooses to save them until the user deletes them.
 
-## 10. Children and Age-Sensitive Features
+Server-side PupEye/account records may remain while needed to protect the player's account, prevent save or transaction replay, resolve device migrations, or handle Support review. A future account-deletion workflow should remove or anonymize server records where they are no longer required for security or legal purposes.
+
+## 11. Children and Age-Sensitive Features
 
 Puppy Clicker is designed as a casual game.
 
 Online account, social, or cloud features that may be added later will require an updated privacy review before launch.
 
-## 11. Security
+## 12. Security
 
 Harley's Studios uses measures including:
 
@@ -150,13 +170,13 @@ Harley's Studios uses measures including:
 
 No security system can guarantee protection against every form of device compromise or data loss.
 
-## 12. Changes to This Policy
+## 13. Changes to This Policy
 
 This policy may be updated when Puppy Clicker features, data practices, or connected services change.
 
 The current version displayed in the app is streamed from the official Puppy Clicker repository when available.
 
-## 13. Contact
+## 14. Contact
 
 Questions about Puppy Clicker privacy may be directed to **Harley's Studios** through the official Puppy Clicker community or support channels made available in the app or official website.
 
