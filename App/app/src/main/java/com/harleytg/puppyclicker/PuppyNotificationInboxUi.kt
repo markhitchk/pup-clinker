@@ -72,7 +72,7 @@ private enum class PuppyInboxFilter(
     val emoji: String
 ) {
     ALL("All", "All", ""),
-    REWARDS("Rewards", "Rewards", "🎁"),
+    REWARDS("Reward", "Reward", "🎁"),
     PUPPIES("Puppies", "Pup", "🐾"),
     SYSTEM("System", "System", "⚙️")
 }
@@ -381,9 +381,9 @@ private fun PuppyNotificationCard(
 ) {
     val claimable = item.hasClaimableReward
     val container = when {
-        claimable -> MaterialTheme.colorScheme.surface
-        item.read -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.44f)
-        else -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+        claimable -> Color(0xFFFFFEFA)
+        item.read -> Color(0xFFF8FBFD)
+        else -> Color.White
     }
 
     Card(
@@ -398,60 +398,71 @@ private fun PuppyNotificationCard(
                     if (body.isNotBlank()) append(". $body")
                 }
             },
-        shape = RoundedCornerShape(if (compact) 16.dp else 21.dp),
-        border = if (claimable) BorderStroke(1.5.dp, InboxRewardBorder) else null,
+        shape = RoundedCornerShape(if (compact) 18.dp else 22.dp),
+        border = when {
+            claimable -> BorderStroke(1.5.dp, InboxRewardBorder)
+            else -> BorderStroke(1.dp, Color(0xFFD9E8F3))
+        },
         colors = CardDefaults.cardColors(containerColor = container),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (claimable) 3.dp else 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (claimable) 3.dp else 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(if (compact) 9.dp else 12.dp),
+            modifier = Modifier.padding(
+                horizontal = if (compact) 10.dp else 14.dp,
+                vertical = if (compact) 10.dp else 13.dp
+            ),
             verticalAlignment = Alignment.Top
         ) {
             Surface(
-                modifier = Modifier.size(if (compact) 42.dp else 54.dp),
-                shape = RoundedCornerShape(if (compact) 13.dp else 16.dp),
+                modifier = Modifier.size(if (compact) 46.dp else 56.dp),
+                shape = RoundedCornerShape(if (compact) 14.dp else 17.dp),
                 color = when (item.type) {
                     PuppyNotificationType.SYSTEM_REWARD,
-                    PuppyNotificationType.DAILY_REWARD -> Color(0xFFFFF1C7)
+                    PuppyNotificationType.DAILY_REWARD -> Color(0xFFFFF3C9)
                     PuppyNotificationType.PARK_READY,
-                    PuppyNotificationType.ROSTER_UPDATE -> Color(0xFFE8F7FF)
-                    PuppyNotificationType.APP_UPDATE -> MaterialTheme.colorScheme.primaryContainer
+                    PuppyNotificationType.ROSTER_UPDATE -> Color(0xFFEAF7FF)
+                    PuppyNotificationType.APP_UPDATE -> Color(0xFFE4F3FC)
                 }
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(item.emoji(), fontSize = if (compact) 21.sp else 25.sp)
+                    Text(item.emoji(), fontSize = if (compact) 23.sp else 27.sp)
                 }
             }
 
-            Spacer(Modifier.width(if (compact) 8.dp else 11.dp))
+            Spacer(Modifier.width(if (compact) 10.dp else 13.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Text(
                         item.title,
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        item.timestamp(group),
-                        style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                    if (!item.read) {
-                        Spacer(Modifier.width(7.dp))
-                        Surface(
-                            modifier = Modifier.size(10.dp),
-                            shape = CircleShape,
-                            color = InboxBlue
-                        ) {}
+                    Spacer(Modifier.width(if (compact) 6.dp else 10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text(
+                            item.timestamp(group),
+                            style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                        if (!item.read) {
+                            Spacer(Modifier.width(7.dp))
+                            Surface(
+                                modifier = Modifier.size(if (compact) 9.dp else 10.dp),
+                                shape = CircleShape,
+                                color = InboxBlue
+                            ) {}
+                        }
                     }
                 }
 
@@ -461,7 +472,8 @@ private fun PuppyNotificationCard(
                     Text(
                         body,
                         style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF667085),
+                        lineHeight = if (compact) 18.sp else 21.sp
                     )
                 }
 
@@ -477,9 +489,9 @@ private fun PuppyNotificationCard(
                     ) {
                         if (item.claimed) {
                             Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFF5F7FA),
+                                border = BorderStroke(1.dp, Color(0xFFD6DEE7))
                             ) {
                                 Text(
                                     "Claimed ✓",
@@ -495,12 +507,16 @@ private fun PuppyNotificationCard(
                         } else {
                             Button(
                                 onClick = onClaimReward,
-                                shape = RoundedCornerShape(18.dp),
+                                shape = RoundedCornerShape(22.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = InboxClaimGreen,
                                     contentColor = Color.White
                                 ),
-                                border = BorderStroke(1.dp, InboxClaimGreenDark)
+                                border = BorderStroke(1.dp, InboxClaimGreenDark),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = if (compact) 16.dp else 20.dp,
+                                    vertical = if (compact) 8.dp else 10.dp
+                                )
                             ) {
                                 Text("🦴", fontSize = 15.sp)
                                 Spacer(Modifier.width(5.dp))
@@ -612,6 +628,6 @@ private fun PuppyNotificationItem.emoji(): String = when (type) {
     PuppyNotificationType.SYSTEM_REWARD -> "🐶"
     PuppyNotificationType.DAILY_REWARD -> "🎁"
     PuppyNotificationType.PARK_READY -> "🐾"
-    PuppyNotificationType.ROSTER_UPDATE -> "🐶"
+    PuppyNotificationType.ROSTER_UPDATE -> "🐾"
     PuppyNotificationType.APP_UPDATE -> "⚙️"
 }
