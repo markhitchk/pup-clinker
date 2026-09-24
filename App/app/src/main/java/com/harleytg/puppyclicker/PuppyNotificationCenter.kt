@@ -19,7 +19,9 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +52,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_TEST = 42105
     private const val NOTIFY_DISCORD_AUTH_UPGRADE = 42106
     private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
+    private const val NOTIFY_SEASONAL_BASE = 42400
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
     private const val WORK_NOW = "puppy_notification_now_v1"
@@ -289,6 +292,43 @@ internal object PuppyNotificationCenter {
         )
     }
 
+    internal fun notifySeasonalPuppyUnlocked(
+        context: Context,
+        event: SeasonalPuppyEvent,
+        window: SeasonalWindow
+    ) {
+        val app = context.applicationContext
+        val historyId = "seasonal-unlocked:${window.cycle}"
+        val body = if (event.isBirthday) {
+            "Happy birthday! ${event.title} was automatically added to your puppy collection."
+        } else {
+            "${event.description} is here. ${event.title} was automatically added to your puppy collection."
+        }
+
+        PuppyNotificationHistory.record(
+            app,
+            PuppyNotificationItem(
+                id = historyId,
+                type = PuppyNotificationType.ROSTER_UPDATE,
+                title = "${event.emoji} ${event.title} unlocked!",
+                body = body,
+                createdAtMs = System.currentTimeMillis(),
+                read = false,
+                route = PuppyNotificationRoute.ROSTER
+            )
+        )
+
+        if (PuppyAppRuntime.isForeground || !canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).gameEventNotifications) return
+        val suffix = (window.cycle.hashCode() and 0x7fffffff) % 500
+        post(
+            context = app,
+            channel = CHANNEL_EVENTS,
+            id = NOTIFY_SEASONAL_BASE + suffix,
+            title = "${event.emoji} ${event.title} unlocked!",
+            text = body
+        )
+    }
     internal fun notifySystemRewardAvailable(
         context: Context,
         settlementId: String,
@@ -327,7 +367,57 @@ internal object PuppyNotificationCenter {
         if (PuppyAppRuntime.isForeground || !canNotify(app)) return
 
         if (ui.dailyRewardNotifications) postDailyRewardIfAvailable(app) else cancelDailyReward(app)
-        if (ui.gameEventNotifications) postParkEventIfReady(app) else cancelParkReady(app)
+        if (ui.gameEventNotifications) {
+            postParkEventIfReady(app)
+            postSeasonalUnlockIfActive(app)
+        } else {
+            cancelParkReady(app)
+        }
+    }
+
+    internal fun postSeasonalUnlockIfActive(context: Context) {
+        if (PuppyAppRuntime.isForeground || !canNotify(context)) return
+        if (!PuppyUiPreferences.current(context).gameEventNotifications) return
+
+        val seasonal = context.getSharedPreferences(
+            SeasonalPuppyStore.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        val birthday = SeasonalPuppyEvents.birthday(
+            seasonal.getInt(SeasonalPuppyStore.KEY_BIRTHDAY_MONTH, 0),
+            seasonal.getInt(SeasonalPuppyStore.KEY_BIRTHDAY_DAY, 0)
+        )
+        val unlocked = context.getSharedPreferences(
+            PuppyClickerV6ViewModel.PREFS_NAME,
+            Context.MODE_PRIVATE
+        ).getStringSet("unlocked_puppies", emptySet())?.toSet().orEmpty()
+
+        val now = Instant.now()
+        val zone = ZoneId.systemDefault()
+        val delivery = context.getSharedPreferences(DELIVERY_PREFS, Context.MODE_PRIVATE)
+
+        SeasonalPuppyEvents.events.forEach { event ->
+            if (event.puppyId in unlocked) return@forEach
+            val window = SeasonalPuppyEvents.activeWindow(event, now, zone, birthday)
+                ?: return@forEach
+            val deliveryKey = "seasonal-ready:${window.cycle}"
+            if (delivery.getBoolean(deliveryKey, false)) return@forEach
+
+            val suffix = (window.cycle.hashCode() and 0x7fffffff) % 500
+            val text = if (event.isBirthday) {
+                "Happy birthday! Open Puppy Clicker today and ${event.title} will unlock automatically."
+            } else {
+                "${event.description} is here. Open Puppy Clicker today and ${event.title} will unlock automatically."
+            }
+            post(
+                context = context,
+                channel = CHANNEL_EVENTS,
+                id = NOTIFY_SEASONAL_BASE + suffix,
+                title = "${event.emoji} ${event.title} unlock day!",
+                text = text
+            )
+            delivery.edit().putBoolean(deliveryKey, true).apply()
+        }
     }
 
     internal fun postParkEventIfReady(context: Context) {
