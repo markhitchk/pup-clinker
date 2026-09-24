@@ -26,6 +26,9 @@ Puppy Clicker uses **PupEye** fair-play protections. PupEye may detect:
 - Automated clicking patterns
 - External clicker scripts
 - Modified or unauthenticated save data
+- Valid-but-old save rollback attempts
+- Replayed or duplicate protected Casino and Gacha transactions
+- Save ownership or registered-installation mismatches
 - Other behavior that attempts to manipulate normal gameplay
 
 When suspicious activity is detected, the app may:
@@ -45,7 +48,9 @@ You are responsible for:
 - Keeping backup passwords private
 - Maintaining copies of saves you wish to retain
 
-Modified, damaged, incorrectly authenticated, or incompatible save files may be rejected.
+Modified, damaged, incorrectly authenticated, rolled-back, or incompatible save files may be rejected.
+
+Portable backups are authenticated to the Puppy Clicker installation that created them. A player moving protected progress to another device must use a Support-authorized migration process; copying a save file alone does not transfer its registered installation identity.
 
 ## 4. Player Identity
 
