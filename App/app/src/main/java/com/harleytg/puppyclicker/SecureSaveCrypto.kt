@@ -187,8 +187,13 @@ internal object PuppySaveCrypto {
 internal data class PupEyeSecurityState(
     val tamperEvents: Int,
     val lastReason: String?,
-    val lastDetectedAtMs: Long
-)
+    val lastDetectedAtMs: Long,
+    val privateIntegrityOk: Boolean,
+    val externalIntegrityOk: Boolean
+) {
+    val hasActiveIssue: Boolean
+        get() = !privateIntegrityOk || !externalIntegrityOk
+}
 
 /**
  * Keeps a Keystore-encrypted last-known-good copy of the runtime save. If the private
@@ -202,6 +207,8 @@ internal object PupEyeSaveGuard {
     private const val KEY_LAST_REASON = "last_reason"
     private const val KEY_LAST_TIME = "last_time"
     private const val KEY_AUTHORIZED_WRITE_PENDING = "authorized_write_pending"
+    private const val KEY_PRIVATE_INTEGRITY_OK = "private_integrity_ok"
+    private const val KEY_EXTERNAL_INTEGRITY_OK = "external_integrity_ok"
 
     @Volatile
     private var authorizedWritePending = false
@@ -232,12 +239,16 @@ internal object PupEyeSaveGuard {
         if (hasAuthorizedPreferenceChange(context)) {
             // The game itself changed its preferences after the previous seal.
             // Refresh the last-known-good snapshot rather than restoring stale data.
-            return seal(context, prefs)
+            val ok = seal(context, prefs)
+            markPrivateIntegrity(context, ok)
+            return ok
         }
 
         val backup = File(context.noBackupFilesDir, BACKUP_FILE)
         if (!backup.isFile) {
-            return seal(context, prefs)
+            val ok = seal(context, prefs)
+            markPrivateIntegrity(context, ok)
+            return ok
         }
         return runCatching {
             val protected = backup.readBytes()
@@ -250,12 +261,17 @@ internal object PupEyeSaveGuard {
                 // the same historical mismatch.
                 seal(context, prefs)
                 recordTamper(context, "Runtime save integrity mismatch; restored last known good save")
+                markPrivateIntegrity(context, false)
                 false
-            } else true
+            } else {
+                markPrivateIntegrity(context, true)
+                true
+            }
         }.getOrElse { error ->
             if (classifySaveCryptoFailure(error) == SaveCryptoFailureKind.TAMPER) {
                 recordTamper(context, "Protected save seal failed authentication")
             }
+            markPrivateIntegrity(context, false)
             false
         }
     }
@@ -280,6 +296,22 @@ internal object PupEyeSaveGuard {
             true
         }.getOrDefault(false)
 
+    fun markPrivateIntegrity(context: Context, ok: Boolean) {
+        context.applicationContext
+            .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_PRIVATE_INTEGRITY_OK, ok)
+            .apply()
+    }
+
+    fun markExternalIntegrity(context: Context, ok: Boolean) {
+        context.applicationContext
+            .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_EXTERNAL_INTEGRITY_OK, ok)
+            .apply()
+    }
+
     fun recordTamper(context: Context, reason: String) {
         val prefs = context.getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
         val count = prefs.getInt(KEY_TAMPER_COUNT, 0).coerceAtLeast(0)
@@ -295,7 +327,9 @@ internal object PupEyeSaveGuard {
         return PupEyeSecurityState(
             tamperEvents = prefs.getInt(KEY_TAMPER_COUNT, 0).coerceAtLeast(0),
             lastReason = prefs.getString(KEY_LAST_REASON, null),
-            lastDetectedAtMs = prefs.getLong(KEY_LAST_TIME, 0L).coerceAtLeast(0L)
+            lastDetectedAtMs = prefs.getLong(KEY_LAST_TIME, 0L).coerceAtLeast(0L),
+            privateIntegrityOk = prefs.getBoolean(KEY_PRIVATE_INTEGRITY_OK, true),
+            externalIntegrityOk = prefs.getBoolean(KEY_EXTERNAL_INTEGRITY_OK, true)
         )
     }
 }
