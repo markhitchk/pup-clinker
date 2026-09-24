@@ -246,8 +246,9 @@ private fun SelectedPuppyPanel(
                 }
                 Spacer(Modifier.width(if (compact) 7.dp else 10.dp))
                 Column(Modifier.weight(1f)) {
+                    val displayName = if (active) state.puppyName.ifBlank { asset.style.name } else asset.style.name
                     Text(
-                        asset.style.name,
+                        displayName,
                         style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -386,87 +387,10 @@ private fun CompactSelectedPuppyActions(
         "slim selected puppy strip",
     )
 
-    source = replace_once(
-        source,
-        '''    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text("Use Puppy?") },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                StreamedPuppyPortrait(
-                    styleId = asset.style.id,
-                    size = 112.dp,
-                    unlocked = true,
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    retryToken = retryToken
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(asset.style.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(5.dp))
-                Text("Make ${asset.style.name} your active puppy?")
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) { Text("Use Puppy") }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel) { Text("Cancel") }
-        }
-    )''',
-        '''    AlertDialog(
-        onDismissRequest = onCancel,
-        title = {
-            Text(
-                "Use Puppy?",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Black
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                StreamedPuppyPortrait(
-                    styleId = asset.style.id,
-                    size = 108.dp,
-                    unlocked = true,
-                    background = MaterialTheme.colorScheme.surfaceVariant,
-                    retryToken = retryToken
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    asset.style.name,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Make ${asset.style.name} your active puppy?",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = onCancel) { Text("Cancel") }
-                Spacer(Modifier.width(10.dp))
-                Button(onClick = onConfirm) { Text("Use Puppy") }
-            }
-        },
-        dismissButton = {}
-    )''',
-        "centered use puppy confirmation",
-    )
+    # Use/preview/unlock/rename overlays now live in PuppyRosterDialogSystem.kt.
+    # Keep this compact patch focused on the roster screen; the shared dialog system
+    # already owns responsive sizing and action alignment.
+
 
     return source
 
