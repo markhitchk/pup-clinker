@@ -99,6 +99,9 @@ internal object PuppyNotificationHistoryCodec {
     fun markAllRead(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
         normalize(items.map { if (it.read) it else it.copy(read = true) })
 
+    fun clearRead(items: List<PuppyNotificationItem>): List<PuppyNotificationItem> =
+        normalize(items.filterNot { it.read })
+
     fun encode(items: List<PuppyNotificationItem>): String {
         val array = JSONArray()
         normalize(items).forEach { item ->
@@ -241,6 +244,11 @@ internal object PuppyNotificationHistory {
     @Synchronized
     fun markAllRead(context: Context) {
         mutate(context, PuppyNotificationHistoryCodec::markAllRead)
+    }
+
+    @Synchronized
+    fun clearRead(context: Context) {
+        mutate(context, PuppyNotificationHistoryCodec::clearRead)
     }
 
     private fun mutate(
