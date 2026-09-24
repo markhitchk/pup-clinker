@@ -517,7 +517,7 @@ Supported operations:
 - issue permanent ban;
 - attach an additional target;
 - extend/shorten a temporary ban;
-- convert temporary <-> permanent where policy permits;
+- convert temporary -> permanent or permanent -> temporary; every conversion must append an audit event and preserve the original issue history;
 - revoke a ban;
 - clear review;
 - revoke an individual installation;
