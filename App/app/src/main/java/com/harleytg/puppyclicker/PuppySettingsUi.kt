@@ -769,9 +769,12 @@ private fun DiscordSettings() {
                 StatusLine("Name", account.displayName)
                 StatusLine("Username", "@" + account.username)
                 StatusLine("User ID", account.id)
+                account.email?.takeIf { it.isNotBlank() }?.let { email ->
+                    StatusLine("Email", email)
+                }
             } else {
                 Text(
-                    "Connect Discord for identity and community features. Only the identify permission is requested.",
+                    "Connect Discord for identity and community features. Permissions requested: identify, email, guilds, guilds.join, and guilds.members.read.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1601,7 +1604,7 @@ private fun AccountProfileSettings(vm: PuppyClickerV6ViewModel, ui: PuppyUiState
         )
     }
     Text(
-        "Discord is used for player signup. Only the identify permission is requested; Puppy Clicker does not persist the OAuth access token.",
+        "Discord is used for player signup and community features. Puppy Clicker requests identify, email, guilds, guilds.join, and guilds.members.read, and does not persist the OAuth access token.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
