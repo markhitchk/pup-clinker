@@ -31,6 +31,19 @@ internal data class DiscordPlayerAccount(
         get() = globalName?.takeIf { it.isNotBlank() } ?: username
 }
 
+internal enum class DiscordGuildRole(val label: String) {
+    DEVELOPER("Developer"),
+    ADMIN("Admin"),
+    PUP_MEMBER("Pup Member"),
+    GUEST("Guest")
+}
+
+internal data class DiscordGuildAccess(
+    val guildId: String,
+    val role: DiscordGuildRole,
+    val verifiedAtMs: Long
+)
+
 internal enum class DiscordSignupPhase {
     IDLE,
     AUTHORIZING,
@@ -42,6 +55,7 @@ internal enum class DiscordSignupPhase {
 internal data class DiscordSignupState(
     val phase: DiscordSignupPhase = DiscordSignupPhase.IDLE,
     val account: DiscordPlayerAccount? = null,
+    val guildAccess: DiscordGuildAccess? = null,
     val message: String? = null
 )
 
@@ -57,10 +71,16 @@ internal data class DiscordSignupState(
  * Puppy Clicker's Player ID and Friend Code remain device-bound and independent of Discord.
  */
 internal object DiscordSignupAuth {
-    const val CLIENT_ID = "1547982688898777118"
+    val CLIENT_ID: String get() = BuildConfig.DISCORD_CLIENT_ID
     const val CALLBACK_SCHEME = "discord-1547982688898777118"
     const val REDIRECT_URI = "$CALLBACK_SCHEME:/authorize/callback"
     const val OAUTH_SCOPES = "identify email guilds guilds.join guilds.members.read"
+
+    val GUILD_ID: String get() = BuildConfig.DISCORD_GUILD_ID
+    val ROLE_DEVELOPER_ID: String get() = BuildConfig.DISCORD_ROLE_DEVELOPER_ID
+    val ROLE_ADMIN_ID: String get() = BuildConfig.DISCORD_ROLE_ADMIN_ID
+    val ROLE_PUP_MEMBERS_ID: String get() = BuildConfig.DISCORD_ROLE_PUP_MEMBERS_ID
+    val ROLE_GUEST_ID: String get() = BuildConfig.DISCORD_ROLE_GUEST_ID
 
     private const val PREFS = "puppy_discord_signup_v1"
     private const val KEY_DISCORD_ID = "discord_id"
@@ -69,8 +89,13 @@ internal object DiscordSignupAuth {
     private const val KEY_AVATAR_HASH = "discord_avatar_hash"
     private const val KEY_EMAIL = "discord_email"
     private const val KEY_LINKED_AT = "discord_linked_at"
+    private const val KEY_GUILD_ID = "discord_guild_id"
+    private const val KEY_GUILD_ROLE = "discord_guild_role"
+    private const val KEY_GUILD_VERIFIED_AT = "discord_guild_verified_at"
     private const val KEY_PENDING_STATE = "oauth_pending_state"
     private const val KEY_PENDING_VERIFIER = "oauth_pending_verifier"
+    private const val KEY_PENDING_EXPECTED_DISCORD_ID = "oauth_pending_expected_discord_id"
+    private const val KEY_PENDING_GUILD_VERIFY = "oauth_pending_guild_verify"
 
     private const val AUTHORIZE_ENDPOINT = "https://discord.com/oauth2/authorize"
     private const val TOKEN_ENDPOINT = "https://discord.com/api/oauth2/token"
@@ -97,9 +122,24 @@ internal object DiscordSignupAuth {
             uri.scheme.equals(CALLBACK_SCHEME, ignoreCase = true) &&
             uri.path == "/authorize/callback"
 
-    fun startSignup(context: Context) {
+    fun startSignup(
+        context: Context,
+        expectedDiscordId: String? = null,
+        verifyGuildRole: Boolean = false
+    ) {
         val app = context.applicationContext
         ensure(app)
+
+        val normalizedExpectedId = expectedDiscordId?.trim().orEmpty()
+        if (verifyGuildRole && !isDiscordSnowflake(normalizedExpectedId)) {
+            mutableState.value = DiscordSignupState(
+                phase = DiscordSignupPhase.ERROR,
+                account = mutableState.value.account,
+                guildAccess = mutableState.value.guildAccess,
+                message = "Enter a valid Discord user ID before server verification."
+            )
+            return
+        }
 
         val verifier = generateCodeVerifier()
         val challenge = codeChallenge(verifier)
@@ -109,12 +149,26 @@ internal object DiscordSignupAuth {
             .edit()
             .putString(KEY_PENDING_STATE, oauthState)
             .putString(KEY_PENDING_VERIFIER, verifier)
+            .apply {
+                if (verifyGuildRole) {
+                    putString(KEY_PENDING_EXPECTED_DISCORD_ID, normalizedExpectedId)
+                    putBoolean(KEY_PENDING_GUILD_VERIFY, true)
+                } else {
+                    remove(KEY_PENDING_EXPECTED_DISCORD_ID)
+                    remove(KEY_PENDING_GUILD_VERIFY)
+                }
+            }
             .apply()
 
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.AUTHORIZING,
             account = mutableState.value.account,
-            message = "Finish authorization in Discord."
+            guildAccess = mutableState.value.guildAccess,
+            message = if (verifyGuildRole) {
+                "Finish Discord authorization to verify your Puppy Clicker server role."
+            } else {
+                "Finish authorization in Discord."
+            }
         )
 
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(buildAuthorizationUrl(oauthState, challenge))).apply {
@@ -127,6 +181,7 @@ internal object DiscordSignupAuth {
                 mutableState.value = DiscordSignupState(
                     phase = DiscordSignupPhase.ERROR,
                     account = mutableState.value.account,
+                    guildAccess = mutableState.value.guildAccess,
                     message = "Unable to open Discord authorization."
                 )
             }
@@ -140,6 +195,8 @@ internal object DiscordSignupAuth {
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val expectedState = prefs.getString(KEY_PENDING_STATE, null)
         val verifier = prefs.getString(KEY_PENDING_VERIFIER, null)
+        val expectedDiscordId = prefs.getString(KEY_PENDING_EXPECTED_DISCORD_ID, null)
+        val verifyGuildRole = prefs.getBoolean(KEY_PENDING_GUILD_VERIFY, false)
         val returnedState = uri.getQueryParameter("state")
 
         val oauthError = uri.getQueryParameter("error")
@@ -188,13 +245,39 @@ internal object DiscordSignupAuth {
             try {
                 val accessToken = exchangeAuthorizationCode(code, verifier)
                 val account = fetchCurrentUser(accessToken)
+
+                if (verifyGuildRole && account.id != expectedDiscordId) {
+                    clearPending(app)
+                    mutableState.value = DiscordSignupState(
+                        phase = DiscordSignupPhase.ERROR,
+                        account = mutableState.value.account,
+                        guildAccess = mutableState.value.guildAccess,
+                        message = "The authorized Discord account does not match the Discord ID you entered."
+                    )
+                    return@withContext true
+                }
+
+                val guildAccess = if (verifyGuildRole) {
+                    fetchCurrentGuildAccess(accessToken)
+                } else {
+                    mutableState.value.guildAccess
+                }
+
                 saveAccount(app, account)
+                if (verifyGuildRole) {
+                    if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
+                }
                 syncPlayerUsername(app, account)
                 clearPending(app)
                 mutableState.value = DiscordSignupState(
                     phase = DiscordSignupPhase.CONNECTED,
                     account = account,
-                    message = "Discord account connected."
+                    guildAccess = guildAccess,
+                    message = when {
+                        !verifyGuildRole -> "Discord account connected."
+                        guildAccess != null -> "Discord server role verified: ${guildAccess.role.label}."
+                        else -> "Discord connected, but no configured Puppy Clicker server role was found."
+                    }
                 )
                 true
             } catch (_: Exception) {
@@ -202,6 +285,7 @@ internal object DiscordSignupAuth {
                 mutableState.value = DiscordSignupState(
                     phase = DiscordSignupPhase.ERROR,
                     account = mutableState.value.account,
+                    guildAccess = mutableState.value.guildAccess,
                     message = "Discord signup could not be completed. Check your connection and try again."
                 )
                 true
@@ -219,12 +303,18 @@ internal object DiscordSignupAuth {
             .remove(KEY_AVATAR_HASH)
             .remove(KEY_EMAIL)
             .remove(KEY_LINKED_AT)
+            .remove(KEY_GUILD_ID)
+            .remove(KEY_GUILD_ROLE)
+            .remove(KEY_GUILD_VERIFIED_AT)
             .remove(KEY_PENDING_STATE)
             .remove(KEY_PENDING_VERIFIER)
+            .remove(KEY_PENDING_EXPECTED_DISCORD_ID)
+            .remove(KEY_PENDING_GUILD_VERIFY)
             .apply()
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.IDLE,
             account = null,
+            guildAccess = null,
             message = "Discord account disconnected. Local game progress was not deleted."
         )
     }
@@ -255,9 +345,11 @@ internal object DiscordSignupAuth {
         synchronized(this) {
             if (initialized) return
             val account = readAccount(context)
+            val guildAccess = readGuildAccess(context)
             mutableState.value = DiscordSignupState(
                 phase = if (account != null) DiscordSignupPhase.CONNECTED else DiscordSignupPhase.IDLE,
-                account = account
+                account = account,
+                guildAccess = guildAccess
             )
             initialized = true
         }
@@ -276,6 +368,17 @@ internal object DiscordSignupAuth {
         )
     }
 
+    private fun readGuildAccess(context: Context): DiscordGuildAccess? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val guildId = prefs.getString(KEY_GUILD_ID, null)?.takeIf { it == GUILD_ID } ?: return null
+        val role = prefs.getString(KEY_GUILD_ROLE, null)
+            ?.let { runCatching { DiscordGuildRole.valueOf(it) }.getOrNull() }
+            ?: return null
+        val verifiedAt = prefs.getLong(KEY_GUILD_VERIFIED_AT, 0L)
+        if (verifiedAt <= 0L) return null
+        return DiscordGuildAccess(guildId = guildId, role = role, verifiedAtMs = verifiedAt)
+    }
+
     private fun saveAccount(context: Context, account: DiscordPlayerAccount) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
@@ -285,6 +388,24 @@ internal object DiscordSignupAuth {
             .putString(KEY_AVATAR_HASH, account.avatarHash)
             .putString(KEY_EMAIL, account.email)
             .putLong(KEY_LINKED_AT, System.currentTimeMillis())
+            .apply()
+    }
+
+    private fun saveGuildAccess(context: Context, access: DiscordGuildAccess) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_GUILD_ID, access.guildId)
+            .putString(KEY_GUILD_ROLE, access.role.name)
+            .putLong(KEY_GUILD_VERIFIED_AT, access.verifiedAtMs)
+            .apply()
+    }
+
+    private fun clearGuildAccess(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_GUILD_ID)
+            .remove(KEY_GUILD_ROLE)
+            .remove(KEY_GUILD_VERIFIED_AT)
             .apply()
     }
 
@@ -303,6 +424,8 @@ internal object DiscordSignupAuth {
             .edit()
             .remove(KEY_PENDING_STATE)
             .remove(KEY_PENDING_VERIFIER)
+            .remove(KEY_PENDING_EXPECTED_DISCORD_ID)
+            .remove(KEY_PENDING_GUILD_VERIFY)
             .apply()
     }
 
@@ -337,6 +460,58 @@ internal object DiscordSignupAuth {
         return payload.optString("access_token").takeIf { it.isNotBlank() }
             ?: error("Discord token exchange returned no access token")
     }
+
+    private fun fetchCurrentGuildAccess(accessToken: String): DiscordGuildAccess? {
+        if (GUILD_ID.isBlank()) return null
+        val connection = (URL("https://discord.com/api/v10/users/@me/guilds/$GUILD_ID/member").openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15_000
+            readTimeout = 15_000
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $accessToken")
+        }
+
+        if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+            connection.errorStream?.close()
+            connection.disconnect()
+            return null
+        }
+
+        val payload = readJsonResponse(connection, "Discord guild member request")
+        val rolesJson = payload.optJSONArray("roles") ?: return null
+        val roleIds = buildSet {
+            for (index in 0 until rolesJson.length()) {
+                rolesJson.optString(index).takeIf { it.isNotBlank() }?.let(::add)
+            }
+        }
+        val role = classifyGuildRole(roleIds) ?: return null
+        return DiscordGuildAccess(
+            guildId = GUILD_ID,
+            role = role,
+            verifiedAtMs = System.currentTimeMillis()
+        )
+    }
+
+    internal fun classifyGuildRole(roleIds: Set<String>): DiscordGuildRole? = when {
+        ROLE_DEVELOPER_ID.isNotBlank() && ROLE_DEVELOPER_ID in roleIds -> DiscordGuildRole.DEVELOPER
+        ROLE_ADMIN_ID.isNotBlank() && ROLE_ADMIN_ID in roleIds -> DiscordGuildRole.ADMIN
+        ROLE_PUP_MEMBERS_ID.isNotBlank() && ROLE_PUP_MEMBERS_ID in roleIds -> DiscordGuildRole.PUP_MEMBER
+        ROLE_GUEST_ID.isNotBlank() && ROLE_GUEST_ID in roleIds -> DiscordGuildRole.GUEST
+        else -> null
+    }
+
+    internal fun unlockPuppyIdFor(role: DiscordGuildRole): String? {
+        val configured = when (role) {
+            DiscordGuildRole.DEVELOPER -> BuildConfig.DISCORD_UNLOCK_DEVELOPER_PUPPY_ID
+            DiscordGuildRole.ADMIN -> BuildConfig.DISCORD_UNLOCK_ADMIN_PUPPY_ID
+            DiscordGuildRole.PUP_MEMBER -> BuildConfig.DISCORD_UNLOCK_PUP_MEMBERS_PUPPY_ID
+            DiscordGuildRole.GUEST -> BuildConfig.DISCORD_UNLOCK_GUEST_PUPPY_ID
+        }.trim()
+        return configured.takeIf { it.isNotBlank() && it in V2_PUPPY_IDS }
+    }
+
+    internal fun isDiscordSnowflake(value: String): Boolean =
+        value.length in 17..20 && value.all(Char::isDigit)
 
     private fun fetchCurrentUser(accessToken: String): DiscordPlayerAccount {
         val connection = (URL(CURRENT_USER_ENDPOINT).openConnection() as HttpURLConnection).apply {
