@@ -26,6 +26,15 @@ jobs:
           if (( ${#files[@]} )); then
             deno test --allow-all "${files[@]}"
           fi
+      - name: Type-check PupEye Edge Functions
+        run: |
+          deno check \
+            supabase/functions/pupeye-register/index.ts \
+            supabase/functions/pupeye-auth-discord/index.ts \
+            supabase/functions/pupeye-sync/index.ts \
+            supabase/functions/pupeye-transaction/index.ts \
+            supabase/functions/pupeye-enforcement-status/index.ts \
+            supabase/functions/pupeye-support-ban/index.ts
       - name: Detect database changes
         id: db_changes
         shell: bash
