@@ -158,7 +158,7 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             subtitle = "Connect or manage your Discord account.",
             onBack = { open(SettingsDestination.HOME) }
         ) {
-            DiscordSettings()
+            DiscordSettings(state, vm)
         }
 
         SettingsDestination.TRANSFER -> SettingsSubpage(
@@ -747,12 +747,16 @@ private fun ProfileSettings(
 }
 
 @Composable
-private fun DiscordSettings() {
+private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val account = discord.account
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
+    var discordIdInput by rememberSaveable(account?.id) {
+        mutableStateOf(account?.id.orEmpty())
+    }
+    var unlockMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -806,6 +810,97 @@ private fun DiscordSettings() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Disconnect Discord")
+        }
+    }
+
+    Spacer(Modifier.height(18.dp))
+    SettingsLabel("DISCORD V2 UNLOCKS")
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Verify server role", fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Enter your Discord user ID. Puppy Clicker then verifies your role in the configured Discord server through OAuth.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+            StatusLine("Server ID", DiscordSignupAuth.GUILD_ID)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = discordIdInput,
+                onValueChange = { value ->
+                    discordIdInput = value.filter(Char::isDigit).take(20)
+                    unlockMessage = null
+                },
+                label = { Text("Discord User ID") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    unlockMessage = null
+                    DiscordSignupAuth.startSignup(
+                        context = context,
+                        expectedDiscordId = discordIdInput,
+                        verifyGuildRole = true
+                    )
+                },
+                enabled = !busy && DiscordSignupAuth.isDiscordSnowflake(discordIdInput),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (busy) "Waiting for Discord…" else "Verify Server Role")
+            }
+
+            discord.guildAccess?.let { access ->
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(10.dp))
+                StatusLine("Verified role", access.role.label)
+                val rewardId = DiscordSignupAuth.unlockPuppyIdFor(access.role)
+                if (rewardId != null) {
+                    val reward = V2_PUPPY_STYLES.firstOrNull { it.id == rewardId }
+                    val owned = rewardId in state.unlockedPuppies
+                    StatusLine("V2 reward", reward?.name ?: rewardId)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            unlockMessage = if (vm.unlockDiscordRolePuppy()) {
+                                "Discord V2 puppy unlocked."
+                            } else {
+                                "Unable to unlock this Discord reward."
+                            }
+                        },
+                        enabled = !owned,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (owned) "Already Unlocked ✓" else "Unlock ${reward?.name ?: "V2 Puppy"}")
+                    }
+                } else {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Role verified. No V2 puppy is mapped to this role yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            unlockMessage?.let { message ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 
