@@ -378,8 +378,8 @@ private fun BlackjackCartoonTable(
 
         Column(
             modifier = Modifier
-                .offset(x = maxWidth * 0.07f, y = maxHeight * 0.60f)
-                .width(maxWidth * 0.86f)
+                .offset(x = maxWidth * 0.08f, y = maxHeight * 0.52f)
+                .width(maxWidth * 0.84f)
         ) {
             if (displayState == null) {
                 Text(
@@ -418,7 +418,7 @@ private fun BlackjackActionPanel(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1192f / 900f)
+            .aspectRatio(1192f / 720f)
             .animateContentSize(animationSpec = tween(260))
     ) {
         Image(
@@ -431,7 +431,7 @@ private fun BlackjackActionPanel(
         Text(
             "Hand " + (roundState.activeHandIndex + 1) +
                 " · " + (activeValue?.total ?: 0) + " points",
-            modifier = Modifier.offset(x = maxWidth * 0.07f, y = maxHeight * 0.14f),
+            modifier = Modifier.offset(x = maxWidth * 0.07f, y = maxHeight * 0.11f),
             color = Color.White,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black
@@ -439,7 +439,7 @@ private fun BlackjackActionPanel(
 
         Text(
             (activeHand?.wagerTreats ?: 0L).toString() + " Chips",
-            modifier = Modifier.offset(x = maxWidth * 0.70f, y = maxHeight * 0.14f),
+            modifier = Modifier.offset(x = maxWidth * 0.70f, y = maxHeight * 0.11f),
             color = Color.White,
             fontWeight = FontWeight.Black
         )
@@ -450,9 +450,9 @@ private fun BlackjackActionPanel(
             enabled = PuppyBlackjackEngine.canHit(roundState),
             onClick = onHit,
             x = maxWidth * 0.055f,
-            y = maxHeight * 0.31f,
+            y = maxHeight * 0.28f,
             width = maxWidth * 0.43f,
-            height = maxHeight * 0.26f
+            height = maxHeight * 0.25f
         )
 
         BlackjackImageButton(
@@ -461,9 +461,9 @@ private fun BlackjackActionPanel(
             enabled = PuppyBlackjackEngine.canStand(roundState),
             onClick = onStand,
             x = maxWidth * 0.515f,
-            y = maxHeight * 0.31f,
+            y = maxHeight * 0.28f,
             width = maxWidth * 0.43f,
-            height = maxHeight * 0.26f
+            height = maxHeight * 0.25f
         )
 
         BlackjackImageButton(
@@ -475,9 +475,9 @@ private fun BlackjackActionPanel(
                     chips >= activeHand.wagerTreats,
             onClick = onDouble,
             x = maxWidth * 0.055f,
-            y = maxHeight * 0.62f,
+            y = maxHeight * 0.60f,
             width = maxWidth * 0.43f,
-            height = maxHeight * 0.24f
+            height = maxHeight * 0.25f
         )
 
         BlackjackImageButton(
@@ -489,9 +489,9 @@ private fun BlackjackActionPanel(
                     chips >= activeHand.wagerTreats,
             onClick = onSplit,
             x = maxWidth * 0.515f,
-            y = maxHeight * 0.62f,
+            y = maxHeight * 0.60f,
             width = maxWidth * 0.43f,
-            height = maxHeight * 0.24f
+            height = maxHeight * 0.25f
         )
     }
 }
@@ -586,13 +586,14 @@ private fun BlackjackWalletCopy(
 private fun BlackjackCardRow(
     cards: List<Int>,
     hideAfterFirst: Boolean,
-    animationsEnabled: Boolean
+    animationsEnabled: Boolean,
+    compact: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 7.dp)
     ) {
         cards.forEachIndexed { index, id ->
             val hidden = hideAfterFirst && index > 0
@@ -601,7 +602,9 @@ private fun BlackjackCardRow(
                     card = if (hidden) null else PuppyBlackjackCard(id),
                     animationToken = id.toString() + ":" + hidden,
                     animationsEnabled = animationsEnabled,
-                    dealDelayMs = index * 120L
+                    dealDelayMs = index * 120L,
+                    cardWidth = if (compact) 42.dp else 58.dp,
+                    cardHeight = if (compact) 58.dp else 78.dp
                 )
             }
         }
@@ -613,7 +616,9 @@ private fun BlackjackPlayingCard(
     card: PuppyBlackjackCard?,
     animationToken: String,
     animationsEnabled: Boolean,
-    dealDelayMs: Long
+    dealDelayMs: Long,
+    cardWidth: Dp,
+    cardHeight: Dp
 ) {
     val red =
         card != null &&
@@ -632,8 +637,8 @@ private fun BlackjackPlayingCard(
 
     Box(
         modifier = Modifier
-            .width(58.dp)
-            .height(78.dp)
+            .width(cardWidth)
+            .height(cardHeight)
             .graphicsLayer {
                 alpha = reveal.value
                 translationX = (1f - reveal.value) * 42f
@@ -713,14 +718,14 @@ private fun BlackjackHandCard(
             }
             .animateContentSize(animationSpec = tween(260)),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xCC0A402D).copy(alpha = if (active) 0.82f else 0.60f),
+        color = Color(0xCC0A402D).copy(alpha = if (active) 0.62f else 0.42f),
         border = BorderStroke(
             if (active) 2.dp else 1.dp,
             if (active) Color(0xFFFFCF4A) else Color.White.copy(alpha = 0.18f)
         ),
-        shadowElevation = if (active) 4.dp else 0.dp
+        shadowElevation = if (active) 3.dp else 0.dp
     ) {
-        Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp)) {
+        Column(Modifier.padding(horizontal = 7.dp, vertical = 5.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Hand " + (index + 1),
@@ -735,21 +740,16 @@ private fun BlackjackHandCard(
                 )
             }
 
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(3.dp))
 
             BlackjackCardRow(
                 cards = hand.cards,
                 hideAfterFirst = false,
-                animationsEnabled = animationsEnabled
+                animationsEnabled = animationsEnabled,
+                compact = true
             )
 
-            Spacer(Modifier.height(5.dp))
-
-            Text(
-                "Total " + value.total + if (value.soft) " · soft" else "",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
+            Spacer(Modifier.height(3.dp))
 
             val status = when {
                 outcome != null -> outcome.result.name + " · " + outcome.payoutTreats + " returned"
@@ -760,11 +760,21 @@ private fun BlackjackHandCard(
                 else -> "Waiting"
             }
 
-            Text(
-                status,
-                color = Color.White.copy(alpha = 0.86f),
-                style = MaterialTheme.typography.labelMedium
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Total " + value.total + if (value.soft) " · soft" else "",
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    status,
+                    color = Color.White.copy(alpha = 0.86f),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
