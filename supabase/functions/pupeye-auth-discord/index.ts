@@ -1,6 +1,7 @@
-import { withSupabase } from "npm:@supabase/server";
 import {
   HttpError,
+  assertPublishableRequest,
+  createAdminClient,
   authenticateSession,
   errorResponse,
   json,
@@ -14,14 +15,14 @@ const ROLE_ADMIN_ID = Deno.env.get("PUPPY_DISCORD_ROLE_ADMIN_ID") ?? "1547298831
 const ROLE_PUP_MEMBERS_ID = Deno.env.get("PUPPY_DISCORD_ROLE_PUP_MEMBERS_ID") ?? "1547299180484104283";
 const ROLE_GUEST_ID = Deno.env.get("PUPPY_DISCORD_ROLE_GUEST_ID") ?? "1547299276353441812";
 
-export default {
-  fetch: withSupabase({ auth: "publishable" }, async (req, ctx) => {
-    try {
+Deno.serve(async (req: Request) => {
+  try {
+    assertPublishableRequest(req);
       const envelope = verifyEnvelope(await req.json());
       if (!["auth-discord", "unlink-discord"].includes(envelope.action)) {
         throw new HttpError(400, "PUPEYE_ACTION_INVALID", "Unsupported Discord auth action.");
       }
-      const admin = ctx.supabaseAdmin;
+      const admin = createAdminClient();
       const session = await authenticateSession(req, admin, envelope);
 
       if (envelope.action === "unlink-discord") {
@@ -105,8 +106,7 @@ export default {
         },
         guildRole,
       });
-    } catch (error) {
-      return errorResponse(error);
-    }
-  }),
-};
+  } catch (error) {
+    return errorResponse(error);
+  }
+});
