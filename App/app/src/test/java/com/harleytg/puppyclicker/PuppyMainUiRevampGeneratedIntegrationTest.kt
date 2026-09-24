@@ -67,6 +67,23 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun playTracksTheCurrentDailyGoalAndViewModelRollsAtMidnight() {
+        val main = generated("PuppyMainScreensRevamp.kt").readText()
+        val vm = generated("PuppyClickerV6ViewModel.kt").readText()
+        val play = main.substring(
+            main.indexOf("internal fun PuppyRevampedPlayScreen"),
+            main.indexOf("internal fun PuppyRevampedCareScreen")
+        )
+
+        assertTrue(play.contains("PuppyMonthlyRewards.schedule.collectAsState()"))
+        assertTrue(play.contains("val nextGoal = todayGoals.firstOrNull"))
+        assertTrue(play.contains("nextGoal?.progress(state)"))
+        assertTrue(play.contains("nextGoal?.let { \"Next Reward ·"))
+        assertTrue(!play.contains("val target = 75L"))
+        assertTrue(vm.contains("if (seconds % 30 == 0) rollDailyDayIfNeeded()"))
+    }
+
+    @Test
     fun rewardsFillStreakDotsAndTicketAlertStaysAtPlayHeader() {
         val source = generated("PuppyMainScreensRevamp.kt").readText()
 
@@ -114,6 +131,9 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
 
         assertTrue(rewards.contains("PuppyMonthlyRewards.schedule.collectAsState()"))
         assertTrue(rewards.contains("PuppyMonthlyRewards.currentGoals(todayDate)"))
+        assertTrue(rewards.contains("val nextGoal = todayGoals.firstOrNull"))
+        assertTrue(rewards.contains("nextGoal?.progress(state)"))
+        assertTrue(!rewards.contains("val target = 75L"))
         assertTrue(rewards.contains("Text(\"Claimed\""))
         assertTrue(rewards.contains("PuppyClaimedReward("))
         assertTrue(stream.contains("assets/rewards"))
@@ -132,6 +152,11 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
         assertTrue(roster.contains("PuppyNotificationCenter.notifyRosterUpdated("))
         assertTrue(notifications.contains("DynamicPuppyRoster.refreshIfDue(app)"))
         assertTrue(notifications.contains("NOTIFY_ROSTER = 42104"))
+        assertTrue(notifications.contains("NOTIFY_TEST = 42105"))
+        assertTrue(notifications.contains("NOTIFY_SYSTEM_REWARD_BASE = 42200"))
+        assertTrue(notifications.contains("postTestNotification("))
+        assertTrue(notifications.contains("notifySystemRewardAvailable("))
+        assertTrue(notifications.contains("id != NOTIFY_TEST"))
         assertTrue(notifications.contains("New puppy added to the roster"))
     }
 

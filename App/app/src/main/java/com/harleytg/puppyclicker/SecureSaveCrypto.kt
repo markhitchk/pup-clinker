@@ -201,12 +201,43 @@ internal object PupEyeSaveGuard {
     private const val KEY_TAMPER_COUNT = "tamper_count"
     private const val KEY_LAST_REASON = "last_reason"
     private const val KEY_LAST_TIME = "last_time"
+    private const val KEY_AUTHORIZED_WRITE_PENDING = "authorized_write_pending"
+
+    @Volatile
+    private var authorizedWritePending = false
+
+    fun noteAuthorizedPreferenceChange(context: Context) {
+        if (authorizedWritePending) return
+        authorizedWritePending = true
+        // Persist once per dirty window. saveState() changes many keys at a time,
+        // so avoiding one write per key keeps this marker inexpensive while commit()
+        // makes it survive an abrupt process stop before the debounced seal.
+        context.applicationContext
+            .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, true)
+            .commit()
+    }
+
+    private fun hasAuthorizedPreferenceChange(context: Context): Boolean =
+        authorizedWritePending ||
+            context.applicationContext
+                .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
 
     fun verifyAndRecover(context: Context, prefs: SharedPreferences): Boolean {
+        // SharedPreferences callbacks mark legitimate in-process writes immediately,
+        // while the encrypted seal is intentionally debounced. Do not treat that
+        // short synchronization window as save tampering.
+        if (hasAuthorizedPreferenceChange(context)) {
+            // The game itself changed its preferences after the previous seal.
+            // Refresh the last-known-good snapshot rather than restoring stale data.
+            return seal(context, prefs)
+        }
+
         val backup = File(context.noBackupFilesDir, BACKUP_FILE)
         if (!backup.isFile) {
-            seal(context, prefs)
-            return true
+            return seal(context, prefs)
         }
         return runCatching {
             val protected = backup.readBytes()
@@ -214,6 +245,10 @@ internal object PupEyeSaveGuard {
             val actual = SecurePreferenceCodec.canonicalBytes(prefs)
             if (!MessageDigest.isEqual(expected, actual)) {
                 SecurePreferenceCodec.restore(prefs, JSONObject(expected.toString(Charsets.UTF_8)))
+                // The recovered snapshot is now authoritative. Re-seal it so a
+                // follow-up check verifies the recovered state instead of repeating
+                // the same historical mismatch.
+                seal(context, prefs)
                 recordTamper(context, "Runtime save integrity mismatch; restored last known good save")
                 false
             } else true
@@ -225,7 +260,7 @@ internal object PupEyeSaveGuard {
         }
     }
 
-    fun seal(context: Context, prefs: SharedPreferences) {
+    fun seal(context: Context, prefs: SharedPreferences): Boolean =
         runCatching {
             val target = File(context.noBackupFilesDir, BACKUP_FILE)
             target.parentFile?.mkdirs()
@@ -236,8 +271,14 @@ internal object PupEyeSaveGuard {
                 target.writeBytes(temp.readBytes())
                 temp.delete()
             }
-        }
-    }
+            authorizedWritePending = false
+            context.applicationContext
+                .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
+                .commit()
+            true
+        }.getOrDefault(false)
 
     fun recordTamper(context: Context, reason: String) {
         val prefs = context.getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)

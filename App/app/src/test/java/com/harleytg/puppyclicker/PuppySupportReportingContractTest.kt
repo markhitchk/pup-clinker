@@ -148,6 +148,17 @@ class PuppySupportReportingContractTest {
     }
 
     @Test
+    fun supportConsentSwitchesReserveTheirOwnLayoutColumn() {
+        val ui = source(
+            "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
+        )
+
+        assertTrue(ui.contains(".padding(end = 12.dp)"))
+        assertTrue(ui.contains("modifier = Modifier.width(56.dp)"))
+        assertTrue(ui.contains("contentAlignment = Alignment.Center"))
+    }
+
+    @Test
     fun encryptedDiscordOnlyUsesEncryptedCredentialMaterial() {
         val reporting = source(
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReporting.kt"

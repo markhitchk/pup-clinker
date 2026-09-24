@@ -475,10 +475,22 @@ def patch_notifications(source: str) -> str:
     if "PuppyNotificationHistory.record(" in source and "historyItemFor(" in source:
         return source
 
-    source = source.replace(
-        "        if (PuppyAppRuntime.isForeground || !canNotify(app)) return\n",
-        "        if (PuppyAppRuntime.isForeground) return\n",
-        1,
+    # Keep notification history current even when Android notification permission
+    # is denied. Scope this specifically to the periodic sweep so helper methods added
+    # before it do not steal the replacement.
+    run_sweep_guard = '''        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
+
+        if (PuppyAppRuntime.isForeground || !canNotify(app)) return
+'''
+    run_sweep_replacement = '''        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
+
+        if (PuppyAppRuntime.isForeground) return
+'''
+    source = replace_once(
+        source,
+        run_sweep_guard,
+        run_sweep_replacement,
+        "notification sweep permission guard",
     )
     source = source.replace(
         "        if (PuppyAppRuntime.isForeground || !canNotify(context)) return\n",
@@ -554,7 +566,7 @@ def patch_notifications(source: str) -> str:
         historyItemFor(context, id, title, text)?.let { item ->
             PuppyNotificationHistory.record(context, item)
         }
-        if (PuppyAppRuntime.isForeground || !canNotify(context)) return
+        if ((PuppyAppRuntime.isForeground && id != NOTIFY_TEST) || !canNotify(context)) return
         val openApp = PendingIntent.getActivity(''',
         "notification post history",
     )
@@ -722,117 +734,8 @@ def patch_roster(source: str) -> str:
 
 
 def patch_main_screens(source: str) -> str:
-    if "PuppyAchievementsV6.statuses" in source:
-        return source
-    anchor = '''        Spacer(Modifier.height(14.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
-            ),'''
-    insertion = '''        Spacer(Modifier.height(14.dp))
-        PuppyPlayerProgressCard(state)
-        Spacer(Modifier.height(10.dp))
-        PuppyAchievementsSection(state)
-
-        Spacer(Modifier.height(14.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
-            ),'''
-    source = replace_once(source, anchor, insertion, "Rewards progression section")
-    source += '''
-
-@Composable
-private fun PuppyPlayerProgressCard(state: V6GameState) {
-    val nextLevelXp = runCatching {
-        val level = state.level.toLong().coerceAtLeast(1L)
-        Math.multiplyExact(Math.multiplyExact(level, level), 100L)
-    }.getOrDefault(Long.MAX_VALUE)
-    val progressBase = if (state.level <= 1) 0L else {
-        val previous = (state.level - 1).toLong()
-        previous * previous * 100L
-    }
-    val span = (nextLevelXp - progressBase).coerceAtLeast(1L)
-    val current = (state.playerXp - progressBase).coerceIn(0L, span)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Player Level ${state.level}", fontWeight = FontWeight.Black)
-                Text("${state.playerXp} XP", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(6.dp))
-            LinearProgressIndicator(
-                progress = { current.toFloat() / span.toFloat() },
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
-            )
-            Text(
-                if (nextLevelXp == Long.MAX_VALUE) "Maximum tracked level" else "$current / $span XP toward next level",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun PuppyAchievementsSection(state: V6GameState) {
-    val statuses = PuppyAchievementsV6.statuses(state, state.achievementRewardedIds)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Achievements", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                Text(
-                    statuses.count { it.completed }.toString() + "/" + statuses.size,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            statuses.forEachIndexed { index, status ->
-                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(status.definition.emoji, fontSize = 22.sp)
-                    Spacer(Modifier.width(8.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(status.definition.title, fontWeight = FontWeight.Black)
-                        Text(status.definition.description, style = MaterialTheme.typography.bodySmall)
-                        Text(
-                            status.progress.coerceAtMost(status.definition.target).toString() + "/" + status.definition.target,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        if (status.completed) "✓ Complete" else status.definition.rewardDescription,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (status.completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-'''
+    # Progression belongs to Settings > Profile. Keep Rewards focused on
+    # daily goals, claims, Gacha, Casino, and Prestige navigation.
     return source
 
 
@@ -896,6 +799,172 @@ def patch_settings(source: str) -> str:
             }
 '''
     source = replace_once(source, profile_anchor, profile_badge, "profile release badge")
+
+    # Profile owns permanent progression in 1.0+: level/XP plus all achievements.
+    profile_editor_anchor = '''    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = username,'''
+    profile_progression = '''    Spacer(Modifier.height(12.dp))
+    SettingsLabel("PROGRESSION")
+    PuppyProfileProgressCard(gameState)
+    Spacer(Modifier.height(10.dp))
+    PuppyProfileAchievementsSection(gameState)
+    Spacer(Modifier.height(16.dp))
+    SettingsLabel("IDENTITY")
+
+    OutlinedTextField(
+        value = username,'''
+    if profile_editor_anchor in source:
+        source = replace_once(
+            source,
+            profile_editor_anchor,
+            profile_progression,
+            "profile progression placement",
+        )
+
+    source += '''
+
+@Composable
+private fun PuppyProfileProgressCard(state: V6GameState) {
+    val nextLevelXp = runCatching {
+        val level = state.level.toLong().coerceAtLeast(1L)
+        Math.multiplyExact(Math.multiplyExact(level, level), 100L)
+    }.getOrDefault(Long.MAX_VALUE)
+    val progressBase = if (state.level <= 1) 0L else {
+        val previous = (state.level - 1).toLong()
+        previous * previous * 100L
+    }
+    val span = (nextLevelXp - progressBase).coerceAtLeast(1L)
+    val current = (state.playerXp - progressBase).coerceIn(0L, span)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Player Level " + state.level,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Permanent Puppy Clicker progression",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    state.playerXp.toString() + " XP",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { current.toFloat() / span.toFloat() },
+                modifier = Modifier.fillMaxWidth().height(7.dp)
+            )
+            Spacer(Modifier.height(5.dp))
+            Text(
+                if (nextLevelXp == Long.MAX_VALUE) {
+                    "Maximum tracked level"
+                } else {
+                    current.toString() + " / " + span + " XP toward next level"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun PuppyProfileAchievementsSection(state: V6GameState) {
+    val statuses = PuppyAchievementsV6.statuses(state, state.achievementRewardedIds)
+    val completed = statuses.count { it.completed }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Achievements",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "Milestones and permanent XP rewards",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    completed.toString() + "/" + statuses.size,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            statuses.forEachIndexed { index, status ->
+                if (index > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(status.definition.emoji, fontSize = 22.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(status.definition.title, fontWeight = FontWeight.Black)
+                        Text(
+                            status.definition.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            status.progress.coerceAtMost(status.definition.target).toString() +
+                                "/" + status.definition.target,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    Text(
+                        if (status.completed) "✓ Complete" else status.definition.rewardDescription,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (status.completed) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+'''
     return source
 
 

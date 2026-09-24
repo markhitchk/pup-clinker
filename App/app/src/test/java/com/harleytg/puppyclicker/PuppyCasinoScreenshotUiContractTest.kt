@@ -14,7 +14,9 @@ class PuppyCasinoScreenshotUiContractTest {
         val wheel = source("PuppyLuckyWheelUi.kt")
 
         assertTrue(wheel.contains("LuckyWheelSegmentLabels("))
+        assertTrue(wheel.contains("wheelRotationDegrees = rotation.value"))
         assertTrue(wheel.contains("rotationZ = -wheelRotationDegrees"))
+        assertTrue(wheel.contains("Color.Black.copy(alpha = 0.42f)"))
     }
 
     @Test
@@ -39,6 +41,8 @@ class PuppyCasinoScreenshotUiContractTest {
         val slots = source("PuppySlotsUi.kt")
 
         assertTrue(slots.contains("val mascotTop = machineTop - machineHeight * 0.16f"))
+        assertTrue(slots.contains(".aspectRatio(0.86f)"))
+        assertTrue(slots.contains("val machineTop = maxHeight * 0.17f"))
     }
 
     @Test
@@ -46,7 +50,9 @@ class PuppyCasinoScreenshotUiContractTest {
         val plinko = source("PuppyPlinkoUi.kt")
 
         assertTrue(plinko.contains("PlinkoBinsOverlay("))
-        assertTrue(plinko.contains("val pocketCenterY = maxHeight * 0.884f"))
-        assertTrue(plinko.contains("val xStep = maxWidth * 0.04675f"))
+        assertTrue(plinko.contains("val pocketCenterY = maxHeight * 0.89f"))
+        assertTrue(plinko.contains("val xStep = maxWidth * 0.042f"))
+        assertTrue(plinko.contains(".fillMaxWidth(0.84f)"))
+        assertTrue(plinko.contains(".fillMaxHeight(0.73f)"))
     }
 }

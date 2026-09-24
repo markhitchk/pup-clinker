@@ -47,6 +47,8 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_EVENT = 42102
     private const val NOTIFY_UPDATE = 42103
     private const val NOTIFY_ROSTER = 42104
+    private const val NOTIFY_TEST = 42105
+    private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
 
     private const val WORK_SWEEP = "puppy_notification_sweep_v1"
     private const val WORK_NOW = "puppy_notification_now_v1"
@@ -79,10 +81,10 @@ internal object PuppyNotificationCenter {
             listOf(
                 NotificationChannel(
                     CHANNEL_REWARDS,
-                    "Daily Rewards",
+                    "Puppy Rewards",
                     NotificationManager.IMPORTANCE_DEFAULT
                 ).apply {
-                    description = "Daily Puppy Clicker reward reminders."
+                    description = "Daily gifts and claimable Puppy Clicker reward reminders."
                 },
                 NotificationChannel(
                     CHANNEL_EVENTS,
@@ -256,6 +258,40 @@ internal object PuppyNotificationCenter {
             id = NOTIFY_ROSTER,
             title = title,
             text = text
+        )
+    }
+
+    fun postTestNotification(context: Context) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        post(
+            context = app,
+            channel = CHANNEL_EVENTS,
+            id = NOTIFY_TEST,
+            title = "Puppy Clicker notifications are working 🐾",
+            text = "This is a test notification from Puppy Clicker."
+        )
+    }
+
+    internal fun notifySystemRewardAvailable(
+        context: Context,
+        settlementId: String,
+        amount: Long
+    ) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (PuppyAppRuntime.isForeground || !canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).dailyRewardNotifications) return
+        if (amount <= 0L || settlementId.isBlank()) return
+
+        val suffix = (settlementId.hashCode() and 0x7fffffff) % 700
+        post(
+            context = app,
+            channel = CHANNEL_REWARDS,
+            id = NOTIFY_SYSTEM_REWARD_BASE + suffix,
+            title = "Your puppies saved some Treats!",
+            text = "Claim " + amount + " saved Treats from the Puppy Clicker notification inbox."
         )
     }
 
@@ -478,6 +514,10 @@ internal object PuppyNotificationCenter {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openApp)
             .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setGroup("puppy_clicker")
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(id, notification)

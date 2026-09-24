@@ -403,6 +403,7 @@ private fun ScratcherCard(
     var coinPosition by remember(outcome) { mutableStateOf<Offset?>(null) }
     var coinRotation by remember(outcome) { mutableStateOf(0f) }
     var lastPointerTimeMillis by remember(outcome) { mutableLongStateOf(0L) }
+    var lastScratchPosition by remember(outcome) { mutableStateOf<Offset?>(null) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
     val coinDiameter = 56.dp
@@ -474,6 +475,12 @@ private fun ScratcherCard(
                             )
                         }
 
+                        fun clampScratch(position: Offset): Offset =
+                            Offset(
+                                x = position.x.coerceIn(0f, size.width.toFloat()),
+                                y = position.y.coerceIn(0f, size.height.toFloat())
+                            )
+
                         fun scratchRadius(speedPxPerMs: Float): Float {
                             val cellW = size.width.toFloat() / SCRATCH_COLUMNS.toFloat()
                             val cellH = size.height.toFloat() / SCRATCH_ROWS.toFloat()
@@ -525,23 +532,28 @@ private fun ScratcherCard(
 
                         detectDragGestures(
                             onDragStart = { start ->
-                                val clampedStart = clampCoin(start)
-                                coinPosition = clampedStart
+                                val scratchStart = clampScratch(start)
+                                coinPosition = clampCoin(start)
+                                lastScratchPosition = scratchStart
                                 coinRotation = 0f
                                 lastPointerTimeMillis = 0L
-                                markPoint(clampedStart, 0f)
+                                markPoint(scratchStart, 0f)
                             },
                             onDragEnd = {
                                 coinRotation *= 0.28f
                                 lastPointerTimeMillis = 0L
+                                lastScratchPosition = null
                             },
                             onDragCancel = {
                                 coinRotation *= 0.28f
                                 lastPointerTimeMillis = 0L
+                                lastScratchPosition = null
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
 
+                                val scratchTarget = clampScratch(change.position)
+                                val currentScratch = lastScratchPosition ?: scratchTarget
                                 val target = clampCoin(change.position)
                                 val current = coinPosition ?: target
                                 val dtMillis = if (lastPointerTimeMillis == 0L) {
@@ -572,7 +584,8 @@ private fun ScratcherCard(
                                         (dragAmount.y * 0.02f)
                                     ).coerceIn(-28f, 28f)
 
-                                markSegment(current, next, speedPxPerMs)
+                                markSegment(currentScratch, scratchTarget, speedPxPerMs)
+                                lastScratchPosition = scratchTarget
                             }
                         )
                     }

@@ -437,19 +437,23 @@ private fun LuckyWheelSegmentLabels(
         prizes.forEachIndexed { index, prize ->
             val angleDegrees = PuppyCasinoCartoonMath.segmentCenterDegrees(weights, index)
             val angleRadians = angleDegrees * PI / 180.0
-            val compactSlice = prize.weightPercent <= 8
             val labelRadius = wheelSize * when {
-                prize.weightPercent <= 2 -> 0.39f
-                compactSlice -> 0.34f
-                else -> 0.29f
+                prize.weightPercent <= 2 -> 0.38f
+                prize.weightPercent <= 5 -> 0.335f
+                prize.weightPercent <= 10 -> 0.30f
+                else -> 0.27f
             }
-            val labelWidth = wheelSize * if (compactSlice) 0.14f else 0.18f
+            val labelWidth = wheelSize * when {
+                prize.weightPercent <= 2 -> 0.12f
+                prize.weightPercent <= 5 -> 0.14f
+                else -> 0.17f
+            }
             val x = wheelSize * 0.5f +
                 labelRadius * cos(angleRadians).toFloat() -
                 labelWidth * 0.5f
             val y = wheelSize * 0.5f +
                 labelRadius * sin(angleRadians).toFloat() -
-                9.dp
+                8.dp
 
             Text(
                 text = luckyWheelSegmentLabel(prize),
@@ -457,12 +461,23 @@ private fun LuckyWheelSegmentLabels(
                     .offset(x = x, y = y)
                     .width(labelWidth)
                     .graphicsLayer {
-                        // The label center follows its rotating slice, but the copy remains upright.
+                        // The label position follows its slice, while the copy stays upright
+                        // so even the narrow 10x / PUP slices remain readable during a spin.
                         rotationZ = -wheelRotationDegrees
-                    },
+                    }
+                    .background(
+                        Color.Black.copy(alpha = 0.42f),
+                        RoundedCornerShape(4.dp)
+                    )
+                    .padding(horizontal = 2.dp, vertical = 1.dp),
                 color = Color.White,
                 fontWeight = FontWeight.Black,
-                fontSize = if (compactSlice) 8.sp else 9.sp,
+                fontSize = when {
+                    prize.weightPercent <= 2 -> 7.sp
+                    prize.weightPercent <= 5 -> 8.sp
+                    prize.weightPercent <= 10 -> 9.sp
+                    else -> 10.sp
+                },
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1
             )

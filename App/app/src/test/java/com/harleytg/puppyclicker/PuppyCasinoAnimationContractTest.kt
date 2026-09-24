@@ -60,6 +60,8 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(blackjack.contains("rotationZ = (1f - reveal.value) * -7f"))
         assertTrue(blackjack.contains("shadowElevation = 2f + (9f * reveal.value)"))
         assertTrue(blackjack.contains("BlackjackActionPanel("))
+        assertTrue(blackjack.contains(".aspectRatio(1192f / 720f)"))
+        assertTrue(blackjack.contains("compact = true"))
         assertTrue(blackjack.contains("🐾 + HIT"))
         assertTrue(blackjack.contains("■ STAND"))
         assertTrue(blackjack.contains("animateFloatAsState("))
@@ -101,6 +103,8 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(scratchers.contains("SCRATCH_BORDER_HEIGHT = 1077f"))
         assertTrue(scratchers.contains("PUP_COIN_VISIBLE_ASPECT = 960f / 973f"))
         assertTrue(scratchers.contains("coinHalfWidthPx"))
+        assertTrue(scratchers.contains("fun clampScratch(position: Offset)"))
+        assertTrue(scratchers.contains("lastScratchPosition"))
         assertFalse(scratchers.contains("1103f"))
 
         assertTrue(luckyWheel.contains("LuckyWheelBoard("))
