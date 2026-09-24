@@ -880,24 +880,48 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(Modifier.height(10.dp))
                 StatusLine("Verified role", access.role.label)
-                val rewardId = DiscordSignupAuth.unlockPuppyIdFor(access.role)
-                if (rewardId != null) {
-                    val reward = V2_PUPPY_STYLES.firstOrNull { it.id == rewardId }
-                    val owned = rewardId in state.unlockedPuppies
-                    StatusLine("V2 reward", reward?.name ?: rewardId)
+                val rewardIds = DiscordSignupAuth.unlockPuppyIdsFor(access.role)
+                if (rewardIds.isNotEmpty()) {
+                    val rewardNames = rewardIds.map { rewardId ->
+                        V2_PUPPY_STYLES.firstOrNull { it.id == rewardId }?.name ?: rewardId
+                    }
+                    val allOwned = rewardIds.all { it in state.unlockedPuppies }
+                    StatusLine(
+                        if (access.role == DiscordGuildRole.DEVELOPER) "Inherited rewards" else "V2 reward",
+                        rewardNames.joinToString(", ")
+                    )
+                    if (access.role == DiscordGuildRole.DEVELOPER) {
+                        Text(
+                            "Developer inherits every configured Discord role puppy reward.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = {
                             unlockMessage = if (vm.unlockDiscordRolePuppy()) {
-                                "Discord V2 puppy unlocked."
+                                if (access.role == DiscordGuildRole.DEVELOPER) {
+                                    "All configured Discord role rewards unlocked."
+                                } else {
+                                    "Discord V2 puppy unlocked."
+                                }
                             } else {
                                 "Unable to unlock this Discord reward."
                             }
                         },
-                        enabled = !owned,
+                        enabled = !allOwned,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (owned) "Already Unlocked ✓" else "Unlock ${reward?.name ?: "V2 Puppy"}")
+                        Text(
+                            if (allOwned) {
+                                "Already Unlocked ✓"
+                            } else if (access.role == DiscordGuildRole.DEVELOPER) {
+                                "Unlock All Discord Rewards"
+                            } else {
+                                "Unlock ${rewardNames.first()}"
+                            }
+                        )
                     }
                 } else {
                     Spacer(Modifier.height(6.dp))
