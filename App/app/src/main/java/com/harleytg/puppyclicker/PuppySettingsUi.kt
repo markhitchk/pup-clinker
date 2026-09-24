@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -126,17 +127,28 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
     }
     var developerConsoleOpen by rememberSaveable { mutableStateOf(false) }
 
-    if (developerConsoleOpen) {
-        PuppyDeveloperConsoleScreen(onBack = { developerConsoleOpen = false })
-        return
-    }
-
     val destination = runCatching {
         SettingsDestination.valueOf(destinationName)
     }.getOrDefault(SettingsDestination.HOME)
 
     fun open(next: SettingsDestination) {
         destinationName = next.name
+    }
+
+    BackHandler(enabled = developerConsoleOpen || destination != SettingsDestination.HOME) {
+        if (developerConsoleOpen) {
+            developerConsoleOpen = false
+        } else {
+            open(SettingsDestination.HOME)
+        }
+    }
+
+    if (developerConsoleOpen) {
+        PuppyDeveloperConsoleScreen(
+            state = state,
+            onBack = { developerConsoleOpen = false }
+        )
+        return
     }
 
     when (destination) {
@@ -273,7 +285,11 @@ private fun SettingsHome(
     val context = LocalContext.current
     val security = PupEyeSaveGuard.state(context)
     val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
-    val showDeveloper = developer.unlocked || PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val showDeveloper =
+        developer.unlocked ||
+            PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
+            discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
 
     Column(
         modifier = Modifier
