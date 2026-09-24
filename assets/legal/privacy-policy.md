@@ -99,7 +99,7 @@ After successful authorization, Puppy Clicker may read account identity informat
 - Avatar identifier, when available
 - Email address, when Discord returns it for the authorized account
 
-The account identity metadata used by Puppy Clicker is stored locally so the app can remember which Discord account completed signup. The requested guild scopes authorize community/server features, but the app does not persist the Discord OAuth access token after the authorization session.
+The account identity metadata used by Puppy Clicker is stored locally so the app can remember which Discord account completed signup. For Discord V2 unlock verification, Puppy Clicker may also read the authorized user's member record for the configured Puppy Clicker server and compare its role IDs with the app's public role configuration. The app stores only the derived verified role tier, configured server ID, and verification time for this feature; it does not persist the Discord OAuth access token or the full server member response.
 
 The Discord account does not replace Puppy Clicker's device-bound **Player ID** or **Friend Code**. Those local identifiers continue to be used for Puppy Clicker trading, gifting, save ownership, and related local game features.
 
