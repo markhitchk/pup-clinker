@@ -16,7 +16,7 @@ from xml.etree import ElementTree as ET
 
 ANDROID = "http://schemas.android.com/apk/res/android"
 V1 = "classic golden poodle spotty midnight cloud aurora cocoa snowball galaxy neon_buddy golden_night halloween santa birthday dev_pup secret_snoot classic_forever".split()
-V2 = "v2_frost v2_honey v2_biscuit v2_onyx v2_domino v2_chestnut v2_prism v2_flurry v2_discord_pup".split()
+V2 = "v2_frost v2_honey v2_biscuit v2_onyx v2_domino v2_chestnut v2_prism v2_flurry".split()
 ARITY = dict(zip("MmLlHhVvCcSsQqTtAaZz", [2,2,2,2,1,1,1,1,6,6,4,4,4,4,2,2,7,7,0,0]))
 TOKEN = re.compile(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?")
 COLOR = re.compile(r"#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\Z")
