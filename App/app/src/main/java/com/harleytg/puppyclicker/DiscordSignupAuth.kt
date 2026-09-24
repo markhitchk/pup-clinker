@@ -65,8 +65,8 @@ internal data class DiscordSignupState(
  * The app is a public mobile OAuth client and therefore uses PKCE. Authorization requests use
  * identify, email, guilds, guilds.join, and guilds.members.read. The Discord access token is
  * intentionally kept only long enough for the current authorization session and is never persisted.
- * This class currently reads /users/@me; guild-scoped operations can use the same authorized flow
- * when a specific Puppy Clicker guild/community target is configured.
+ * After PKCE exchange it is sent once to Puppy Clicker's Supabase Pupeye Edge Function, where the
+ * Discord account and configured guild role are independently verified before being trusted.
  *
  * Puppy Clicker's Player ID and Friend Code remain device-bound and independent of Discord.
  */
@@ -245,7 +245,8 @@ internal object DiscordSignupAuth {
         return withContext(Dispatchers.IO) {
             try {
                 val accessToken = exchangeAuthorizationCode(code, verifier)
-                val account = fetchCurrentUser(accessToken)
+                val verified = SupabasePupEyeClient.authenticateDiscord(app, accessToken)
+                val account = verified.account
 
                 if (verifyGuildRole && account.id != expectedDiscordId) {
                     clearPending(app)
@@ -258,36 +259,27 @@ internal object DiscordSignupAuth {
                     return@withContext true
                 }
 
-                val guildAccess = if (verifyGuildRole) {
-                    fetchCurrentGuildAccess(accessToken)
-                } else {
-                    mutableState.value.guildAccess
-                }
+                val guildAccess = verified.guildAccess
 
                 saveAccount(app, account)
-                if (verifyGuildRole) {
-                    if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
-                }
+                if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
                 syncPlayerUsername(app, account)
                 clearPending(app)
                 mutableState.value = DiscordSignupState(
                     phase = DiscordSignupPhase.CONNECTED,
                     account = account,
                     guildAccess = guildAccess,
-                    message = when {
-                        !verifyGuildRole -> "Discord account connected."
-                        guildAccess != null -> "Discord server role verified: ${guildAccess.role.label}."
-                        else -> "Discord connected, but no configured Puppy Clicker server role was found."
-                    }
+                    message = verified.message
                 )
                 true
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 clearPending(app)
                 mutableState.value = DiscordSignupState(
                     phase = DiscordSignupPhase.ERROR,
                     account = mutableState.value.account,
                     guildAccess = mutableState.value.guildAccess,
-                    message = "Discord signup could not be completed. Check your connection and try again."
+                    message = error.message?.take(180)
+                        ?: "Discord signup could not be completed. Check your connection and try again."
                 )
                 true
             }
@@ -296,6 +288,7 @@ internal object DiscordSignupAuth {
 
     fun disconnect(context: Context) {
         val app = context.applicationContext
+        SupabasePupEyeClient.unlinkDiscordAsync(app)
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_DISCORD_ID)
@@ -347,6 +340,7 @@ internal object DiscordSignupAuth {
             if (initialized) return
             val account = readAccount(context)
             val guildAccess = readGuildAccess(context)
+                ?.takeIf { SupabasePupEyeClient.hasSession(context) }
             mutableState.value = DiscordSignupState(
                 phase = if (account != null) DiscordSignupPhase.CONNECTED else DiscordSignupPhase.IDLE,
                 account = account,
