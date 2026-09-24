@@ -148,7 +148,6 @@ private fun SeasonalEventWelcomeDialog(
     val state by vm.state.collectAsStateWithLifecycle()
     val clock by vm.seasonalClock.collectAsStateWithLifecycle()
     val owned = event.puppyId in state.unlockedPuppies
-    var message by remember(event.puppyId, window.cycle) { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(if (event.isBirthday) "Happy Birthday! 🎂" else "${event.emoji} ${event.title} is here!") },
@@ -159,24 +158,28 @@ private fun SeasonalEventWelcomeDialog(
                     unlocked = true, background = MaterialTheme.colorScheme.primaryContainer
                 )
                 Spacer(Modifier.height(10.dp))
-                Text(if (event.isBirthday) "A special birthday puppy is ready to celebrate with you!" else "The ${event.description.lowercase()} has started. Your limited-time puppy is ready to claim.")
+                Text(
+                    if (event.isBirthday) {
+                        "Happy birthday! Birthday Buddy unlocks automatically on your saved birthday."
+                    } else {
+                        "${event.description} is here. ${event.title} unlocks automatically on this date."
+                    }
+                )
                 Spacer(Modifier.height(8.dp))
-                Text("Available until ${SeasonalPuppyEvents.formatLocal(window.end, clock.zone)}", style = MaterialTheme.typography.bodySmall)
-                Text("Once claimed, this puppy stays in your collection permanently.", style = MaterialTheme.typography.bodySmall)
-                if (owned) Text("Already in your collection ✓", fontWeight = FontWeight.Bold)
-                message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                Text("Event day ends ${SeasonalPuppyEvents.formatLocal(window.end, clock.zone)}", style = MaterialTheme.typography.bodySmall)
+                Text("Once unlocked, this puppy stays in your collection permanently.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (owned) "Automatically unlocked ✓" else "Automatic unlock is being applied…",
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         confirmButton = {
-            if (!owned) {
-                Button(onClick = {
-                    val result = vm.claimSeasonalPuppy(event.puppyId)
-                    message = result.message
-                    if (result.success) onClose()
-                }) { Text("Claim puppy") }
-            } else TextButton(onClick = onClose) { Text("Continue") }
-        },
-        dismissButton = { if (!owned) TextButton(onClick = onClose) { Text("Later") } }
+            TextButton(onClick = {
+                if (!owned) vm.refreshSeasonalEvents()
+                onClose()
+            }) { Text("Continue") }
+        }
     )
 }
 
@@ -185,10 +188,9 @@ private fun SeasonalEventWelcomeDialog(
 internal fun SeasonalCollectionPanel(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val settings by vm.seasonalSettings.collectAsStateWithLifecycle()
     val clock by vm.seasonalClock.collectAsStateWithLifecycle()
-    var message by remember { mutableStateOf<String?>(null) }
     Text("Seasonal & birthday puppies", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
     Spacer(Modifier.height(6.dp))
-    Text("Claim during the event to keep a puppy permanently. Holiday schedules are fixed in UTC and shown in your local time.", style = MaterialTheme.typography.bodySmall)
+    Text("Pumpkin Pup unlocks on Halloween, Santa Paws on Christmas Day, and Birthday Buddy on your saved birthday. Event dates use your local calendar. Unlocks are automatic and permanent.", style = MaterialTheme.typography.bodySmall)
     Spacer(Modifier.height(8.dp))
     SeasonalPuppyEvents.events.forEach { event ->
         val owned = event.puppyId in state.unlockedPuppies
@@ -201,7 +203,7 @@ internal fun SeasonalCollectionPanel(state: V6GameState, vm: PuppyClickerV6ViewM
                     Column(Modifier.weight(1f)) {
                         Text("${event.emoji} ${event.title}", fontWeight = FontWeight.Bold)
                         Text(SeasonalPuppyEvents.availability(event, clock.now, clock.zone, settings.birthday), style = MaterialTheme.typography.bodySmall)
-                        Text(if (owned) "Permanently owned" else if (active) "Limited-time claim available" else "Not currently available", style = MaterialTheme.typography.labelSmall)
+                        Text(if (owned) "Permanently owned" else if (active) "Automatic unlock active" else "Date-locked", style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 if (owned) {
@@ -211,15 +213,11 @@ internal fun SeasonalCollectionPanel(state: V6GameState, vm: PuppyClickerV6ViewM
                         enabled = state.puppyStyle != event.puppyId,
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(if (state.puppyStyle == event.puppyId) "Selected" else "Choose ${event.title}") }
-                } else if (active) {
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { message = vm.claimSeasonalPuppy(event.puppyId).message }, modifier = Modifier.fillMaxWidth()) { Text("Claim ${event.title}") }
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
     }
-    message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
     Spacer(Modifier.height(14.dp))
 }
 
@@ -240,7 +238,7 @@ internal fun SeasonalBirthdaySettings(vm: PuppyClickerV6ViewModel) {
             if (settings.birthday != null) TextButton(onClick = { deleting = true }) { Text("Remove birthday") }
             Spacer(Modifier.height(4.dp))
             Text("Time zone: ${clock.zone.id}", style = MaterialTheme.typography.bodySmall)
-            Text("Holiday times convert from UTC. Birthday events use local midnight. Previously claimed puppies remain owned.", style = MaterialTheme.typography.bodySmall)
+            Text("Halloween, Christmas, and birthday unlocks use your local calendar day. Seasonal puppies unlock automatically and remain owned permanently.", style = MaterialTheme.typography.bodySmall)
         }
     }
     if (editing) SeasonalBirthdayDialog(
