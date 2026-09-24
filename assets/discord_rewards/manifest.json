@@ -11,7 +11,8 @@
       "emoji": "💬",
       "description": "V2 Discord reward puppy unlocked for verified Pup Members through Discord authentication.",
       "free": false,
-      "redeem_only": true
+      "redeem_only": true,
+      "unlock_source": "Discord Pup Members role"
     }
   ]
 }
