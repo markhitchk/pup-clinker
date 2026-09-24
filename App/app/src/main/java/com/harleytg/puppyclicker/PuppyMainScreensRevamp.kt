@@ -36,6 +36,11 @@ internal fun PuppyRevampedPlayScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val animatePuppy = LocalPuppyAnimatedUi.current && state.animationsEnabled
+    val rewardSchedule by PuppyMonthlyRewards.schedule.collectAsState()
+    val todayGoals = remember(rewardSchedule) {
+        PuppyMonthlyRewards.currentGoals(LocalDate.now())
+    }
+    val nextGoal = todayGoals.firstOrNull { it.id !in state.claimedDailyTasks }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var ticketVisible by remember { mutableStateOf(false) }
     val tapScale = remember { Animatable(1f) }
@@ -160,8 +165,8 @@ internal fun PuppyRevampedPlayScreen(
             }
 
             Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-            val target = 75L
-            val progressNow = state.dailyTaps.coerceAtMost(target)
+            val target = nextGoal?.target ?: 1L
+            val progressNow = nextGoal?.progress(state)?.coerceAtMost(target) ?: target
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
@@ -176,8 +181,16 @@ internal fun PuppyRevampedPlayScreen(
                     Spacer(Modifier.width(8.dp))
                     Column(Modifier.weight(1f)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Next Reward", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelLarge)
-                            Text("$progressNow/$target", fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                nextGoal?.let { "Next Reward · ${it.title}" } ?: "Today complete",
+                                fontWeight = FontWeight.Black,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            Text(
+                                if (nextGoal != null) "$progressNow/$target" else "✓",
+                                fontWeight = FontWeight.Black,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                         LinearProgressIndicator(
                             progress = { progressNow.toFloat() / target.toFloat() },
@@ -185,7 +198,11 @@ internal fun PuppyRevampedPlayScreen(
                         )
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text("300 🍪", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        nextGoal?.let { "${it.rewardTreats} 🍪" } ?: "All claimed",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
