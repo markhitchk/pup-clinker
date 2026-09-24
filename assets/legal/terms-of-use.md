@@ -10,7 +10,7 @@ These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**.
 
 Puppy Clicker is provided for personal entertainment.
 
-New player setup uses **Discord OAuth** to verify a Discord account with the `identify` permission. Existing local saves may continue to use their existing device-bound Puppy Clicker identity.
+New player setup uses **Discord OAuth** to verify a Discord account and support community features. The authorization flow may request `identify`, `email`, `guilds`, `guilds.join`, and `guilds.members.read`. Existing local saves may continue to use their existing device-bound Puppy Clicker identity.
 
 Discord signup does **not** replace the local:
 
