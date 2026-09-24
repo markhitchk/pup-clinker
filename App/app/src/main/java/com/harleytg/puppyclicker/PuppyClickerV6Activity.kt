@@ -884,6 +884,7 @@ private fun v6PuppyBackground(styleId: String): Color = when (styleId) {
     "v2_chestnut" -> Color(0xFFE4C2A9)
     "v2_prism" -> Color(0xFFE4D5FF)
     "v2_flurry" -> Color(0xFFF6FAFF)
+    "v2_discord_pup" -> Color(0xFFDDE2FF)
     else -> Color(0xFFF7F2F7)
 }
 
@@ -935,6 +936,7 @@ private fun v6FurDescription(styleId: String): String = when (styleId) {
     "v2_chestnut" -> "Cocoa-brown V2 puppy with a cream muzzle and paws."
     "v2_prism" -> "Pastel purple, teal and cream V2 puppy."
     "v2_flurry" -> "Fluffy snow-white V2 puppy with a curled tail."
+    "v2_discord_pup" -> "Indigo V2 community puppy with sky-blue highlights and a Pup Member tag."
     else -> "Original Puppy Clicker style."
 }
 
