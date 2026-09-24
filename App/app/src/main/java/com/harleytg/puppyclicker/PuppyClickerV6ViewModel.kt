@@ -1941,6 +1941,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         puppyRewardLedger: PuppyCasinoPuppyRewardLedger? = null
     ): PuppyCasinoTransactionResult {
         if (!result.success) return result
+        if (!PupEyeAuthority.isGameplayAllowed(getApplication<Application>())) {
+            return PuppyCasinoTransactionResult(
+                success = false,
+                state = before,
+                activeRound = _casinoRound.value,
+                completedRoundIds = completedBefore,
+                failure = PuppyCasinoTransactionFailure.CORRUPT_SAVE
+            )
+        }
 
         val editor = prefs.edit()
             .putLong(KEY_TREATS, result.state.treats)
