@@ -1,3 +1,4 @@
+import java.io.File
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -19,6 +20,41 @@ val puppySvgSourceDir = layout.projectDirectory.dir("src/main/puppy-svg")
 val protectedPuppySourceDir = layout.buildDirectory.dir("generated/puppy-vectors").get()
 val legalSourceDir = rootProject.file("../assets/legal")
 val appLogoSourceDir = rootProject.file("../assets/logos")
+val publicRepoEnvFile = rootProject.file("../.env")
+
+fun loadPublicRepoEnv(file: File): Map<String, String> {
+    if (!file.isFile) return emptyMap()
+    return file.readLines(Charsets.UTF_8)
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && "=" in it }
+        .associate { line ->
+            val split = line.indexOf('=')
+            line.substring(0, split).trim() to line.substring(split + 1).trim()
+        }
+}
+
+val publicRepoEnv = loadPublicRepoEnv(publicRepoEnvFile)
+
+fun publicRepoSetting(name: String): String =
+    System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: publicRepoEnv[name].orEmpty()
+
+fun quotedBuildConfig(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+val requiredPublicDiscordSettings = listOf(
+    "DISCORD_CLIENT_ID",
+    "DISCORD_GUILD_ID",
+    "DISCORD_ROLE_DEVELOPER_ID",
+    "DISCORD_ROLE_ADMIN_ID",
+    "DISCORD_ROLE_PUP_MEMBERS_ID",
+    "DISCORD_ROLE_GUEST_ID"
+)
+requiredPublicDiscordSettings.forEach { key ->
+    require(publicRepoSetting(key).isNotBlank()) {
+        "Missing public Discord configuration: $key"
+    }
+}
 
 val v1ProtectedPuppyIds = listOf(
     "classic",
@@ -96,6 +132,17 @@ android {
         versionCode = 27
         versionName = "1.7.14"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
+
+        buildConfigField("String", "DISCORD_CLIENT_ID", quotedBuildConfig(publicRepoSetting("DISCORD_CLIENT_ID")))
+        buildConfigField("String", "DISCORD_GUILD_ID", quotedBuildConfig(publicRepoSetting("DISCORD_GUILD_ID")))
+        buildConfigField("String", "DISCORD_ROLE_DEVELOPER_ID", quotedBuildConfig(publicRepoSetting("DISCORD_ROLE_DEVELOPER_ID")))
+        buildConfigField("String", "DISCORD_ROLE_ADMIN_ID", quotedBuildConfig(publicRepoSetting("DISCORD_ROLE_ADMIN_ID")))
+        buildConfigField("String", "DISCORD_ROLE_PUP_MEMBERS_ID", quotedBuildConfig(publicRepoSetting("DISCORD_ROLE_PUP_MEMBERS_ID")))
+        buildConfigField("String", "DISCORD_ROLE_GUEST_ID", quotedBuildConfig(publicRepoSetting("DISCORD_ROLE_GUEST_ID")))
+        buildConfigField("String", "DISCORD_UNLOCK_DEVELOPER_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_DEVELOPER_PUPPY_ID")))
+        buildConfigField("String", "DISCORD_UNLOCK_ADMIN_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_ADMIN_PUPPY_ID")))
+        buildConfigField("String", "DISCORD_UNLOCK_PUP_MEMBERS_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_PUP_MEMBERS_PUPPY_ID")))
+        buildConfigField("String", "DISCORD_UNLOCK_GUEST_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_GUEST_PUPPY_ID")))
     }
 
     signingConfigs {
