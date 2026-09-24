@@ -118,6 +118,15 @@ internal object PupEyeAuthority {
         SupabasePupEyeClient.queueSaveCheckpoint(context, "seal")
     }
 
+    internal fun transferPayloadHash(payloadWithoutProof: JSONObject): String {
+        require(!payloadWithoutProof.has("pupeye")) {
+            "Pupeye transfer payload hash must exclude the proof wrapper"
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(canonicalJson(payloadWithoutProof).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
     @Synchronized
     fun createTransferProof(context: Context, payloadWithoutProof: JSONObject): JSONObject {
         require(!payloadWithoutProof.has("pupeye")) { "Transfer proof must be added last" }
