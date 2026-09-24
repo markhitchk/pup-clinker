@@ -6,67 +6,78 @@
       "number": 19,
       "name": "Frost",
       "asset_id": "v2_frost",
-      "file": "v2_frost.png"
+      "file": "v2_frost.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 20,
       "name": "Honey",
       "asset_id": "v2_honey",
-      "file": "v2_honey.png"
+      "file": "v2_honey.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 21,
       "name": "Biscuit",
       "asset_id": "v2_biscuit",
-      "file": "v2_biscuit.png"
+      "file": "v2_biscuit.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 22,
       "name": "Onyx",
       "asset_id": "v2_onyx",
-      "file": "v2_onyx.png"
+      "file": "v2_onyx.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 23,
       "name": "Domino",
       "asset_id": "v2_domino",
-      "file": "v2_domino.png"
+      "file": "v2_domino.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 24,
       "name": "Chestnut",
       "asset_id": "v2_chestnut",
-      "file": "v2_chestnut.png"
+      "file": "v2_chestnut.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 25,
       "name": "Prism",
       "asset_id": "v2_prism",
-      "file": "v2_prism.png"
+      "file": "v2_prism.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 26,
       "name": "Flurry",
       "asset_id": "v2_flurry",
-      "file": "v2_flurry.png"
+      "file": "v2_flurry.png",
+      "unlock_source": "Puppy Code"
     },
     {
       "number": 27,
       "name": "HarleyTG Puppy",
       "asset_id": "v2_harleytg",
-      "file": "v2_harleytg.png"
+      "file": "v2_harleytg.png",
+      "unlock_source": "HarleyTG special reward"
     },
     {
       "number": 28,
       "name": "Dev Pup",
       "asset_id": "v2_dev_pup",
-      "file": "v2_dev_pup.png"
+      "file": "v2_dev_pup.png",
+      "unlock_source": "Discord Developer role"
     },
     {
       "number": 29,
       "name": "Rory",
       "asset_id": "v2_rory",
-      "file": "v2_rory.png"
+      "file": "v2_rory.png",
+      "unlock_source": "Special reward"
     }
   ]
 }
