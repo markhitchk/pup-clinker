@@ -27,7 +27,7 @@ class CompactRosterPatchTest(unittest.TestCase):
         patched = final_roster_source()
 
         self.assertIn(
-            "val compactRoster = LocalConfiguration.current.screenWidthDp < 600",
+            "val compactRoster = LocalPuppyViewport.current.isCompact",
             patched,
         )
         self.assertIn(
