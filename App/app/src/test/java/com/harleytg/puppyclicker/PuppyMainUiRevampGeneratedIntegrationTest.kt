@@ -67,6 +67,23 @@ class PuppyMainUiRevampGeneratedIntegrationTest {
     }
 
     @Test
+    fun playTracksTheCurrentDailyGoalAndViewModelRollsAtMidnight() {
+        val main = generated("PuppyMainScreensRevamp.kt").readText()
+        val vm = generated("PuppyClickerV6ViewModel.kt").readText()
+        val play = main.substring(
+            main.indexOf("internal fun PuppyRevampedPlayScreen"),
+            main.indexOf("internal fun PuppyRevampedCareScreen")
+        )
+
+        assertTrue(play.contains("PuppyMonthlyRewards.schedule.collectAsState()"))
+        assertTrue(play.contains("val nextGoal = todayGoals.firstOrNull"))
+        assertTrue(play.contains("nextGoal?.progress(state)"))
+        assertTrue(play.contains("nextGoal?.let { \"Next Reward ·"))
+        assertTrue(!play.contains("val target = 75L"))
+        assertTrue(vm.contains("if (seconds % 30 == 0) rollDailyDayIfNeeded()"))
+    }
+
+    @Test
     fun rewardsFillStreakDotsAndTicketAlertStaysAtPlayHeader() {
         val source = generated("PuppyMainScreensRevamp.kt").readText()
 
