@@ -5,6 +5,7 @@ import {
 import {
   classifySaveAttestation,
   validateSaveAttestationRequest,
+  assertAttestationGeneration,
 } from "../pupeye-save-attestation/policy.ts";
 import {
   processSaveAttestation,
@@ -169,4 +170,17 @@ Deno.test("handler creates temporary global ban after second distinct conflict",
     "distinctConflictCount24h",
     "createTemporaryGlobalBan",
   ]);
+});
+
+
+Deno.test("historical attestation generation may trail current signed request generation", () => {
+  assertAttestationGeneration(7, 9);
+});
+
+Deno.test("attestation generation cannot exceed current signed request generation", () => {
+  assertThrows(
+    () => assertAttestationGeneration(10, 9),
+    Error,
+    "cannot exceed",
+  );
 });
