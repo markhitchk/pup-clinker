@@ -119,14 +119,12 @@ def patch_dynamic_roster(source: str) -> str:
 
 
 def patch_streamed_art(source: str) -> str:
+    if "fun clearCache(context: Context)" in source:
+        return source
     return replace_once(
         source,
-        '''    private fun lock(assetId: String): Mutex = locks.computeIfAbsent(checkedId(assetId)) { Mutex() }
-
-    suspend fun cached''',
-        '''    private fun lock(assetId: String): Mutex = locks.computeIfAbsent(checkedId(assetId)) { Mutex() }
-
-    /** Clear only streamed puppy image caches; roster metadata and game saves are untouched. */
+        '''    suspend fun cached''',
+        '''    /** Clear only streamed puppy image caches; roster metadata and game saves are untouched. */
     fun clearCache(context: Context) {
         memory.evictAll()
         File(context.cacheDir, "puppy-stream-v3").deleteRecursively()
