@@ -63,7 +63,12 @@ internal fun PuppyRosterDialog(
     retryToken: Int,
     onDismiss: () -> Unit,
     onUse: () -> Unit,
-    onRename: (String) -> Unit
+    onRename: (String) -> Unit,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
+    onRetryArtwork: () -> Unit = {},
+    onRequestUse: (() -> Unit)? = null,
+    onRequestRename: (() -> Unit)? = null
 ) {
     val metadataName = asset.style.name
     val displayName = if (current) activeName.ifBlank { metadataName } else metadataName
@@ -112,6 +117,46 @@ internal fun PuppyRosterDialog(
                         label = "Original roster name",
                         body = metadataName
                     )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (isFavorite) "♥ Favorite" else "♡ Favorite")
+                    }
+                    OutlinedButton(
+                        onClick = onRetryArtwork,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("↻ Retry Art")
+                    }
+                }
+
+                when {
+                    unlocked && !current && onRequestUse != null -> {
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = onRequestUse,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Use Puppy")
+                        }
+                    }
+                    current && onRequestRename != null -> {
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = onRequestRename,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Rename Puppy")
+                        }
+                    }
                 }
             }
 
