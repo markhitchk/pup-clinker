@@ -372,7 +372,7 @@ private fun SettingsHome(
         Spacer(Modifier.height(16.dp))
 
         SettingsGroup("Account") {
-            SettingsNavRow("👤", "Profile", "Username, birthday, and profile options") {
+            SettingsNavRow("👤", "Profile", "Level, XP, achievements, identity, and birthday") {
                 onOpen(SettingsDestination.PROFILE)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -1130,6 +1130,15 @@ private fun NotificationSettings() {
         }
     }
 
+    fun requestNotificationPermissionIfNeeded() {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !permissionGranted
+        ) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1171,12 +1180,13 @@ private fun NotificationSettings() {
     SettingsToggleCard(
         icon = "🎁",
         title = "Daily Rewards",
-        description = "Get notified when daily rewards are available.",
+        description = "Daily gifts and claimable saved-Treat rewards.",
         checked = ui.dailyRewardNotifications
     ) {
         PuppyUiPreferences.setDailyRewardNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
         if (it) {
+            requestNotificationPermissionIfNeeded()
             PuppyNotificationCenter.requestImmediate(context)
         } else {
             PuppyNotificationCenter.cancelDailyReward(context)
@@ -1194,6 +1204,7 @@ private fun NotificationSettings() {
         PuppyUiPreferences.setGameEventNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
         if (it) {
+            requestNotificationPermissionIfNeeded()
             PuppyNotificationCenter.requestImmediate(context)
         } else {
             PuppyNotificationCenter.cancelParkReady(context)
@@ -1211,6 +1222,7 @@ private fun NotificationSettings() {
         PuppyUiPreferences.setUpdateNotifications(context, it)
         PuppyNotificationCenter.schedule(context)
         if (it) {
+            requestNotificationPermissionIfNeeded()
             PuppyNotificationCenter.requestImmediate(context)
         } else {
             PuppyNotificationCenter.cancelAppUpdate(context)
@@ -1227,6 +1239,7 @@ private fun NotificationSettings() {
     ) { enabled ->
         afkEnabled = enabled
         PuppyAttentionNotifier.setEnabled(context, enabled)
+        if (enabled) requestNotificationPermissionIfNeeded()
     }
 
     Spacer(Modifier.height(12.dp))
@@ -1274,6 +1287,16 @@ private fun NotificationSettings() {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text("Check Notifications Now")
+    }
+
+    Spacer(Modifier.height(8.dp))
+
+    OutlinedButton(
+        onClick = { PuppyNotificationCenter.postTestNotification(context) },
+        enabled = systemReady,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Send Test Notification")
     }
 }
 
