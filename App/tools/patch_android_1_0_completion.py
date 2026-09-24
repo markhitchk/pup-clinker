@@ -475,10 +475,22 @@ def patch_notifications(source: str) -> str:
     if "PuppyNotificationHistory.record(" in source and "historyItemFor(" in source:
         return source
 
-    source = source.replace(
-        "        if (PuppyAppRuntime.isForeground || !canNotify(app)) return\n",
-        "        if (PuppyAppRuntime.isForeground) return\n",
-        1,
+    # Keep notification history current even when Android notification permission
+    # is denied. Scope this specifically to the periodic sweep so helper methods added
+    # before it do not steal the replacement.
+    run_sweep_guard = '''        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
+
+        if (PuppyAppRuntime.isForeground || !canNotify(app)) return
+'''
+    run_sweep_replacement = '''        if (ui.updateNotifications) checkForAppUpdate(app) else cancelAppUpdate(app)
+
+        if (PuppyAppRuntime.isForeground) return
+'''
+    source = replace_once(
+        source,
+        run_sweep_guard,
+        run_sweep_replacement,
+        "notification sweep permission guard",
     )
     source = source.replace(
         "        if (PuppyAppRuntime.isForeground || !canNotify(context)) return\n",
