@@ -1,0 +1,2 @@
+CI validation for refreshed Puppy Code catalogue and Discord-role separation.
+Base: f1eac12a27571eb8cdd0620a86d95d5c948a71ff
