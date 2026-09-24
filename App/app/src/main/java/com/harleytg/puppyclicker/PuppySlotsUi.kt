@@ -449,13 +449,14 @@ private fun SlotsMachineCard(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .aspectRatio(0.86f)
             ) {
-                val machineWidth = maxWidth * 0.78f
+                // Reserve headroom for the mascot and marquee, including their animation.
+                val machineWidth = maxWidth * 0.80f
                 val machineHeight =
                     machineWidth * (SLOTS_MACHINE_VISIBLE_HEIGHT / SLOTS_MACHINE_VISIBLE_WIDTH)
-                val machineLeft = maxWidth * 0.06f
-                val machineTop = maxHeight * 0.14f
+                val machineLeft = maxWidth * 0.045f
+                val machineTop = maxHeight * 0.17f
 
                 val mascotWidth = machineWidth * 0.48f
                 val mascotHeight = mascotWidth * (131f / 180f)
