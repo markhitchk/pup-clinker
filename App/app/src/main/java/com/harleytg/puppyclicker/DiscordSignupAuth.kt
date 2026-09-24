@@ -138,7 +138,7 @@ internal object DiscordSignupAuth {
         ensure(app)
 
         val normalizedExpectedId = expectedDiscordId?.trim().orEmpty()
-        if (verifyGuildRole && !isDiscordSnowflake(normalizedExpectedId)) {
+        if (verifyGuildRole && normalizedExpectedId.isNotBlank() && !isDiscordSnowflake(normalizedExpectedId)) {
             mutableState.value = DiscordSignupState(
                 phase = DiscordSignupPhase.ERROR,
                 account = mutableState.value.account,
@@ -158,7 +158,11 @@ internal object DiscordSignupAuth {
             .putString(KEY_PENDING_VERIFIER, verifier)
             .apply {
                 if (verifyGuildRole) {
-                    putString(KEY_PENDING_EXPECTED_DISCORD_ID, normalizedExpectedId)
+                    if (normalizedExpectedId.isNotBlank()) {
+                        putString(KEY_PENDING_EXPECTED_DISCORD_ID, normalizedExpectedId)
+                    } else {
+                        remove(KEY_PENDING_EXPECTED_DISCORD_ID)
+                    }
                     putBoolean(KEY_PENDING_GUILD_VERIFY, true)
                 } else {
                     remove(KEY_PENDING_EXPECTED_DISCORD_ID)
@@ -254,7 +258,7 @@ internal object DiscordSignupAuth {
                 val verified = SupabasePupEyeClient.authenticateDiscord(app, accessToken)
                 val account = verified.account
 
-                if (verifyGuildRole && account.id != expectedDiscordId) {
+                if (verifyGuildRole && !expectedDiscordId.isNullOrBlank() && account.id != expectedDiscordId) {
                     clearPending(app)
                     mutableState.value = DiscordSignupState(
                         phase = DiscordSignupPhase.ERROR,
