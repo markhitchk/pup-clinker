@@ -1,70 +1,63 @@
-# Puppy Clicker — Local Puppy Codes
+# Puppy Clicker — Puppy Codes
 
-Owner reference for the offline Puppy Code system used by the Android game.
+Puppy Codes are validated against the live schema-2 catalogue at `assets/redeem-codes.json`.
 
-The APK does **not** store these plain-text values. It stores salted SHA-256 digests in `LocalRedeemCodes.kt` and marks each reward ID as redeemed in local save data after a successful claim.
+## Current behavior
 
-## General treat codes
+- New claims require a live GitHub validation.
+- Codes are exact-match: case, spaces, and hyphens are significant.
+- The public catalogue stores salted SHA-256 hashes, not plaintext codes.
+- Each redemption ID can be claimed once per local save history.
+- Puppy-code unlocks use a full reward preview / special reveal.
+- Seasonal/event-only puppies remain outside the normal Puppy Code catalogue unless deliberately added.
 
-| Code | Reward |
-| --- | --- |
-| `BUDDY-HELLO-2026` | 750 treats |
-| `PAW-PASS-2026` | 1,000 treats |
-| `PUP-SHOP-BOOST` | 2,500 treats |
-| `MIDNIGHT-MOON` | Unlock Midnight + 500 treats |
-| `CLOUD-CUDDLES` | Unlock Cloud + 500 treats |
-| `HTG-PUPPY-2026` | 10,000 treats |
-| `TREAT-TIME-26` | 2,500 treats |
-| `SHOP-TICKETS-3` | Legacy code converted to 4,000 treats |
-| `GOOD-BOY-26` | 1,000 treats |
-| `BOOP-THE-PUP` | 750 treats |
-| `DOG-PARK-DAY` | 2,000 treats |
-| `PUPPY-PARTY-26` | 2,500 treats |
-| `BIG-TREAT-BAG` | 5,000 treats |
-| `OG-PUPPY` | 7,500 treats |
-| `THANK-YOU-PUPS` | 10,000 treats |
-| `ONE-MORE-TREAT` | 250 treats |
-| `WHO-ATE-THE-TREATS` | 1 treat |
-| `VERY-GOOD-PUP` | 4,000 treats |
+## Current V1 puppy-code rewards
 
-## V1 puppy unlocks
+The live catalogue currently contains code rewards for:
 
-| Code | Puppy | Extra reward |
-| --- | --- | ---: |
-| `AURORA-PUP` | Aurora | 500 treats |
-| `COCOA-CUDDLES` | Cocoa | 500 treats |
-| `SNOWBALL-26` | Snowball | 750 treats |
-| `GALAXY-PUP` | Galaxy | 1,000 treats |
-| `NEON-BUDDY` | Neon Buddy | — |
-| `GOLDEN-NIGHT` | Golden Night | — |
-| `HALLOWEEN-PUP` | Pumpkin Pup | 500 treats |
-| `SANTA-PAWS` | Santa Paws | 1,000 treats |
-| `BIRTHDAY-BUDDY` | Birthday Buddy | 2,500 treats |
-| `DEV-PUP-26` | Dev Pup | — |
-| `SECRET-SNOOT` | Secret Snoot | — |
-| `CLASSIC-FOREVER` | Classic Forever | — |
+- Midnight
+- Cloud
+- Aurora
+- Cocoa
+- Snowball
+- Galaxy
+- Neon Buddy
+- Golden Night
+- V1 Dev Pup
+- Secret Snoot
+- Classic Forever
 
-## V2 puppy unlocks
+## Current V2 puppy-code rewards
 
-V2 puppies use separate `v2_` save IDs and do not reuse V1 display names.
+The live catalogue currently contains code rewards for:
 
-| Code | Puppy | Extra reward |
-| --- | --- | ---: |
-| `FROSTY-PAWS-26` | Frost | 500 treats |
-| `HONEY-BOOP-26` | Honey | 500 treats |
-| `BISCUIT-CRUMBS` | Biscuit | 500 treats |
-| `ONYX-NIGHT-26` | Onyx | 750 treats |
-| `DOMINO-DOTS` | Domino | 750 treats |
-| `CHESTNUT-CUDDLES` | Chestnut | 500 treats |
-| `PRISM-PAWS` | Prism | 1,000 treats |
-| `FLURRY-FRIEND` | Flurry | 750 treats |
+- Frost
+- Honey
+- Biscuit
+- Onyx
+- Domino
+- Chestnut
+- Prism
+- Flurry
 
-## Rules
+## V2 special unlocks that are not Puppy Codes
 
-- Codes are case-insensitive and ignore whitespace.
-- Each reward ID can be redeemed once per local app data set.
-- Reset Game intentionally keeps redeem history so reset cannot be used to repeat codes.
-- Puppy Codes can grant treats and puppy cosmetics/unlocks.
-- Puppy Codes do **not** grant Upgrade Tickets, prestige points, or free tap power.
-- Upgrade Tickets remain gameplay drops and are spent only on matching-rarity upgrades.
-- This is an offline/local system, not a server-authoritative global redemption database.
+These puppies intentionally use separate unlock paths and must not be added to `assets/redeem-codes.json` without an explicit design change:
+
+- `v2_harleytg` — HarleyTG special reward
+- `v2_dev_pup` — Discord Developer role
+- `v2_discord_pup` — Discord Pup Members role
+
+The Discord Pup remains tied to Discord authentication and server-role verification; entering a Puppy Code must not bypass that requirement.
+
+## Maintenance
+
+When adding a new Puppy Code:
+
+1. Choose a permanent redemption `id`.
+2. Hash the exact canonical plaintext using `PUPPY_CLICKER_LOCAL_2026_V1|` + the code and SHA-256.
+3. Add the hash-only definition to `assets/redeem-codes.json`.
+4. For puppy rewards, use `rarity: "special"` and the `SPECIAL_REVEAL` flag.
+5. Bump the catalogue `revision`.
+6. Keep role-auth, event-only, developer-only, and other special-path puppies out of the catalogue unless their unlock policy is intentionally changed.
+7. Run the Android/JVM regression suite before release.
