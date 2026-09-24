@@ -201,19 +201,38 @@ internal object PupEyeSaveGuard {
     private const val KEY_TAMPER_COUNT = "tamper_count"
     private const val KEY_LAST_REASON = "last_reason"
     private const val KEY_LAST_TIME = "last_time"
+    private const val KEY_AUTHORIZED_WRITE_PENDING = "authorized_write_pending"
 
     @Volatile
     private var authorizedWritePending = false
 
-    fun noteAuthorizedPreferenceChange() {
+    fun noteAuthorizedPreferenceChange(context: Context) {
         authorizedWritePending = true
+        // Persist the marker separately from the game save. If Android kills the
+        // process before the debounced encrypted seal runs, the next launch can
+        // distinguish that legitimate write from an out-of-process save edit.
+        context.applicationContext
+            .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, true)
+            .apply()
     }
+
+    private fun hasAuthorizedPreferenceChange(context: Context): Boolean =
+        authorizedWritePending ||
+            context.applicationContext
+                .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
 
     fun verifyAndRecover(context: Context, prefs: SharedPreferences): Boolean {
         // SharedPreferences callbacks mark legitimate in-process writes immediately,
         // while the encrypted seal is intentionally debounced. Do not treat that
         // short synchronization window as save tampering.
-        if (authorizedWritePending && seal(context, prefs)) return true
+        if (hasAuthorizedPreferenceChange(context)) {
+            // The game itself changed its preferences after the previous seal.
+            // Refresh the last-known-good snapshot rather than restoring stale data.
+            return seal(context, prefs)
+        }
 
         val backup = File(context.noBackupFilesDir, BACKUP_FILE)
         if (!backup.isFile) {
@@ -252,6 +271,11 @@ internal object PupEyeSaveGuard {
                 temp.delete()
             }
             authorizedWritePending = false
+            context.applicationContext
+                .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
+                .apply()
             true
         }.getOrDefault(false)
 
