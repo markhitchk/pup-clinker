@@ -209,8 +209,8 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         settlementId: String,
         amount: Long,
         createdAtMs: Long
-    ): Boolean =
-        PuppyNotificationHistory.recordSystemReward(
+    ): Boolean {
+        val recorded = PuppyNotificationHistory.recordSystemReward(
             context = this,
             id = settlementId,
             title = "Your puppies saved some Treats!",
@@ -218,7 +218,15 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             currency = PuppyRewardCurrency.TREATS,
             amount = amount,
             createdAtMs = createdAtMs
-        ) != null
+        ) ?: return false
+
+        PuppyNotificationCenter.notifySystemRewardAvailable(
+            context = this,
+            settlementId = recorded.id,
+            amount = recorded.rewardAmount
+        )
+        return true
+    }
 
     private fun maybeShowWelcome(activity: Activity) {
         if (welcomeVisible || activity is AfkWelcomeActivity) return
