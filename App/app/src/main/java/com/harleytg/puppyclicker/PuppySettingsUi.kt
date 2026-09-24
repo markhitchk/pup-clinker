@@ -346,13 +346,13 @@ private fun SettingsHome(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        if (security.tamperEvents > 0) {
+                        if (security.hasActiveIssue) {
                             "PupEye needs attention"
                         } else {
                             "Protected by PupEye"
                         },
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (security.tamperEvents > 0) {
+                        color = if (security.hasActiveIssue) {
                             MaterialTheme.colorScheme.error
                         } else {
                             MaterialTheme.colorScheme.primary
@@ -1547,9 +1547,13 @@ private fun PupEyeSettings(state: V6GameState) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(false) }
-    var integrityStatus by rememberSaveable { mutableStateOf("Not checked") }
-    var externalStatus by rememberSaveable { mutableStateOf("Not checked") }
     val security = PupEyeSaveGuard.state(context)
+    var integrityStatus by rememberSaveable {
+        mutableStateOf(if (security.privateIntegrityOk) "Verified" else "Warning")
+    }
+    var externalStatus by rememberSaveable {
+        mutableStateOf(if (security.externalIntegrityOk) "Verified" else "Warning")
+    }
     val branding = PupEyeAssetStream.status(context)
     val fairPlayEnforced = PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(context)
 
@@ -1597,13 +1601,9 @@ private fun PupEyeSettings(state: V6GameState) {
     StatusLine("Previous integrity events", security.tamperEvents.toString())
     security.lastReason?.takeIf { security.tamperEvents > 0 }?.let {
         Text(
-            "Most recent recorded event: " + it,
+            "History: " + it,
             style = MaterialTheme.typography.bodySmall,
-            color = if (currentWarning) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
     Spacer(Modifier.height(8.dp))
