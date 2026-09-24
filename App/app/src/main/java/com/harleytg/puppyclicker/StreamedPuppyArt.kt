@@ -150,6 +150,20 @@ internal object RemotePuppyAssets {
 
     fun peek(assetId: String): Bitmap? = memory.get(checkedId(assetId))
 
+    internal fun remoteUrlFor(assetId: String): String {
+        val id = checkedId(assetId)
+        val asset = DynamicPuppyRoster.assetByAssetId(id)
+            ?: error("Unknown puppy asset: $id")
+        return "$BASE/${asset.folder}/${asset.fileName}"
+    }
+
+    private fun sourceDescriptor(assetId: String): String {
+        val id = checkedId(assetId)
+        val asset = DynamicPuppyRoster.assetByAssetId(id)
+            ?: error("Unknown puppy asset: $id")
+        return "${asset.folder}/${asset.fileName}"
+    }
+
     private fun directory(context: Context): File =
         File(context.cacheDir, "puppy-stream-v3").apply { mkdirs() }
 
@@ -161,11 +175,30 @@ internal object RemotePuppyAssets {
 
     private fun lock(assetId: String): Mutex = locks.computeIfAbsent(checkedId(assetId)) { Mutex() }
 
+    private fun invalidateIfSourceChanged(context: Context, assetId: String) {
+        val id = checkedId(assetId)
+        val settings = prefs(context)
+        val expected = sourceDescriptor(id)
+        val stored = settings.getString("$id.source", null)
+        if (stored == expected) return
+
+        memory.remove(id)
+        file(context, id).delete()
+        settings.edit()
+            .putString("$id.source", expected)
+            .remove("$id.etag")
+            .remove("$id.checked")
+            .remove("$id.attempted")
+            .apply()
+        PuppyDebugLog.i("PuppyClickerArt", "Asset source selected: $id -> $expected")
+    }
+
     suspend fun cached(context: Context, assetId: String): Bitmap? = withContext(Dispatchers.IO) {
         lock(assetId).withLock { readAvailable(context, checkedId(assetId)) }
     }
 
     private fun readAvailable(context: Context, assetId: String): Bitmap? {
+        invalidateIfSourceChanged(context, assetId)
         memory.get(assetId)?.let { return it }
         val disk = file(context, assetId)
         if (disk.isFile && disk.length() in 1..MAX_DOWNLOAD_BYTES.toLong()) {
@@ -209,7 +242,7 @@ internal object RemotePuppyAssets {
             if (now - attempted in 0 until FAILURE_RETRY) return@withLock cached
 
             settings.edit().putLong("$id.attempted", now).apply()
-            val url = URL("$BASE/${asset.folder}/${asset.fileName}")
+            val url = URL(remoteUrlFor(id))
             val connection = url.openConnection() as HttpURLConnection
             try {
                 connection.connectTimeout = 8_000
