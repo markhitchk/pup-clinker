@@ -1,5 +1,6 @@
 package com.harleytg.puppyclicker
 
+import java.io.File
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,6 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PupEyeEnforcementTest {
+    private fun source(name: String): String =
+        File("src/main/java/com/harleytg/puppyclicker/$name").readText()
+
     @Test
     fun knownTemporaryBanRemainsLockedAfterLocalClockPassesExpiry() {
         val cached = PupEyeEnforcementSnapshot(
@@ -99,5 +103,53 @@ class PupEyeEnforcementTest {
         assertEquals(null, review.ban)
         assertEquals(PupEyeEnforcementMode.ALLOWED, allowed.mode)
         assertEquals(null, allowed.ban)
+    }
+    @Test
+    fun encryptedCacheRoundTripPreservesPermanentBan() {
+        val original = PupEyeEnforcementSnapshot(
+            mode = PupEyeEnforcementMode.GLOBAL_BANNED,
+            ban = PupEyeGlobalBanInfo(
+                id = "PGB-PERM-0001",
+                kind = "permanent",
+                reasonCode = "BAN_EVASION",
+                publicReason = "Permanent enforcement.",
+                issuedAtEpochMs = 100L,
+                expiresAtEpochMs = null,
+                deviceWide = true
+            ),
+            lastServerVerifiedAtMs = 200L
+        )
+
+        assertEquals(original, PupEyeEnforcementSnapshot.fromJson(original.toJson()))
+    }
+
+    @Test
+    fun clientPersistsEnforcementInEncryptedNoBackupStorage() {
+        val source = source("SupabasePupEyeClient.kt")
+
+        assertTrue(source.contains("pupeye/enforcement_v1.pup"))
+        assertTrue(source.contains("PuppySaveCrypto.encryptDevice"))
+        assertTrue(source.contains("PuppySaveCrypto.decryptDevice"))
+        assertTrue(source.contains("noBackupFilesDir"))
+        assertTrue(source.contains("StateFlow<PupEyeEnforcementSnapshot>"))
+    }
+
+    @Test
+    fun clientRefreshesSignedServerEnforcementWithoutSession() {
+        val source = source("SupabasePupEyeClient.kt")
+
+        assertTrue(source.contains("fun refreshEnforcementAsync(context: Context)"))
+        assertTrue(source.contains("action = \"enforcement-status\""))
+        assertTrue(source.contains("functionName = \"pupeye-enforcement-status\""))
+        assertTrue(source.contains("sessionToken = null"))
+        assertTrue(source.contains("\"GLOBAL_BANNED\""))
+        assertTrue(source.contains("\"REVIEW_REQUIRED\""))
+    }
+
+    @Test
+    fun protectedGameplayAlsoHonorsCachedEnforcement() {
+        val source = source("SupabasePupEyeClient.kt")
+
+        assertTrue(source.contains("enforcementSnapshot(context).blocksApp"))
     }
 }
