@@ -67,8 +67,10 @@ class PuppyClickerV6Activity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PuppyClickerTheme {
-                val vm: PuppyClickerV6ViewModel = viewModel()
-                PuppyClickerV6App(vm)
+                PuppyAdaptiveRoot {
+                    val vm: PuppyClickerV6ViewModel = viewModel()
+                    PuppyClickerV6App(vm)
+                }
             }
         }
     }
@@ -96,6 +98,7 @@ private enum class V6Tab(val label: String, val emoji: String) {
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
+    val viewport = LocalPuppyViewport.current
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
 
     if (!uiPreferences.setupComplete) {
@@ -103,24 +106,9 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
         return
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)) {
-                V6Tab.entries.forEach { item ->
-                    NavigationBarItem(
-                        selected = tab == item,
-                        onClick = { tab = item },
-                        icon = { Text(item.emoji, fontSize = 19.sp) },
-                        label = { Text(item.label, fontSize = 10.sp, maxLines = 1) }
-                    )
-                }
-            }
-        }
-    ) { padding ->
-        Box(
-            Modifier
+    if (viewport.isExpanded) {
+        Row(
+            modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
@@ -131,17 +119,91 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                         )
                     )
                 )
-                .padding(padding)
         ) {
-            when (tab) {
-                V6Tab.PLAY -> V6Play(state, vm)
-                V6Tab.CARE -> V6CareAndDaily(state, vm)
-                V6Tab.SHOP -> V6Shop(state, vm)
-                V6Tab.PRESTIGE -> V6Prestige(state, vm)
-                V6Tab.SETTINGS -> V6Settings(state, vm)
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+            ) {
+                Spacer(Modifier.height(8.dp))
+                V6Tab.entries.forEach { item ->
+                    NavigationRailItem(
+                        selected = tab == item,
+                        onClick = { tab = item },
+                        icon = { Text(item.emoji, fontSize = 20.sp) },
+                        label = { Text(item.label, maxLines = 1) }
+                    )
+                }
             }
-
+            PuppyResponsiveContent(
+                modifier = Modifier.weight(1f),
+                maxWidth = viewport.primaryContentMaxWidth
+            ) {
+                V6TabContent(tab = tab, state = state, vm = vm)
+            }
         }
+    } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)
+                ) {
+                    V6Tab.entries.forEach { item ->
+                        NavigationBarItem(
+                            selected = tab == item,
+                            onClick = { tab = item },
+                            icon = {
+                                Text(
+                                    item.emoji,
+                                    fontSize = if (viewport.isShort) 17.sp else 19.sp
+                                )
+                            },
+                            label = {
+                                Text(
+                                    item.label,
+                                    fontSize = if (viewport.isShort) 9.sp else 10.sp,
+                                    maxLines = 1
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        ) { padding ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.07f),
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.04f)
+                            )
+                        )
+                    )
+                    .padding(padding)
+            ) {
+                PuppyResponsiveContent(maxWidth = viewport.primaryContentMaxWidth) {
+                    V6TabContent(tab = tab, state = state, vm = vm)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun V6TabContent(
+    tab: V6Tab,
+    state: V6GameState,
+    vm: PuppyClickerV6ViewModel
+) {
+    when (tab) {
+        V6Tab.PLAY -> V6Play(state, vm)
+        V6Tab.CARE -> V6CareAndDaily(state, vm)
+        V6Tab.SHOP -> V6Shop(state, vm)
+        V6Tab.PRESTIGE -> V6Prestige(state, vm)
+        V6Tab.SETTINGS -> V6Settings(state, vm)
     }
 }
 
