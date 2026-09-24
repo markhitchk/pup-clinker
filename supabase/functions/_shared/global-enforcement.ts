@@ -1,5 +1,6 @@
 import type { AdminClient } from "./pupeye.ts";
 import { HttpError } from "./pupeye.ts";
+import { sendBanEventBestEffort } from "./discord-ban-notify.ts";
 
 export type GlobalBanRow = {
   ban_uuid?: string;
@@ -89,7 +90,10 @@ export async function resolveGlobalEnforcement(
   admin: AdminClient,
   context: EnforcementIdentityContext,
 ): Promise<GlobalEnforcementResult> {
-  await expireDueBans(admin);
+  const expiredEvents = await expireDueBans(admin);
+  for (const event of expiredEvents) {
+    await sendBanEventBestEffort(admin, event.event_id);
+  }
 
   const player = context.player ?? null;
   const installation = context.installation ?? null;
