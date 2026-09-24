@@ -51,6 +51,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_ROSTER = 42104
     private const val NOTIFY_TEST = 42105
     private const val NOTIFY_DISCORD_AUTH_UPGRADE = 42106
+    private const val NOTIFY_PUPEYE_SECURITY_UPGRADE = 42107
     private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
     private const val NOTIFY_SEASONAL_BASE = 42400
 
@@ -289,6 +290,27 @@ internal object PuppyNotificationCenter {
             id = NOTIFY_DISCORD_AUTH_UPGRADE,
             title = "Discord verification updated",
             text = "Re-authorize Discord in Settings to verify your server role and unlock Discord Pup."
+        )
+    }
+
+    internal fun notifyPupEyeSecurityUpgrade(
+        context: Context,
+        discordNeedsReverification: Boolean
+    ) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        if (!PuppyUiPreferences.current(app).updateNotifications) return
+        post(
+            context = app,
+            channel = CHANNEL_UPDATES,
+            id = NOTIFY_PUPEYE_SECURITY_UPGRADE,
+            title = "PupEye security upgraded",
+            text = if (discordNeedsReverification) {
+                "Your existing progress is safe. Open Settings → Discord once to re-verify your server role."
+            } else {
+                "Your existing progress is safe and this device is being registered with PupEye."
+            }
         )
     }
 
