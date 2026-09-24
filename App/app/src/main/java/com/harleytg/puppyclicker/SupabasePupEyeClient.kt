@@ -195,6 +195,62 @@ internal object SupabasePupEyeClient {
         }
     }
 
+    fun queueSaveAttestation(
+        context: Context,
+        saveId: String,
+        generation: Long,
+        payloadHashSha256: String
+    ) {
+        if (!isConfigured()) return
+        require(saveId.isNotBlank()) { "Missing PupEye save ID" }
+        require(generation >= 1L) { "Invalid PupEye save generation" }
+        require(payloadHashSha256.matches(Regex("[0-9a-f]{64}"))) {
+            "Invalid PupEye save SHA-256"
+        }
+
+        val app = context.applicationContext
+        scope.launch {
+            runCatching {
+                val session = ensureRegistered(app) ?: return@runCatching
+                val payload = JSONObject().apply {
+                    put("saveId", saveId)
+                    put("generation", generation)
+                    put("payloadHashSha256", payloadHashSha256)
+                }
+                val envelope = PupEyeAuthority.signedEnvelope(
+                    context = app,
+                    action = "save-attestation",
+                    payload = payload
+                )
+                val response = invoke(
+                    functionName = "pupeye-save-attestation",
+                    envelope = envelope,
+                    sessionToken = session.token
+                )
+                if (response.status !in 200..299) {
+                    handleAuthoritativeFailure(app, response)
+                    if (response.status !in setOf(
+                            HttpURLConnection.HTTP_CONFLICT,
+                            HttpURLConnection.HTTP_FORBIDDEN
+                        )
+                    ) {
+                        noteTransientError(
+                            app,
+                            response.message("Unable to attest Puppy Clicker save")
+                        )
+                    }
+                } else {
+                    markConnected(app)
+                }
+            }.onFailure { error ->
+                noteTransientError(
+                    app,
+                    error.message ?: "PupEye save attestation failed"
+                )
+            }
+        }
+    }
+
     fun queueEconomyTransaction(
         context: Context,
         transactionId: String,
