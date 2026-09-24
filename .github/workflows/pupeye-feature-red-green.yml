@@ -34,6 +34,7 @@ jobs:
             supabase/functions/pupeye-sync/index.ts \
             supabase/functions/pupeye-transaction/index.ts \
             supabase/functions/pupeye-enforcement-status/index.ts \
+            supabase/functions/pupeye-save-attestation/index.ts \
             supabase/functions/pupeye-support-ban/index.ts
       - name: Detect database changes
         id: db_changes
