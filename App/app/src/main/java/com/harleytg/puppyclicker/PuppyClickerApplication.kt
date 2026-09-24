@@ -220,11 +220,13 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             createdAtMs = createdAtMs
         ) ?: return false
 
-        PuppyNotificationCenter.notifySystemRewardAvailable(
-            context = this,
-            settlementId = recorded.id,
-            amount = recorded.rewardAmount
-        )
+        if (recorded.hasClaimableReward) {
+            PuppyNotificationCenter.notifySystemRewardAvailable(
+                context = this,
+                settlementId = recorded.id,
+                amount = recorded.rewardAmount
+            )
+        }
         return true
     }
 
