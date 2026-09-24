@@ -536,7 +536,7 @@ internal object DiscordSignupAuth {
         else -> null
     }
 
-    internal fun unlockPuppyIdFor(role: DiscordGuildRole): String? {
+    private fun configuredPuppyIdFor(role: DiscordGuildRole): String? {
         val configured = when (role) {
             DiscordGuildRole.DEVELOPER -> BuildConfig.DISCORD_UNLOCK_DEVELOPER_PUPPY_ID
             DiscordGuildRole.ADMIN -> BuildConfig.DISCORD_UNLOCK_ADMIN_PUPPY_ID
@@ -545,6 +545,25 @@ internal object DiscordSignupAuth {
         }.trim()
         return configured.takeIf { it.isNotBlank() && it in V2_PUPPY_IDS }
     }
+
+    internal fun unlockPuppyIdsFor(role: DiscordGuildRole): Set<String> {
+        val effectiveRoles = if (role == DiscordGuildRole.DEVELOPER) {
+            listOf(
+                DiscordGuildRole.DEVELOPER,
+                DiscordGuildRole.ADMIN,
+                DiscordGuildRole.PUP_MEMBER,
+                DiscordGuildRole.GUEST
+            )
+        } else {
+            listOf(role)
+        }
+        return effectiveRoles
+            .mapNotNull(::configuredPuppyIdFor)
+            .toCollection(linkedSetOf())
+    }
+
+    internal fun unlockPuppyIdFor(role: DiscordGuildRole): String? =
+        unlockPuppyIdsFor(role).firstOrNull()
 
     internal fun isDiscordSnowflake(value: String): Boolean =
         value.length in 17..20 && value.all(Char::isDigit)
