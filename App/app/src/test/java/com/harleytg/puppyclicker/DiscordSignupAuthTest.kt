@@ -52,6 +52,14 @@ class DiscordSignupAuthTest {
         assertNull(DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.ADMIN))
         assertEquals("v2_discord_pup", DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.PUP_MEMBER))
         assertNull(DiscordSignupAuth.unlockPuppyIdFor(DiscordGuildRole.GUEST))
+
+        val developerRewards = DiscordSignupAuth.unlockPuppyIdsFor(DiscordGuildRole.DEVELOPER)
+        assertTrue("v2_dev_pup" in developerRewards)
+        assertTrue("v2_discord_pup" in developerRewards)
+        assertEquals(
+            setOf("v2_discord_pup"),
+            DiscordSignupAuth.unlockPuppyIdsFor(DiscordGuildRole.PUP_MEMBER)
+        )
     }
 
     @Test
