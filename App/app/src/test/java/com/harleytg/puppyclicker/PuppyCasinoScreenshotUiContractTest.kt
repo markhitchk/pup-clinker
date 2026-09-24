@@ -50,8 +50,8 @@ class PuppyCasinoScreenshotUiContractTest {
         val plinko = source("PuppyPlinkoUi.kt")
 
         assertTrue(plinko.contains("PlinkoBinsOverlay("))
-        assertTrue(plinko.contains("val pocketCenterY = maxHeight * 0.835f"))
-        assertTrue(plinko.contains("val xStep = maxWidth * 0.0395f"))
+        assertTrue(plinko.contains("val pocketCenterY = maxHeight * 0.89f"))
+        assertTrue(plinko.contains("val xStep = maxWidth * 0.042f"))
         assertTrue(plinko.contains(".fillMaxWidth(0.84f)"))
         assertTrue(plinko.contains(".fillMaxHeight(0.73f)"))
     }
