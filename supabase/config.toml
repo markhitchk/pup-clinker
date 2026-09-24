@@ -1,0 +1,19 @@
+project_id = "damcmyqusdxucwozkoeh"
+
+# Publishable keys are not user JWTs. These functions authenticate the public project key
+# with @supabase/server, then require Pupeye's signed installation envelope/session.
+[functions.pupeye-register]
+verify_jwt = false
+
+[functions.pupeye-auth-discord]
+verify_jwt = false
+
+[functions.pupeye-sync]
+verify_jwt = false
+
+[functions.pupeye-transaction]
+verify_jwt = false
+
+# Support/admin only. @supabase/server requires a Supabase secret key.
+[functions.pupeye-support-migrate]
+verify_jwt = false
