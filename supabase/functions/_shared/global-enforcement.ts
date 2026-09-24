@@ -1,5 +1,5 @@
 import type { AdminClient } from "./pupeye.ts";
-import { HttpError } from "./pupeye.ts";
+import { HttpError } from "./http.ts";
 import { sendBanEventBestEffort } from "./discord-ban-notify.ts";
 
 export type GlobalBanRow = {
