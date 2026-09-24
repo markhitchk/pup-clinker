@@ -1,6 +1,59 @@
 import { createHash, createPublicKey, createVerify, randomBytes } from "node:crypto";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 export type AdminClient = any;
+
+export function createAdminClient(): AdminClient {
+  const url = Deno.env.get("SUPABASE_URL");
+  if (!url) throw new Error("Supabase function environment is missing SUPABASE_URL");
+
+  let key: string | undefined;
+  const modern = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (modern) {
+    try {
+      const parsed = JSON.parse(modern) as Record<string, string>;
+      key = parsed.default ?? Object.values(parsed).find((value) => value?.startsWith("sb_secret_"));
+    } catch {
+      // Fall through to the legacy service-role key while projects transition key models.
+    }
+  }
+  key = key ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? undefined;
+  if (!key) throw new Error("Supabase function environment has no server-side secret key");
+
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
+export function assertPublishableRequest(req: Request): void {
+  const supplied = req.headers.get("apikey")?.trim();
+  if (!supplied) {
+    throw new HttpError(401, "PUBLISHABLE_KEY_REQUIRED", "Missing Puppy Clicker project key.");
+  }
+
+  const accepted = new Set<string>();
+  const modern = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if (modern) {
+    try {
+      const parsed = JSON.parse(modern) as Record<string, string>;
+      Object.values(parsed).forEach((value) => {
+        if (value) accepted.add(value);
+      });
+    } catch {
+      // The legacy anon key remains available during the 2026 key transition.
+    }
+  }
+  const legacy = Deno.env.get("SUPABASE_ANON_KEY");
+  if (legacy) accepted.add(legacy);
+
+  if (!accepted.has(supplied)) {
+    throw new HttpError(401, "PUBLISHABLE_KEY_INVALID", "Invalid Puppy Clicker project key.");
+  }
+}
 
 export type VerifiedEnvelope = {
   action: string;
@@ -219,9 +272,11 @@ export class HttpError extends Error {
 
 export function errorResponse(error: unknown): Response {
   if (error instanceof HttpError) {
+    console.error("[PupEye]", error.code, error.message);
     return json(error.status, { code: error.code, message: error.message });
   }
   const message = error instanceof Error ? error.message : "Unexpected Pupeye backend error";
+  console.error("[PupEye] PUPEYE_REQUEST_INVALID", message);
   return json(400, { code: "PUPEYE_REQUEST_INVALID", message });
 }
 
