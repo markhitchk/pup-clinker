@@ -3,6 +3,7 @@ package com.harleytg.puppyclicker
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -68,9 +69,17 @@ internal fun PuppyDeveloperOptions(onOpenConsole: () -> Unit) {
 }
 
 @Composable
-internal fun PuppyDeveloperConsoleScreen(onBack: () -> Unit) {
+internal fun PuppyDeveloperConsoleScreen(
+    state: V6GameState,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val entries by PuppyDebugLog.observe().collectAsStateWithLifecycle()
+    val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val discordAsset = DynamicPuppyRoster.asset("v2_discord_pup")
+    val rosterCount = rosterGroups.sumOf { it.puppies.size }
+    val discordRole = discord.guildAccess?.role?.label ?: "Not verified"
     var query by rememberSaveable { mutableStateOf("") }
     var showDebug by rememberSaveable { mutableStateOf(true) }
     var showInfo by rememberSaveable { mutableStateOf(true) }
@@ -78,8 +87,21 @@ internal fun PuppyDeveloperConsoleScreen(onBack: () -> Unit) {
     var showError by rememberSaveable { mutableStateOf(true) }
     var copyStatus by rememberSaveable { mutableStateOf<String?>(null) }
 
+    BackHandler(onBack = onBack)
+
     LaunchedEffect(Unit) {
-        PuppyDebugLog.i("DeveloperConsole", "Developer Console opened")
+        PuppyDebugLog.i(
+            "DeveloperConsole",
+            "Opened build ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        )
+        PuppyDebugLog.i(
+            "Roster",
+            "Loaded $rosterCount puppies; Discord Pup source=${discordAsset?.folder ?: "missing"}/${discordAsset?.fileName ?: "missing"}"
+        )
+        PuppyDebugLog.i(
+            "DiscordAuth",
+            "Guild verification role=$discordRole"
+        )
     }
 
     val visibleEntries = remember(entries, query, showDebug, showInfo, showWarn, showError) {
@@ -118,6 +140,27 @@ internal fun PuppyDeveloperConsoleScreen(onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(Modifier.height(10.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+        ) {
+            Column(Modifier.padding(11.dp)) {
+                Text("Runtime snapshot", fontWeight = FontWeight.Black)
+                DeveloperMetric("Build", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                DeveloperMetric("Roster puppies", rosterCount.toString())
+                DeveloperMetric("Unlocked puppies", state.unlockedPuppies.size.toString())
+                DeveloperMetric("Active puppy", state.puppyStyle)
+                DeveloperMetric("Discord role", discordRole)
+                DeveloperMetric(
+                    "Discord Pup source",
+                    discordAsset?.let { "${it.folder}/${it.fileName}" } ?: "Missing"
+                )
+            }
+        }
+
         Spacer(Modifier.height(10.dp))
 
         Row(
