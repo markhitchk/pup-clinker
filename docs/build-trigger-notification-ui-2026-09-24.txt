@@ -1,0 +1,2 @@
+Build trigger for the updated Puppy Clicker notifications UI APK.
+Source base: 2981eb59d3af7580e4c4aae649727d1b93e47f18
