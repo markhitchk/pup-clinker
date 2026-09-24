@@ -202,11 +202,22 @@ internal object PupEyeSaveGuard {
     private const val KEY_LAST_REASON = "last_reason"
     private const val KEY_LAST_TIME = "last_time"
 
+    @Volatile
+    private var authorizedWritePending = false
+
+    fun noteAuthorizedPreferenceChange() {
+        authorizedWritePending = true
+    }
+
     fun verifyAndRecover(context: Context, prefs: SharedPreferences): Boolean {
+        // SharedPreferences callbacks mark legitimate in-process writes immediately,
+        // while the encrypted seal is intentionally debounced. Do not treat that
+        // short synchronization window as save tampering.
+        if (authorizedWritePending && seal(context, prefs)) return true
+
         val backup = File(context.noBackupFilesDir, BACKUP_FILE)
         if (!backup.isFile) {
-            seal(context, prefs)
-            return true
+            return seal(context, prefs)
         }
         return runCatching {
             val protected = backup.readBytes()
@@ -214,6 +225,10 @@ internal object PupEyeSaveGuard {
             val actual = SecurePreferenceCodec.canonicalBytes(prefs)
             if (!MessageDigest.isEqual(expected, actual)) {
                 SecurePreferenceCodec.restore(prefs, JSONObject(expected.toString(Charsets.UTF_8)))
+                // The recovered snapshot is now authoritative. Re-seal it so a
+                // follow-up check verifies the recovered state instead of repeating
+                // the same historical mismatch.
+                seal(context, prefs)
                 recordTamper(context, "Runtime save integrity mismatch; restored last known good save")
                 false
             } else true
@@ -225,7 +240,7 @@ internal object PupEyeSaveGuard {
         }
     }
 
-    fun seal(context: Context, prefs: SharedPreferences) {
+    fun seal(context: Context, prefs: SharedPreferences): Boolean =
         runCatching {
             val target = File(context.noBackupFilesDir, BACKUP_FILE)
             target.parentFile?.mkdirs()
@@ -236,8 +251,9 @@ internal object PupEyeSaveGuard {
                 target.writeBytes(temp.readBytes())
                 temp.delete()
             }
-        }
-    }
+            authorizedWritePending = false
+            true
+        }.getOrDefault(false)
 
     fun recordTamper(context: Context, reason: String) {
         val prefs = context.getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
