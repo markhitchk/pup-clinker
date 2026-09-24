@@ -34,4 +34,20 @@ class PuppyPrivacyDataContractTest {
         assertTrue(privacy.contains("setCrashReportsEnabled"))
         assertTrue(privacy.contains("withdraws consent"))
     }
+
+    @Test
+    fun pupEyeSeparatesCurrentProtectionFromHistoricalEvents() {
+        val settings = source("PuppySettingsUi.kt")
+        val crypto = source("SecureSaveCrypto.kt")
+        val app = source("PuppyClickerApplication.kt")
+
+        assertTrue(settings.contains("val currentProtected"))
+        assertTrue(settings.contains("val currentWarning"))
+        assertTrue(settings.contains("Previous integrity events"))
+        assertTrue(crypto.contains("private var authorizedWritePending = false"))
+        assertTrue(crypto.contains("fun noteAuthorizedPreferenceChange()"))
+        assertTrue(crypto.contains("if (authorizedWritePending && seal(context, prefs)) return true"))
+        assertTrue(app.contains("PupEyeSaveGuard.noteAuthorizedPreferenceChange()"))
+    }
+
 }
