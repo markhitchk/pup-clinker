@@ -81,10 +81,10 @@ internal object PuppyNotificationCenter {
             listOf(
                 NotificationChannel(
                     CHANNEL_REWARDS,
-                    "Daily Rewards",
+                    "Puppy Rewards",
                     NotificationManager.IMPORTANCE_DEFAULT
                 ).apply {
-                    description = "Daily Puppy Clicker reward reminders."
+                    description = "Daily gifts and claimable Puppy Clicker reward reminders."
                 },
                 NotificationChannel(
                     CHANNEL_EVENTS,
