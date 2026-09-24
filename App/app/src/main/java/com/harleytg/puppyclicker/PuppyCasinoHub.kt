@@ -1,5 +1,6 @@
 package com.harleytg.puppyclicker
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,10 @@ internal fun PuppyCasinoHub(
 
     val showCasinoWarning =
         !ui.casinoDisclaimerHidden && !casinoWarningAcceptedForVisit
+
+    BackHandler(enabled = page != "hub") {
+        page = "hub"
+    }
 
     if (showCasinoWarning) {
         AlertDialog(
