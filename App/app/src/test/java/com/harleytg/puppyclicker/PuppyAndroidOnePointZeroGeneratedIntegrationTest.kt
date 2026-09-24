@@ -117,7 +117,8 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
 
         assertTrue(roster.contains("folder = if (discordReward) DISCORD_REWARDS_FOLDER else \"v2\""))
         assertTrue(vm.contains("access.role == DiscordGuildRole.DEVELOPER"))
-        assertTrue(vm.contains("ownedAccessories = current.ownedAccessories + ACCESSORIES"))
+        assertTrue(vm.contains("val nextAccessories = current.ownedAccessories + ACCESSORIES"))
+        assertTrue(vm.contains("ownedAccessories = nextAccessories"))
         assertTrue(settings.contains("Unlock Developer Content"))
         assertTrue(console.contains("Runtime snapshot"))
         assertTrue(console.contains("Discord Pup source"))
