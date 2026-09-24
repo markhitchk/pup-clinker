@@ -1378,6 +1378,23 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         saveState()
     }
 
+    private fun metadataPuppyName(styleId: String): String =
+        DynamicPuppyRoster.style(styleId)?.name
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.take(18)
+            ?: "Puppy"
+
+    private fun savedPuppyName(styleId: String): String? =
+        prefs.getString(puppyNameKey(styleId), null)
+            ?.trim()
+            ?.replace("\n", " ")
+            ?.take(18)
+            ?.takeIf { it.isNotBlank() }
+
+    private fun nameForStyle(styleId: String): String =
+        savedPuppyName(styleId) ?: metadataPuppyName(styleId)
+
     fun renamePuppy(name: String) {
         val clean = name.trim().replace("\n", " ").take(18)
         if (clean.isBlank()) return
@@ -1478,7 +1495,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setPuppyStyle(id: String) {
         val s = _state.value
         if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return
-        _state.value = s.copy(puppyStyle = id)
+        val nextName = if (id == s.puppyStyle) s.puppyName else nameForStyle(id)
+        _state.value = s.copy(
+            puppyStyle = id,
+            puppyName = nextName
+        )
         saveState()
     }
 
@@ -1568,9 +1589,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             nextUnlocked.firstOrNull { it in V6_PUPPY_IDS } ?: nextUnlocked.first()
         } else current.puppyStyle
 
+        val nextName = if (nextStyle == current.puppyStyle) {
+            current.puppyName
+        } else {
+            nameForStyle(nextStyle)
+        }
         _state.value = current.copy(
             unlockedPuppies = nextUnlocked,
-            puppyStyle = nextStyle
+            puppyStyle = nextStyle,
+            puppyName = nextName
         )
         saveState()
         return true
@@ -1595,9 +1622,15 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             else -> nextUnlocked.firstOrNull { it in V6_PUPPY_IDS } ?: nextUnlocked.first()
         }
 
+        val nextName = if (nextStyle == current.puppyStyle) {
+            current.puppyName
+        } else {
+            nameForStyle(nextStyle)
+        }
         _state.value = current.copy(
             unlockedPuppies = nextUnlocked,
-            puppyStyle = nextStyle
+            puppyStyle = nextStyle,
+            puppyName = nextName
         )
         saveState()
         return true
@@ -1937,9 +1970,17 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val inventory = TicketRarity.entries.associateWith { rarity ->
             prefs.getInt(ticketKey(rarity), 0).coerceIn(0, MAX_TICKETS_PER_RARITY)
         }
+        val legacyName = prefs.getString(KEY_NAME, null)
+            ?.trim()
+            ?.replace("\n", " ")
+            ?.take(18)
+            ?.takeIf { it.isNotBlank() }
+        val activePuppyName = savedPuppyName(style)
+            ?: legacyName
+            ?: metadataPuppyName(style)
 
         return V6GameState(
-            puppyName = prefs.getString(KEY_NAME, "Buddy") ?: "Buddy",
+            puppyName = activePuppyName,
             puppyStyle = style,
             unlockedPuppies = unlocked,
             accessory = prefs.getString(KEY_ACCESSORY, "None")?.takeIf { it in ACCESSORIES } ?: "None",
@@ -1999,6 +2040,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val s = _state.value
         prefs.edit().apply {
             putString(KEY_NAME, s.puppyName)
+            putString(puppyNameKey(s.puppyStyle), s.puppyName)
             putString(KEY_PUPPY_STYLE, s.puppyStyle)
             putStringSet(KEY_UNLOCKED_PUPPIES, s.unlockedPuppies)
             putString(KEY_ACCESSORY, s.accessory)
@@ -2130,6 +2172,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         private const val BASE_FAIR_PLAY_COOLDOWN_MS = 4_000L
         private const val MAX_FAIR_PLAY_COOLDOWN_MS = 20_000L
 
+        private fun puppyNameKey(styleId: String) = "puppy_name_for_$styleId"
         private fun ticketKey(rarity: TicketRarity) = "upgrade_ticket_${rarity.name.lowercase()}"
         private fun ticketShopPurchaseKey(rarity: TicketRarity) =
             "ticket_shop_purchase_${rarity.name.lowercase()}_v7"
