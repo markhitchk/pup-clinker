@@ -594,6 +594,21 @@ def patch_activity(source: str) -> str:
 ''',
         "release hub state",
     )
+
+    source = replace_once(
+        source,
+        '''    BackHandler(enabled = internalDestination != null) {
+        internalDestination = null
+    }''',
+        '''    BackHandler(enabled = releaseHubOpen || internalDestination != null) {
+        if (releaseHubOpen) {
+            releaseHubOpen = false
+        } else {
+            internalDestination = null
+        }
+    }''',
+        "hierarchical app back navigation",
+    )
     source = replace_once(
         source,
         "                hasUnreadNotification = updateNotice?.unread == true,",
