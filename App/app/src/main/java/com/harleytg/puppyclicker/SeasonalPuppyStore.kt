@@ -17,7 +17,7 @@ data class SeasonalPuppyClock(val now: Instant, val zone: ZoneId)
 
 /** Separate, device-local preferences. No birth year, age, account ID or network upload. */
 internal class SeasonalPuppyStore(context: Context) {
-    private val prefs = context.getSharedPreferences("puppy_seasonal_v1", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val _settings = MutableStateFlow(readSettings())
     val settings = _settings.asStateFlow()
     private val _clock = MutableStateFlow(currentClock())
@@ -26,8 +26,8 @@ internal class SeasonalPuppyStore(context: Context) {
     private fun currentClock() = SeasonalPuppyClock(Instant.now(), ZoneId.systemDefault())
 
     private fun readSettings(): SeasonalPuppySettings {
-        val month = prefs.getInt("birthday_month", 0)
-        val day = prefs.getInt("birthday_day", 0)
+        val month = prefs.getInt(KEY_BIRTHDAY_MONTH, 0)
+        val day = prefs.getInt(KEY_BIRTHDAY_DAY, 0)
         return SeasonalPuppySettings(
             introSeen = prefs.getBoolean("intro_seen", false),
             birthday = SeasonalPuppyEvents.birthday(month, day),
@@ -39,7 +39,7 @@ internal class SeasonalPuppyStore(context: Context) {
 
     fun saveBirthday(month: Int, day: Int): Boolean {
         val birthday = SeasonalPuppyEvents.birthday(month, day) ?: return false
-        prefs.edit().putInt("birthday_month", month).putInt("birthday_day", day)
+        prefs.edit().putInt(KEY_BIRTHDAY_MONTH, month).putInt(KEY_BIRTHDAY_DAY, day)
             .putBoolean("intro_seen", true).apply()
         _settings.value = _settings.value.copy(birthday = birthday, introSeen = true)
         refreshClock()
@@ -47,7 +47,7 @@ internal class SeasonalPuppyStore(context: Context) {
     }
 
     fun clearBirthday() {
-        prefs.edit().remove("birthday_month").remove("birthday_day").apply()
+        prefs.edit().remove(KEY_BIRTHDAY_MONTH).remove(KEY_BIRTHDAY_DAY).apply()
         _settings.value = _settings.value.copy(birthday = null)
         refreshClock()
     }
@@ -62,5 +62,11 @@ internal class SeasonalPuppyStore(context: Context) {
         val seen = _settings.value.seenCycles + cycle
         prefs.edit().putStringSet("seen_cycles", seen).apply()
         _settings.value = _settings.value.copy(seenCycles = seen)
+    }
+
+    companion object {
+        internal const val PREFS_NAME = "puppy_seasonal_v1"
+        internal const val KEY_BIRTHDAY_MONTH = "birthday_month"
+        internal const val KEY_BIRTHDAY_DAY = "birthday_day"
     }
 }
