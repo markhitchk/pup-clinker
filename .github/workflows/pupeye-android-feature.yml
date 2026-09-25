@@ -32,4 +32,6 @@ jobs:
 
       - name: Run PupEye Android feature tests
         run: |
-          gradle --no-daemon :app:testDebugUnitTest             --tests 'com.harleytg.puppyclicker.PupEyeSaveAttestationTest'             --stacktrace
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'com.harleytg.puppyclicker.PupEye*Test' \
+            --stacktrace
