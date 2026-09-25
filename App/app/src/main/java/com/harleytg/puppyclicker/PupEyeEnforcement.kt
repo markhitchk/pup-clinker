@@ -1,7 +1,18 @@
 package com.harleytg.puppyclicker
 
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicLong
 import org.json.JSONObject
+
+/** A response begun before a restrictive response cannot later unlock the app. */
+internal class PupEyeEnforcementResponseGate {
+    private val restrictiveRevision = AtomicLong(0L)
+
+    fun capture(): Long = restrictiveRevision.get()
+    fun markRestrictive() { restrictiveRevision.incrementAndGet() }
+    fun canAcceptAllowed(startRevision: Long): Boolean =
+        restrictiveRevision.get() == startRevision
+}
 
 internal enum class PupEyeEnforcementMode {
     ALLOWED,

@@ -31,7 +31,7 @@ jobs:
       - name: Run database tests
         run: supabase test db supabase/tests/pupeye_global_bans_test.sql
       - name: Run Edge Function tests
-        run: deno test --allow-all supabase/functions/tests/
+        run: deno test --allow-all supabase/functions/tests/*-test.ts
       - name: Type-check PupEye Edge Functions
         run: |
           deno check \

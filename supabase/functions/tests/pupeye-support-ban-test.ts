@@ -75,3 +75,8 @@ Deno.test("valid temporary request returns normalized rpc payload", () => {
 Deno.test("unsupported moderation action is rejected", () => {
   assertThrows(() => validateSupportAction("delete_everything"), Error, "Unsupported");
 });
+
+Deno.test("support can revoke an individual installation and add a private note", () => {
+  assertEquals(validateSupportAction("revoke_installation"), "revoke_installation");
+  assertEquals(validateSupportAction("add_private_note"), "add_private_note");
+});

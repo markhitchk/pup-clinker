@@ -13,6 +13,24 @@ class PupEyeEnforcementTest {
         File("src/main/java/com/harleytg/puppyclicker/$name").readText()
 
     @Test
+    fun olderAllowedResponseCannotClearNewerBan() {
+        val gate = PupEyeEnforcementResponseGate()
+        val olderRequest = gate.capture()
+        gate.markRestrictive()
+
+        assertFalse(gate.canAcceptAllowed(olderRequest))
+        assertTrue(gate.canAcceptAllowed(gate.capture()))
+    }
+
+    @Test
+    fun ordinarySuccessfulRequestsDoNotClearCachedBan() {
+        val client = source("SupabasePupEyeClient.kt")
+        val connectedMethod = client.substringAfter("private fun markConnected(context: Context) {")
+            .substringBefore("private fun markBackendConnectedOnly")
+        assertFalse(connectedMethod.contains("saveEnforcement("))
+    }
+
+    @Test
     fun knownTemporaryBanRemainsLockedAfterLocalClockPassesExpiry() {
         val cached = PupEyeEnforcementSnapshot(
             mode = PupEyeEnforcementMode.GLOBAL_BANNED,

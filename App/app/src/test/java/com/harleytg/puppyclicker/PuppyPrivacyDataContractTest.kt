@@ -10,7 +10,7 @@ class PuppyPrivacyDataContractTest {
 
     @Test
     fun privacyDisclosesGlobalEnforcementAndDeviceReputation() {
-        val privacy = File("../assets/legal/privacy-policy.md").readText()
+        val privacy = File("../../assets/legal/privacy-policy.md").readText()
         assertTrue(privacy.contains("global enforcement"))
         assertTrue(privacy.contains("device reputation"))
         assertTrue(privacy.contains("save-content hash"))

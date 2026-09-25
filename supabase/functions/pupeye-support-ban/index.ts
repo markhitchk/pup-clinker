@@ -210,6 +210,70 @@ async function clearReview(admin: AdminClient, body: Record<string, unknown>) {
   return json(200, { ok: true, supportCode });
 }
 
+async function revokeInstallation(admin: AdminClient, body: Record<string, unknown>) {
+  const installationUuid = requiredUuid(body.installationUuid, "installationUuid");
+  const actor = requiredText(body.actor, "actor", 80);
+  const reason = requiredText(body.reason, "reason", 500);
+  const note = optionalText(body.note, 1000);
+  const { data: installation, error: findError } = await admin.from("pupeye_installations")
+    .select("id,player_uuid,active,revoked_at")
+    .eq("id", installationUuid)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (!installation) {
+    throw new HttpError(404, "INSTALLATION_NOT_FOUND", "Installation was not found.");
+  }
+  if (!installation.active || installation.revoked_at) {
+    throw new HttpError(409, "INSTALLATION_ALREADY_REVOKED", "Installation is already revoked.");
+  }
+
+  const now = new Date().toISOString();
+  const { data: changed, error: updateError } = await admin.from("pupeye_installations")
+    .update({ active: false, revoked_at: now })
+    .eq("id", installationUuid)
+    .eq("active", true)
+    .is("revoked_at", null)
+    .select("id");
+  if (updateError) throw updateError;
+  if (!changed?.length) {
+    throw new HttpError(409, "INSTALLATION_ALREADY_REVOKED", "Installation is already revoked.");
+  }
+
+  const { error: sessionsError } = await admin.from("pupeye_sessions")
+    .update({ revoked_at: now })
+    .eq("installation_uuid", installationUuid)
+    .is("revoked_at", null);
+  if (sessionsError) throw sessionsError;
+
+  const { error: auditError } = await admin.from("pupeye_events").insert({
+    player_uuid: installation.player_uuid,
+    installation_uuid: installationUuid,
+    event_code: "SUPPORT_INSTALLATION_REVOKED",
+    severity: "hard",
+    detail: { actor, reason, note, priorState: "active", resultingState: "revoked" },
+  });
+  if (auditError) throw auditError;
+  return json(200, { ok: true, installationUuid });
+}
+
+async function addPrivateNote(admin: AdminClient, body: Record<string, unknown>) {
+  const banUuid = requiredUuid(body.banUuid, "banUuid");
+  const actor = requiredText(body.actor, "actor", 80);
+  const note = requiredText(body.note, "note", 1000);
+  const { data, error } = await admin.from("pupeye_ban_events")
+    .insert({
+      ban_uuid: banUuid,
+      event_code: "SUPPORT_PRIVATE_NOTE",
+      actor,
+      detail: { note },
+      discord_delivery_status: "not_required",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return json(200, { ok: true, eventId: data.id });
+}
+
 async function recordAppeal(admin: AdminClient, body: Record<string, unknown>) {
   const banUuid = requiredUuid(body.banUuid, "banUuid");
   const actor = requiredText(body.actor, "actor", 80);
@@ -313,6 +377,8 @@ export default {
       if (action === "attach_target") return await attachTarget(admin, body);
       if (action === "revoke_ban") return await revokeBan(admin, body);
       if (action === "clear_review") return await clearReview(admin, body);
+      if (action === "revoke_installation") return await revokeInstallation(admin, body);
+      if (action === "add_private_note") return await addPrivateNote(admin, body);
       if (action === "record_appeal") return await recordAppeal(admin, body);
       if (action === "lookup") return await lookup(admin, body);
 

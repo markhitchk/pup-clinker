@@ -155,11 +155,13 @@ export function createSupabaseAttestationStore(
       const { error } = await admin
         .from("pupeye_save_heads")
         .update({
+          generation: input.generation,
           last_save_id: input.saveId,
           last_payload_hash_sha256: input.payloadHashSha256,
           updated_at: new Date().toISOString(),
         })
-        .eq("installation_uuid", installationUuid);
+        .eq("installation_uuid", installationUuid)
+        .lte("generation", input.generation);
       if (error) throw error;
     },
 
@@ -251,27 +253,9 @@ export function createSupabaseAttestationStore(
         throw new Error("PupEye global-ban RPC returned no public Ban ID");
       }
 
+      // The ban table is authoritative. Permanent legacy blocked flags would
+      // remain after this temporary ban expires or Support revokes it.
       const now = new Date().toISOString();
-      const { error: playerError } = await admin
-        .from("pupeye_players")
-        .update({ status: "blocked", updated_at: now })
-        .eq("id", playerUuid);
-      if (playerError) throw playerError;
-
-      const { error: installationError } = await admin
-        .from("pupeye_installations")
-        .update({ integrity_state: "blocked" })
-        .eq("id", installationUuid);
-      if (installationError) throw installationError;
-
-      if (deviceReputationUuid) {
-        const { error: deviceError } = await admin
-          .from("pupeye_device_reputation")
-          .update({ reputation_state: "blocked", last_seen_at: now })
-          .eq("id", deviceReputationUuid);
-        if (deviceError) throw deviceError;
-      }
-
       const { error: sessionError } = await admin
         .from("pupeye_sessions")
         .update({ revoked_at: now })

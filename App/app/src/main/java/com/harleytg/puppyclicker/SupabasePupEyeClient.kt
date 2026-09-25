@@ -56,6 +56,8 @@ internal object SupabasePupEyeClient {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
     private val enforcementLoaded = AtomicBoolean(false)
+    private val enforcementWriteLock = Any()
+    private val enforcementResponseGate = PupEyeEnforcementResponseGate()
     private val mutableEnforcementState =
         MutableStateFlow(PupEyeEnforcementSnapshot.allowed())
 
@@ -117,6 +119,7 @@ internal object SupabasePupEyeClient {
         enforcementSnapshot(app)
         scope.launch {
             runCatching {
+                val responseStartRevision = enforcementResponseGate.capture()
                 val envelope = PupEyeAuthority.signedEnvelope(
                     context = app,
                     action = "enforcement-status",
@@ -128,14 +131,19 @@ internal object SupabasePupEyeClient {
                     sessionToken = null
                 )
                 if (response.status in 200..299) {
-                    saveEnforcement(
-                        app,
-                        PupEyeEnforcementSnapshot.fromServerResponse(
-                            body = response.body,
-                            verifiedAtMs = System.currentTimeMillis()
-                        )
+                    val snapshot = PupEyeEnforcementSnapshot.fromServerResponse(
+                        body = response.body,
+                        verifiedAtMs = System.currentTimeMillis()
                     )
-                    markBackendConnectedOnly(app)
+                    synchronized(enforcementWriteLock) {
+                        if (snapshot.blocksApp(System.currentTimeMillis())) {
+                            enforcementResponseGate.markRestrictive()
+                            saveEnforcement(app, snapshot)
+                        } else if (enforcementResponseGate.canAcceptAllowed(responseStartRevision)) {
+                            saveEnforcement(app, snapshot)
+                            markBackendConnectedOnly(app)
+                        }
+                    }
                 } else {
                     handleAuthoritativeFailure(app, response)
                     if (response.body.optString("code") !in setOf(
@@ -465,24 +473,30 @@ internal object SupabasePupEyeClient {
 
         when (code) {
             "GLOBAL_BANNED", "REVIEW_REQUIRED" -> {
-                saveEnforcement(
-                    app,
-                    PupEyeEnforcementSnapshot.fromServerResponse(
-                        body = response.body,
-                        verifiedAtMs = verifiedAt
+                synchronized(enforcementWriteLock) {
+                    enforcementResponseGate.markRestrictive()
+                    saveEnforcement(
+                        app,
+                        PupEyeEnforcementSnapshot.fromServerResponse(
+                            body = response.body,
+                            verifiedAtMs = verifiedAt
+                        )
                     )
-                )
+                }
             }
 
             "SAVE_ROLLBACK", "DUPLICATE_TRANSACTION", "TRANSACTION_CONFLICT" -> {
-                saveEnforcement(
-                    app,
-                    PupEyeEnforcementSnapshot(
-                        mode = PupEyeEnforcementMode.REVIEW_REQUIRED,
-                        reviewMessage = response.message("PupEye requires Support review."),
-                        lastServerVerifiedAtMs = verifiedAt
+                synchronized(enforcementWriteLock) {
+                    enforcementResponseGate.markRestrictive()
+                    saveEnforcement(
+                        app,
+                        PupEyeEnforcementSnapshot(
+                            mode = PupEyeEnforcementMode.REVIEW_REQUIRED,
+                            reviewMessage = response.message("PupEye requires Support review."),
+                            lastServerVerifiedAtMs = verifiedAt
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -514,10 +528,6 @@ internal object SupabasePupEyeClient {
     }
 
     private fun markConnected(context: Context) {
-        saveEnforcement(
-            context.applicationContext,
-            PupEyeEnforcementSnapshot.allowed(System.currentTimeMillis())
-        )
         markBackendConnectedOnly(context)
     }
 

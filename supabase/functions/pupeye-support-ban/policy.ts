@@ -9,6 +9,8 @@ export const SUPPORT_BAN_ACTIONS = [
   "attach_target",
   "revoke_ban",
   "clear_review",
+  "revoke_installation",
+  "add_private_note",
   "record_appeal",
   "lookup",
 ] as const;
