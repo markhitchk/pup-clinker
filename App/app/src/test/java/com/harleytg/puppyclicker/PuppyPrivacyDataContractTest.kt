@@ -9,6 +9,15 @@ class PuppyPrivacyDataContractTest {
         File("src/main/java/com/harleytg/puppyclicker/$name").readText()
 
     @Test
+    fun privacyDisclosesGlobalEnforcementAndDeviceReputation() {
+        val privacy = File("../assets/legal/privacy-policy.md").readText()
+        assertTrue(privacy.contains("global enforcement"))
+        assertTrue(privacy.contains("device reputation"))
+        assertTrue(privacy.contains("save-content hash"))
+        assertTrue(privacy.contains("Discord moderation notification"))
+    }
+
+    @Test
     fun onboardingExplainsOptionalConsentAndSeparatesNotificationPermission() {
         val privacy = source("PuppyPrivacyDataUi.kt")
         val onboarding = source("PuppyOnboardingUi.kt")

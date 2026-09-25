@@ -1,0 +1,44 @@
+name: PupEye Supabase Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-pupeye-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-pupeye-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.117.0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Start local Supabase
+        run: supabase start
+      - name: Run database tests
+        run: supabase test db supabase/tests/pupeye_global_bans_test.sql
+      - name: Run Edge Function tests
+        run: deno test --allow-all supabase/functions/tests/
+      - name: Type-check PupEye Edge Functions
+        run: |
+          deno check \
+            supabase/functions/pupeye-register/index.ts \
+            supabase/functions/pupeye-auth-discord/index.ts \
+            supabase/functions/pupeye-sync/index.ts \
+            supabase/functions/pupeye-transaction/index.ts \
+            supabase/functions/pupeye-enforcement-status/index.ts \
+            supabase/functions/pupeye-save-attestation/index.ts \
+            supabase/functions/pupeye-support-ban/index.ts

@@ -96,7 +96,7 @@ internal object PuppyUiPreferences {
     private const val KEY_SETUP_STEP = "setup_step"
     private const val KEY_SETUP_FLOW_VERSION = "setup_flow_version"
     private const val SETUP_FLOW_VERSION = 4
-    const val CURRENT_PRIVACY_CONSENT_VERSION = 4
+    const val CURRENT_PRIVACY_CONSENT_VERSION = 5
     private const val KEY_ANONYMOUS_DIAGNOSTICS = "anonymous_diagnostics_enabled"
     private const val KEY_CRASH_REPORTS = "crash_reports_enabled"
     private const val KEY_SUPPORT_IDENTITY = "support_identity_enabled"

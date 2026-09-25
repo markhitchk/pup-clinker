@@ -124,9 +124,9 @@ internal fun PuppyPrivacyDataSettings(ui: PuppyUiState) {
             Spacer(Modifier.height(6.dp))
             Text(
                 if (ui.privacyConsentVersion >= PuppyUiPreferences.CURRENT_PRIVACY_CONSENT_VERSION) {
-                    "Privacy choices reviewed for onboarding v4."
+                    "Privacy choices reviewed for privacy version 5."
                 } else {
-                    "Privacy choices have not been reviewed in onboarding v4."
+                    "Privacy choices have not been reviewed for privacy version 5."
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,

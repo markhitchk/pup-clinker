@@ -96,10 +96,18 @@ private enum class V6Tab(val label: String, val emoji: String) {
 
 @Composable
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
+    val context = LocalContext.current
+    val enforcement by SupabasePupEyeClient.enforcementState(context)
+        .collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
-    val uiPreferences by PuppyUiPreferences.observe(LocalContext.current).collectAsStateWithLifecycle()
+    val uiPreferences by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     val viewport = LocalPuppyViewport.current
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+
+    if (enforcement.blocksApp(System.currentTimeMillis())) {
+        PupEyeEnforcementGate(enforcement)
+        return
+    }
 
     if (!uiPreferences.setupComplete) {
         PuppyOnboardingFlow(vm)

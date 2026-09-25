@@ -41,6 +41,8 @@ When suspicious activity is detected, the app or Puppy Clicker's Supabase-backed
 - Require Support review or a Support-authorized device migration
 - Record fair-play or integrity events
 
+Support may place an account or a strongly linked recognized device under review, or issue a temporary or permanent global ban for serious or repeated violations. Global enforcement can cover Android and future Puppy Clicker web and desktop clients. Review is a restricted access state separate from a ban; a ban blocks protected game actions until Support revokes it or the server confirms its expiry. Device-wide enforcement applies only where there is a strong, verified link, rather than a shared username, device model, or IP address. Players can contact Support using the app's recovery screen to request review or appeal with their Ban ID or Support Installation Code. Enforcement does not delete saves, puppies, balances, achievements, inventory, or the moderation history.
+
 ## 3. Saves and Backups
 
 Automatic `Android/data` saves are encrypted and device-bound using Android security features. Portable backups may be password protected.

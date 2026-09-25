@@ -2,6 +2,8 @@
 
 This folder is reserved for the website and browser edition of Puppy Clicker. No playable website implementation has been added yet.
 
+Future browser clients must follow the [PupEye global enforcement client contract](../docs/pupeye/global-enforcement-client-contract.md). Browser installation identity is not a hardware identity.
+
 ## Intended structure
 
 When development begins, keep the website entry point, frontend source, styles, and website-specific configuration here. Reference the existing shared artwork in [`../assets/`](../assets/) rather than duplicating the canonical V1 and V2 puppy assets. Preserve the original game and character identities.

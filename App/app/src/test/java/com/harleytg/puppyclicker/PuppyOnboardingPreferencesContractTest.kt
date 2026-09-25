@@ -6,13 +6,13 @@ import org.junit.Test
 
 class PuppyOnboardingPreferencesContractTest {
     @Test
-    fun preferencesPersistSixStepV4FlowAndPrivateDefaults() {
+    fun preferencesPersistSixStepV4FlowAndPrivacyVersionFive() {
         val source = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt"
         ).readText()
 
         assertTrue(source.contains("SETUP_FLOW_VERSION = 4"))
-        assertTrue(source.contains("CURRENT_PRIVACY_CONSENT_VERSION = 4"))
+        assertTrue(source.contains("CURRENT_PRIVACY_CONSENT_VERSION = 5"))
         assertTrue(source.contains("coerceIn(0, 5)"))
         assertTrue(source.contains("PuppyOnboardingStep.READY.persistedIndex"))
         assertTrue(source.contains("anonymousDiagnosticsEnabled: Boolean = false"))

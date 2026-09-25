@@ -51,6 +51,8 @@ Puppy Clicker does **not** use the following for save ownership:
 - Advertising ID
 - Other persistent hardware identifiers
 
+PupEye global enforcement also does not use SIM serial, Wi-Fi MAC, or Bluetooth MAC addresses as ban identifiers. A coarse device model, username, or IP address alone does not establish that two players are the same person or device.
+
 ## 4. Save Encryption
 
 Automatic `Android/data` saves use authenticated encryption and Android Keystore protection. Portable backups may use password-based authenticated encryption.
@@ -90,6 +92,12 @@ Puppy Clicker may send the following limited information to the Puppy Clicker Su
 - Discord identity and derived Puppy Clicker server role after Discord authorization
 
 The corresponding Android Keystore private signing key is not uploaded. Discord OAuth access tokens are used transiently for server verification and are not intentionally stored by Puppy Clicker or in the PupEye database.
+
+For global enforcement, PupEye may maintain a public Ban ID, Player/Discord/installation links, device reputation records, enforcement audit events, and authenticated save-content hash (SHA-256) attestations. These records help detect replay or tampering, require Support review, and enforce temporary or permanent bans. Hashes represent authenticated save content; the save contents themselves are not included in moderation alerts.
+
+Puppy Clicker does not use IMEI, hardware serial number, Android ID, SIM serial, phone number, advertising ID, Wi-Fi MAC, or Bluetooth MAC as global-ban identifiers. IP and network metadata may be considered as evidence, but do not independently trigger a device or account ban.
+
+Operational events may be sent to Harley's Studios through a Discord moderation notification as a webhook embed. These notifications exclude session tokens, IP addresses, email addresses, save contents, and raw cryptographic key material.
 
 Supabase may process ordinary network information, including IP address and request metadata, under Supabase's own privacy and security practices.
 
