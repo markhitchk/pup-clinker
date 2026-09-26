@@ -403,7 +403,7 @@ begin
         raise exception 'ban requires at least one target' using errcode = '22023';
     end if;
 
-    v_random := upper(substr(encode(gen_random_bytes(8), 'hex'), 1, 12));
+    v_random := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12));
 
     insert into public.pupeye_global_bans (
         public_ban_id, kind, status, reason_code, public_reason,
