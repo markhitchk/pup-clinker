@@ -158,7 +158,7 @@ Deno.test("signed status returns global ban for a recognized device reputation",
       reason_code: "DEVICE_BAN_EVASION",
       public_reason: "This device is temporarily banned from Puppy Clicker.",
       issued_at: "2026-09-24T20:00:00Z",
-      expires_at: "2026-09-25T20:00:00Z",
+      expires_at: "2099-09-25T20:00:00Z",
       device_wide: true,
     },
   });
