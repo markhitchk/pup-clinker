@@ -1,5 +1,10 @@
 import { createHash, createPublicKey, createVerify } from "node:crypto";
+import type { Buffer as NodeBuffer } from "node:buffer";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { HttpError } from "./http.ts";
+import { assertGlobalEnforcementAllowed } from "./global-enforcement.ts";
+
+export { HttpError, errorResponse, json } from "./http.ts";
 
 export type AdminClient = any;
 
@@ -73,13 +78,6 @@ export type SessionContext = {
 };
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
-
-export function json(status: number, body: Record<string, unknown>): Response {
-  return Response.json(body, {
-    status,
-    headers: { "Cache-Control": "no-store" },
-  });
-}
 
 export function canonicalJson(value: unknown): string {
   if (value === null || value === undefined) return "null";
@@ -166,7 +164,10 @@ export function verifyEnvelope(
   verifier.update(material);
   verifier.end();
   const key = createPublicKey({
-    key: publicKeyBytes,
+    // Deno's Node compatibility runtime accepts Uint8Array here, while its
+    // Node type declarations currently narrow this field to Buffer. Keep the
+    // runtime value as Uint8Array so we never depend on the Node Buffer global.
+    key: publicKeyBytes as unknown as NodeBuffer,
     format: "der",
     type: "spki",
   });
@@ -231,9 +232,14 @@ export async function authenticateSession(
     .maybeSingle();
   if (playerError) throw playerError;
   if (!player) throw new HttpError(401, "PLAYER_NOT_FOUND", "Pupeye player record was not found.");
-  if (player.status === "blocked") {
-    throw new HttpError(403, "PLAYER_BLOCKED", "This player requires Support review.");
-  }
+
+  await assertGlobalEnforcementAllowed(admin, {
+    session,
+    installation,
+    player,
+    discordUserId: player.discord_user_id ?? null,
+    requestAction: envelope.action,
+  });
 
   await admin.from("pupeye_sessions")
     .update({ last_seen_at: now })
@@ -278,26 +284,6 @@ export async function audit(
     severity,
     detail,
   });
-}
-
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-export function errorResponse(error: unknown): Response {
-  if (error instanceof HttpError) {
-    console.error("[PupEye]", error.code, error.message);
-    return json(error.status, { code: error.code, message: error.message });
-  }
-  const message = error instanceof Error ? error.message : "Unexpected Pupeye backend error";
-  console.error("[PupEye] PUPEYE_REQUEST_INVALID", message);
-  return json(400, { code: "PUPEYE_REQUEST_INVALID", message });
 }
 
 export function requiredString(value: unknown, field: string): string {

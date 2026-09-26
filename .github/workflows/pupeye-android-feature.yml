@@ -1,0 +1,37 @@
+name: PupEye Android Feature RED-GREEN
+
+on:
+  push:
+    branches: [pupeye-global-ban]
+    paths:
+      - 'App/**'
+      - '.github/workflows/pupeye-android-feature.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Run PupEye Android feature tests
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'com.harleytg.puppyclicker.PupEye*Test' \
+            --stacktrace

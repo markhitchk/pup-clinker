@@ -8,10 +8,14 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -41,6 +45,7 @@ internal data class PupEyeBackendState(
  */
 internal object SupabasePupEyeClient {
     private const val SESSION_FILE = "pupeye/supabase_session_v1.pup"
+    private const val ENFORCEMENT_FILE = "pupeye/enforcement_v1.pup"
     private const val STATUS_PREFS = "pupeye_supabase_status_v1"
     private const val KEY_STATE = "state"
     private const val KEY_LAST_VERIFIED = "last_verified_at"
@@ -50,6 +55,11 @@ internal object SupabasePupEyeClient {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
+    private val enforcementLoaded = AtomicBoolean(false)
+    private val enforcementWriteLock = Any()
+    private val enforcementResponseGate = PupEyeEnforcementResponseGate()
+    private val mutableEnforcementState =
+        MutableStateFlow(PupEyeEnforcementSnapshot.allowed())
 
     val baseUrl: String
         get() = BuildConfig.SUPABASE_URL.trim().trimEnd('/')
@@ -62,8 +72,11 @@ internal object SupabasePupEyeClient {
             publishableKey.startsWith("sb_publishable_")
 
     fun initialize(context: Context) {
-        if (!isConfigured()) return
         val app = context.applicationContext
+        enforcementSnapshot(app)
+        if (!isConfigured()) return
+
+        refreshEnforcementAsync(app)
         scope.launch {
             runCatching {
                 ensureRegistered(app)
@@ -85,7 +98,73 @@ internal object SupabasePupEyeClient {
     }
 
     fun serverAllowsProtectedGameplay(context: Context): Boolean =
-        !backendState(context).blocksProtectedGameplay
+        !backendState(context).blocksProtectedGameplay &&
+            !enforcementSnapshot(context).blocksApp(System.currentTimeMillis())
+
+    fun enforcementState(context: Context): StateFlow<PupEyeEnforcementSnapshot> {
+        enforcementSnapshot(context)
+        return mutableEnforcementState.asStateFlow()
+    }
+
+    fun enforcementSnapshot(context: Context): PupEyeEnforcementSnapshot {
+        if (enforcementLoaded.compareAndSet(false, true)) {
+            mutableEnforcementState.value = readEnforcement(context.applicationContext)
+        }
+        return mutableEnforcementState.value
+    }
+
+    fun refreshEnforcementAsync(context: Context) {
+        if (!isConfigured()) return
+        val app = context.applicationContext
+        enforcementSnapshot(app)
+        scope.launch {
+            runCatching {
+                val responseStartRevision = enforcementResponseGate.capture()
+                val envelope = PupEyeAuthority.signedEnvelope(
+                    context = app,
+                    action = "enforcement-status",
+                    payload = JSONObject()
+                )
+                val response = invoke(
+                    functionName = "pupeye-enforcement-status",
+                    envelope = envelope,
+                    sessionToken = null
+                )
+                if (response.status in 200..299) {
+                    val snapshot = PupEyeEnforcementSnapshot.fromServerResponse(
+                        body = response.body,
+                        verifiedAtMs = System.currentTimeMillis()
+                    )
+                    synchronized(enforcementWriteLock) {
+                        if (snapshot.blocksApp(System.currentTimeMillis())) {
+                            enforcementResponseGate.markRestrictive()
+                            saveEnforcement(app, snapshot)
+                        } else if (enforcementResponseGate.canAcceptAllowed(responseStartRevision)) {
+                            saveEnforcement(app, snapshot)
+                            markBackendConnectedOnly(app)
+                        }
+                    }
+                } else {
+                    handleAuthoritativeFailure(app, response)
+                    if (response.body.optString("code") !in setOf(
+                            "GLOBAL_BANNED",
+                            "REVIEW_REQUIRED"
+                        )
+                    ) {
+                        noteTransientError(
+                            app,
+                            response.message("Unable to refresh PupEye enforcement")
+                        )
+                    }
+                }
+            }.onFailure { error ->
+                noteTransientError(
+                    app,
+                    error.message ?: "Unable to refresh PupEye enforcement"
+                )
+            }
+        }
+    }
 
     fun hasSession(context: Context): Boolean = readSession(context) != null
 
@@ -191,6 +270,62 @@ internal object SupabasePupEyeClient {
                 sendSaveCheckpoint(app, reason.take(40))
             }.onFailure { error ->
                 noteTransientError(app, error.message ?: "Pupeye save checkpoint failed")
+            }
+        }
+    }
+
+    fun queueSaveAttestation(
+        context: Context,
+        saveId: String,
+        generation: Long,
+        payloadHashSha256: String
+    ) {
+        if (!isConfigured()) return
+        require(saveId.isNotBlank()) { "Missing PupEye save ID" }
+        require(generation >= 1L) { "Invalid PupEye save generation" }
+        require(payloadHashSha256.matches(Regex("[0-9a-f]{64}"))) {
+            "Invalid PupEye save SHA-256"
+        }
+
+        val app = context.applicationContext
+        scope.launch {
+            runCatching {
+                val session = ensureRegistered(app) ?: return@runCatching
+                val payload = JSONObject().apply {
+                    put("saveId", saveId)
+                    put("generation", generation)
+                    put("payloadHashSha256", payloadHashSha256)
+                }
+                val envelope = PupEyeAuthority.signedEnvelope(
+                    context = app,
+                    action = "save-attestation",
+                    payload = payload
+                )
+                val response = invoke(
+                    functionName = "pupeye-save-attestation",
+                    envelope = envelope,
+                    sessionToken = session.token
+                )
+                if (response.status !in 200..299) {
+                    handleAuthoritativeFailure(app, response)
+                    if (response.status !in setOf(
+                            HttpURLConnection.HTTP_CONFLICT,
+                            HttpURLConnection.HTTP_FORBIDDEN
+                        )
+                    ) {
+                        noteTransientError(
+                            app,
+                            response.message("Unable to attest Puppy Clicker save")
+                        )
+                    }
+                } else {
+                    markConnected(app)
+                }
+            }.onFailure { error ->
+                noteTransientError(
+                    app,
+                    error.message ?: "PupEye save attestation failed"
+                )
             }
         }
     }
@@ -332,28 +467,71 @@ internal object SupabasePupEyeClient {
     }
 
     private fun handleAuthoritativeFailure(context: Context, response: ApiResponse) {
+        val app = context.applicationContext
         val code = response.body.optString("code")
+        val verifiedAt = System.currentTimeMillis()
+
+        when (code) {
+            "GLOBAL_BANNED", "REVIEW_REQUIRED" -> {
+                synchronized(enforcementWriteLock) {
+                    enforcementResponseGate.markRestrictive()
+                    saveEnforcement(
+                        app,
+                        PupEyeEnforcementSnapshot.fromServerResponse(
+                            body = response.body,
+                            verifiedAtMs = verifiedAt
+                        )
+                    )
+                }
+            }
+
+            "SAVE_ROLLBACK", "DUPLICATE_TRANSACTION", "TRANSACTION_CONFLICT" -> {
+                synchronized(enforcementWriteLock) {
+                    enforcementResponseGate.markRestrictive()
+                    saveEnforcement(
+                        app,
+                        PupEyeEnforcementSnapshot(
+                            mode = PupEyeEnforcementMode.REVIEW_REQUIRED,
+                            reviewMessage = response.message("PupEye requires Support review."),
+                            lastServerVerifiedAtMs = verifiedAt
+                        )
+                    )
+                }
+            }
+        }
+
         val nextState = when (code) {
             "DEVICE_MIGRATION_REQUIRED" -> "MIGRATION_REQUIRED"
-            "SAVE_ROLLBACK", "DUPLICATE_TRANSACTION", "TRANSACTION_CONFLICT" -> "REVIEW_REQUIRED"
-            "PLAYER_BLOCKED", "INSTALLATION_REVOKED" -> "BLOCKED"
+            "REVIEW_REQUIRED",
+            "SAVE_ROLLBACK",
+            "DUPLICATE_TRANSACTION",
+            "TRANSACTION_CONFLICT" -> "REVIEW_REQUIRED"
+            "GLOBAL_BANNED",
+            "PLAYER_BLOCKED",
+            "INSTALLATION_REVOKED" -> "BLOCKED"
             else -> null
         } ?: return
 
-        context.applicationContext
-            .getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
+        app.getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_STATE, nextState)
-            .putLong(KEY_LAST_VERIFIED, System.currentTimeMillis())
-            .putString(KEY_LAST_ERROR, response.message("Pupeye server rejected the request").take(220))
+            .putLong(KEY_LAST_VERIFIED, verifiedAt)
+            .putString(
+                KEY_LAST_ERROR,
+                response.message("Pupeye server rejected the request").take(220)
+            )
             .apply()
 
         if (nextState == "BLOCKED") {
-            clearSessionFileOnly(context)
+            clearSessionFileOnly(app)
         }
     }
 
     private fun markConnected(context: Context) {
+        markBackendConnectedOnly(context)
+    }
+
+    private fun markBackendConnectedOnly(context: Context) {
         context.applicationContext
             .getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
             .edit()
@@ -430,6 +608,54 @@ internal object SupabasePupEyeClient {
         require(out.length <= MAX_RESPONSE_BYTES) { "Supabase response exceeded 256 KB" }
         return out.toString()
     }
+
+    private fun readEnforcement(context: Context): PupEyeEnforcementSnapshot {
+        val file = enforcementFile(context)
+        if (!file.isFile) return PupEyeEnforcementSnapshot.allowed()
+
+        return runCatching {
+            val plain = PuppySaveCrypto.decryptDevice(file.readBytes())
+            PupEyeEnforcementSnapshot.fromJson(
+                JSONObject(plain.toString(Charsets.UTF_8))
+            )
+        }.getOrElse {
+            PupEyeEnforcementSnapshot(
+                mode = PupEyeEnforcementMode.REVIEW_REQUIRED,
+                reviewMessage =
+                    "PupEye could not authenticate the cached enforcement state. Connect to Puppy Clicker services or contact Support.",
+                lastServerVerifiedAtMs = 0L
+            )
+        }
+    }
+
+    private fun saveEnforcement(
+        context: Context,
+        snapshot: PupEyeEnforcementSnapshot
+    ) {
+        mutableEnforcementState.value = snapshot
+        val file = enforcementFile(context)
+        file.parentFile?.mkdirs()
+        val temp = File(file.parentFile, file.name + ".tmp")
+        runCatching {
+            temp.writeBytes(
+                PuppySaveCrypto.encryptDevice(
+                    snapshot.toJson().toString().toByteArray(Charsets.UTF_8)
+                )
+            )
+            if (file.exists() && !file.delete()) {
+                error("Unable to replace PupEye enforcement cache")
+            }
+            if (!temp.renameTo(file)) {
+                file.writeBytes(temp.readBytes())
+                temp.delete()
+            }
+        }.onFailure {
+            temp.delete()
+        }
+    }
+
+    private fun enforcementFile(context: Context): File =
+        File(context.applicationContext.noBackupFilesDir, ENFORCEMENT_FILE)
 
     private fun readSession(context: Context): BackendSession? = runCatching {
         val file = sessionFile(context)

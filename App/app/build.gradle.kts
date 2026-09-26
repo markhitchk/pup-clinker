@@ -139,8 +139,8 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "1.7.14"
+        versionCode = 28
+        versionName = "1.7.15"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
 
         buildConfigField("String", "DISCORD_CLIENT_ID", quotedBuildConfig(publicRepoSetting("DISCORD_CLIENT_ID")))

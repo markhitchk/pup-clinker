@@ -86,6 +86,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
 
         if (returningFromBackground) {
+            startupSafely("foreground PupEye enforcement refresh") {
+                SupabasePupEyeClient.refreshEnforcementAsync(this)
+            }
             startupSafely("foreground AFK reward preparation") {
                 prepareAfkReward(System.currentTimeMillis())
             }
