@@ -5,6 +5,7 @@ import {
 } from "jsr:@std/assert@1";
 import {
   buildBanEmbed,
+  decryptEmbeddedDiscordWebhook,
   sendBanEventBestEffort,
 } from "../_shared/discord-ban-notify.ts";
 
@@ -50,6 +51,19 @@ Deno.test("temporary ban embed uses temporary title and expiry field", () => {
   const text = JSON.stringify(payload);
   assertStringIncludes(text, "Temporary");
   assertStringIncludes(text, "2026-09-25T20:52:00Z");
+});
+
+Deno.test("embedded PupEye webhook decrypts at runtime without plaintext in source", async () => {
+  const webhook = await decryptEmbeddedDiscordWebhook();
+  const parsed = new URL(webhook);
+
+  assertEquals(parsed.protocol, "https:");
+  assertEquals(parsed.hostname, "discord.com");
+  assertStringIncludes(parsed.pathname, "/api/webhooks/");
+
+  const sourceUrl = new URL("../_shared/discord-ban-notify.ts", import.meta.url);
+  const source = await Deno.readTextFile(sourceUrl);
+  assertFalse(source.includes(webhook));
 });
 
 Deno.test("webhook failure is recorded and does not throw", async () => {
