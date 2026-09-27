@@ -1933,34 +1933,117 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = V6GameState()
     }
 
-    /** Full non-prestige reset. Special code collection and settings stay protected. */
+    /**
+     * Resets player gameplay to a fresh state while preserving account identity,
+     * app settings and account-tied puppy entitlements.
+     *
+     * Local progression/reward unlocks are intentionally removed. Verified Discord
+     * entitlements and Puppy Exchange ownership tied to this Player ID survive.
+     * PupEye security identity/history remains outside the gameplay preference reset.
+     */
     fun resetRunWithoutPrestige() {
         if (_casinoRound.value != null) return
+
+        val app = getApplication<Application>()
         val keep = _state.value
-        prefs.edit().apply {
-            V5_UPGRADES.forEach { remove("upgrade_${it.id}") }
-            TicketRarity.entries.forEach { remove(ticketKey(it)) }
-        }.apply()
+        val playerId = PuppyPlayerIdentity.playerId(app)
+        val exchangeSnapshot = PuppyExchangeLedger(app).snapshot()
+        val exchangeOwnedPuppies = exchangeSnapshot.ownership
+            .asSequence()
+            .filter {
+                it.ownerPlayerId == playerId &&
+                    it.status == OwnershipStatus.ACTIVE
+            }
+            .map { it.puppyId }
+            .filter { it in V6_PUPPY_IDS }
+            .toSet()
+        val preservedExchangeLedger = prefs.getString("puppy_exchange_ledger_v1", null)
+
+        val access = DiscordSignupAuth.observe(app).value.guildAccess
+            ?.takeIf { it.guildId == DiscordSignupAuth.GUILD_ID }
+        val verifiedDeveloper =
+            PuppyPlayerIdentity.isHarleyTgDeveloper(app) ||
+                access?.role == DiscordGuildRole.DEVELOPER
+
+        val allKnownPuppies = (
+            V6_PUPPY_IDS +
+                DynamicPuppyRoster.groups.value.flatMap { group -> group.puppies.map { it.id } }
+            ).toSet()
+        val rolePuppies = when {
+            verifiedDeveloper -> allKnownPuppies
+            access != null -> DiscordSignupAuth.unlockPuppyIdsFor(access.role)
+            else -> emptySet()
+        }
+        val accountEntitledPuppies =
+            (DEFAULT_V6_PUPPIES + rolePuppies + exchangeOwnedPuppies)
+                .filter { it in V6_PUPPY_IDS || DynamicPuppyRoster.style(it) != null }
+                .toSet()
+
+        // Reset Game Progress is separate from Reset Settings.
+        val haptics = keep.hapticsEnabled
+        val animations = keep.animationsEnabled
+        val compactNumbers = keep.compactNumbers
+        val settingEntries = prefs.all
+            .filterKeys { key ->
+                key.startsWith("setting_") ||
+                    key == "performance_preset_v1"
+            }
+
+        PupEyeSaveGuard.noteAuthorizedPreferenceChange(app)
+        check(prefs.edit().clear().commit()) {
+            "Unable to clear Puppy Clicker gameplay preferences"
+        }
+
+        val preservedEditor = prefs.edit()
+        settingEntries.forEach { (key, value) ->
+            when (value) {
+                is Boolean -> preservedEditor.putBoolean(key, value)
+                is Int -> preservedEditor.putInt(key, value)
+                is Long -> preservedEditor.putLong(key, value)
+                is Float -> preservedEditor.putFloat(key, value)
+                is String -> preservedEditor.putString(key, value)
+                is Set<*> -> preservedEditor.putStringSet(
+                    key,
+                    value.filterIsInstance<String>().toSet()
+                )
+            }
+        }
+        preservedExchangeLedger?.let {
+            preservedEditor.putString("puppy_exchange_ledger_v1", it)
+        }
+        check(preservedEditor.commit()) {
+            "Unable to restore account-tied Puppy Clicker data"
+        }
+
+        _casinoRound.value = null
+        _casinoRecoveryIssue.value = null
+        _casinoRewardLedger.value = PuppyCasinoRewardLedger()
+        _lastCasinoTicketReward.value = null
+        _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardLedger()
+        _lastCasinoPuppyReward.value = null
+        recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+
         _state.value = V6GameState(
-            puppyName = keep.puppyName,
-            puppyStyle = keep.puppyStyle,
-            unlockedPuppies = keep.unlockedPuppies,
-            accessory = keep.accessory,
-            ownedAccessories = keep.ownedAccessories,
-            pupCoins = keep.pupCoins,
-            casinoChips = keep.casinoChips,
-            ticketShopPurchases = keep.ticketShopPurchases,
-            redeemedCodeIds = keep.redeemedCodeIds,
-            hapticsEnabled = keep.hapticsEnabled,
-            animationsEnabled = keep.animationsEnabled,
-            compactNumbers = keep.compactNumbers,
-            prestigeCount = keep.prestigeCount,
-            skillPoints = keep.skillPoints,
-            prestigeSkills = keep.prestigeSkills,
-            totalPrestigePointsEarned = keep.totalPrestigePointsEarned,
-            totalTicketsFound = keep.totalTicketsFound
+            puppyName = metadataPuppyName("classic"),
+            puppyStyle = "classic",
+            unlockedPuppies = accountEntitledPuppies,
+            accessory = "None",
+            ownedAccessories = if (verifiedDeveloper) ACCESSORIES.toSet() else setOf("None"),
+            hapticsEnabled = haptics,
+            animationsEnabled = animations,
+            compactNumbers = compactNumbers
         )
         saveState(clearUpgradeKeys = true)
+
+        // The fresh state becomes the new authenticated baseline for this installation.
+        PupEyeSaveGuard.seal(app, prefs)
+        PupEyeAuthority.recordEvent(
+            app,
+            "GAME_PROGRESS_RESET",
+            "Gameplay reset to fresh state; account entitlements preserved"
+        )
     }
 
     private fun consumeClaimedAfkReward() {
