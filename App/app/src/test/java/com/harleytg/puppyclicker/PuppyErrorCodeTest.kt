@@ -7,7 +7,7 @@ import org.junit.Test
 class PuppyErrorCodeTest {
     @Test
     fun puppyClickerErrorsUsePuppyNamespace() {
-        AppErrorCode.entries.forEach { error ->
+        PuppyClickerErrorCode.entries.forEach { error ->
             assertTrue(error.code.startsWith("PUPPY-"))
             assertEquals(PuppyErrorDomain.PUPPY_CLICKER, error.domain)
         }
@@ -23,7 +23,7 @@ class PuppyErrorCodeTest {
 
     @Test
     fun allPublishedErrorCodesAreUnique() {
-        val codes = AppErrorCode.entries.map { it.code } +
+        val codes = PuppyClickerErrorCode.entries.map { it.code } +
             PupEyeErrorCode.entries.map { it.code }
         assertEquals(codes.size, codes.toSet().size)
     }
@@ -35,6 +35,6 @@ class PuppyErrorCodeTest {
 
     @Test
     fun decryptFailureHasStablePuppyClickerCode() {
-        assertEquals("PUPPY-SAVE-204", AppErrorCode.DECRYPT_FAILED.code)
+        assertEquals("PUPPY-SAVE-204", PuppyClickerErrorCode.DECRYPT_FAILED.code)
     }
 }
