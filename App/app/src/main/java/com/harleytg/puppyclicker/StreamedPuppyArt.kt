@@ -70,16 +70,6 @@ internal fun StreamedPuppyPortrait(
         }
     }.value
 
-    if (
-        portrait == null &&
-        style.id in V6_PUPPY_IDS &&
-        style.id !in setOf("v2_harleytg", "v2_dev_pup", "v2_discord_pup") &&
-        style.id !in EXTRA_PUPPY_IDS
-    ) {
-        ProtectedPuppyPortrait(style.id, size, accessory, unlocked, background, null)
-        return
-    }
-
     Box(
         Modifier.size(size).clip(CircleShape).background(background),
         contentAlignment = Alignment.Center
@@ -97,6 +87,10 @@ internal fun StreamedPuppyPortrait(
                 contentDescription = "${style.name} image unavailable",
                 modifier = Modifier.size(size * 0.88f),
                 contentScale = ContentScale.Fit
+            )
+            PuppyDebugLog.w(
+                "PuppyClickerArt",
+                "Using fallback.png for ${style.id}; dynamic background retained"
             )
         }
 
