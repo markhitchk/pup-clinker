@@ -18,20 +18,12 @@ import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal enum class PupEyeTransferFailure {
-    MISSING_AUTH_PROOF,
-    SIGNATURE_INVALID,
-    DEVICE_TRANSFER_REQUIRED,
-    ROLLBACK_BLOCKED,
-    OWNERSHIP_PROOF_INVALID
-}
-
 internal data class PupEyeTransferVerification(
     val accepted: Boolean,
     val migrationRequired: Boolean = false,
     val generation: Long = 0L,
     val message: String? = null,
-    val failure: PupEyeTransferFailure? = null
+    val errorCode: PupEyeErrorCode? = null
 )
 
 internal enum class PupEyeActorKind(val label: String) {
@@ -204,7 +196,7 @@ internal object PupEyeAuthority {
                 accepted = false,
                 migrationRequired = true,
                 message = "This backup is from an older save format and has no Pupeye ownership proof. No progress was imported. Use Puppy Clicker Support migration to restore it safely.",
-                failure = PupEyeTransferFailure.MISSING_AUTH_PROOF
+                errorCode = PupEyeErrorCode.AUTH_PROOF_MISSING
             )
 
         return runCatching {
@@ -250,7 +242,7 @@ internal object PupEyeAuthority {
                     } else {
                         "The backup decrypted successfully, but its signed game data no longer matches the original export. The file may have been edited or altered after export. No progress was imported."
                     },
-                    failure = PupEyeTransferFailure.SIGNATURE_INVALID
+                    errorCode = PupEyeErrorCode.SIGNATURE_INVALID
                 )
             }
 
@@ -279,7 +271,7 @@ internal object PupEyeAuthority {
                     migrationRequired = true,
                     generation = generation,
                     message = "This save is authentic, but it was signed by a different Puppy Clicker installation. No progress was imported. Use Puppy Clicker Support to authorize a device transfer.",
-                    failure = PupEyeTransferFailure.DEVICE_TRANSFER_REQUIRED
+                    errorCode = PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED
                 )
             }
 
@@ -294,7 +286,7 @@ internal object PupEyeAuthority {
                     accepted = false,
                     generation = generation,
                     message = "This backup is authentic, but it is older than the protected save already registered on this installation (backup generation $generation, current generation $localGeneration). Import was blocked to prevent a rollback. Contact Support if you intentionally need older-backup recovery.",
-                    failure = PupEyeTransferFailure.ROLLBACK_BLOCKED
+                    errorCode = PupEyeErrorCode.ROLLBACK_BLOCKED
                 )
             }
 
@@ -312,7 +304,7 @@ internal object PupEyeAuthority {
             PupEyeTransferVerification(
                 accepted = false,
                 message = "The backup decrypted, but its Pupeye ownership proof is incomplete, damaged, or unsupported. No progress was imported. Re-export from the original installation or contact Puppy Clicker Support.",
-                failure = PupEyeTransferFailure.OWNERSHIP_PROOF_INVALID
+                errorCode = PupEyeErrorCode.AUTH_PROOF_INVALID
             )
         }
     }
