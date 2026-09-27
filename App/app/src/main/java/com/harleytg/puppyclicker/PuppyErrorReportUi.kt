@@ -112,8 +112,10 @@ internal fun PuppyErrorReportDialog(
                                 status = when (result.error) {
                                     "description_too_short" -> "Add a little more detail about what happened."
                                     "rate_limited" -> "Please wait a few seconds before sending another error report."
-                                    "discord_destination_unavailable" -> "Error reporting is not configured in this build."
-                                    else -> "Could not send the report. Try again."
+                                    "discord_destination_unavailable" ->
+                                        "PUPPY-NET-702 · Error reporting is not configured in this build."
+                                    else ->
+                                        "PUPPY-NET-702 · Could not send the report. Try again."
                                 }
                             }
                         }
