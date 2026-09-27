@@ -2021,6 +2021,13 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _lastCasinoTicketReward.value = null
         _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardLedger()
         _lastCasinoPuppyReward.value = null
+
+        PuppyNotificationHistory.clearAll(app)
+        app.getSharedPreferences(SeasonalPuppyStore.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove("seen_cycles")
+            .commit()
+
         recentTapTimes.clear()
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
@@ -2039,6 +2046,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         // The fresh state becomes the new authenticated baseline for this installation.
         PupEyeSaveGuard.seal(app, prefs)
+        ExternalGameSave.write(app, prefs)
         PupEyeAuthority.recordEvent(
             app,
             "GAME_PROGRESS_RESET",
