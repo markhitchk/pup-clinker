@@ -599,6 +599,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var popupError by remember { mutableStateOf<PuppyError?>(null) }
+    var errorToReport by remember { mutableStateOf<PuppyError?>(null) }
     var popupSuccess by rememberSaveable { mutableStateOf(false) }
     var reloadAfterPopup by rememberSaveable { mutableStateOf(false) }
 
@@ -780,7 +781,31 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 Button(onClick = ::closePopup) {
                     Text(if (reloadAfterPopup) "Reload Puppy Clicker" else "OK")
                 }
+            },
+            dismissButton = {
+                val error = popupError
+                if (!popupSuccess && error != null) {
+                    TextButton(
+                        onClick = {
+                            errorToReport = error
+                            popupTitle = null
+                            popupMessage = null
+                            popupError = null
+                            popupSuccess = false
+                            reloadAfterPopup = false
+                        }
+                    ) {
+                        Text("Report Error")
+                    }
+                }
             }
+        )
+    }
+
+    errorToReport?.let { error ->
+        PuppyErrorReportDialog(
+            error = error,
+            onDismiss = { errorToReport = null }
         )
     }
 }
