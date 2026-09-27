@@ -24,7 +24,8 @@ class StreamedImageFallbackContractTest {
 
         assertTrue(fallback.contains("R.drawable.fallback"))
         assertTrue(fallback.contains("streamedFallbackBackgroundColor(assetKey)"))
-        assertTrue(fallback.contains("drawRect(background)"))
+        assertTrue(fallback.contains("canvas.drawColor(background.toArgb())"))
+        assertTrue(fallback.contains("BitmapPainter(composed.asImageBitmap())"))
         assertTrue(File("src/main/res/drawable-nodpi/fallback.png").isFile)
 
         // Streamed image failures must stay in the shared PNG fallback path.
