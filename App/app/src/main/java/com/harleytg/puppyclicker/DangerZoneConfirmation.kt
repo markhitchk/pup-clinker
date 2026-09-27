@@ -73,7 +73,7 @@ enum class DangerZoneAction(
     RESET_PROGRESS(
         key = "progress",
         title = "Reset game progress?",
-        description = "This resets the current run without awarding prestige points. Permanent prestige skills and existing special puppy unlocks remain.",
+        description = "This clears gameplay progression back to a fresh save: currencies, upgrades, XP, achievements, streaks, bonds, Casino state, local reward unlocks and prestige progress are removed. Your account identity, app settings and verified account-tied puppy entitlements remain.",
         buttonLabel = "Hold to Reset Progress"
     ),
     ERASE_ALL_DATA(
