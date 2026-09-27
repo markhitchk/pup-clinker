@@ -109,7 +109,7 @@ internal fun StreamedPupEyeBranding(
             )
         } else {
             Image(
-                painter = streamedImageFallbackPainter(),
+                painter = streamedImageFallbackPainter("pupeye_branding"),
                 contentDescription = "$contentDescription image unavailable",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
