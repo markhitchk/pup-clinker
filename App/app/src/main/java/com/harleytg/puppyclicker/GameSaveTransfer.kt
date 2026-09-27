@@ -54,7 +54,7 @@ internal object GameSaveTransfer {
 
     fun export(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
         if (password.length < 8) {
-            throw PuppyErrorHandler.app(AppErrorCode.PASSWORD_TOO_SHORT)
+            throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.PASSWORD_TOO_SHORT)
         }
         val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         if (!PupEyeSaveGuard.verifyAndRecover(context, mainPrefs)) {
@@ -67,8 +67,8 @@ internal object GameSaveTransfer {
         val casinoValidation =
             PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
         if (!casinoValidation.valid) {
-            throw PuppyErrorHandler.app(
-                AppErrorCode.CASINO_STATE_INVALID,
+            throw PuppyErrorHandler.puppyClicker(
+                PuppyClickerErrorCode.CASINO_STATE_INVALID,
                 message = "Casino save validation failed: " +
                     (casinoValidation.message ?: "invalid Casino data")
             )
@@ -100,16 +100,16 @@ internal object GameSaveTransfer {
         val output = try {
             context.contentResolver.openOutputStream(uri, "wt")
         } catch (error: Exception) {
-            throw PuppyErrorHandler.app(
-                AppErrorCode.FILE_WRITE_FAILED,
+            throw PuppyErrorHandler.puppyClicker(
+                PuppyClickerErrorCode.FILE_WRITE_FAILED,
                 cause = error
             )
-        } ?: throw PuppyErrorHandler.app(AppErrorCode.FILE_WRITE_FAILED)
+        } ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.FILE_WRITE_FAILED)
         try {
             output.use { it.write(encrypted) }
         } catch (error: Exception) {
-            throw PuppyErrorHandler.app(
-                AppErrorCode.FILE_WRITE_FAILED,
+            throw PuppyErrorHandler.puppyClicker(
+                PuppyClickerErrorCode.FILE_WRITE_FAILED,
                 cause = error
             )
         }
@@ -125,7 +125,7 @@ internal object GameSaveTransfer {
             context = context,
             operation = "EXPORT",
             error = error,
-            fallback = AppErrorCode.UNEXPECTED
+            fallback = PuppyClickerErrorCode.UNEXPECTED
         )
     }
 
@@ -133,7 +133,7 @@ internal object GameSaveTransfer {
         val currentMainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         val currentCasino = PuppyCasinoPersistence.inspectActiveRound(currentMainPrefs)
         if (currentCasino.round != null) {
-            throw PuppyErrorHandler.app(AppErrorCode.ACTIVE_CASINO_ROUND)
+            throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.ACTIVE_CASINO_ROUND)
         }
         // A malformed current round is intentionally allowed through this gate:
         // importing a known-good backup is the supported non-destructive repair path.
@@ -151,31 +151,31 @@ internal object GameSaveTransfer {
             throw PuppyErrorHandler.pupEye(PupEyeErrorCode.AUTH_PROOF_MISSING)
         } else {
             if (password.length < 8) {
-                throw PuppyErrorHandler.app(AppErrorCode.PASSWORD_REQUIRED)
+                throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.PASSWORD_REQUIRED)
             }
             val plain = try {
                 PuppySaveCrypto.decryptTransfer(bytes, password.toCharArray())
             } catch (error: Exception) {
                 PupEyeSaveGuard.recordTamper(context, "Encrypted import failed authentication")
-                throw PuppyErrorHandler.app(
-                    AppErrorCode.DECRYPT_FAILED,
+                throw PuppyErrorHandler.puppyClicker(
+                    PuppyClickerErrorCode.DECRYPT_FAILED,
                     cause = error
                 )
             }
             val payload = try {
                 JSONObject(plain.toString(Charsets.UTF_8))
             } catch (error: Exception) {
-                throw PuppyErrorHandler.app(
-                    AppErrorCode.INVALID_SAVE_PAYLOAD,
+                throw PuppyErrorHandler.puppyClicker(
+                    PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD,
                     cause = error
                 )
             }
             if (payload.optString("format") != PAYLOAD_FORMAT) {
-                throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+                throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
             }
             if (payload.optInt("version") != PAYLOAD_VERSION) {
-                throw PuppyErrorHandler.app(
-                    AppErrorCode.UNSUPPORTED_SAVE_VERSION,
+                throw PuppyErrorHandler.puppyClicker(
+                    PuppyClickerErrorCode.UNSUPPORTED_SAVE_VERSION,
                     message = "This backup uses an unsupported save payload version."
                 )
             }
@@ -198,12 +198,12 @@ internal object GameSaveTransfer {
             )
 
             val identity = payload.optJSONObject("identity")
-                ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+                ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
             validateImportedIdentity(context, identity)
             restoreStores(
                 context = context,
                 stores = payload.optJSONObject("stores")
-                    ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD),
+                    ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD),
                 disallowedCasinoRoundIds = consumedCasinoRoundIds
             )
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
@@ -234,7 +234,7 @@ internal object GameSaveTransfer {
             context = context,
             operation = "IMPORT",
             error = error,
-            fallback = AppErrorCode.IMPORT_UNKNOWN
+            fallback = PuppyClickerErrorCode.IMPORT_UNKNOWN
         )
     }
 
@@ -285,7 +285,7 @@ internal object GameSaveTransfer {
         val importedUsername = PuppyPlayerIdentity.normalizeUsername(identity.optString("username"))
         val importedDevice = identity.optString("deviceModel").trim().lowercase()
         if (importedUsername.isBlank() || importedDevice.isBlank()) {
-            throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+            throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
         }
 
         val importedPlayerId = identity.optString("playerId")
@@ -312,14 +312,14 @@ internal object GameSaveTransfer {
         disallowedCasinoRoundIds: Set<String> = emptySet()
     ) {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
-            ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+            ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
         val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(
             store = mainStore,
             disallowedActiveRoundIds = disallowedCasinoRoundIds
         )
         if (!casinoValidation.valid) {
-            throw PuppyErrorHandler.app(
-                AppErrorCode.CASINO_STATE_INVALID,
+            throw PuppyErrorHandler.puppyClicker(
+                PuppyClickerErrorCode.CASINO_STATE_INVALID,
                 message = "Casino save validation failed: " +
                     (casinoValidation.message ?: "invalid Casino data")
             )
@@ -419,11 +419,11 @@ internal object GameSaveTransfer {
         val input = try {
             context.contentResolver.openInputStream(uri)
         } catch (error: Exception) {
-            throw PuppyErrorHandler.app(
-                AppErrorCode.FILE_OPEN_FAILED,
+            throw PuppyErrorHandler.puppyClicker(
+                PuppyClickerErrorCode.FILE_OPEN_FAILED,
                 cause = error
             )
-        } ?: throw PuppyErrorHandler.app(AppErrorCode.FILE_OPEN_FAILED)
+        } ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.FILE_OPEN_FAILED)
         return input.use { stream ->
             val buffer = ByteArray(MAX_IMPORT_BYTES + 1)
             var total = 0
@@ -433,7 +433,7 @@ internal object GameSaveTransfer {
                 total += read
             }
             if (total > MAX_IMPORT_BYTES) {
-                throw PuppyErrorHandler.app(AppErrorCode.FILE_TOO_LARGE)
+                throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.FILE_TOO_LARGE)
             }
             buffer.copyOf(total)
         }
