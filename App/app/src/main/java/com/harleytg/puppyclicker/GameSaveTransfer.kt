@@ -454,6 +454,7 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var popupError by remember { mutableStateOf<PuppyError?>(null) }
+    var errorToReport by remember { mutableStateOf<PuppyError?>(null) }
     var importedSuccessfully by rememberSaveable { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -553,7 +554,29 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                 ) {
                     Text(if (importedSuccessfully) "Continue Setup" else "OK")
                 }
+            },
+            dismissButton = {
+                val error = popupError
+                if (!importedSuccessfully && error != null) {
+                    TextButton(
+                        onClick = {
+                            errorToReport = error
+                            popupTitle = null
+                            popupMessage = null
+                            popupError = null
+                        }
+                    ) {
+                        Text("Report Error")
+                    }
+                }
             }
+        )
+    }
+
+    errorToReport?.let { error ->
+        PuppyErrorReportDialog(
+            error = error,
+            onDismiss = { errorToReport = null }
         )
     }
 }
