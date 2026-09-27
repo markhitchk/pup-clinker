@@ -22,7 +22,7 @@ internal interface PuppyErrorCode {
 }
 
 /** General Puppy Clicker failures. */
-internal enum class AppErrorCode(
+internal enum class PuppyClickerErrorCode(
     override val code: String,
     override val title: String,
     override val defaultMessage: String,
@@ -250,8 +250,8 @@ internal class PuppyAppException(
 ) : IllegalArgumentException(puppyError.message, cause)
 
 internal object PuppyErrorHandler {
-    fun app(
-        code: AppErrorCode,
+    fun puppyClicker(
+        code: PuppyClickerErrorCode,
         message: String = code.defaultMessage,
         developerDetail: String? = null,
         cause: Throwable? = null
