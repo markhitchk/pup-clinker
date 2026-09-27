@@ -62,7 +62,8 @@ internal data class PuppyPreparedSupportReport(
 internal data class PuppySupportDeliveryResult(
     val success: Boolean,
     val statusCode: Int? = null,
-    val error: String? = null
+    val error: String? = null,
+    val reportId: String? = null
 )
 
 internal object PuppySupportReporting {
@@ -77,6 +78,9 @@ internal object PuppySupportReporting {
     private const val KEY_LAST_PREPARED_REPORT_TIME = "last_prepared_report_time"
     private const val KEY_LAST_CRASH = "last_crash"
     private const val KEY_LAST_CRASH_TIME = "last_crash_time"
+    private const val KEY_LAST_ERROR_REPORT_TIME = "last_error_report_time"
+    private const val ERROR_REPORT_MIN_INTERVAL_MS = 15_000L
+    private const val MAX_ERROR_REPORT_WHAT_HAPPENED = 1_500
     private const val MAX_REPORT_DIAGNOSTIC_ENTRIES = 30
     private const val MAX_REPORT_DIAGNOSTIC_MESSAGE_CHARS = 300
     private const val USER_REPORT_WEBHOOK_IV_B64 = "zys1g4ENIYNeiKi7"
@@ -87,6 +91,17 @@ internal object PuppySupportReporting {
     private const val USER_REPORT_WEBHOOK_KEY_MASK_B =
         "651e39847c4b34a87742b7629a7d30fbd91eed7b4ff130729e5be323c718fd10"
     private const val USER_REPORT_WEBHOOK_AAD = "puppy-clicker-app-support-v1"
+
+    // Dedicated user-initiated Puppy Clicker / PupEye error-report inbox.
+    // The plaintext Discord webhook is never stored in source or BuildConfig.
+    private const val ERROR_REPORT_WEBHOOK_IV_B64 = "738zAIXl1jOXM85D"
+    private const val ERROR_REPORT_WEBHOOK_CIPHER_B64 =
+        "Xpk2sVGNobq8SitZqTQxr6+j9A4U+SBqpghuZmXwvakyzyKAgpU8CBRMqS4l2gScp+6yWfhrTBfztV5dNeiFwXhXN17t7GwkNBRhpb8VvmbGGC8/Vv3EvkbJPL36DH1KLbIoRpGN6opdg6rSXHtUbgJxzezM+T2s1Qj0mHn85AoMEPlk1GiaPgA="
+    private const val ERROR_REPORT_WEBHOOK_KEY_MASK_A =
+        "f9dc3b3099489aa9593c6680ef83337cea5816dfeba88890c52070467144e8af"
+    private const val ERROR_REPORT_WEBHOOK_KEY_MASK_B =
+        "dcda3c80f01933766b274248aace64ab589766573f894223e5905dae4a3cf3b1"
+    private const val ERROR_REPORT_WEBHOOK_AAD = "puppy-clicker-error-report-v1"
 
     private val initialized = AtomicBoolean(false)
     private val reportRandom = SecureRandom()
@@ -351,6 +366,175 @@ internal object PuppySupportReporting {
         return postUserReportToDiscord(report)
     }
 
+    fun isErrorSubmissionConfigured(): Boolean =
+        decryptErrorReportWebhook() != null
+
+    fun submitErrorReport(
+        context: Context,
+        error: PuppyError,
+        whatHappened: String
+    ): PuppySupportDeliveryResult {
+        val app = context.applicationContext
+        val description = whatHappened.trim().take(MAX_ERROR_REPORT_WHAT_HAPPENED)
+        if (description.length < 10) {
+            return PuppySupportDeliveryResult(
+                success = false,
+                error = "description_too_short"
+            )
+        }
+
+        val prefs = app.getSharedPreferences(REPORT_PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong(KEY_LAST_ERROR_REPORT_TIME, 0L)
+        if (last > 0L && now - last < ERROR_REPORT_MIN_INTERVAL_MS) {
+            return PuppySupportDeliveryResult(
+                success = false,
+                error = "rate_limited"
+            )
+        }
+
+        val reportId = newErrorReportId()
+        val result = postErrorReportToDiscord(
+            context = app,
+            reportId = reportId,
+            error = error,
+            whatHappened = description
+        )
+        if (result.success) {
+            prefs.edit()
+                .putLong(KEY_LAST_ERROR_REPORT_TIME, now)
+                .apply()
+        }
+        return result.copy(reportId = reportId)
+    }
+
+    private fun postErrorReportToDiscord(
+        context: Context,
+        reportId: String,
+        error: PuppyError,
+        whatHappened: String
+    ): PuppySupportDeliveryResult {
+        val webhook = decryptErrorReportWebhook()
+            ?: return PuppySupportDeliveryResult(
+                success = false,
+                error = "discord_destination_unavailable"
+            )
+
+        val actor = runCatching { PupEyeAuthority.actorLabel(context) }
+            .getOrDefault("Unknown")
+        val supportCode = runCatching { PupEyeAuthority.supportInstallationCode(context) }
+            .getOrDefault("Unavailable")
+        val source = when (error.domain) {
+            PuppyErrorDomain.PUPPY_CLICKER -> "Puppy Clicker"
+            PuppyErrorDomain.PUPEYE -> "PupEye"
+        }
+
+        val fields = JSONArray()
+            .put(
+                JSONObject()
+                    .put("name", "Error Code")
+                    .put("value", error.code)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Source")
+                    .put("value", source)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Severity")
+                    .put("value", error.severity.name)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Report ID")
+                    .put("value", reportId)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Detected Identity")
+                    .put("value", actor.take(128))
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Support Installation Code")
+                    .put("value", supportCode.take(128))
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "App Version")
+                    .put("value", BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")")
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Android")
+                    .put("value", "SDK " + Build.VERSION.SDK_INT)
+                    .put("inline", true)
+            )
+            .put(
+                JSONObject()
+                    .put("name", "Device")
+                    .put("value", PuppyPlayerIdentity.deviceModel().take(128))
+                    .put("inline", true)
+            )
+
+        val embed = JSONObject()
+            .put(
+                "title",
+                if (error.domain == PuppyErrorDomain.PUPEYE) {
+                    "🛡️ PupEye Error Report"
+                } else {
+                    "🐶 Puppy Clicker Error Report"
+                }
+            )
+            .put(
+                "description",
+                buildString {
+                    appendLine("**What happened**")
+                    appendLine(whatHappened)
+                    appendLine()
+                    appendLine("**Error shown to user**")
+                    appendLine(error.message.take(1_000))
+                    appendLine()
+                    appendLine("**Recovery guidance**")
+                    append(error.recovery.take(1_000))
+                }.take(4_096)
+            )
+            .put("fields", fields)
+            .put(
+                "footer",
+                JSONObject().put(
+                    "text",
+                    "User-submitted error report · Encrypted Discord destination"
+                )
+            )
+
+        val payload = JSONObject()
+            .put("username", "Puppy Clicker Error Reports")
+            .put(
+                "avatar_url",
+                "https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets/logos/puppy_clicker.png"
+            )
+            .put(
+                "allowed_mentions",
+                JSONObject().put("parse", JSONArray())
+            )
+            .put("embeds", JSONArray().put(embed))
+
+        return postDiscordPayload(
+            webhook = webhook,
+            payload = payload,
+            failurePrefix = "error_report"
+        )
+    }
+
     private fun postUserReportToDiscord(
         report: PuppyPreparedSupportReport
     ): PuppySupportDeliveryResult {
@@ -411,6 +595,63 @@ internal object PuppySupportReporting {
             )
             .put("embeds", JSONArray().put(embed))
 
+        return postDiscordPayload(
+            webhook = webhook,
+            payload = discordPayload,
+            failurePrefix = "discord"
+        )
+    }
+
+    private fun decryptUserReportWebhook(): String? =
+        decryptWebhook(
+            ivB64 = USER_REPORT_WEBHOOK_IV_B64,
+            cipherB64 = USER_REPORT_WEBHOOK_CIPHER_B64,
+            maskAHex = USER_REPORT_WEBHOOK_KEY_MASK_A,
+            maskBHex = USER_REPORT_WEBHOOK_KEY_MASK_B,
+            aad = USER_REPORT_WEBHOOK_AAD
+        )
+
+    private fun decryptErrorReportWebhook(): String? =
+        decryptWebhook(
+            ivB64 = ERROR_REPORT_WEBHOOK_IV_B64,
+            cipherB64 = ERROR_REPORT_WEBHOOK_CIPHER_B64,
+            maskAHex = ERROR_REPORT_WEBHOOK_KEY_MASK_A,
+            maskBHex = ERROR_REPORT_WEBHOOK_KEY_MASK_B,
+            aad = ERROR_REPORT_WEBHOOK_AAD
+        )
+
+    private fun decryptWebhook(
+        ivB64: String,
+        cipherB64: String,
+        maskAHex: String,
+        maskBHex: String,
+        aad: String
+    ): String? = runCatching {
+        val maskA = hexToBytes(maskAHex)
+        val maskB = hexToBytes(maskBHex)
+        require(maskA.size == 32 && maskB.size == 32)
+        val key = ByteArray(32) { index ->
+            (maskA[index].toInt() xor maskB[index].toInt()).toByte()
+        }
+        val iv = Base64.getDecoder().decode(ivB64)
+        val encrypted = Base64.getDecoder().decode(cipherB64)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(
+            Cipher.DECRYPT_MODE,
+            SecretKeySpec(key, "AES"),
+            GCMParameterSpec(128, iv)
+        )
+        cipher.updateAAD(aad.toByteArray(Charsets.UTF_8))
+        val plaintext = cipher.doFinal(encrypted).toString(Charsets.UTF_8)
+        require(plaintext.startsWith("https://discord.com/"))
+        plaintext
+    }.getOrNull()
+
+    private fun postDiscordPayload(
+        webhook: String,
+        payload: JSONObject,
+        failurePrefix: String
+    ): PuppySupportDeliveryResult {
         val connection = (URL(webhook).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = CONNECT_TIMEOUT_MS
@@ -423,7 +664,7 @@ internal object PuppySupportReporting {
 
         return try {
             connection.outputStream.use { output ->
-                output.write(discordPayload.toString().toByteArray(Charsets.UTF_8))
+                output.write(payload.toString().toByteArray(Charsets.UTF_8))
             }
             val code = connection.responseCode
             if (code in 200..299) {
@@ -432,44 +673,23 @@ internal object PuppySupportReporting {
                     statusCode = code
                 )
             } else {
-                PuppyDebugLog.w(TAG, "Discord support delivery returned HTTP $code")
+                PuppyDebugLog.w(TAG, "Discord delivery returned HTTP $code")
                 PuppySupportDeliveryResult(
                     success = false,
                     statusCode = code,
-                    error = "discord_delivery_rejected"
+                    error = failurePrefix + "_delivery_rejected"
                 )
             }
         } catch (error: Exception) {
-            PuppyDebugLog.w(TAG, "Discord support delivery failed", error)
+            PuppyDebugLog.w(TAG, "Discord delivery failed", error)
             PuppySupportDeliveryResult(
                 success = false,
-                error = "discord_delivery_unavailable"
+                error = failurePrefix + "_delivery_unavailable"
             )
         } finally {
             connection.disconnect()
         }
     }
-
-    private fun decryptUserReportWebhook(): String? = runCatching {
-        val maskA = hexToBytes(USER_REPORT_WEBHOOK_KEY_MASK_A)
-        val maskB = hexToBytes(USER_REPORT_WEBHOOK_KEY_MASK_B)
-        require(maskA.size == 32 && maskB.size == 32)
-        val key = ByteArray(32) { index ->
-            (maskA[index].toInt() xor maskB[index].toInt()).toByte()
-        }
-        val iv = Base64.getDecoder().decode(USER_REPORT_WEBHOOK_IV_B64)
-        val encrypted = Base64.getDecoder().decode(USER_REPORT_WEBHOOK_CIPHER_B64)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(
-            Cipher.DECRYPT_MODE,
-            SecretKeySpec(key, "AES"),
-            GCMParameterSpec(128, iv)
-        )
-        cipher.updateAAD(USER_REPORT_WEBHOOK_AAD.toByteArray(Charsets.UTF_8))
-        val plaintext = cipher.doFinal(encrypted).toString(Charsets.UTF_8)
-        require(plaintext.startsWith("https://discord.com/"))
-        plaintext
-    }.getOrNull()
 
     private fun hexToBytes(value: String): ByteArray {
         require(value.length % 2 == 0)
@@ -487,6 +707,17 @@ internal object PuppySupportReporting {
             .uppercase(Locale.US)
             .padStart(4, '0')
         return "PC-RPT-${date}-${suffix}"
+    }
+
+    private fun newErrorReportId(): String {
+        val date = DateTimeFormatter.ofPattern("yyyyMMdd", Locale.US)
+            .withZone(ZoneOffset.UTC)
+            .format(Instant.now())
+        val suffix = reportRandom.nextInt(0x10000)
+            .toString(16)
+            .uppercase(Locale.US)
+            .padStart(4, '0')
+        return "PC-ERR-${date}-${suffix}"
     }
 
     private fun basePayload(kind: String): JSONObject =
