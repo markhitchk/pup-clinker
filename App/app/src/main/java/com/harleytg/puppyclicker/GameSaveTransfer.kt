@@ -284,22 +284,24 @@ internal object GameSaveTransfer {
     private fun validateImportedIdentity(context: Context, identity: JSONObject) {
         val importedUsername = PuppyPlayerIdentity.normalizeUsername(identity.optString("username"))
         val importedDevice = identity.optString("deviceModel").trim().lowercase()
-        require(importedUsername.isNotBlank()) { "Encrypted save has no valid username" }
-        require(importedDevice.isNotBlank()) { "Encrypted save has no source device model" }
+        if (importedUsername.isBlank() || importedDevice.isBlank()) {
+            throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+        }
 
         val importedPlayerId = identity.optString("playerId")
         val importedFriendCode = identity.optString("friendCode")
-        require(importedPlayerId == PuppyPlayerIdentity.playerId(context)) {
-            "This save is registered to a different Puppy Clicker Player ID. Contact Support for a device transfer."
-        }
-        require(importedFriendCode == PuppyPlayerIdentity.friendCode(context)) {
-            "This save is registered to a different Puppy Clicker Friend Code. Contact Support for a device transfer."
+        if (
+            importedPlayerId != PuppyPlayerIdentity.playerId(context) ||
+            importedFriendCode != PuppyPlayerIdentity.friendCode(context)
+        ) {
+            throw PuppyErrorHandler.pupEye(PupEyeErrorCode.IDENTITY_MISMATCH)
         }
 
         val currentUsername = PuppyPlayerIdentity.username(context)
         if (currentUsername != "localplayer" && currentUsername != importedUsername) {
-            throw IllegalArgumentException(
-                "This save belongs to '$importedUsername', not '$currentUsername'."
+            throw PuppyErrorHandler.pupEye(
+                PupEyeErrorCode.IDENTITY_MISMATCH,
+                message = "This save belongs to another Puppy Clicker username."
             )
         }
     }
@@ -310,14 +312,17 @@ internal object GameSaveTransfer {
         disallowedCasinoRoundIds: Set<String> = emptySet()
     ) {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
-            ?: error("Save does not contain the main game store")
+            ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
         val casinoValidation = PuppyCasinoSaveValidator.validateTransferMainStore(
             store = mainStore,
             disallowedActiveRoundIds = disallowedCasinoRoundIds
         )
-        require(casinoValidation.valid) {
-            "Casino save validation failed: " +
-                (casinoValidation.message ?: "invalid Casino data")
+        if (!casinoValidation.valid) {
+            throw PuppyErrorHandler.app(
+                AppErrorCode.CASINO_STATE_INVALID,
+                message = "Casino save validation failed: " +
+                    (casinoValidation.message ?: "invalid Casino data")
+            )
         }
         SecurePreferenceCodec.restore(
             context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE),
@@ -411,8 +416,14 @@ internal object GameSaveTransfer {
             )
 
     private fun readBounded(context: Context, uri: Uri): ByteArray {
-        val input = context.contentResolver.openInputStream(uri)
-            ?: error("Unable to open the selected save file")
+        val input = try {
+            context.contentResolver.openInputStream(uri)
+        } catch (error: Exception) {
+            throw PuppyErrorHandler.app(
+                AppErrorCode.FILE_OPEN_FAILED,
+                cause = error
+            )
+        } ?: throw PuppyErrorHandler.app(AppErrorCode.FILE_OPEN_FAILED)
         return input.use { stream ->
             val buffer = ByteArray(MAX_IMPORT_BYTES + 1)
             var total = 0
@@ -421,7 +432,9 @@ internal object GameSaveTransfer {
                 if (read < 0) break
                 total += read
             }
-            if (total > MAX_IMPORT_BYTES) error("Save file is larger than 4 MB")
+            if (total > MAX_IMPORT_BYTES) {
+                throw PuppyErrorHandler.app(AppErrorCode.FILE_TOO_LARGE)
+            }
             buffer.copyOf(total)
         }
     }
