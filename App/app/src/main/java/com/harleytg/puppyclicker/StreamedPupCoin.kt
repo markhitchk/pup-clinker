@@ -68,7 +68,7 @@ internal fun streamedPupCoinPainter(): Painter? {
     return if (loaded != null) {
         remember(loaded) { BitmapPainter(loaded.asImageBitmap()) }
     } else {
-        streamedImageFallbackPainter()
+        streamedImageFallbackPainter("pup_coin")
     }
 }
 
