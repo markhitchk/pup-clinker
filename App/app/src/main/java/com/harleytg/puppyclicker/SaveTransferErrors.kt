@@ -8,7 +8,7 @@ internal enum class PuppyErrorSeverity {
 }
 
 internal enum class PuppyErrorDomain {
-    APP,
+    PUPPY_CLICKER,
     PUPEYE
 }
 
@@ -30,111 +30,111 @@ internal enum class AppErrorCode(
     override val severity: PuppyErrorSeverity = PuppyErrorSeverity.ERROR
 ) : PuppyErrorCode {
     PASSWORD_REQUIRED(
-        "APP-SAVE-101",
+        "PUPPY-SAVE-101",
         "Backup password required",
         "Enter the backup password used when this save was exported.",
         "Enter the exact backup password and try again.",
         PuppyErrorSeverity.WARNING
     ),
     PASSWORD_TOO_SHORT(
-        "APP-SAVE-102",
+        "PUPPY-SAVE-102",
         "Backup password too short",
         "Backup passwords must contain at least 8 characters.",
         "Use a password with at least 8 characters."
     ),
     FILE_OPEN_FAILED(
-        "APP-FILE-201",
+        "PUPPY-FILE-201",
         "File could not be opened",
         "Puppy Clicker could not read the selected file.",
         "Choose the file again. If it is in cloud storage, download it locally first."
     ),
     FILE_TOO_LARGE(
-        "APP-FILE-202",
+        "PUPPY-FILE-202",
         "File is too large",
         "The selected save is larger than the supported 4 MB limit.",
         "Choose an original Puppy Clicker .pupsave file smaller than 4 MB."
     ),
     INVALID_SAVE_FILE(
-        "APP-SAVE-203",
+        "PUPPY-SAVE-203",
         "Invalid save file",
         "The selected file is not a recognized Puppy Clicker save.",
         "Choose a valid .pupsave exported by Puppy Clicker."
     ),
     DECRYPT_FAILED(
-        "APP-SAVE-204",
+        "PUPPY-SAVE-204",
         "Backup could not be decrypted",
         "The backup password is incorrect, or the encrypted save file is damaged.",
         "Re-enter the exact export password. If it still fails, try another untouched backup."
     ),
     INVALID_SAVE_PAYLOAD(
-        "APP-SAVE-205",
+        "PUPPY-SAVE-205",
         "Save data is incomplete",
         "The decrypted backup is missing required Puppy Clicker data.",
         "Use an untouched backup exported by the current Puppy Clicker save system."
     ),
     UNSUPPORTED_SAVE_VERSION(
-        "APP-SAVE-206",
+        "PUPPY-SAVE-206",
         "Save version is not supported",
         "This Puppy Clicker build cannot import the selected save version.",
         "Update Puppy Clicker or use Support migration for this backup."
     ),
     ACTIVE_CASINO_ROUND(
-        "APP-CASINO-501",
+        "PUPPY-CASINO-501",
         "Casino round is still active",
         "Puppy Clicker cannot replace the save while a Casino round is in progress.",
         "Finish or recover the active Casino round, then try again.",
         PuppyErrorSeverity.WARNING
     ),
     CASINO_STATE_INVALID(
-        "APP-CASINO-502",
+        "PUPPY-CASINO-502",
         "Casino state is inconsistent",
         "Casino transaction or reward data failed consistency validation.",
         "Recover the Casino state or export a fresh known-good backup before retrying."
     ),
     FILE_WRITE_FAILED(
-        "APP-FILE-603",
+        "PUPPY-FILE-603",
         "File could not be written",
         "Puppy Clicker could not write the requested file.",
         "Choose another writable location and try again."
     ),
     NETWORK_UNAVAILABLE(
-        "APP-NET-701",
+        "PUPPY-NET-701",
         "Network unavailable",
         "Puppy Clicker could not reach the required service.",
         "Check your connection and try again."
     ),
     REQUEST_FAILED(
-        "APP-NET-702",
+        "PUPPY-NET-702",
         "Request failed",
         "The requested online operation did not complete.",
         "Try again. If it keeps failing, include this error code when contacting Support."
     ),
     AUTH_FAILED(
-        "APP-AUTH-801",
+        "PUPPY-AUTH-801",
         "Authentication failed",
         "Puppy Clicker could not verify the requested account session.",
         "Reconnect the account and try again."
     ),
     INVALID_APP_STATE(
-        "APP-STATE-901",
+        "PUPPY-STATE-901",
         "App state is not ready",
         "Puppy Clicker cannot complete this action from the current state.",
         "Return to the previous screen and try the action again."
     ),
     IMPORT_UNKNOWN(
-        "APP-SAVE-998",
+        "PUPPY-SAVE-998",
         "Import failed",
         "Puppy Clicker encountered an unexpected error while importing this backup.",
         "No save data was imported. Try another known-good backup or contact Support."
     ),
     UNEXPECTED(
-        "APP-999",
+        "PUPPY-999",
         "Unexpected Puppy Clicker error",
         "Puppy Clicker encountered an unexpected error.",
         "Try the action again. If it repeats, include this error code when contacting Support."
     );
 
-    override val domain: PuppyErrorDomain = PuppyErrorDomain.APP
+    override val domain: PuppyErrorDomain = PuppyErrorDomain.PUPPY_CLICKER
 }
 
 /** PupEye security / integrity failures. */
