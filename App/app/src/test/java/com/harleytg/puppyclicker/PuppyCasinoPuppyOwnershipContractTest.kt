@@ -29,14 +29,16 @@ class PuppyCasinoPuppyOwnershipContractTest {
     }
 
     @Test
-    fun normalResetAndPrestigePreserveExistingPuppyOwnership() {
+    fun progressResetKeepsOnlyAccountEntitlementsWhilePrestigeKeepsOwnership() {
         val viewModel = source("PuppyClickerV6ViewModel.kt")
 
-        assertTrue(
-            viewModel.contains(
-                "unlockedPuppies = keep.unlockedPuppies"
-            )
-        )
+        val resetStart = viewModel.indexOf("fun resetRunWithoutPrestige()")
+        val resetEnd = viewModel.indexOf("private fun consumeClaimedAfkReward()", resetStart)
+        val reset = viewModel.substring(resetStart, resetEnd)
+        assertTrue(reset.contains("accountEntitledPuppies"))
+        assertTrue(reset.contains("DiscordSignupAuth.unlockPuppyIdsFor(access.role)"))
+        assertTrue(reset.contains("exchangeOwnedPuppies"))
+        assertFalse(reset.contains("unlockedPuppies = keep.unlockedPuppies"))
 
         val prestigeStart = viewModel.indexOf("fun prestige()")
         val prestigeEnd = viewModel.indexOf("fun buyPrestigeSkill", prestigeStart)
