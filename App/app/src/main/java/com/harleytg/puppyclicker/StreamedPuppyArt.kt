@@ -88,10 +88,6 @@ internal fun StreamedPuppyPortrait(
                 modifier = Modifier.size(size * 0.88f),
                 contentScale = ContentScale.Fit
             )
-            PuppyDebugLog.w(
-                "PuppyClickerArt",
-                "Using fallback.png for ${style.id}; dynamic background retained"
-            )
         }
 
         if (!unlocked) {
