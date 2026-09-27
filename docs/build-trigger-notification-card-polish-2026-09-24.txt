@@ -1,0 +1,2 @@
+CI validation for notification card UI polish.
+Base: 258d8f93cf66c7a369c3453a8d913b4b51af820c
