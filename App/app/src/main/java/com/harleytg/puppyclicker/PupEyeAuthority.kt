@@ -170,7 +170,7 @@ internal object PupEyeAuthority {
             ?: return PupEyeTransferVerification(
                 accepted = false,
                 migrationRequired = true,
-                message = "This backup predates Pupeye authenticated ownership. Contact Puppy Clicker Support to migrate it."
+                message = "This backup is from an older save format and has no Pupeye ownership proof. No progress was imported. Use Puppy Clicker Support migration to restore it safely."
             )
 
         return runCatching {
@@ -211,7 +211,7 @@ internal object PupEyeAuthority {
                 recordEvent(context, "SAVE_SIGNATURE_INVALID", "Portable save signature failed verification")
                 return PupEyeTransferVerification(
                     accepted = false,
-                    message = "Pupeye rejected this save because its authenticated signature is invalid."
+                    message = "The backup decrypted successfully, but its signed game data no longer matches the original export. The file may have been edited or altered after export. No progress was imported."
                 )
             }
 
@@ -239,7 +239,7 @@ internal object PupEyeAuthority {
                     accepted = false,
                     migrationRequired = true,
                     generation = generation,
-                    message = "This save belongs to another registered Puppy Clicker installation. Contact Puppy Clicker Support to authorize a device transfer."
+                    message = "This save is authentic, but it was signed by a different Puppy Clicker installation. No progress was imported. Use Puppy Clicker Support to authorize a device transfer."
                 )
             }
 
@@ -253,7 +253,7 @@ internal object PupEyeAuthority {
                 return PupEyeTransferVerification(
                     accepted = false,
                     generation = generation,
-                    message = "Pupeye rejected an older save generation. Contact Support if you need recovery from an older backup."
+                    message = "This backup is authentic, but it is older than the protected save already registered on this installation (backup generation $generation, current generation $localGeneration). Import was blocked to prevent a rollback. Contact Support if you intentionally need older-backup recovery."
                 )
             }
 
@@ -270,7 +270,7 @@ internal object PupEyeAuthority {
             )
             PupEyeTransferVerification(
                 accepted = false,
-                message = "Pupeye rejected this save because its authenticated ownership proof is invalid."
+                message = "The backup decrypted, but its Pupeye ownership proof is incomplete, damaged, or unsupported. No progress was imported. Re-export from the original installation or contact Puppy Clicker Support."
             )
         }
     }
