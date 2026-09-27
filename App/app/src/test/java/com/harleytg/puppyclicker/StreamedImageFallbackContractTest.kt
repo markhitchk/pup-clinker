@@ -1,6 +1,7 @@
 package com.harleytg.puppyclicker
 
 import java.io.File
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,15 +11,25 @@ class StreamedImageFallbackContractTest {
 
     @Test
     fun everyStreamedImagePipelineUsesSharedFallbackPng() {
-        assertTrue(source("StreamedPuppyArt.kt").contains("streamedImageFallbackPainter()"))
-        assertTrue(source("StreamedRepoLogos.kt").contains("streamedImageFallbackPainter()"))
-        assertTrue(source("StreamedPupEyeBranding.kt").contains("streamedImageFallbackPainter()"))
-        assertTrue(source("StreamedPupCoin.kt").contains("streamedImageFallbackPainter()"))
+        val puppy = source("StreamedPuppyArt.kt")
+        val logos = source("StreamedRepoLogos.kt")
+        val pupEye = source("StreamedPupEyeBranding.kt")
+        val coin = source("StreamedPupCoin.kt")
+        val fallback = source("StreamedImageFallback.kt")
 
-        assertTrue(source("StreamedImageFallback.kt").contains("R.drawable.fallback"))
+        assertTrue(puppy.contains("streamedImageFallbackPainter(style.id, background)"))
+        assertTrue(logos.contains("streamedImageFallbackPainter(\"repo_logo:\" + asset.name.lowercase())"))
+        assertTrue(pupEye.contains("streamedImageFallbackPainter(\"pupeye_branding\")"))
+        assertTrue(coin.contains("streamedImageFallbackPainter(\"pup_coin\")"))
+
+        assertTrue(fallback.contains("R.drawable.fallback"))
+        assertTrue(fallback.contains("streamedFallbackBackgroundColor(assetKey)"))
+        assertTrue(fallback.contains("drawRect(background)"))
         assertTrue(File("src/main/res/drawable-nodpi/fallback.png").isFile)
-        assertTrue(
-            !source("StreamedPuppyArt.kt").contains("ProtectedPuppyPortrait(style.id")
-        )
+
+        // Streamed image failures must stay in the shared PNG fallback path.
+        assertFalse(puppy.contains("ProtectedPuppyPortrait(style.id"))
+        assertFalse(fallback.contains("stream_fallback_light"))
+        assertFalse(fallback.contains("stream_fallback_dark"))
     }
 }
