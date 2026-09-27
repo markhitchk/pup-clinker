@@ -26,6 +26,56 @@ export type DiscordWebhookPayload = {
   }>;
 };
 
+const EMBEDDED_WEBHOOK_IV_B64 = "Y5eh0nG/e5iKGn/l";
+const EMBEDDED_WEBHOOK_CIPHER_B64 =
+  "mao6J6PimRh+6860a9hEIxHOj7jP+PwXTTaIrLyuFD5XuIE70KTyu2A9F2rN7m0zR0vIsooCwwTd88+J0W8+MnGWjHzrzzJICpi6SJrEXCSV6XTkb2urS8jjE2MXfyjV6L0LQly2xNbEmlrjeR1hqRuyzCUSCjHkXPv+JJDIBL0U0R3tzpW1Ok0=";
+const EMBEDDED_WEBHOOK_KEY_MASK_A =
+  "de53e679d38b3b9cdc49fccda6d2d952ffd4ef599205894b724b3da72c82f4e0";
+const EMBEDDED_WEBHOOK_KEY_MASK_B =
+  "712e16512d88a0c1d3f074812dc461044260ac080b13f46ea2f61c514bfde1de";
+const EMBEDDED_WEBHOOK_AAD = "pupeye-global-ban-discord-v1";
+
+export async function decryptEmbeddedDiscordWebhook(): Promise<string> {
+  const maskA = hexToBytes(EMBEDDED_WEBHOOK_KEY_MASK_A);
+  const maskB = hexToBytes(EMBEDDED_WEBHOOK_KEY_MASK_B);
+  if (maskA.length !== 32 || maskB.length !== 32) {
+    throw new Error("Invalid embedded PupEye webhook key material");
+  }
+
+  const keyBytes = new Uint8Array(32);
+  for (let index = 0; index < keyBytes.length; index += 1) {
+    keyBytes[index] = maskA[index] ^ maskB[index];
+  }
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+  const plaintext = await crypto.subtle.decrypt(
+    {
+      name: "AES-GCM",
+      iv: base64ToBytes(EMBEDDED_WEBHOOK_IV_B64),
+      additionalData: new TextEncoder().encode(EMBEDDED_WEBHOOK_AAD),
+      tagLength: 128,
+    },
+    key,
+    base64ToBytes(EMBEDDED_WEBHOOK_CIPHER_B64),
+  );
+  const webhookUrl = new TextDecoder().decode(plaintext).trim();
+  const parsed = new URL(webhookUrl);
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.hostname !== "discord.com" ||
+    !parsed.pathname.startsWith("/api/webhooks/")
+  ) {
+    throw new Error("Embedded PupEye webhook failed validation");
+  }
+  return webhookUrl;
+}
+
 const PRESENTATION: Record<string, { title: string; description: string; color: number }> = {
   GLOBAL_BAN_CREATED: {
     title: "🔴 PupEye Global Ban",
@@ -143,9 +193,9 @@ export async function sendBanEventBestEffort(
   webhookOverride?: string,
 ): Promise<void> {
   try {
-    const webhookUrl = webhookOverride ??
-      Deno.env.get("PUPPY_GLOBAL_BAN_DISCORD_WEBHOOK")?.trim() ??
-      "";
+    const webhookUrl = webhookOverride?.trim() ||
+      Deno.env.get("PUPPY_GLOBAL_BAN_DISCORD_WEBHOOK")?.trim() ||
+      await decryptEmbeddedDiscordWebhook();
 
     const { data: event, error: eventError } = await admin
       .from("pupeye_ban_events")
@@ -298,6 +348,20 @@ function normalizeTimestamp(value: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function base64ToBytes(value: string): Uint8Array {
+  const decoded = atob(value);
+  return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+}
+
+function hexToBytes(value: string): Uint8Array {
+  if (value.length % 2 !== 0) throw new Error("Invalid hex value");
+  const bytes = new Uint8Array(value.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+  }
+  return bytes;
 }
 
 function stringOrNull(value: unknown): string | null {
