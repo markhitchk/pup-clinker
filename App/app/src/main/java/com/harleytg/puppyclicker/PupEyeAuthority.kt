@@ -25,6 +25,11 @@ internal data class PupEyeTransferVerification(
     val message: String? = null
 )
 
+internal enum class PupEyeActorKind(val label: String) {
+    HARLEYTG_DEVELOPER("HarleyTG Developer"),
+    PLAYER("Player")
+}
+
 /**
  * PupEye's device-bound authority.
  *
@@ -49,6 +54,25 @@ internal object PupEyeAuthority {
     @Synchronized
     fun currentGeneration(context: Context): Long =
         loadState(context).optLong("generation", 1L).coerceAtLeast(1L)
+
+    /**
+     * Classifies the current local Puppy Clicker identity for Pupeye UX/auditing.
+     *
+     * This deliberately uses the reserved device-bound HarleyTG Player ID + Friend Code
+     * pair, never the editable username. It is informational only and does not bypass
+     * save authentication, signature checks, rollback protection, or economy integrity.
+     */
+    fun actorKind(context: Context): PupEyeActorKind =
+        if (PuppyPlayerIdentity.isHarleyTgDeveloper(context)) {
+            PupEyeActorKind.HARLEYTG_DEVELOPER
+        } else {
+            PupEyeActorKind.PLAYER
+        }
+
+    fun actorLabel(context: Context): String = actorKind(context).label
+
+    fun isHarleyTgDeveloper(context: Context): Boolean =
+        actorKind(context) == PupEyeActorKind.HARLEYTG_DEVELOPER
 
     @Synchronized
     fun supportInstallationCode(context: Context): String {
@@ -211,7 +235,11 @@ internal object PupEyeAuthority {
                 recordEvent(context, "SAVE_SIGNATURE_INVALID", "Portable save signature failed verification")
                 return PupEyeTransferVerification(
                     accepted = false,
-                    message = "The backup decrypted successfully, but its signed game data no longer matches the original export. The file may have been edited or altered after export. No progress was imported."
+                    message = if (isHarleyTgDeveloper(context)) {
+                        "PupEye recognized this installation as HarleyTG Developer. The backup password was accepted, but the signed game data no longer matches the original export. Developer identity does not bypass save authentication. No progress was imported."
+                    } else {
+                        "The backup decrypted successfully, but its signed game data no longer matches the original export. The file may have been edited or altered after export. No progress was imported."
+                    }
                 )
             }
 
@@ -296,6 +324,7 @@ internal object PupEyeAuthority {
             JSONObject().apply {
                 put("code", sanitizeCode(code))
                 put("detail", detail.take(220))
+                put("actorKind", actorKind(context).name)
                 put("atEpochMs", System.currentTimeMillis())
             }
         )
@@ -318,6 +347,7 @@ internal object PupEyeAuthority {
             JSONObject().apply {
                 put("code", sanitizeCode(code))
                 put("detail", detail.take(220))
+                put("actorKind", actorKind(context).name)
                 put("hard", true)
                 put("atEpochMs", System.currentTimeMillis())
             }
