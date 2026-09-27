@@ -262,7 +262,8 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             onBack = { open(SettingsDestination.HOME) }
         ) {
             PuppyDeveloperOptions(
-                onOpenConsole = { developerConsoleOpen = true }
+                onOpenConsole = { developerConsoleOpen = true },
+                onMaxAccount = { vm.maxDeveloperAccount() }
             )
         }
 
