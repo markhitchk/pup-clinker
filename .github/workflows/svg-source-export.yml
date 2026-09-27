@@ -1,0 +1,34 @@
+name: SVG Source Snapshot
+on:
+  push:
+    branches: [work/full-svg-migration]
+    paths: ['.github/workflows/svg-source-export.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: project
+      - name: Export project source and reference art
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p snapshot
+          cp -a project snapshot/project
+          rm -rf snapshot/project/.git
+          mkdir -p snapshot/original
+          curl --fail --location --silent --show-error --retry 3 'https://raw.githubusercontent.com/HarleyTG-O/Puppy-Clicker/ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1/Images/pup.png' -o snapshot/original/pup.png
+          git -C project rev-parse HEAD > snapshot/commit.txt
+          git -C project ls-tree -r --name-only HEAD > snapshot/tracked-files.txt
+          find snapshot/project -type f -print0 | sort -z | xargs -0 sha256sum > snapshot/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: puppy-svg-source-snapshot
+          path: snapshot/
+          retention-days: 3
+          if-no-files-found: error
