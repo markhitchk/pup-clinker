@@ -391,6 +391,7 @@ internal object GameSaveTransfer {
 internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val pupeyeActorLabel = remember { PupEyeAuthority.actorLabel(context) }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
@@ -469,6 +470,12 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                     if (!importedSuccessfully) {
                         Spacer(Modifier.size(8.dp))
                         Text(
+                            "PupEye detected: $pupeyeActorLabel",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.size(6.dp))
+                        Text(
                             saveImportHelp(popupMessage.orEmpty()),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -498,6 +505,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
+    val pupeyeActorLabel = remember { PupEyeAuthority.actorLabel(context) }
     val supportInstallationCode = remember {
         runCatching { PupEyeAuthority.supportInstallationCode(context) }
             .getOrDefault("Unavailable")
@@ -635,6 +643,11 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 style = MaterialTheme.typography.labelSmall
             )
             Text(
+                "PupEye detected identity: $pupeyeActorLabel",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
                 "PupEye Support Installation Code: $supportInstallationCode",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
@@ -671,6 +684,12 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                     )
                     if (!popupSuccess && dialogTitle == "Import Failed") {
                         Spacer(Modifier.size(8.dp))
+                        Text(
+                            "PupEye detected: $pupeyeActorLabel",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.size(6.dp))
                         Text(
                             saveImportHelp(dialogMessage),
                             style = MaterialTheme.typography.bodyMedium
