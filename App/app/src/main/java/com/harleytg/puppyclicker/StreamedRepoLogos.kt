@@ -76,7 +76,7 @@ internal fun streamedRepoLogoPainter(
     return if (loaded != null) {
         remember(loaded) { BitmapPainter(loaded.asImageBitmap()) }
     } else {
-        streamedImageFallbackPainter()
+        streamedImageFallbackPainter("repo_logo:" + asset.name.lowercase())
     }
 }
 
