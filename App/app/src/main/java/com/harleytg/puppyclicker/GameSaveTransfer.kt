@@ -44,6 +44,33 @@ internal enum class PuppySavePasswordRequirement {
     UNKNOWN
 }
 
+private fun saveImportHelp(message: String): String = when {
+    message.contains("signed game data no longer matches", ignoreCase = true) ->
+        "The password was accepted. This is a signature/integrity failure, not a password error. Use an untouched backup from this installation, or a Developer/Support migration. No save data was imported."
+    message.contains("could not decrypt", ignoreCase = true) ->
+        "Re-enter the exact backup password used when the save was exported. If the password is correct, the encrypted file may be damaged. No save data was imported."
+    message.contains("different Puppy Clicker installation", ignoreCase = true) ->
+        "The backup is authentic, but it is registered to another installation. Use the Support-authorized device-transfer flow and include the PupEye Support Installation Code shown on this page."
+    message.contains("older than the protected save", ignoreCase = true) ||
+        message.contains("rollback", ignoreCase = true) ->
+        "The backup is authentic but older than this installation's protected save history. Use Support recovery only if you intentionally need to restore an older backup."
+    message.contains("ownership proof", ignoreCase = true) ->
+        "The encrypted contents were readable, but PupEye could not validate ownership. Re-export the save from the original installation or use Support migration."
+    message.contains("Casino save validation failed", ignoreCase = true) ->
+        "The backup contains Casino state that failed consistency checks. Finish or recover the current Casino round, then export a fresh backup."
+    message.contains("Finish the current Casino round", ignoreCase = true) ->
+        "Complete or recover the active Casino round before importing. Puppy Clicker has not changed your current save."
+    message.contains("different Puppy Clicker Player ID", ignoreCase = true) ||
+        message.contains("different Puppy Clicker Friend Code", ignoreCase = true) ||
+        message.contains("This save belongs to", ignoreCase = true) ->
+        "This backup belongs to a different Puppy Clicker identity. Use Support-authorized migration instead of importing it directly."
+    message.contains("older save format", ignoreCase = true) ||
+        message.contains("Legacy unauthenticated", ignoreCase = true) ->
+        "This backup predates the current authenticated save format. Use Puppy Clicker Support migration so the save can be converted safely."
+    else ->
+        "No save data was imported. Check that the file is a valid Puppy Clicker backup and review the specific error above before trying again."
+}
+
 /** Password-protected AES-256-GCM save transfer format. */
 internal object GameSaveTransfer {
     private const val PAYLOAD_FORMAT = "puppy-clicker-transfer-payload"
@@ -136,7 +163,9 @@ internal object GameSaveTransfer {
                 PuppySaveCrypto.decryptTransfer(bytes, password.toCharArray())
             } catch (error: Exception) {
                 PupEyeSaveGuard.recordTamper(context, "Encrypted import failed authentication")
-                throw IllegalArgumentException("Wrong password or modified save file")
+                throw IllegalArgumentException(
+                    "Puppy Clicker could not decrypt this backup. The backup password is incorrect, or the encrypted file is damaged."
+                )
             }
             val payload = JSONObject(plain.toString(Charsets.UTF_8))
             require(payload.optString("format") == PAYLOAD_FORMAT) { "Invalid decrypted save payload" }
@@ -434,7 +463,18 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                 }
             },
             title = { Text(popupTitle ?: "Save Import", fontWeight = FontWeight.Black) },
-            text = { Text(popupMessage ?: "") },
+            text = {
+                Column {
+                    Text(popupMessage ?: "")
+                    if (!importedSuccessfully) {
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            saveImportHelp(popupMessage.orEmpty()),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -632,7 +672,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                     if (!popupSuccess && dialogTitle == "Import Failed") {
                         Spacer(Modifier.size(8.dp))
                         Text(
-                            "Check the backup password and make sure the selected file is an unmodified Puppy Clicker save.",
+                            saveImportHelp(dialogMessage),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
