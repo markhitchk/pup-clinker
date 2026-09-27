@@ -1,0 +1,2 @@
+CI validation after generated entitlement assertion update.
+Base: 9d942a60ce3648430cb86448a0396f3e1967dc3a
