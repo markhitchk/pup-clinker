@@ -43,18 +43,25 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
     }
 
     @Test
-    fun nonPrestigeResetPreservesOnePointZeroProgression() {
+    fun nonPrestigeResetClearsProgressionAndPreservesAccountEntitlements() {
         val vm = generated("PuppyClickerV6ViewModel.kt")
         val start = vm.indexOf("fun resetRunWithoutPrestige()")
         val end = vm.indexOf("private fun consumeClaimedAfkReward()", start)
         assertTrue(start >= 0 && end > start)
         val reset = vm.substring(start, end)
-        assertTrue(reset.contains("bondByPuppyId = keep.bondByPuppyId"))
-        assertTrue(reset.contains("playerXp = keep.playerXp"))
-        assertTrue(reset.contains("achievementRewardedIds = keep.achievementRewardedIds"))
-        assertTrue(reset.contains("xpSettlementIds = keep.xpSettlementIds"))
-        assertTrue(reset.contains("releaseClaimIds = keep.releaseClaimIds"))
-        assertTrue(reset.contains("profileBadgeIds = keep.profileBadgeIds"))
+
+        assertTrue(reset.contains("prefs.edit().clear().commit()"))
+        assertTrue(reset.contains("DiscordSignupAuth.unlockPuppyIdsFor(access.role)"))
+        assertTrue(reset.contains("exchangeOwnedPuppies"))
+        assertTrue(reset.contains("accountEntitledPuppies"))
+        assertTrue(reset.contains("PupEyeSaveGuard.seal(app, prefs)"))
+
+        assertFalse(reset.contains("playerXp = keep.playerXp"))
+        assertFalse(reset.contains("achievementRewardedIds = keep.achievementRewardedIds"))
+        assertFalse(reset.contains("releaseClaimIds = keep.releaseClaimIds"))
+        assertFalse(reset.contains("profileBadgeIds = keep.profileBadgeIds"))
+        assertFalse(reset.contains("prestigeCount = keep.prestigeCount"))
+        assertFalse(reset.contains("casinoChips = keep.casinoChips"))
     }
 
     @Test
