@@ -83,7 +83,7 @@ internal fun StreamedPuppyPortrait(
             )
         } else {
             Image(
-                painter = streamedImageFallbackPainter(),
+                painter = streamedImageFallbackPainter(style.id, background),
                 contentDescription = "${style.name} image unavailable",
                 modifier = Modifier.size(size * 0.88f),
                 contentScale = ContentScale.Fit
