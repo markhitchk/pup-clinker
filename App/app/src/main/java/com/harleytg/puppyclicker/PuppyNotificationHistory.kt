@@ -251,6 +251,14 @@ internal object PuppyNotificationHistory {
         mutate(context, PuppyNotificationHistoryCodec::clearRead)
     }
 
+    @Synchronized
+    fun clearAll(context: Context) {
+        val store = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (store.edit().clear().commit()) {
+            publish(emptyList())
+        }
+    }
+
     private fun mutate(
         context: Context,
         transform: (List<PuppyNotificationItem>) -> List<PuppyNotificationItem>
