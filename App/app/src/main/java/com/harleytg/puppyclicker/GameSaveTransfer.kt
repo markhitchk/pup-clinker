@@ -445,10 +445,15 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val pupeyeActorLabel = remember { PupEyeAuthority.actorLabel(context) }
+    val supportInstallationCode = remember {
+        runCatching { PupEyeAuthority.supportInstallationCode(context) }
+            .getOrDefault("Unavailable")
+    }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupError by remember { mutableStateOf<PuppyError?>(null) }
     var importedSuccessfully by rememberSaveable { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -457,8 +462,13 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
         if (uri != null) {
             focusManager.clearFocus(force = true)
             val result = GameSaveTransfer.import(context, uri, password)
-            popupTitle = if (result.success) "Save Imported" else "Import Failed"
+            popupTitle = when {
+                result.success -> "Save Imported"
+                result.error?.domain == PuppyErrorDomain.PUPEYE -> "PupEye Error"
+                else -> "Puppy Clicker Error"
+            }
             popupMessage = result.message
+            popupError = result.error
             importedSuccessfully = result.success
         }
     }
@@ -514,25 +524,20 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                 if (!importedSuccessfully) {
                     popupTitle = null
                     popupMessage = null
+                    popupError = null
                 }
             },
             title = { Text(popupTitle ?: "Save Import", fontWeight = FontWeight.Black) },
             text = {
-                Column {
+                val error = popupError
+                if (!importedSuccessfully && error != null) {
+                    PuppyErrorDetails(
+                        error = error,
+                        actorLabel = pupeyeActorLabel,
+                        supportInstallationCode = supportInstallationCode
+                    )
+                } else {
                     Text(popupMessage ?: "")
-                    if (!importedSuccessfully) {
-                        Spacer(Modifier.size(8.dp))
-                        Text(
-                            "PupEye detected: $pupeyeActorLabel",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.size(6.dp))
-                        Text(
-                            saveImportHelp(popupMessage.orEmpty()),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
                 }
             },
             confirmButton = {
@@ -541,6 +546,7 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
                         val success = importedSuccessfully
                         popupTitle = null
                         popupMessage = null
+                        popupError = null
                         importedSuccessfully = false
                         if (success) onImportSuccess()
                     }
@@ -569,13 +575,19 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var popupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var popupMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var popupError by remember { mutableStateOf<PuppyError?>(null) }
     var popupSuccess by rememberSaveable { mutableStateOf(false) }
     var reloadAfterPopup by rememberSaveable { mutableStateOf(false) }
 
     fun showPopup(title: String, result: SaveTransferResult, reloadOnSuccess: Boolean = false) {
         focusManager.clearFocus(force = true)
-        popupTitle = title
+        popupTitle = when {
+            result.success -> title
+            result.error?.domain == PuppyErrorDomain.PUPEYE -> "PupEye Error"
+            else -> "Puppy Clicker Error"
+        }
         popupMessage = result.message
+        popupError = result.error
         popupSuccess = result.success
         reloadAfterPopup = result.success && reloadOnSuccess
     }
@@ -584,6 +596,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
         val shouldReload = reloadAfterPopup
         popupTitle = null
         popupMessage = null
+        popupError = null
         popupSuccess = false
         reloadAfterPopup = false
         if (shouldReload) {
@@ -725,29 +738,19 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
                 )
             },
             text = {
-                Column {
+                val error = popupError
+                if (!popupSuccess && error != null) {
+                    PuppyErrorDetails(
+                        error = error,
+                        actorLabel = pupeyeActorLabel,
+                        supportInstallationCode = supportInstallationCode
+                    )
+                } else {
                     Text(
                         dialogMessage,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = if (popupSuccess) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        }
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (!popupSuccess && dialogTitle == "Import Failed") {
-                        Spacer(Modifier.size(8.dp))
-                        Text(
-                            "PupEye detected: $pupeyeActorLabel",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.size(6.dp))
-                        Text(
-                            saveImportHelp(dialogMessage),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
                 }
             },
             confirmButton = {
