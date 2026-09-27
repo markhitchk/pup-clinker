@@ -9,13 +9,16 @@ class StreamedImageFallbackContractTest {
         File("src/main/java/com/harleytg/puppyclicker/$name").readText()
 
     @Test
-    fun everyStreamedImagePipelineUsesSharedThemeAwareFallback() {
+    fun everyStreamedImagePipelineUsesSharedFallbackPng() {
         assertTrue(source("StreamedPuppyArt.kt").contains("streamedImageFallbackPainter()"))
         assertTrue(source("StreamedRepoLogos.kt").contains("streamedImageFallbackPainter()"))
         assertTrue(source("StreamedPupEyeBranding.kt").contains("streamedImageFallbackPainter()"))
         assertTrue(source("StreamedPupCoin.kt").contains("streamedImageFallbackPainter()"))
 
-        assertTrue(File("src/main/res/drawable/stream_fallback_light.xml").isFile)
-        assertTrue(File("src/main/res/drawable/stream_fallback_dark.xml").isFile)
+        assertTrue(source("StreamedImageFallback.kt").contains("R.drawable.fallback"))
+        assertTrue(File("src/main/res/drawable-nodpi/fallback.png").isFile)
+        assertTrue(
+            !source("StreamedPuppyArt.kt").contains("ProtectedPuppyPortrait(style.id")
+        )
     }
 }
