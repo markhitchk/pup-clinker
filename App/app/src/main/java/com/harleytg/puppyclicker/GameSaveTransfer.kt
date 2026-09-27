@@ -66,9 +66,12 @@ internal object GameSaveTransfer {
         val mainStore = SecurePreferenceCodec.encode(mainPrefs)
         val casinoValidation =
             PuppyCasinoSaveValidator.validateTransferMainStore(mainStore)
-        require(casinoValidation.valid) {
-            "Casino save validation failed: " +
-                (casinoValidation.message ?: "invalid Casino data")
+        if (!casinoValidation.valid) {
+            throw PuppyErrorHandler.app(
+                AppErrorCode.CASINO_STATE_INVALID,
+                message = "Casino save validation failed: " +
+                    (casinoValidation.message ?: "invalid Casino data")
+            )
         }
         val stores = JSONObject().apply {
             put(MAIN_PREFS, mainStore)
@@ -94,9 +97,22 @@ internal object GameSaveTransfer {
             password.toCharArray()
         )
 
-        val output = context.contentResolver.openOutputStream(uri, "wt")
-            ?: error("Unable to open the selected export file")
-        output.use { it.write(encrypted) }
+        val output = try {
+            context.contentResolver.openOutputStream(uri, "wt")
+        } catch (error: Exception) {
+            throw PuppyErrorHandler.app(
+                AppErrorCode.FILE_WRITE_FAILED,
+                cause = error
+            )
+        } ?: throw PuppyErrorHandler.app(AppErrorCode.FILE_WRITE_FAILED)
+        try {
+            output.use { it.write(encrypted) }
+        } catch (error: Exception) {
+            throw PuppyErrorHandler.app(
+                AppErrorCode.FILE_WRITE_FAILED,
+                cause = error
+            )
+        }
         SupabasePupEyeClient.queueSaveAttestation(
             context = context,
             saveId = proof.getString("saveId"),
@@ -105,7 +121,12 @@ internal object GameSaveTransfer {
         )
         SaveTransferResult(true, "Encrypted save exported for ${PuppyPlayerIdentity.username(context)}.")
     }.getOrElse { error ->
-        SaveTransferResult(false, "Export failed: ${error.message ?: "unknown error"}")
+        handleFailure(
+            context = context,
+            operation = "EXPORT",
+            error = error,
+            fallback = AppErrorCode.UNEXPECTED
+        )
     }
 
     fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
@@ -141,13 +162,31 @@ internal object GameSaveTransfer {
                     cause = error
                 )
             }
-            val payload = JSONObject(plain.toString(Charsets.UTF_8))
-            require(payload.optString("format") == PAYLOAD_FORMAT) { "Invalid decrypted save payload" }
-            require(payload.optInt("version") == PAYLOAD_VERSION) { "Unsupported save payload version" }
+            val payload = try {
+                JSONObject(plain.toString(Charsets.UTF_8))
+            } catch (error: Exception) {
+                throw PuppyErrorHandler.app(
+                    AppErrorCode.INVALID_SAVE_PAYLOAD,
+                    cause = error
+                )
+            }
+            if (payload.optString("format") != PAYLOAD_FORMAT) {
+                throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
+            }
+            if (payload.optInt("version") != PAYLOAD_VERSION) {
+                throw PuppyErrorHandler.app(
+                    AppErrorCode.UNSUPPORTED_SAVE_VERSION,
+                    message = "This backup uses an unsupported save payload version."
+                )
+            }
 
             val pupeyeVerification = PupEyeAuthority.verifyTransfer(context, payload)
-            require(pupeyeVerification.accepted) {
-                pupeyeVerification.message ?: "Pupeye could not authenticate this save."
+            if (!pupeyeVerification.accepted) {
+                val code = pupeyeVerification.errorCode ?: PupEyeErrorCode.UNKNOWN
+                throw PuppyErrorHandler.pupEye(
+                    code,
+                    message = pupeyeVerification.message ?: code.defaultMessage
+                )
             }
             val proof = payload.getJSONObject("pupeye")
             val unsignedPayload =
@@ -159,11 +198,12 @@ internal object GameSaveTransfer {
             )
 
             val identity = payload.optJSONObject("identity")
-                ?: error("Encrypted save is missing player identity")
+                ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD)
             validateImportedIdentity(context, identity)
             restoreStores(
                 context = context,
-                stores = payload.getJSONObject("stores"),
+                stores = payload.optJSONObject("stores")
+                    ?: throw PuppyErrorHandler.app(AppErrorCode.INVALID_SAVE_PAYLOAD),
                 disallowedCasinoRoundIds = consumedCasinoRoundIds
             )
             PuppyPlayerIdentity.applyImportedUsername(context, identity)
@@ -190,7 +230,33 @@ internal object GameSaveTransfer {
         }
         SaveTransferResult(true, "Save imported and authenticated for ${PuppyPlayerIdentity.username(context)}. Your protected progress is ready to reload.")
     }.getOrElse { error ->
-        SaveTransferResult(false, "Import failed: ${error.message ?: "unknown error"}")
+        handleFailure(
+            context = context,
+            operation = "IMPORT",
+            error = error,
+            fallback = AppErrorCode.IMPORT_UNKNOWN
+        )
+    }
+
+    private fun handleFailure(
+        context: Context,
+        operation: String,
+        error: Throwable,
+        fallback: PuppyErrorCode
+    ): SaveTransferResult {
+        val structured = PuppyErrorHandler.fromThrowable(error, fallback)
+        runCatching {
+            PupEyeAuthority.recordEvent(
+                context,
+                operation + "_" + structured.code.replace('-', '_'),
+                structured.message
+            )
+        }
+        return SaveTransferResult(
+            success = false,
+            message = structured.message,
+            error = structured
+        )
     }
 
     fun suggestedFileName(context: Context): String {
