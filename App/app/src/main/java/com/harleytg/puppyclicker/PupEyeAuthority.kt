@@ -63,12 +63,20 @@ internal object PupEyeAuthority {
      * pair, never the editable username. It is informational only and does not bypass
      * save authentication, signature checks, rollback protection, or economy integrity.
      */
-    fun actorKind(context: Context): PupEyeActorKind =
-        if (PuppyPlayerIdentity.isHarleyTgDeveloper(context)) {
+    fun actorKind(context: Context): PupEyeActorKind {
+        val reservedDeveloperIdentity = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
+        val verifiedDiscordDeveloper = runCatching {
+            val access = DiscordSignupAuth.observe(context.applicationContext).value.guildAccess
+            access?.guildId == DiscordSignupAuth.GUILD_ID &&
+                access.role == DiscordGuildRole.DEVELOPER
+        }.getOrDefault(false)
+
+        return if (reservedDeveloperIdentity || verifiedDiscordDeveloper) {
             PupEyeActorKind.HARLEYTG_DEVELOPER
         } else {
             PupEyeActorKind.PLAYER
         }
+    }
 
     fun actorLabel(context: Context): String = actorKind(context).label
 
