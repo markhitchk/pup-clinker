@@ -29,12 +29,12 @@ class PuppyCasinoSaveTransferContractTest {
 
         assertTrue(
             transfer.contains(
-                "require(currentCasino.round == null)"
+                "currentCasino.round != null"
             )
         )
         assertTrue(
             transfer.contains(
-                "Finish the current Casino round before importing another save."
+                "PuppyClickerErrorCode.ACTIVE_CASINO_ROUND"
             )
         )
         assertTrue(
