@@ -36,39 +36,10 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal data class SaveTransferResult(val success: Boolean, val message: String)
-
 internal enum class PuppySavePasswordRequirement {
     REQUIRED,
     NOT_REQUIRED,
     UNKNOWN
-}
-
-private fun saveImportHelp(message: String): String = when {
-    message.contains("signed game data no longer matches", ignoreCase = true) ->
-        "The password was accepted. This is a signature/integrity failure, not a password error. Use an untouched backup from this installation, or a Developer/Support migration. No save data was imported."
-    message.contains("could not decrypt", ignoreCase = true) ->
-        "Re-enter the exact backup password used when the save was exported. If the password is correct, the encrypted file may be damaged. No save data was imported."
-    message.contains("different Puppy Clicker installation", ignoreCase = true) ->
-        "The backup is authentic, but it is registered to another installation. Use the Support-authorized device-transfer flow and include the PupEye Support Installation Code shown on this page."
-    message.contains("older than the protected save", ignoreCase = true) ||
-        message.contains("rollback", ignoreCase = true) ->
-        "The backup is authentic but older than this installation's protected save history. Use Support recovery only if you intentionally need to restore an older backup."
-    message.contains("ownership proof", ignoreCase = true) ->
-        "The encrypted contents were readable, but PupEye could not validate ownership. Re-export the save from the original installation or use Support migration."
-    message.contains("Casino save validation failed", ignoreCase = true) ->
-        "The backup contains Casino state that failed consistency checks. Finish or recover the current Casino round, then export a fresh backup."
-    message.contains("Finish the current Casino round", ignoreCase = true) ->
-        "Complete or recover the active Casino round before importing. Puppy Clicker has not changed your current save."
-    message.contains("different Puppy Clicker Player ID", ignoreCase = true) ||
-        message.contains("different Puppy Clicker Friend Code", ignoreCase = true) ||
-        message.contains("This save belongs to", ignoreCase = true) ->
-        "This backup belongs to a different Puppy Clicker identity. Use Support-authorized migration instead of importing it directly."
-    message.contains("older save format", ignoreCase = true) ||
-        message.contains("Legacy unauthenticated", ignoreCase = true) ->
-        "This backup predates the current authenticated save format. Use Puppy Clicker Support migration so the save can be converted safely."
-    else ->
-        "No save data was imported. Check that the file is a valid Puppy Clicker backup and review the specific error above before trying again."
 }
 
 /** Password-protected AES-256-GCM save transfer format. */
@@ -82,13 +53,15 @@ internal object GameSaveTransfer {
     private const val MAX_IMPORT_BYTES = 4 * 1024 * 1024
 
     fun export(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
-        require(password.length >= 8) { "Backup password must be at least 8 characters" }
-        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
-        require(PupEyeSaveGuard.verifyAndRecover(context, mainPrefs)) {
-            "Pupeye could not authenticate the current protected save."
+        if (password.length < 8) {
+            throw PuppyErrorHandler.app(AppErrorCode.PASSWORD_TOO_SHORT)
         }
-        require(PupEyeAuthority.isGameplayAllowed(context)) {
-            "Pupeye has locked protected progression because an integrity flag requires Support review."
+        val mainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
+        if (!PupEyeSaveGuard.verifyAndRecover(context, mainPrefs)) {
+            throw PuppyErrorHandler.pupEye(PupEyeErrorCode.CURRENT_SAVE_INVALID)
+        }
+        if (!PupEyeAuthority.isGameplayAllowed(context)) {
+            throw PuppyErrorHandler.pupEye(PupEyeErrorCode.PROGRESSION_LOCKED)
         }
         val mainStore = SecurePreferenceCodec.encode(mainPrefs)
         val casinoValidation =
@@ -138,8 +111,8 @@ internal object GameSaveTransfer {
     fun import(context: Context, uri: Uri, password: String): SaveTransferResult = runCatching {
         val currentMainPrefs = context.getSharedPreferences(MAIN_PREFS, Context.MODE_PRIVATE)
         val currentCasino = PuppyCasinoPersistence.inspectActiveRound(currentMainPrefs)
-        require(currentCasino.round == null) {
-            "Finish the current Casino round before importing another save."
+        if (currentCasino.round != null) {
+            throw PuppyErrorHandler.app(AppErrorCode.ACTIVE_CASINO_ROUND)
         }
         // A malformed current round is intentionally allowed through this gate:
         // importing a known-good backup is the supported non-destructive repair path.
@@ -154,17 +127,18 @@ internal object GameSaveTransfer {
         val root = JSONObject(bytes.toString(Charsets.UTF_8))
 
         if (root.optString("format") == LEGACY_FORMAT) {
-            throw IllegalArgumentException(
-                "Legacy unauthenticated saves require Puppy Clicker Support migration before they can be imported."
-            )
+            throw PuppyErrorHandler.pupEye(PupEyeErrorCode.AUTH_PROOF_MISSING)
         } else {
-            require(password.length >= 8) { "Enter the backup password used for this save" }
+            if (password.length < 8) {
+                throw PuppyErrorHandler.app(AppErrorCode.PASSWORD_REQUIRED)
+            }
             val plain = try {
                 PuppySaveCrypto.decryptTransfer(bytes, password.toCharArray())
             } catch (error: Exception) {
                 PupEyeSaveGuard.recordTamper(context, "Encrypted import failed authentication")
-                throw IllegalArgumentException(
-                    "Puppy Clicker could not decrypt this backup. The backup password is incorrect, or the encrypted file is damaged."
+                throw PuppyErrorHandler.app(
+                    AppErrorCode.DECRYPT_FAILED,
+                    cause = error
                 )
             }
             val payload = JSONObject(plain.toString(Charsets.UTF_8))
