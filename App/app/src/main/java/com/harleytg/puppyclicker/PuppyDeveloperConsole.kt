@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,8 +48,18 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-internal fun PuppyDeveloperOptions(onOpenConsole: () -> Unit) {
+internal fun PuppyDeveloperOptions(
+    onOpenConsole: () -> Unit,
+    onMaxAccount: () -> String
+) {
+    val context = LocalContext.current
     val entries by PuppyDebugLog.observe().collectAsStateWithLifecycle()
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val developerAuthorized =
+        PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
+            discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
+    var confirmMax by rememberSaveable { mutableStateOf(false) }
+    var maxStatus by rememberSaveable { mutableStateOf<String?>(null) }
     val warnings = entries.count { it.level == PuppyLogLevel.WARN }
     val errors = entries.count { it.level == PuppyLogLevel.ERROR }
 
@@ -65,6 +76,58 @@ internal fun PuppyDeveloperOptions(onOpenConsole: () -> Unit) {
     Spacer(Modifier.height(10.dp))
     Button(onClick = onOpenConsole, modifier = Modifier.fillMaxWidth()) {
         Text("Open Developer Console")
+    }
+
+    if (developerAuthorized) {
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { confirmMax = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Max Developer Account")
+        }
+        Text(
+            "Developer-only: maxes local progression, then PupEye reseals it on this installation.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    maxStatus?.let { message ->
+        Spacer(Modifier.height(6.dp))
+        Text(
+            message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+    if (confirmMax) {
+        AlertDialog(
+            onDismissRequest = { confirmMax = false },
+            title = { Text("Max Developer Account?", fontWeight = FontWeight.Black) },
+            text = {
+                Text(
+                    "This will max currencies, upgrades, tickets, prestige, care, achievements, bonds, puppies, and accessories on this device. Player identity and protected transaction ledgers are preserved."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        maxStatus = onMaxAccount()
+                        confirmMax = false
+                    }
+                ) {
+                    Text("Max Account")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmMax = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
