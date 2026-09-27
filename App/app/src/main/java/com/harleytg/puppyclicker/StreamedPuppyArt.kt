@@ -73,7 +73,7 @@ internal fun StreamedPuppyPortrait(
     if (
         portrait == null &&
         style.id in V6_PUPPY_IDS &&
-        style.id !in setOf("v2_harleytg", "v2_discord_pup") &&
+        style.id !in setOf("v2_harleytg", "v2_dev_pup", "v2_discord_pup") &&
         style.id !in EXTRA_PUPPY_IDS
     ) {
         ProtectedPuppyPortrait(style.id, size, accessory, unlocked, background, null)
