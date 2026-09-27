@@ -1,0 +1,2 @@
+CI validation for automatic Halloween, Christmas, and birthday puppy unlocks.
+Base: 7cee81a7a92ac8d39f5dbedb79085bd12835fb23
