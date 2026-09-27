@@ -1,31 +1,54 @@
 package com.harleytg.puppyclicker
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Shared transparent fallback.png renderer for every runtime-streamed image asset.
  *
- * The background is deterministic per asset key so a missing remote image remains
- * visually identifiable and stable between launches. Callers with an existing
- * contextual background (for example a puppy style) can pass it explicitly.
+ * The fallback is precomposed into a regular BitmapPainter instead of delegating
+ * drawing through a custom Painter. This keeps startup/rendering paths predictable
+ * across Android/Compose versions while preserving deterministic asset backgrounds.
  */
 @Composable
 internal fun streamedImageFallbackPainter(
     assetKey: String,
     background: Color = streamedFallbackBackgroundColor(assetKey)
 ): Painter {
-    val foreground = painterResource(R.drawable.fallback)
-    return remember(foreground, assetKey, background) {
-        StreamedFallbackPainter(
-            foreground = foreground,
-            background = background
+    val context = LocalContext.current.applicationContext
+    val fallback = remember(context) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.fallback)
+            ?: Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+    }
+
+    val composed = remember(assetKey, background, fallback) {
+        val width = fallback.width.coerceAtLeast(2)
+        val height = fallback.height.coerceAtLeast(2)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(background.toArgb())
+        canvas.drawBitmap(
+            fallback,
+            Rect(0, 0, fallback.width, fallback.height),
+            Rect(0, 0, width, height),
+            Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         )
+        bitmap
+    }
+
+    return remember(composed) {
+        BitmapPainter(composed.asImageBitmap())
     }
 }
 
@@ -35,7 +58,6 @@ internal fun streamedFallbackBackgroundColor(assetKey: String): Color {
         hash = (hash xor char.code) * 16_777_619
     }
 
-    // Keep colors away from near-black/near-white so fallback.png stays readable.
     fun channel(shift: Int): Float =
         (72 + ((hash ushr shift) and 0x7F)) / 255f
 
@@ -45,24 +67,4 @@ internal fun streamedFallbackBackgroundColor(assetKey: String): Color {
         blue = channel(0),
         alpha = 1f
     )
-}
-
-private class StreamedFallbackPainter(
-    private val foreground: Painter,
-    private val background: Color
-) : Painter() {
-    override val intrinsicSize: Size
-        get() = foreground.intrinsicSize
-
-    override fun DrawScope.onDraw() {
-        drawRect(background)
-        val targetSize = size
-        with(foreground) {
-            draw(
-                size = targetSize,
-                alpha = 1f,
-                colorFilter = null
-            )
-        }
-    }
 }
