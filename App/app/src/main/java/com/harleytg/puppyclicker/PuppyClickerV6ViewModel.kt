@@ -1556,6 +1556,112 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         return true
     }
 
+    fun maxDeveloperAccount(): String {
+        val app = getApplication<Application>()
+        if (!PupEyeAuthority.isHarleyTgDeveloper(app)) {
+            return "PupEye did not verify this installation as HarleyTG Developer."
+        }
+
+        val allKnownPuppies = (
+            V6_PUPPY_IDS +
+                DynamicPuppyRoster.groups.value.flatMap { group -> group.puppies.map { it.id } }
+            ).toSet()
+        if (allKnownPuppies.isEmpty()) {
+            return "Puppy roster is not ready yet. Try again after the roster finishes loading."
+        }
+
+        val maxLong = 9_000_000_000_000_000L
+        val maxCounter = 9_000_000_000L
+        val maxUpgrades = V5_UPGRADES.associate { it.id to 999 }
+        val maxSkills = PrestigeSkill.entries.associateWith { it.maxLevel }
+        val maxTapSkill = maxSkills[PrestigeSkill.TAP_TRAINING] ?: 0
+        val maxAutoSkill = maxSkills[PrestigeSkill.AUTO_TRAINING] ?: 0
+        val maxClickPower = 1 + V5_UPGRADES
+            .filter { it.effect == V5UpgradeEffect.CLICK }
+            .sumOf { (it.amount + maxTapSkill) * (maxUpgrades[it.id] ?: 0) }
+        val maxActiveBonus = PuppyEconomyV7.activeBonus(maxUpgrades, maxAutoSkill)
+
+        PupEyeSaveGuard.noteAuthorizedPreferenceChange(app)
+
+        val current = _state.value
+        _state.value = current.copy(
+            unlockedPuppies = current.unlockedPuppies + allKnownPuppies,
+            ownedAccessories = current.ownedAccessories + ACCESSORIES,
+            treats = maxLong,
+            lifetimeTreats = maxLong,
+            bones = maxLong,
+            pupCoins = maxLong,
+            casinoChips = maxLong,
+            clickPower = maxClickPower,
+            activeBonus = maxActiveBonus,
+            autoPerSecond = 0,
+            legitimateTaps = maxCounter,
+            upgrades = maxUpgrades,
+            totalShopPurchases = maxCounter,
+            ticketInventory = TicketRarity.entries.associateWith {
+                PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY
+            },
+            ticketShopPurchases = TicketRarity.entries.associateWith { 999 },
+            totalTicketsFound = maxCounter,
+            happiness = 100,
+            fullness = 100,
+            energy = 100,
+            cleanliness = 100,
+            bond = 100,
+            careActions = maxCounter,
+            totalTaps = maxCounter,
+            combo = 0,
+            bestCombo = 50,
+            parkActive = false,
+            parkReadyAtMs = 0L,
+            dailyStreak = 365,
+            claimedDailyTasks = setOf("tap_time", "good_care", "shop_visit", "wellness"),
+            pupEyeStrikes = 0,
+            cooldownUntilMs = 0L,
+            prestigeCount = 999,
+            skillPoints = 9_999,
+            prestigeSkills = maxSkills,
+            totalPrestigePointsEarned = 9_999L
+        )
+        recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+        saveState(clearUpgradeKeys = true)
+
+        val progressionEditor = prefs.edit()
+            .putLong(PuppyProgressionStore.KEY_PLAYER_XP, maxLong)
+            .putString(
+                PuppyProgressionStore.KEY_BOND_BY_PUPPY,
+                PuppyProgressionStore.encodeBondMap(
+                    allKnownPuppies.associateWith { 100 }
+                )
+            )
+            .putStringSet(
+                PuppyProgressionStore.KEY_ACHIEVEMENT_REWARDED,
+                PuppyAchievementsV6.definitions.map { it.id }.toSet()
+            )
+            .putStringSet(
+                "profile_badge_ids_v1",
+                prefs.getStringSet("profile_badge_ids_v1", emptySet()).orEmpty() +
+                    PuppyReleaseMilestones.RELEASE_1_0_BADGE_ID
+            )
+        if (!progressionEditor.commit()) {
+            return "Puppy Clicker could not persist the developer max state."
+        }
+
+        val sealed = PupEyeSaveGuard.seal(app, prefs)
+        if (!sealed) {
+            return "The account was maxed, but PupEye could not seal the updated save. Do not export it yet."
+        }
+
+        PupEyeAuthority.recordEvent(
+            app,
+            "DEVELOPER_MAX_ACCOUNT",
+            "Verified HarleyTG developer maxed local progression and resealed the save"
+        )
+        return "Developer account maxed and resealed by PupEye."
+    }
+
     fun unlockDiscordRolePuppy(): Boolean {
         val app = getApplication<Application>()
         val access = DiscordSignupAuth.observe(app).value.guildAccess ?: return false
