@@ -26,13 +26,13 @@ export type DiscordWebhookPayload = {
   }>;
 };
 
-const EMBEDDED_WEBHOOK_IV_B64 = "Y5eh0nG/e5iKGn/l";
+const EMBEDDED_WEBHOOK_IV_B64 = "9kfeyZohZtDzgpX1";
 const EMBEDDED_WEBHOOK_CIPHER_B64 =
-  "mao6J6PimRh+6860a9hEIxHOj7jP+PwXTTaIrLyuFD5XuIE70KTyu2A9F2rN7m0zR0vIsooCwwTd88+J0W8+MnGWjHzrzzJICpi6SJrEXCSV6XTkb2urS8jjE2MXfyjV6L0LQly2xNbEmlrjeR1hqRuyzCUSCjHkXPv+JJDIBL0U0R3tzpW1Ok0=";
+  "FfXd8OW0ndsbSwu5VnaIUtQQ7rDj6KcoPrQ6a4QcLGiRiZ7Xgx9phUVg0WcKWGYx656Zw/ONN2Pm9axnBLjEdjeaJSlkwdDgHjMnlFC08rnYYbF1N0W+JiNiOE2DGtp6OLtJiBBXtgaA2wYLia8YMOifBipO8TezcFCaU1pCeED/bzsIfuLrVxc=";
 const EMBEDDED_WEBHOOK_KEY_MASK_A =
-  "de53e679d38b3b9cdc49fccda6d2d952ffd4ef599205894b724b3da72c82f4e0";
+  "cc1c8bbb9d1a26a6d499a1696e0950fceb87add2c1c54ccb3e30f56efd6ea644";
 const EMBEDDED_WEBHOOK_KEY_MASK_B =
-  "712e16512d88a0c1d3f074812dc461044260ac080b13f46ea2f61c514bfde1de";
+  "589c37943ebd9752e190ff0076700d35bfec11cebf9d303cc93dd18ad4e3168e";
 const EMBEDDED_WEBHOOK_AAD = "pupeye-global-ban-discord-v1";
 
 export async function decryptEmbeddedDiscordWebhook(): Promise<string> {
@@ -57,12 +57,12 @@ export async function decryptEmbeddedDiscordWebhook(): Promise<string> {
   const plaintext = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
-      iv: base64ToBytes(EMBEDDED_WEBHOOK_IV_B64),
+      iv: base64ToArrayBuffer(EMBEDDED_WEBHOOK_IV_B64),
       additionalData: new TextEncoder().encode(EMBEDDED_WEBHOOK_AAD),
       tagLength: 128,
     },
     key,
-    base64ToBytes(EMBEDDED_WEBHOOK_CIPHER_B64),
+    base64ToArrayBuffer(EMBEDDED_WEBHOOK_CIPHER_B64),
   );
   const webhookUrl = new TextDecoder().decode(plaintext).trim();
   const parsed = new URL(webhookUrl);
@@ -350,9 +350,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function base64ToBytes(value: string): Uint8Array {
+function base64ToArrayBuffer(value: string): ArrayBuffer {
   const decoded = atob(value);
-  return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+  const buffer = new ArrayBuffer(decoded.length);
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < decoded.length; index += 1) {
+    bytes[index] = decoded.charCodeAt(index);
+  }
+  return buffer;
 }
 
 function hexToBytes(value: string): Uint8Array {
