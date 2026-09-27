@@ -141,8 +141,31 @@ internal fun PuppyDeveloperConsoleScreen(
     val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val discordAsset = DynamicPuppyRoster.asset("v2_discord_pup")
+    val devAsset = DynamicPuppyRoster.asset("v2_dev_pup")
+    val activeAsset = DynamicPuppyRoster.asset(state.puppyStyle)
     val rosterCount = rosterGroups.sumOf { it.puppies.size }
     val discordRole = discord.guildAccess?.role?.label ?: "Not verified"
+    val mainPrefs = context.getSharedPreferences(
+        PuppyClickerV6ViewModel.PREFS_NAME,
+        Context.MODE_PRIVATE
+    )
+    val security = PupEyeSaveGuard.state(context)
+    val hardFlags = PupEyeAuthority.hardFlags(context)
+    val pupEyeActor = PupEyeAuthority.actorLabel(context)
+    val supportCode = runCatching {
+        PupEyeAuthority.supportInstallationCode(context)
+    }.getOrDefault("Unavailable")
+    val saveGeneration = runCatching {
+        PupEyeAuthority.currentGeneration(context)
+    }.getOrDefault(0L)
+    val playerXp = mainPrefs.getLong(PuppyProgressionStore.KEY_PLAYER_XP, 0L)
+        .coerceAtLeast(0L)
+    val rewardedAchievements = mainPrefs
+        .getStringSet(PuppyProgressionStore.KEY_ACHIEVEMENT_REWARDED, emptySet())
+        ?.size ?: 0
+    val casinoInspection = PuppyCasinoPersistence.inspectActiveRound(mainPrefs)
+    val completedCasinoRounds = PuppyCasinoPersistence.loadCompletedRoundIds(mainPrefs).size
+    val exchangeSnapshot = PuppyExchangeLedger(context).snapshot()
     var query by rememberSaveable { mutableStateOf("") }
     var showDebug by rememberSaveable { mutableStateOf(true) }
     var showInfo by rememberSaveable { mutableStateOf(true) }
@@ -159,11 +182,50 @@ internal fun PuppyDeveloperConsoleScreen(
         )
         PuppyDebugLog.i(
             "Roster",
-            "Loaded $rosterCount puppies; Discord Pup source=${discordAsset?.folder ?: "missing"}/${discordAsset?.fileName ?: "missing"}"
+            "Loaded $rosterCount puppies; active=${state.puppyStyle} source=" +
+                "${activeAsset?.folder ?: "missing"}/${activeAsset?.fileName ?: "missing"}; " +
+                "Dev Pup=${devAsset?.folder ?: "missing"}/${devAsset?.fileName ?: "missing"}; " +
+                "Discord Pup=${discordAsset?.folder ?: "missing"}/${discordAsset?.fileName ?: "missing"}"
         )
         PuppyDebugLog.i(
             "DiscordAuth",
-            "Guild verification role=$discordRole"
+            "Account=${discord.account?.displayName ?: "not connected"}; " +
+                "guild role=$discordRole; verifiedAt=${discord.guildAccess?.verifiedAtMs ?: 0L}"
+        )
+        PuppyDebugLog.i(
+            "PupEye",
+            "Actor=$pupEyeActor; generation=$saveGeneration; " +
+                "privateIntegrity=${security.privateIntegrityOk}; " +
+                "externalIntegrity=${security.externalIntegrityOk}; " +
+                "tamperEvents=${security.tamperEvents}; hardFlags=${hardFlags.joinToString(",").ifBlank { "none" }}"
+        )
+        PuppyDebugLog.i(
+            "Player",
+            "Username=${PuppyPlayerIdentity.username(context)}; " +
+                "PlayerID=${PuppyPlayerIdentity.publicPlayerId(context)}; " +
+                "FriendCode=${PuppyPlayerIdentity.publicFriendCode(context)}; " +
+                "level=${state.level}; xp=$playerXp; achievements=$rewardedAchievements"
+        )
+        PuppyDebugLog.i(
+            "Economy",
+            "Treats=${state.treats}; lifetime=${state.lifetimeTreats}; bones=${state.bones}; " +
+                "pupCoins=${state.pupCoins}; casinoChips=${state.casinoChips}; " +
+                "tickets=${state.ticketsOwned}; upgrades=${state.upgrades.values.sum()}; " +
+                "prestige=${state.prestigeCount}; skillPoints=${state.skillPoints}"
+        )
+        PuppyDebugLog.i(
+            "Casino",
+            "activeRound=${casinoInspection.round?.roundId ?: "none"}; " +
+                "recoveryIssue=${casinoInspection.issue ?: "none"}; completed=$completedCasinoRounds"
+        )
+        PuppyDebugLog.i(
+            "Exchange",
+            "ownership=${exchangeSnapshot.ownership.size}; " +
+                "transactions=${exchangeSnapshot.transactions.size}; friends=${exchangeSnapshot.friends.size}"
+        )
+        PuppyDebugLog.i(
+            "Support",
+            "PupEye support installation code=$supportCode"
         )
     }
 
@@ -213,13 +275,64 @@ internal fun PuppyDeveloperConsoleScreen(
             Column(Modifier.padding(11.dp)) {
                 Text("Runtime snapshot", fontWeight = FontWeight.Black)
                 DeveloperMetric("Build", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                DeveloperMetric("Device", PuppyPlayerIdentity.deviceModel())
+                DeveloperMetric("PupEye identity", pupEyeActor)
+                DeveloperMetric("Save generation", saveGeneration.toString())
+                DeveloperMetric(
+                    "PupEye integrity",
+                    "private=${if (security.privateIntegrityOk) "OK" else "FAIL"} · " +
+                        "external=${if (security.externalIntegrityOk) "OK" else "FAIL"}"
+                )
+                DeveloperMetric("Tamper events", security.tamperEvents.toString())
+                DeveloperMetric(
+                    "Hard flags",
+                    hardFlags.joinToString(", ").ifBlank { "None" }
+                )
+                DeveloperMetric("Support code", supportCode)
+                DeveloperMetric("Username", PuppyPlayerIdentity.username(context))
+                DeveloperMetric("Player ID", PuppyPlayerIdentity.publicPlayerId(context))
+                DeveloperMetric("Friend Code", PuppyPlayerIdentity.publicFriendCode(context))
+                DeveloperMetric("Discord account", discord.account?.displayName ?: "Not connected")
+                DeveloperMetric("Discord role", discordRole)
+                DeveloperMetric("Level / XP", "${state.level} / $playerXp")
+                DeveloperMetric(
+                    "Currencies",
+                    "T=${state.treats} · B=${state.bones} · P=${state.pupCoins} · C=${state.casinoChips}"
+                )
+                DeveloperMetric("Tickets", state.ticketsOwned.toString())
+                DeveloperMetric("Upgrade levels", state.upgrades.values.sum().toString())
+                DeveloperMetric(
+                    "Prestige",
+                    "${state.prestigeCount} · skill points ${state.skillPoints}"
+                )
+                DeveloperMetric("Achievements", rewardedAchievements.toString())
                 DeveloperMetric("Roster puppies", rosterCount.toString())
                 DeveloperMetric("Unlocked puppies", state.unlockedPuppies.size.toString())
                 DeveloperMetric("Active puppy", state.puppyStyle)
-                DeveloperMetric("Discord role", discordRole)
+                DeveloperMetric(
+                    "Active asset",
+                    activeAsset?.let { "${it.folder}/${it.fileName}" } ?: "Missing"
+                )
+                DeveloperMetric(
+                    "Dev Pup source",
+                    devAsset?.let { "${it.folder}/${it.fileName}" } ?: "Missing"
+                )
                 DeveloperMetric(
                     "Discord Pup source",
                     discordAsset?.let { "${it.folder}/${it.fileName}" } ?: "Missing"
+                )
+                DeveloperMetric(
+                    "Casino",
+                    casinoInspection.round?.let { "Active ${it.game.name} · ${it.roundId}" }
+                        ?: casinoInspection.issue?.let { "Recovery: $it" }
+                        ?: "Idle"
+                )
+                DeveloperMetric("Casino completed", completedCasinoRounds.toString())
+                DeveloperMetric(
+                    "Exchange",
+                    "${exchangeSnapshot.ownership.size} owned · " +
+                        "${exchangeSnapshot.transactions.size} tx · " +
+                        "${exchangeSnapshot.friends.size} friends"
                 )
             }
         }
@@ -264,19 +377,46 @@ internal fun PuppyDeveloperConsoleScreen(
         ) {
             OutlinedButton(
                 onClick = {
-                    val text = visibleEntries.joinToString("\n") { it.toConsoleText() }
+                    val diagnostics = buildString {
+                        appendLine("Puppy Clicker Developer Diagnostics")
+                        appendLine("Build: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                        appendLine("Device: ${PuppyPlayerIdentity.deviceModel()}")
+                        appendLine("PupEye identity: $pupEyeActor")
+                        appendLine("PupEye generation: $saveGeneration")
+                        appendLine("PupEye integrity: private=${security.privateIntegrityOk}, external=${security.externalIntegrityOk}")
+                        appendLine("PupEye tamper events: ${security.tamperEvents}")
+                        appendLine("PupEye hard flags: ${hardFlags.joinToString(",").ifBlank { "none" }}")
+                        appendLine("Support code: $supportCode")
+                        appendLine("Player ID: ${PuppyPlayerIdentity.publicPlayerId(context)}")
+                        appendLine("Friend Code: ${PuppyPlayerIdentity.publicFriendCode(context)}")
+                        appendLine("Discord: ${discord.account?.displayName ?: "not connected"} / $discordRole")
+                        appendLine("Roster: $rosterCount total, ${state.unlockedPuppies.size} unlocked")
+                        appendLine("Active puppy: ${state.puppyStyle} -> ${activeAsset?.folder ?: "missing"}/${activeAsset?.fileName ?: "missing"}")
+                        appendLine("Dev Pup: ${devAsset?.folder ?: "missing"}/${devAsset?.fileName ?: "missing"}")
+                        appendLine("Discord Pup: ${discordAsset?.folder ?: "missing"}/${discordAsset?.fileName ?: "missing"}")
+                        appendLine("Level / XP: ${state.level} / $playerXp")
+                        appendLine("Economy: treats=${state.treats}, lifetime=${state.lifetimeTreats}, bones=${state.bones}, pupCoins=${state.pupCoins}, casinoChips=${state.casinoChips}")
+                        appendLine("Tickets: ${state.ticketsOwned}; upgrades=${state.upgrades.values.sum()}")
+                        appendLine("Prestige: ${state.prestigeCount}; skillPoints=${state.skillPoints}")
+                        appendLine("Achievements rewarded: $rewardedAchievements")
+                        appendLine("Casino: active=${casinoInspection.round?.roundId ?: "none"}, recovery=${casinoInspection.issue ?: "none"}, completed=$completedCasinoRounds")
+                        appendLine("Exchange: ownership=${exchangeSnapshot.ownership.size}, transactions=${exchangeSnapshot.transactions.size}, friends=${exchangeSnapshot.friends.size}")
+                        appendLine()
+                        appendLine("Visible logs:")
+                        visibleEntries.forEach { appendLine(it.toConsoleText()) }
+                    }
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                    if (clipboard != null && text.isNotBlank()) {
+                    if (clipboard != null) {
                         clipboard.setPrimaryClip(
-                            ClipData.newPlainText("Puppy Clicker Developer Console", text)
+                            ClipData.newPlainText("Puppy Clicker Developer Diagnostics", diagnostics)
                         )
-                        copyStatus = "Copied ${visibleEntries.size} visible log entries."
+                        copyStatus = "Copied runtime diagnostics and ${visibleEntries.size} visible logs."
                     } else {
-                        copyStatus = if (text.isBlank()) "No visible logs to copy." else "Clipboard unavailable."
+                        copyStatus = "Clipboard unavailable."
                     }
                 },
                 modifier = Modifier.weight(1f)
-            ) { Text("Copy Visible Logs") }
+            ) { Text("Copy Diagnostics") }
             OutlinedButton(
                 onClick = {
                     PuppyDebugLog.clear()
