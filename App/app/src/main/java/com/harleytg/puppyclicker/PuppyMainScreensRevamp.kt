@@ -255,7 +255,7 @@ internal fun PuppyRevampedPlayScreen(
             },
             confirmButton = {
                 Button(onClick = { tiredDialogVisible = false }) {
-                    Text("Go to Pup Care")
+                    Text("Okay")
                 }
             }
         )
@@ -276,6 +276,7 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
         Column(
             Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 14.dp, vertical = if (tiny) 2.dp else 4.dp)
         ) {
             PuppyMainPageHeader(
