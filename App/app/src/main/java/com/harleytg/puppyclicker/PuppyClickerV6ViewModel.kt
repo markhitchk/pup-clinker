@@ -111,6 +111,20 @@ data class V6GameState(
     val careScore: Int
         get() = ((happiness + fullness + energy + cleanliness) / 4).coerceIn(0, 100)
 
+    val isTired: Boolean
+        get() = PuppyCareSystem.isTired(energy)
+
+    val careTapBonus: Int
+        get() = PuppyCareSystem.tapBonus(
+            PuppyCareProfile(
+                happiness = happiness,
+                fullness = fullness,
+                energy = energy,
+                cleanliness = cleanliness,
+                bond = bond
+            )
+        )
+
     val mood: String
         get() = when {
             careScore >= 90 && bond >= 70 -> "Best friend"
@@ -974,6 +988,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(getApplication<Application>())
 
         if (enforcePupEyeFairPlay && now < current.cooldownUntilMs) return
+        if (current.isTired) return
 
         if (enforcePupEyeFairPlay) {
             recentTapTimes.addLast(now)
@@ -1035,7 +1050,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             } else {
                 0L
             }
-        val tapPayout = safeAdd(current.clickPower.toLong(), activeBonusPayout)
+        val careBonusPayout = if (legitimateTap) current.careTapBonus.toLong() else 0L
+        val tapPayout = safeAdd(
+            safeAdd(current.clickPower.toLong(), activeBonusPayout),
+            careBonusPayout
+        )
         val boneDrop =
             if (
                 legitimateTap &&
@@ -1172,7 +1191,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             happiness = (s.happiness + 5).coerceAtMost(100),
             bond = (s.bond + 1).coerceAtMost(100),
             cleanliness = (s.cleanliness - 1).coerceAtLeast(0),
-            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1181,14 +1199,18 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun playWithPuppy() {
         rollDailyDayIfNeeded()
         val s = _state.value
-        if (s.energy < 12 || (s.happiness >= 100 && s.bond >= 100)) return
+        if (
+            s.bones < PLAY_BONE_COST ||
+            s.energy < 12 ||
+            (s.happiness >= 100 && s.bond >= 100)
+        ) return
         _state.value = s.copy(
+            bones = s.bones - PLAY_BONE_COST,
             happiness = (s.happiness + 20).coerceAtMost(100),
             fullness = (s.fullness - 4).coerceAtLeast(0),
             energy = (s.energy - 12).coerceAtLeast(0),
             cleanliness = (s.cleanliness - 3).coerceAtLeast(0),
             bond = (s.bond + 3).coerceAtMost(100),
-            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1201,7 +1223,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             energy = (s.energy + 30).coerceAtMost(100),
             happiness = (s.happiness + 3).coerceAtMost(100),
-            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1210,12 +1231,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun groomPuppy() {
         rollDailyDayIfNeeded()
         val s = _state.value
-        if (s.cleanliness >= 100) return
+        if (s.treats < GROOM_COST || s.cleanliness >= 100) return
         _state.value = s.copy(
+            treats = s.treats - GROOM_COST,
             cleanliness = (s.cleanliness + 35).coerceAtMost(100),
             happiness = (s.happiness + 4).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
-            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1228,7 +1249,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             happiness = (s.happiness + 8).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
-            bones = safeAdd(s.bones, PuppyEconomyV7.CARE_ACTION_BONES),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1315,12 +1335,23 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         }
 
         val puppy = reward.puppyId?.let { id -> V6_PUPPY_STYLES.firstOrNull { it.id == id } }
-        _state.value = s.copy(
-            treats = safeAdd(s.treats, reward.treats),
-            lifetimeTreats = safeAdd(s.lifetimeTreats, reward.treats),
-            unlockedPuppies = if (puppy != null) s.unlockedPuppies + puppy.id else s.unlockedPuppies,
-            puppyStyle = puppy?.id ?: s.puppyStyle,
-            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        val switchingPuppy = puppy != null && puppy.id != s.puppyStyle
+        if (switchingPuppy) saveState()
+        val targetCare = if (switchingPuppy) {
+            PuppyCareSystem.load(prefs, puppy!!.id, System.currentTimeMillis())
+        } else {
+            careProfile(s)
+        }
+        _state.value = withCare(
+            s.copy(
+                treats = safeAdd(s.treats, reward.treats),
+                lifetimeTreats = safeAdd(s.lifetimeTreats, reward.treats),
+                unlockedPuppies = if (puppy != null) s.unlockedPuppies + puppy.id else s.unlockedPuppies,
+                puppyStyle = puppy?.id ?: s.puppyStyle,
+                puppyName = puppy?.let { nameForStyle(it.id) } ?: s.puppyName,
+                redeemedCodeIds = s.redeemedCodeIds + reward.id
+            ),
+            targetCare
         )
         saveState()
         return V6RedeemOutcome(true, reward.message)
@@ -1403,6 +1434,24 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
     private fun nameForStyle(styleId: String): String =
         savedPuppyName(styleId) ?: metadataPuppyName(styleId)
+
+    private fun careProfile(state: V6GameState): PuppyCareProfile =
+        PuppyCareProfile(
+            happiness = state.happiness,
+            fullness = state.fullness,
+            energy = state.energy,
+            cleanliness = state.cleanliness,
+            bond = state.bond
+        )
+
+    private fun withCare(state: V6GameState, care: PuppyCareProfile): V6GameState =
+        state.copy(
+            happiness = care.happiness,
+            fullness = care.fullness,
+            energy = care.energy,
+            cleanliness = care.cleanliness,
+            bond = care.bond
+        )
 
     fun renamePuppy(name: String) {
         val clean = name.trim().replace("\n", " ").take(18)
@@ -1537,10 +1586,21 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setPuppyStyle(id: String) {
         val s = _state.value
         if (id !in s.unlockedPuppies || id !in V6_PUPPY_IDS) return
-        val nextName = if (id == s.puppyStyle) s.puppyName else nameForStyle(id)
-        _state.value = s.copy(
-            puppyStyle = id,
-            puppyName = nextName
+        if (id == s.puppyStyle) return
+
+        // Persist the outgoing puppy before loading the selected puppy's own needs.
+        saveState()
+        val care = PuppyCareSystem.load(
+            prefs = prefs,
+            styleId = id,
+            nowMs = System.currentTimeMillis()
+        )
+        _state.value = withCare(
+            s.copy(
+                puppyStyle = id,
+                puppyName = nameForStyle(id)
+            ),
+            care
         )
         saveState()
     }
@@ -1628,6 +1688,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         suspicionWindowStartedMs = 0L
         saveState(clearUpgradeKeys = true)
 
+        val maxCareUpdatedAt = System.currentTimeMillis()
         val progressionEditor = prefs.edit()
             .putLong(PuppyProgressionStore.KEY_PLAYER_XP, maxLong)
             .putString(
@@ -1645,6 +1706,20 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 prefs.getStringSet("profile_badge_ids_v1", emptySet()).orEmpty() +
                     PuppyReleaseMilestones.RELEASE_1_0_BADGE_ID
             )
+        allKnownPuppies.forEach { styleId ->
+            PuppyCareSystem.write(
+                progressionEditor,
+                styleId,
+                PuppyCareProfile(
+                    happiness = 100,
+                    fullness = 100,
+                    energy = 100,
+                    cleanliness = 100,
+                    bond = 100
+                ),
+                maxCareUpdatedAt
+            )
+        }
         if (!progressionEditor.commit()) {
             return "Puppy Clicker could not persist the developer max state."
         }
@@ -1742,11 +1817,20 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         } else {
             nameForStyle(nextStyle)
         }
-        _state.value = current.copy(
+        if (nextStyle != current.puppyStyle) saveState()
+        val nextState = current.copy(
             unlockedPuppies = nextUnlocked,
             puppyStyle = nextStyle,
             puppyName = nextName
         )
+        _state.value = if (nextStyle != current.puppyStyle) {
+            withCare(
+                nextState,
+                PuppyCareSystem.load(prefs, nextStyle, System.currentTimeMillis())
+            )
+        } else {
+            nextState
+        }
         saveState()
         return true
     }
@@ -1775,11 +1859,20 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         } else {
             nameForStyle(nextStyle)
         }
-        _state.value = current.copy(
+        if (nextStyle != current.puppyStyle) saveState()
+        val nextState = current.copy(
             unlockedPuppies = nextUnlocked,
             puppyStyle = nextStyle,
             puppyName = nextName
         )
+        _state.value = if (nextStyle != current.puppyStyle) {
+            withCare(
+                nextState,
+                PuppyCareSystem.load(prefs, nextStyle, System.currentTimeMillis())
+            )
+        } else {
+            nextState
+        }
         saveState()
         return true
     }
@@ -2103,6 +2196,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 cleanliness = (it.cleanliness - 1).coerceAtLeast(0)
             )
         }
+        // Each active puppy has an independent decay timestamp.
+        saveState()
     }
 
     private fun looksAutomated(now: Long): Boolean {
@@ -2212,7 +2307,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         val now = System.currentTimeMillis()
         val lastSeen = prefs.getLong(KEY_LAST_SEEN, now)
-        val elapsedMinutes = ((now - lastSeen).coerceAtLeast(0) / 60_000L).coerceAtMost(240L).toInt()
         val totalTaps = prefs.getLong(KEY_TOTAL_TAPS, 0L).coerceAtLeast(0L)
         val careActions = prefs.getLong(KEY_CARE_ACTIONS, prefs.getInt("care_actions", 0).toLong()).coerceAtLeast(0L)
         val totalShop = prefs.getLong(KEY_TOTAL_SHOP, owned.values.sum().toLong()).coerceAtLeast(0L)
@@ -2235,6 +2329,23 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val activePuppyName = savedPuppyName(style)
             ?: legacyName
             ?: metadataPuppyName(style)
+        val legacyBondByPuppy = PuppyProgressionStore.decodeBondMap(
+            prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null)
+        )
+        val legacyCare = PuppyCareProfile(
+            happiness = prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100),
+            fullness = prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100),
+            energy = prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100),
+            cleanliness = prefs.getInt(KEY_CLEANLINESS, 100).coerceIn(0, 100),
+            bond = (legacyBondByPuppy[style] ?: prefs.getInt(KEY_BOND, 10)).coerceIn(0, 100)
+        )
+        val activeCare = PuppyCareSystem.load(
+            prefs = prefs,
+            styleId = style,
+            nowMs = now,
+            legacyFallback = legacyCare,
+            legacyUpdatedAtMs = lastSeen
+        )
 
         return V6GameState(
             puppyName = activePuppyName,
@@ -2262,11 +2373,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
                 prefs.getInt(ticketShopPurchaseKey(rarity), 0).coerceAtLeast(0)
             },
             totalTicketsFound = prefs.getLong(KEY_TOTAL_TICKETS_FOUND, 0L).coerceAtLeast(0L),
-            happiness = (prefs.getInt(KEY_HAPPINESS, 100).coerceIn(0, 100) - elapsedMinutes / 3).coerceAtLeast(0),
-            fullness = (prefs.getInt(KEY_FULLNESS, 100).coerceIn(0, 100) - elapsedMinutes / 2).coerceAtLeast(0),
-            energy = (prefs.getInt(KEY_ENERGY, 100).coerceIn(0, 100) - elapsedMinutes / 4).coerceAtLeast(0),
-            cleanliness = (prefs.getInt(KEY_CLEANLINESS, 100).coerceIn(0, 100) - elapsedMinutes / 4).coerceAtLeast(0),
-            bond = prefs.getInt(KEY_BOND, 10).coerceIn(0, 100),
+            happiness = activeCare.happiness,
+            fullness = activeCare.fullness,
+            energy = activeCare.energy,
+            cleanliness = activeCare.cleanliness,
+            bond = activeCare.bond,
             careActions = careActions,
             totalTaps = totalTaps,
             bestCombo = prefs.getInt(KEY_BEST_COMBO, 0).coerceAtLeast(0),
@@ -2295,6 +2406,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     private fun saveState(clearUpgradeKeys: Boolean = false) {
         if (suppressPersistence) return
         val s = _state.value
+        val now = System.currentTimeMillis()
+        val bondByPuppy = PuppyProgressionStore.decodeBondMap(
+            prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null)
+        ).toMutableMap().apply {
+            this[s.puppyStyle] = s.bond
+        }
         prefs.edit().apply {
             putString(KEY_NAME, s.puppyName)
             putString(puppyNameKey(s.puppyStyle), s.puppyName)
@@ -2321,6 +2438,11 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             putInt(KEY_ENERGY, s.energy)
             putInt(KEY_CLEANLINESS, s.cleanliness)
             putInt(KEY_BOND, s.bond)
+            PuppyCareSystem.write(this, s.puppyStyle, careProfile(s), now)
+            putString(
+                PuppyProgressionStore.KEY_BOND_BY_PUPPY,
+                PuppyProgressionStore.encodeBondMap(bondByPuppy)
+            )
             putLong(KEY_CARE_ACTIONS, s.careActions)
             putLong(KEY_TOTAL_TAPS, s.totalTaps)
             putInt(KEY_BEST_COMBO, s.bestCombo)
@@ -2343,7 +2465,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             putInt(KEY_SKILL_POINTS, s.skillPoints)
             putLong(KEY_TOTAL_PRESTIGE_POINTS, s.totalPrestigePointsEarned)
             PrestigeSkill.entries.forEach { skill -> putInt(skillKey(skill), s.prestigeSkills[skill] ?: 0) }
-            putLong(KEY_LAST_SEEN, System.currentTimeMillis())
+            putLong(KEY_LAST_SEEN, now)
         }.apply()
     }
 
@@ -2359,6 +2481,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         const val PREFS_NAME = "puppy_clicker_save"
         val ACCESSORIES = listOf("None", "Bandana", "Bow", "Crown")
         const val FEED_COST = 20L
+        const val PLAY_BONE_COST = 1L
+        const val GROOM_COST = 10L
         const val PARK_ADVENTURE_MS = 60_000L
 
         private const val PRESTIGE_MIN_TREATS = 50_000L
