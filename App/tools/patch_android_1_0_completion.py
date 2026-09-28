@@ -344,13 +344,23 @@ def patch_view_model(source: str) -> str:
         if "            bond = activeCare.bond," in body:
             body = replace_once(
                 body,
+                "        val loaded = V6GameState(\n",
+                '''        val loadedBondByPuppy = PuppyProgressionStore.migrateBondMap(
+            existingRaw = prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null),
+            activePuppyId = style,
+            legacyBond = activeCare.bond
+        ).toMutableMap().apply {
+            this[style] = activeCare.bond
+        }
+        val loaded = V6GameState(
+''',
+                "load care-aware Bond map",
+            )
+            body = replace_once(
+                body,
                 '''            bond = activeCare.bond,''',
-                '''            bondByPuppyId = PuppyProgressionStore.migrateBondMap(
-                existingRaw = prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null),
-                activePuppyId = style,
-                legacyBond = activeCare.bond
-            ),
-            bond = activeCare.bond,''',
+                '''            bondByPuppyId = loadedBondByPuppy,
+            bond = PuppyProgression.bondFor(loadedBondByPuppy, style),''',
                 "load per-puppy Bond",
             )
         else:
