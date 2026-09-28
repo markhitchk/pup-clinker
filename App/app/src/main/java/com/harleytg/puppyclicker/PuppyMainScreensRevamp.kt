@@ -44,6 +44,7 @@ internal fun PuppyRevampedPlayScreen(
     val nextGoal = todayGoals.firstOrNull { it.id !in state.claimedDailyTasks }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var ticketVisible by remember { mutableStateOf(false) }
+    var tiredDialogVisible by remember { mutableStateOf(false) }
     val tapScale = remember { Animatable(1f) }
     val tapRotation = remember { Animatable(0f) }
     val tapLift = remember { Animatable(0f) }
@@ -67,6 +68,10 @@ internal fun PuppyRevampedPlayScreen(
 
     fun tapPuppy() {
         if (cooldown != 0L) return
+        if (state.isTired) {
+            tiredDialogVisible = true
+            return
+        }
         vm.tapPuppy()
         if (state.hapticsEnabled) performV6Haptic(context)
         if (animatePuppy) {
@@ -147,6 +152,21 @@ internal fun PuppyRevampedPlayScreen(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (state.isTired) {
+                            "⚡ Energy ${state.energy}% · Rest in Pup Care to keep playing"
+                        } else {
+                            "⚡ Energy ${state.energy}% · Care bonus +${state.careTapBonus} 🍪/tap"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (state.isTired) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
                     Button(
                         onClick = ::tapPuppy,
                         enabled = cooldown == 0L,
@@ -154,10 +174,14 @@ internal fun PuppyRevampedPlayScreen(
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Text(
-                            if (cooldown > 0L) {
-                                "🐶👁️ Fair-play cooldown · " + ((cooldown + 999L) / 1000L) + "s"
-                            } else {
-                                "🐾 Tap " + state.puppyName + "  +" + state.clickPower
+                            when {
+                                cooldown > 0L ->
+                                    "🐶👁️ Fair-play cooldown · " + ((cooldown + 999L) / 1000L) + "s"
+                                state.isTired ->
+                                    "😴 " + state.puppyName + " is tired · Care needed"
+                                else ->
+                                    "🐾 Tap " + state.puppyName + "  +" +
+                                        (state.clickPower + state.careTapBonus)
                             },
                             fontWeight = FontWeight.Black
                         )
@@ -216,6 +240,26 @@ internal fun PuppyRevampedPlayScreen(
                 .padding(top = 2.dp, start = 24.dp, end = 24.dp)
         )
     }
+
+    if (tiredDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { tiredDialogVisible = false },
+            title = {
+                Text("😴 ${state.puppyName} is tired", fontWeight = FontWeight.Black)
+            },
+            text = {
+                Text(
+                    "${state.puppyName} is tired. Please give ${state.puppyName} care before tapping Play again. " +
+                        "Rest restores energy, while feeding, cleaning, playing and cuddling improve this puppy's own care."
+                )
+            },
+            confirmButton = {
+                Button(onClick = { tiredDialogVisible = false }) {
+                    Text("Go to Pup Care")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -236,7 +280,7 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
         ) {
             PuppyMainPageHeader(
                 "Pup Care",
-                if (compact) "Keep every care stat healthy." else "Care for and bond with your active puppy."
+                if (compact) "Care is separate for each puppy." else "Care for your active puppy. Every puppy keeps its own needs and bond."
             )
             Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
 
@@ -283,6 +327,23 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
                     PuppyCompactCareMeter("⚡ Energy", state.energy)
                     PuppyCompactCareMeter("🫧 Cleanliness", state.cleanliness)
                     PuppyCompactCareMeter("🤝 Bond", state.bond)
+                    HorizontalDivider(Modifier.padding(vertical = 5.dp))
+                    Text(
+                        when {
+                            state.isTired ->
+                                "😴 Too tired to earn Treats on Play. Rest above ${PuppyCareSystem.TIRED_ENERGY_THRESHOLD}% energy."
+                            state.careTapBonus >= 2 ->
+                                "✨ Thriving care bonus: +2 Treats on every normal puppy tap."
+                            state.careTapBonus == 1 ->
+                                "✨ Healthy care bonus: +1 Treat on every normal puppy tap."
+                            else ->
+                                "Keep wellness at ${PuppyCareSystem.HEALTHY_CARE_SCORE}%+ to unlock a Treat bonus on Play."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (state.isTired) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
@@ -301,17 +362,26 @@ internal fun PuppyRevampedCareScreen(state: V6GameState, vm: PuppyClickerV6ViewM
                 PuppyQuickAction(
                     "🎾",
                     "Play",
-                    "-12 Energy",
-                    state.energy >= 12 && (state.happiness < 100 || state.bond < 100),
+                    "-${PuppyClickerV6ViewModel.PLAY_BONE_COST} 🦴 · -12 ⚡",
+                    state.bones >= PuppyClickerV6ViewModel.PLAY_BONE_COST &&
+                        state.energy >= 12 &&
+                        (state.happiness < 100 || state.bond < 100),
                     vm::playWithPuppy,
                     Modifier.weight(1f)
                 )
-                PuppyQuickAction("🫧", "Clean", "+35 Clean", state.cleanliness < 100, vm::groomPuppy, Modifier.weight(1f))
+                PuppyQuickAction(
+                    "🫧",
+                    "Clean",
+                    "-${PuppyClickerV6ViewModel.GROOM_COST} 🍪",
+                    state.treats >= PuppyClickerV6ViewModel.GROOM_COST && state.cleanliness < 100,
+                    vm::groomPuppy,
+                    Modifier.weight(1f)
+                )
             }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PuppyQuickAction("🌙", "Rest", "+30 Energy", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
-                PuppyQuickAction("🤗", "Cuddle", "+Happy / Bond", state.happiness < 100 || state.bond < 100, vm::cuddlePuppy, Modifier.weight(1f))
+                PuppyQuickAction("🌙", "Rest", "Free · +30 ⚡", state.energy < 100, vm::restPuppy, Modifier.weight(1f))
+                PuppyQuickAction("🤗", "Cuddle", "Free · +Happy / Bond", state.happiness < 100 || state.bond < 100, vm::cuddlePuppy, Modifier.weight(1f))
             }
         }
     }
