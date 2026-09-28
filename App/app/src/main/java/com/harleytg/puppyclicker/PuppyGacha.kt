@@ -113,7 +113,13 @@ internal fun PuppyGachaScreen(
     val trayBounce = remember { Animatable(1f) }
     val openProgress = remember { Animatable(0f) }
 
-    LaunchedEffect(stage) {
+    LaunchedEffect(stage, result) {
+        if (stage != 0 && result?.success != true) {
+            stage = 0
+            message = "The Gacha animation was interrupted. Your pull was already applied to your Puppy Roster."
+            return@LaunchedEffect
+        }
+
         when (stage) {
             1 -> {
                 knobRotation.snapTo(0f)
@@ -149,8 +155,9 @@ internal fun PuppyGachaScreen(
         }
     }
 
-    if (stage == 4 && result?.success == true) {
-        val pulled = result!!
+    val revealResult = result
+    if (stage == 4 && revealResult?.success == true) {
+        val pulled = revealResult
         PuppyGachaRevealDialog(
             pulled = pulled,
             onUsePuppy = {
