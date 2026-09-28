@@ -109,7 +109,7 @@ internal object PuppyCareSystem {
         prefs.all.keys
             .asSequence()
             .filter { it.startsWith(KEY_PREFIX) }
-            .forEach(editor::remove)
+            .forEach { key -> editor.remove(key) }
     }
 
     private fun PuppyCareProfile.normalized(): PuppyCareProfile = copy(
