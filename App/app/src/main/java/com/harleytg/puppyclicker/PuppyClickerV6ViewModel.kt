@@ -1338,7 +1338,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         val switchingPuppy = puppy != null && puppy.id != s.puppyStyle
         if (switchingPuppy) saveState()
         val targetCare = if (switchingPuppy) {
-            PuppyCareSystem.load(prefs, puppy!!.id, System.currentTimeMillis())
+            loadCareForPuppy(puppy!!.id)
         } else {
             careProfile(s)
         }
@@ -1452,6 +1452,18 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             cleanliness = care.cleanliness,
             bond = care.bond
         )
+
+    private fun loadCareForPuppy(styleId: String): PuppyCareProfile {
+        val savedBond = PuppyProgressionStore.decodeBondMap(
+            prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null)
+        )[styleId] ?: 10
+        return PuppyCareSystem.load(
+            prefs = prefs,
+            styleId = styleId,
+            nowMs = System.currentTimeMillis(),
+            legacyFallback = PuppyCareProfile(bond = savedBond)
+        )
+    }
 
     fun renamePuppy(name: String) {
         val clean = name.trim().replace("\n", " ").take(18)
@@ -1590,11 +1602,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         // Persist the outgoing puppy before loading the selected puppy's own needs.
         saveState()
-        val care = PuppyCareSystem.load(
-            prefs = prefs,
-            styleId = id,
-            nowMs = System.currentTimeMillis()
-        )
+        val care = loadCareForPuppy(id)
         _state.value = withCare(
             s.copy(
                 puppyStyle = id,
@@ -1826,7 +1834,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = if (nextStyle != current.puppyStyle) {
             withCare(
                 nextState,
-                PuppyCareSystem.load(prefs, nextStyle, System.currentTimeMillis())
+                loadCareForPuppy(nextStyle)
             )
         } else {
             nextState
@@ -1868,7 +1876,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = if (nextStyle != current.puppyStyle) {
             withCare(
                 nextState,
-                PuppyCareSystem.load(prefs, nextStyle, System.currentTimeMillis())
+                loadCareForPuppy(nextStyle)
             )
         } else {
             nextState
