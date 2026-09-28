@@ -61,6 +61,19 @@ def patch_view_model(source: str) -> str:
         "XP level curve",
     )
 
+    if "private fun withCare(state: V6GameState, care: PuppyCareProfile)" in source:
+        source = replace_once(
+            source,
+            '''            cleanliness = care.cleanliness,
+            bond = care.bond
+        )''',
+            '''            cleanliness = care.cleanliness,
+            bondByPuppyId = state.bondByPuppyId + (state.puppyStyle to care.bond),
+            bond = care.bond
+        )''',
+            "care profile Bond map mirror",
+        )
+
     # Manual taps earn XP, independent of Treat multiplier / active-bonus size.
     source = replace_once(
         source,
@@ -188,19 +201,34 @@ def patch_view_model(source: str) -> str:
     source = replace_once(source, helper_anchor, helper + helper_anchor, "progression helpers")
 
     # Redeem, Gacha and exchange paths all pass newly acquired ownership through the shared helper.
-    source = replace_once(
-        source,
-        '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+    if "val targetCare = if (switchingPuppy)" in source:
+        source = replace_once(
+            source,
+            '''            targetCare
         )
         saveState()
         return V6RedeemOutcome(true, reward.message)''',
-        '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+            '''            targetCare
         )
         _state.value = awardNewPuppyXp(s, _state.value)
         saveState()
         return V6RedeemOutcome(true, reward.message)''',
-        "redeem ownership XP",
-    )
+            "redeem ownership XP",
+        )
+    else:
+        source = replace_once(
+            source,
+            '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        )
+        saveState()
+        return V6RedeemOutcome(true, reward.message)''',
+            '''            redeemedCodeIds = s.redeemedCodeIds + reward.id
+        )
+        _state.value = awardNewPuppyXp(s, _state.value)
+        saveState()
+        return V6RedeemOutcome(true, reward.message)''',
+            "redeem ownership XP",
+        )
     source = replace_once(
         source,
         '''            ticketInventory = nextInventory,
@@ -223,37 +251,56 @@ def patch_view_model(source: str) -> str:
         saveState()''',
         "gift ownership XP",
     )
-    source = replace_all(
-        source,
-        '''            puppyStyle = nextStyle,
+    if "loadCareForPuppy(nextStyle)" in source:
+        source = replace_all(
+            source,
+            '''        } else {
+            nextState
+        }
+        saveState()
+        return true''',
+            '''        } else {
+            nextState
+        }
+        _state.value = awardNewPuppyXp(current, _state.value)
+        saveState()
+        return true''',
+            "trade ownership XP with per-puppy care",
+            minimum=2,
+        )
+    else:
+        source = replace_all(
+            source,
+            '''            puppyStyle = nextStyle,
             puppyName = nextName
         )
         saveState()''',
-        '''            puppyStyle = nextStyle,
+            '''            puppyStyle = nextStyle,
             puppyName = nextName,
             bond = PuppyProgression.bondFor(current.bondByPuppyId, nextStyle)
         )
         _state.value = awardNewPuppyXp(current, _state.value)
         saveState()''',
-        "trade ownership XP and Bond mirror",
-        minimum=2,
-    )
+            "trade ownership XP and Bond mirror",
+            minimum=2,
+        )
 
-    source = replace_once(
-        source,
-        '''        _state.value = s.copy(
+    if "val care = loadCareForPuppy(id)" not in source:
+        source = replace_once(
+            source,
+            '''        _state.value = s.copy(
             puppyStyle = id,
             puppyName = nextName
         )
         saveState()''',
-        '''        _state.value = s.copy(
+            '''        _state.value = s.copy(
             puppyStyle = id,
             puppyName = nextName,
             bond = PuppyProgression.bondFor(s.bondByPuppyId, id)
         )
         saveState()''',
-        "selected puppy Bond mirror",
-    )
+            "selected puppy Bond mirror",
+        )
 
     # Casino settlements may grant puppies. Apply ownership XP before any transaction data is persisted.
     def transform_casino(body: str) -> str:
@@ -294,10 +341,23 @@ def patch_view_model(source: str) -> str:
             ),''',
             "load XP",
         )
-        body = replace_once(
-            body,
-            '''            bond = prefs.getInt(KEY_BOND, 10).coerceIn(0, 100),''',
-            '''            bondByPuppyId = PuppyProgressionStore.migrateBondMap(
+        if "            bond = activeCare.bond," in body:
+            body = replace_once(
+                body,
+                '''            bond = activeCare.bond,''',
+                '''            bondByPuppyId = PuppyProgressionStore.migrateBondMap(
+                existingRaw = prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null),
+                activePuppyId = style,
+                legacyBond = activeCare.bond
+            ),
+            bond = activeCare.bond,''',
+                "load per-puppy Bond",
+            )
+        else:
+            body = replace_once(
+                body,
+                '''            bond = prefs.getInt(KEY_BOND, 10).coerceIn(0, 100),''',
+                '''            bondByPuppyId = PuppyProgressionStore.migrateBondMap(
                 existingRaw = prefs.getString(PuppyProgressionStore.KEY_BOND_BY_PUPPY, null),
                 activePuppyId = style,
                 legacyBond = prefs.getInt(KEY_BOND, 10)
@@ -310,8 +370,8 @@ def patch_view_model(source: str) -> str:
                 ),
                 style
             ),''',
-            "load per-puppy Bond",
-        )
+                "load per-puppy Bond",
+            )
         body = replace_once(
             body,
             '''            redeemedCodeIds = prefs.getStringSet(KEY_REDEEMED_CODES, emptySet())?.toSet() ?: emptySet(),''',
