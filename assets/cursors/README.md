@@ -33,11 +33,13 @@ The cursor artwork is transparent and is intended to remain readable on both Pup
 
 Keep these SVG files as the source-of-truth artwork.
 
-The Android app now uses a native pointer bridge:
+The native Android app uses an exact raster bridge for the default pointer:
 
-- `App/app/src/main/res/drawable/puppy_pointer_paw.xml` is the packaged runtime derivative of `paw_default.svg`.
-- `PuppyPointer.kt` rasterizes that drawable to a 64 × 64 bitmap and creates `android.view.PointerIcon` with hotspot `(16, 16)`.
+- `App/app/src/main/res/drawable-nodpi/puppy_pointer_paw_exact.png` is a 64 × 64 PNG rendered directly from `paw_default.svg`. Using `drawable-nodpi` prevents Android density rescaling before the custom pointer is created.
+- `PuppyPointer.kt` loads that exact PNG without redrawing it through Android VectorDrawable, verifies the bitmap remains 64 × 64, and creates `android.view.PointerIcon` with hotspot `(16, 16)`.
 - `PuppyClickerTheme` applies the custom pointer with Compose `Modifier.pointerHoverIcon`, so every activity using the shared theme receives the paw cursor automatically.
 - Touchscreen input remains unaffected; the custom cursor is only visible for mouse/trackpad hover input.
+
+The old `puppy_pointer_paw.xml` vector is no longer the runtime source because Android VectorDrawable could not preserve the SVG gradient and drop-shadow design exactly.
 
 Additional SVG states remain available for future per-control hover, click, drag, text, disabled, and casino cursor overrides.
