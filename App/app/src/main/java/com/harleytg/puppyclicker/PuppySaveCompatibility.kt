@@ -99,7 +99,7 @@ internal object PuppySaveCompatibility {
                         }
                     }
 
-                    key in longKeys && raw !is Long -> {
+                    isExpectedLongKey(key) && raw !is Long -> {
                         numberToLong(raw)?.let { value ->
                             editor.putLong(key, value)
                             changed = true
@@ -155,7 +155,18 @@ internal object PuppySaveCompatibility {
         key in explicitIntKeys ||
             key.startsWith("upgrade_") ||
             key.startsWith("prestige_skill_") ||
-            key.startsWith("ticket_shop_purchase_")
+            key.startsWith("ticket_shop_purchase_") ||
+            (
+                key.startsWith("care_profile_v1_") &&
+                    !key.endsWith("_updated_at")
+            )
+
+    private fun isExpectedLongKey(key: String): Boolean =
+        key in longKeys ||
+            (
+                key.startsWith("care_profile_v1_") &&
+                    key.endsWith("_updated_at")
+            )
 
     private fun numberToLong(value: Any?): Long? = when (value) {
         is Byte -> value.toLong()
