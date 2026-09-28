@@ -277,10 +277,10 @@ internal fun PuppyCasinoHub(
             }
         }
 
-        activeRound?.let { round ->
+        if (activeRound != null) {
             Spacer(Modifier.height(12.dp))
             CasinoRecoveryCard(
-                round = round,
+                round = activeRound!!,
                 vm = vm,
                 onResumeBlackjack = { page = "blackjack" }
             )
