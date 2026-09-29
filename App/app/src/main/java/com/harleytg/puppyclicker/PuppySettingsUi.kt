@@ -141,7 +141,7 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 18.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
     ) {
         Text(
             "Settings",
