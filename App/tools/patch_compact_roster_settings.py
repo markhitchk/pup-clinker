@@ -396,9 +396,17 @@ private fun CompactSelectedPuppyActions(
 
 
 def patch_settings_screen(source: str) -> str:
-    # The current Settings UI already uses the approved routed, card-based design.
-    # The older compact patch moved an accordion account section into a top card;
-    # applying that transform again would fail because those legacy anchors no longer exist.
+    # Current Settings is already the final one-screen expandable-card design.
+    # Do not try to reapply the legacy account-card transform to it.
+    if (
+        "var expandedSection by rememberSaveable" in source
+        and 'SettingsLabel("ACCOUNT")' in source
+        and 'title = "Profile"' in source
+        and "SettingsDestination" not in source
+    ):
+        return source
+
+    # Older routed Settings sources are also already beyond the legacy accordion shape.
     if "private enum class SettingsDestination" in source and "private fun SettingsHome(" in source:
         return source
 
