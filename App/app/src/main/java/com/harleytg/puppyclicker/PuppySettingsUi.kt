@@ -309,6 +309,17 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
         }
 
         SettingsSectionCard(
+            key = "release-hub",
+            icon = "↻",
+            title = "Release Hub",
+            subtitle = "What's New, installed build and app updates",
+            expanded = expandedSection == "release-hub",
+            onToggle = { toggle("release-hub") }
+        ) {
+            PuppyReleaseHubContent(showHeader = false)
+        }
+
+        SettingsSectionCard(
             key = "about",
             icon = "ⓘ",
             title = "About Puppy Clicker",
@@ -1193,6 +1204,8 @@ private fun AppearanceSettings(ui: PuppyUiState) {
 
     Spacer(Modifier.height(14.dp))
     SettingsLabel("INTERFACE")
+    PuppyPerformancePresetSelector()
+    Spacer(Modifier.height(10.dp))
     InlineSwitch("Animated UI", "Optional interface transitions and decorative movement.", ui.animatedUi) {
         PuppyUiPreferences.setAnimatedUi(context, it)
     }
