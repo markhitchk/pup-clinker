@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 /**
  * Every Puppy Roster overlay goes through this system so Details, How to Unlock,
@@ -224,11 +223,12 @@ private fun PuppyRosterDialogFrame(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = puppyEdgeToEdgeDialogProperties()
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
+                .puppyDialogSafeDrawingPadding()
                 .padding(horizontal = 18.dp, vertical = 24.dp),
             contentAlignment = Alignment.Center
         ) {
