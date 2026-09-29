@@ -4,14 +4,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -37,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 
 @Composable
 internal fun PuppyWelcomeTitleScreen(onContinue: () -> Unit) {
@@ -179,17 +182,18 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
 
     Dialog(
         onDismissRequest = {},
-        properties = DialogProperties(
+        properties = puppyEdgeToEdgeDialogProperties(
             dismissOnBackPress = false,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
+            dismissOnClickOutside = false
         )
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(
+            // Background stays full-bleed; the form sits inside the safe drawing area (system
+            // bars, cutout, and keyboard) and scrolls on short screens instead of being clipped.
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
@@ -200,94 +204,102 @@ internal fun PuppySignupScreen(onContinueAsGuest: () -> Unit) {
                             )
                         )
                     )
-                    .padding(horizontal = 24.dp, vertical = 34.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .puppyDialogSafeDrawingPadding()
             ) {
-                Image(
-                    painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
-                    contentDescription = "Puppy Clicker logo",
-                    modifier = Modifier.size(118.dp),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    "Sign up for Puppy Clicker",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Choose a local player username now. Website account login is coming soon; the official Discord community is available below.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(14.dp))
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = PuppyPlayerIdentity.normalizeUsername(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Player username") },
-                    supportingText = {
-                        Text("Saved as lowercase and embedded inside encrypted save metadata.")
-                    },
-                    singleLine = true
-                )
-
-                Spacer(Modifier.height(16.dp))
-                OutlinedButton(
-                    onClick = { PuppyLinks.openDiscord(context) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = maxHeight)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 34.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_discord),
-                        contentDescription = null,
-                        modifier = Modifier.size(21.dp)
+                    Image(
+                        painter = streamedRepoLogoPainter(RepoLogoAsset.PUPPY_CLICKER, R.drawable.source_logo),
+                        contentDescription = "Puppy Clicker logo",
+                        modifier = Modifier.size(118.dp),
+                        contentScale = ContentScale.Fit
                     )
-                    Spacer(Modifier.size(8.dp))
-                    Text("Join Discord Community")
-                }
-                Text(
-                    PuppyLinks.DISCORD_INVITE,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(9.dp))
-                OutlinedButton(
-                    onClick = {},
-                    enabled = false,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text("🌐  Website Login · Coming Soon")
-                }
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        "Sign up for Puppy Clicker",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Choose a local player username now. Website account login is coming soon; the official Discord community is available below.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = PuppyPlayerIdentity.normalizeUsername(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Player username") },
+                        supportingText = {
+                            Text("Saved as lowercase and embedded inside encrypted save metadata.")
+                        },
+                        singleLine = true
+                    )
 
-                Spacer(Modifier.height(18.dp))
-                Button(
-                    onClick = {
-                        PuppyPlayerIdentity.setUsername(context, normalizedUsername)
-                        onContinueAsGuest()
-                    },
-                    enabled = normalizedUsername.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text("Continue with Local Save", fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { PuppyLinks.openDiscord(context) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_discord),
+                            contentDescription = null,
+                            modifier = Modifier.size(21.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("Join Discord Community")
+                    }
+                    Text(
+                        PuppyLinks.DISCORD_INVITE,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    OutlinedButton(
+                        onClick = {},
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Text("🌐  Website Login · Coming Soon")
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+                    Button(
+                        onClick = {
+                            PuppyPlayerIdentity.setUsername(context, normalizedUsername)
+                            onContinueAsGuest()
+                        },
+                        enabled = normalizedUsername.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Text("Continue with Local Save", fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    PuppyLegalLinks(
+                        modifier = Modifier.fillMaxWidth(),
+                        acknowledgementText = "Creating a local player means you agree to the Terms of Use and acknowledge the Privacy Policy."
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    PuppyDevelopmentNotice()
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "PupEye does not store IMEI, serial number, Android ID, phone number, or account tokens in save metadata.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
                 }
-                Spacer(Modifier.height(4.dp))
-                PuppyLegalLinks(
-                    modifier = Modifier.fillMaxWidth(),
-                    acknowledgementText = "Creating a local player means you agree to the Terms of Use and acknowledge the Privacy Policy."
-                )
-                Spacer(Modifier.height(8.dp))
-                PuppyDevelopmentNotice()
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "PupEye does not store IMEI, serial number, Android ID, phone number, or account tokens in save metadata.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
