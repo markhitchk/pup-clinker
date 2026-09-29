@@ -11,6 +11,7 @@ import { HttpError } from "../_shared/http.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import {
   parseDeviceTransferClaim,
+  requiresManualDeviceTransferApproval,
   sourcePublicKeyMatchesFingerprint,
   verifySignedDeviceTransferClaim,
   type DeviceTransferClaim,
@@ -47,6 +48,7 @@ Deno.serve(async (req: Request) => {
     const player = byPlayerId;
 
     const sourceInstallation = await verifySourceOwnership(admin, player, claim);
+    const signedMigrationClaim = !requiresManualDeviceTransferApproval(claim);
 
     const { data: activeInstallation, error: activeError } = await admin
       .from("pupeye_installations")
@@ -138,7 +140,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: migration, error: migrationError } = await admin
+    let { data: migration, error: migrationError } = await admin
       .from("pupeye_device_migrations")
       .select("*")
       .eq("player_uuid", player.id)
@@ -149,6 +151,9 @@ Deno.serve(async (req: Request) => {
 
     if (!migration || migration.status === "pending") {
       let pending = migration;
+      const autoApprove = signedMigrationClaim;
+      const reviewedAt = autoApprove ? new Date().toISOString() : null;
+
       if (!pending) {
         const { data, error } = await admin
           .from("pupeye_device_migrations")
@@ -161,31 +166,72 @@ Deno.serve(async (req: Request) => {
             requested_support_code: claim.supportCode,
             requested_device_model: claim.deviceModel,
             requested_app_version: claim.appVersion,
-            status: "pending",
+            status: autoApprove ? "approved" : "pending",
             requested_at: new Date().toISOString(),
+            reviewed_at: reviewedAt,
+            support_note: autoApprove
+              ? "Automatically approved from a verified signed migration claim."
+              : null,
           })
           .select("*")
           .single();
         if (error) throw error;
         pending = data;
       } else {
-        const { error } = await admin
+        const update: Record<string, unknown> = {
+          requested_public_key_b64: envelope.publicKey,
+          requested_support_code: claim.supportCode,
+          requested_device_model: claim.deviceModel,
+          requested_app_version: claim.appVersion,
+          requested_at: new Date().toISOString(),
+        };
+        if (autoApprove) {
+          update.status = "approved";
+          update.reviewed_at = reviewedAt;
+          update.support_note =
+            "Automatically approved from a verified signed migration claim.";
+        }
+
+        const { data, error } = await admin
           .from("pupeye_device_migrations")
-          .update({
-            requested_public_key_b64: envelope.publicKey,
-            requested_support_code: claim.supportCode,
-            requested_device_model: claim.deviceModel,
-            requested_app_version: claim.appVersion,
-            requested_at: new Date().toISOString(),
-          })
-          .eq("id", pending.id);
+          .update(update)
+          .eq("id", pending.id)
+          .select("*")
+          .single();
         if (error) throw error;
+        pending = data;
+      }
+
+      migration = pending;
+
+      if (!autoApprove) {
+        await audit(
+          admin,
+          "DEVICE_MIGRATION_REQUIRED",
+          "review",
+          {
+            migrationId: pending.id,
+            supportCode: claim.supportCode,
+            saveId: claim.saveId,
+            sourceInstallationId: claim.sourceInstallationId,
+          },
+          player.id,
+          activeInstallation?.id ?? sourceInstallation.id,
+        );
+
+        return json(409, {
+          code: "DEVICE_MIGRATION_REQUIRED",
+          message:
+            "This older backup is authentic, but it needs one-time Support approval. For immediate transfer, export a fresh backup from the updated old phone and import it here.",
+          migrationId: pending.id,
+          supportCode: claim.supportCode,
+        });
       }
 
       await audit(
         admin,
-        "DEVICE_MIGRATION_REQUIRED",
-        "review",
+        "DEVICE_MIGRATION_AUTO_APPROVED",
+        "info",
         {
           migrationId: pending.id,
           supportCode: claim.supportCode,
@@ -195,14 +241,6 @@ Deno.serve(async (req: Request) => {
         player.id,
         activeInstallation?.id ?? sourceInstallation.id,
       );
-
-      return json(409, {
-        code: "DEVICE_MIGRATION_REQUIRED",
-        message:
-          "This backup is authentic and the new phone has been verified. Support approval is required once; then import the same backup again.",
-        migrationId: pending.id,
-        supportCode: claim.supportCode,
-      });
     }
 
     if (migration.status !== "approved") {
