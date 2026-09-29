@@ -71,14 +71,15 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
         val activity = generated("PuppyClickerV6Activity.kt")
         val settings = generated("PuppySettingsUi.kt")
         assertFalse(main.contains("PuppyAchievementsV6.statuses"))
-        assertTrue(settings.contains("PuppyAchievementsV6.statuses"))
-        assertTrue(settings.contains("PuppyProfileProgressCard(gameState)"))
-        assertTrue(settings.contains("PuppyProfileAchievementsSection(gameState)"))
+        assertTrue(settings.contains("PuppyAchievementsV6.statuses(gameState, gameState.achievementRewardedIds)"))
+        assertTrue(settings.contains("private fun ProfileDropdownCard("))
+        assertTrue(settings.contains("title = \"Progress & XP\""))
+        assertTrue(settings.contains("title = \"Achievements\""))
         assertTrue(roster.contains("PuppyViewerDialog("))
         assertTrue(activity.contains("PuppyNotificationInboxDialog("))
         assertTrue(activity.contains("PuppyNotificationHistory.unreadCount"))
-        assertTrue(settings.contains("PuppyReleaseHubScreen("))
-        assertTrue(settings.contains("PuppyPerformancePreset"))
+        assertTrue(settings.contains("PuppyReleaseHubContent(showHeader = false)"))
+        assertTrue(settings.contains("PuppyPerformancePresetSelector()"))
     }
 
     @Test
@@ -110,7 +111,7 @@ class PuppyAndroidOnePointZeroGeneratedIntegrationTest {
 
         assertTrue(activity.contains("BackHandler(enabled = releaseHubOpen || internalDestination != null)"))
         assertTrue(activity.contains("if (releaseHubOpen)"))
-        assertTrue(settings.contains("BackHandler(enabled = developerConsoleOpen || destination != SettingsDestination.HOME)"))
+        assertTrue(settings.contains("BackHandler(enabled = developerConsoleOpen || expandedSection != null)"))
         assertTrue(casino.contains("BackHandler(enabled = page != \"hub\")"))
         assertTrue(console.contains("BackHandler(onBack = onBack)"))
     }
