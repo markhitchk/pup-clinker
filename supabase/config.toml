@@ -31,3 +31,7 @@ verify_jwt = false
 # Signed authenticated portable-save content attestation.
 [functions.pupeye-save-attestation]
 verify_jwt = false
+# Signed new-device request carrying an authenticated portable-save migration claim.
+[functions.pupeye-device-transfer]
+verify_jwt = false
+
