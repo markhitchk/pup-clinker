@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -33,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -181,12 +185,42 @@ internal object GameSaveTransfer {
             }
 
             val pupeyeVerification = PupEyeAuthority.verifyTransfer(context, payload)
+            val identity = payload.optJSONObject("identity")
+                ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
             if (!pupeyeVerification.accepted) {
                 val code = pupeyeVerification.errorCode ?: PupEyeErrorCode.UNKNOWN
-                throw PuppyErrorHandler.pupEye(
-                    code,
-                    message = pupeyeVerification.message ?: code.defaultMessage
-                )
+                if (
+                    code == PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED &&
+                    pupeyeVerification.migrationRequired
+                ) {
+                    val transfer = SupabasePupEyeClient.requestDeviceTransfer(
+                        context = context,
+                        migrationClaim = PupEyeAuthority.transferMigrationClaim(payload)
+                    )
+                    if (!transfer.approved) {
+                        val supportSuffix = transfer.supportCode
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { " Support Installation Code: $it." }
+                            .orEmpty()
+                        val retrySuffix = if (transfer.pending) {
+                            " After Support approves the request, choose this same .pupsave again."
+                        } else {
+                            ""
+                        }
+                        throw PuppyErrorHandler.pupEye(
+                            PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED,
+                            message = transfer.message + supportSuffix + retrySuffix
+                        )
+                    }
+                    // Server approval binds this new installation/key to the player carried
+                    // by the already signature-verified save. Only now may local identity move.
+                    PuppyPlayerIdentity.adoptTransferredIdentity(context, identity)
+                } else {
+                    throw PuppyErrorHandler.pupEye(
+                        code,
+                        message = pupeyeVerification.message ?: code.defaultMessage
+                    )
+                }
             }
             val proof = payload.getJSONObject("pupeye")
             val unsignedPayload =
@@ -197,8 +231,6 @@ internal object GameSaveTransfer {
                 PupEyeAuthority.transferPayloadHash(unsignedPayload)
             )
 
-            val identity = payload.optJSONObject("identity")
-                ?: throw PuppyErrorHandler.puppyClicker(PuppyClickerErrorCode.INVALID_SAVE_PAYLOAD)
             validateImportedIdentity(context, identity)
             restoreStores(
                 context = context,
@@ -444,6 +476,7 @@ internal object GameSaveTransfer {
 internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
     val pupeyeActorLabel = remember { PupEyeAuthority.actorLabel(context) }
     val supportInstallationCode = remember {
         runCatching { PupEyeAuthority.supportInstallationCode(context) }
@@ -462,15 +495,19 @@ internal fun OnboardingSaveImport(onImportSuccess: () -> Unit) {
     ) { uri ->
         if (uri != null) {
             focusManager.clearFocus(force = true)
-            val result = GameSaveTransfer.import(context, uri, password)
-            popupTitle = when {
-                result.success -> "Save Imported"
-                result.error?.domain == PuppyErrorDomain.PUPEYE -> "PupEye Error"
-                else -> "Puppy Clicker Error"
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    GameSaveTransfer.import(context, uri, password)
+                }
+                popupTitle = when {
+                    result.success -> "Save Imported"
+                    result.error?.domain == PuppyErrorDomain.PUPEYE -> "PupEye Error"
+                    else -> "Puppy Clicker Error"
+                }
+                popupMessage = result.message
+                popupError = result.error
+                importedSuccessfully = result.success
             }
-            popupMessage = result.message
-            popupError = result.error
-            importedSuccessfully = result.success
         }
     }
 
@@ -586,6 +623,7 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
     var username by rememberSaveable { mutableStateOf(PuppyPlayerIdentity.username(context)) }
     val pupeyeActorLabel = remember { PupEyeAuthority.actorLabel(context) }
     val supportInstallationCode = remember {
@@ -646,12 +684,16 @@ internal fun SaveTransferSettings(onImportSuccess: (() -> Unit)? = null) {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            val result = GameSaveTransfer.import(context, uri, password)
-            showPopup(
-                title = if (result.success) "Save Imported" else "Import Failed",
-                result = result,
-                reloadOnSuccess = true
-            )
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    GameSaveTransfer.import(context, uri, password)
+                }
+                showPopup(
+                    title = if (result.success) "Save Imported" else "Import Failed",
+                    result = result,
+                    reloadOnSuccess = true
+                )
+            }
         }
     }
 
