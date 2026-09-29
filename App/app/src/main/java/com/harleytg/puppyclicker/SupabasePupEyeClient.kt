@@ -36,6 +36,13 @@ internal data class PupEyeBackendState(
         get() = state in setOf("MIGRATION_REQUIRED", "REVIEW_REQUIRED", "BLOCKED")
 }
 
+internal data class PupEyeDeviceTransferResult(
+    val approved: Boolean,
+    val pending: Boolean,
+    val message: String,
+    val supportCode: String?
+)
+
 /**
  * Supabase transport for Puppy Clicker account authority and PupEye.
  *
@@ -79,8 +86,12 @@ internal object SupabasePupEyeClient {
         refreshEnforcementAsync(app)
         scope.launch {
             runCatching {
-                ensureRegistered(app)
-                sendSaveCheckpoint(app, reason = "startup")
+                // A fresh install must stay unclaimed until onboarding decides whether this
+                // device is creating a new player or importing an existing authenticated save.
+                if (PuppyUiPreferences.current(app).setupComplete) {
+                    ensureRegistered(app)
+                    sendSaveCheckpoint(app, reason = "startup")
+                }
             }.onFailure { error ->
                 noteTransientError(app, error.message ?: "Supabase initialization failed")
             }
@@ -254,6 +265,82 @@ internal object SupabasePupEyeClient {
                 markConnected(app)
             }
         }
+    }
+
+    fun requestDeviceTransfer(
+        context: Context,
+        migrationClaim: JSONObject
+    ): PupEyeDeviceTransferResult {
+        val app = context.applicationContext
+        if (!isConfigured()) {
+            return PupEyeDeviceTransferResult(
+                approved = false,
+                pending = false,
+                message = "Puppy Clicker services are not configured on this build.",
+                supportCode = null
+            )
+        }
+
+        val playerId = migrationClaim.optString("playerId")
+        val friendCode = migrationClaim.optString("friendCode")
+        require(PuppyPlayerIdentity.isValidPlayerId(playerId)) {
+            "Migration claim has an invalid Player ID"
+        }
+        require(PuppyPlayerIdentity.isValidFriendCode(friendCode)) {
+            "Migration claim has an invalid Friend Code"
+        }
+
+        val payload = JSONObject(migrationClaim.toString()).apply {
+            put("supportCode", PupEyeAuthority.supportInstallationCode(app))
+            put("deviceModel", PuppyPlayerIdentity.deviceModel())
+            put("platform", "android")
+            put("appVersion", BuildConfig.VERSION_NAME)
+        }
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = "device-transfer",
+            payload = payload
+        )
+        val response = invoke(
+            functionName = "pupeye-device-transfer",
+            envelope = envelope,
+            sessionToken = null
+        )
+
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(app, response)
+            val code = response.body.optString("code")
+            return PupEyeDeviceTransferResult(
+                approved = false,
+                pending = code == "DEVICE_MIGRATION_REQUIRED",
+                message = response.message("PupEye could not authorize this device transfer."),
+                supportCode = response.body.optString("supportCode")
+                    .takeIf { it.isNotBlank() }
+                    ?: PupEyeAuthority.supportInstallationCode(app)
+            )
+        }
+
+        val token = response.body.optString("sessionToken").takeIf { it.isNotBlank() }
+            ?: error("Pupeye device transfer returned no session token")
+        val expiresAt = response.body.optLong("expiresAtEpochMs", 0L)
+        require(expiresAt > System.currentTimeMillis()) {
+            "Pupeye device transfer returned an expired session"
+        }
+
+        val session = BackendSession(
+            token = token,
+            expiresAtEpochMs = expiresAt,
+            backendPlayerId = response.body.optString("backendPlayerId"),
+            backendInstallationId = response.body.optString("backendInstallationId")
+        )
+        writeSession(app, session)
+        markConnected(app)
+        return PupEyeDeviceTransferResult(
+            approved = true,
+            pending = false,
+            message = response.message("Device transfer authorized."),
+            supportCode = PupEyeAuthority.supportInstallationCode(app)
+        )
     }
 
     fun queueSaveCheckpoint(context: Context, reason: String) {
