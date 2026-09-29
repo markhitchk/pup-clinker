@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -50,7 +53,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import java.text.DateFormat
 import java.text.NumberFormat
 import java.time.Instant
@@ -65,6 +67,12 @@ private val InboxUnreadRed = Color(0xFFE83F4F)
 private val InboxClaimGreen = Color(0xFF33AC55)
 private val InboxClaimGreenDark = Color(0xFF268A42)
 private val InboxRewardBorder = Color(0xFFFFD36A)
+
+// Notification cards always use light (white / cream) containers, so their text must not inherit
+// the theme's content color: in dark theme that is near-white and made titles unreadable.
+private val InboxCardTitle = Color(0xFF1C1B3A)
+private val InboxCardMeta = Color(0xFF5B6475)
+private val InboxCardBody = Color(0xFF5E6878)
 
 private enum class PuppyInboxFilter(
     val label: String,
@@ -110,11 +118,12 @@ internal fun PuppyNotificationInboxDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = puppyEdgeToEdgeDialogProperties()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .puppyDialogSafeDrawingPadding()
                 .padding(
                     horizontal = if (compact) 8.dp else viewport.horizontalPadding,
                     vertical = if (viewport.isShort) 8.dp else 18.dp
@@ -192,8 +201,12 @@ internal fun PuppyNotificationInboxDialog(
                                             MaterialTheme.colorScheme.surface
                                         )
                                     )
-                                )
-                                .padding(horizontal = if (compact) 9.dp else 14.dp),
+                                ),
+                            contentPadding = PaddingValues(
+                                start = if (compact) 9.dp else 14.dp,
+                                end = if (compact) 9.dp else 14.dp,
+                                bottom = if (compact) 12.dp else 16.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp)
                         ) {
                             groupedItems.forEach { (group, groupItems) ->
@@ -216,7 +229,6 @@ internal fun PuppyNotificationInboxDialog(
                                     )
                                 }
                             }
-                            item { Spacer(Modifier.height(5.dp)) }
                         }
                     }
 
@@ -403,7 +415,10 @@ private fun PuppyNotificationCard(
             claimable -> BorderStroke(1.5.dp, InboxRewardBorder)
             else -> BorderStroke(1.dp, Color(0xFFD9E8F3))
         },
-        colors = CardDefaults.cardColors(containerColor = container),
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = InboxCardTitle
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (claimable) 3.dp else 2.dp)
     ) {
         Row(
@@ -439,6 +454,7 @@ private fun PuppyNotificationCard(
                     Text(
                         item.title,
                         modifier = Modifier.weight(1f),
+                        color = InboxCardTitle,
                         style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         maxLines = 2,
@@ -452,7 +468,7 @@ private fun PuppyNotificationCard(
                         Text(
                             item.timestamp(group),
                             style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = InboxCardMeta,
                             maxLines = 1
                         )
                         if (!item.read) {
@@ -472,7 +488,7 @@ private fun PuppyNotificationCard(
                     Text(
                         body,
                         style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF667085),
+                        color = InboxCardBody,
                         lineHeight = if (compact) 18.sp else 21.sp
                     )
                 }
@@ -500,7 +516,7 @@ private fun PuppyNotificationCard(
                                         vertical = if (compact) 5.dp else 8.dp
                                     ),
                                     style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = InboxCardMeta,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -513,7 +529,7 @@ private fun PuppyNotificationCard(
                                     contentColor = Color.White
                                 ),
                                 border = BorderStroke(1.dp, InboxClaimGreenDark),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                contentPadding = PaddingValues(
                                     horizontal = if (compact) 16.dp else 20.dp,
                                     vertical = if (compact) 8.dp else 10.dp
                                 )
@@ -541,39 +557,74 @@ private fun PuppyInboxActions(
     onClearRead: () -> Unit,
     onMarkAllRead: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = if (compact) 9.dp else 14.dp,
-                vertical = if (compact) 8.dp else 12.dp
-            ),
-        horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp)
-    ) {
-        OutlinedButton(
-            onClick = onClearRead,
-            enabled = hasRead,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(22.dp)
-        ) {
-            Text("🗑", fontSize = 15.sp)
-            Spacer(Modifier.width(5.dp))
-            Text("Clear Read", fontWeight = FontWeight.Bold, maxLines = 1)
-        }
+    // Purple accent that stays readable on both the light and the dark panel surface.
+    val accent = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFFBCBEFF) else InboxPurpleDeep
 
-        Button(
-            onClick = onMarkAllRead,
-            enabled = hasUnread,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(22.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = InboxPurple,
-                contentColor = Color.White
-            )
-        ) {
-            Text("✓", fontWeight = FontWeight.Black)
-            Spacer(Modifier.width(6.dp))
-            Text("Mark All Read", fontWeight = FontWeight.Black, maxLines = 1)
+    // The dialog content already sits inside the safe drawing area (navigation bar included), so
+    // this bar never overlaps the system navigation bar. It is a solid surface with a divider so
+    // scrolled cards visibly pass underneath its top edge instead of blending into it.
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = if (compact) 9.dp else 14.dp,
+                        vertical = if (compact) 8.dp else 12.dp
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onClearRead,
+                    enabled = hasRead,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = accent,
+                        // Default disabled content is onSurface at 38% alpha, which is nearly
+                        // invisible on the light panel. Keep it clearly "off" but still legible.
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.80f)
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (hasRead) {
+                            accent.copy(alpha = 0.75f)
+                        } else {
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)
+                        }
+                    )
+                ) {
+                    Text("🗑", fontSize = 15.sp)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Clear Read", fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+
+                Button(
+                    onClick = onMarkAllRead,
+                    enabled = hasUnread,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = InboxPurple,
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.80f)
+                    )
+                ) {
+                    Text("✓", fontWeight = FontWeight.Black)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Mark All Read", fontWeight = FontWeight.Black, maxLines = 1)
+                }
+            }
         }
     }
 }
