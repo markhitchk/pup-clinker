@@ -403,11 +403,6 @@ private fun ProfileSettings(
     }
 
     PuppyIdentityHeaderCard(gameState)
-    Spacer(Modifier.height(10.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IdentityTile("PLAYER ID", PuppyPlayerIdentity.publicPlayerId(context), Modifier.weight(1f))
-        IdentityTile("FRIEND CODE", PuppyPlayerIdentity.publicFriendCode(context), Modifier.weight(1f))
-    }
 
     Spacer(Modifier.height(14.dp))
     SettingsLabel("PROFILE")
@@ -623,6 +618,39 @@ private fun ProfileSettings(
         key = "identity",
         icon = "🪪",
         title = "Account details",
+        subtitle = "Friend Code · Player ID · account details",
+        expanded = expandedCard == "identity",
+        onToggle = {
+            expandedCard = if (expandedCard == "identity") null else "identity"
+        }
+    ) {
+        Text(
+            "Your Puppy Clicker identity stays device-bound.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        ProfileInfoField(
+            label = "PLAYER ID",
+            value = PuppyPlayerIdentity.publicPlayerId(context)
+        )
+        Spacer(Modifier.height(8.dp))
+        ProfileInfoField(
+            label = "FRIEND CODE",
+            value = PuppyPlayerIdentity.publicFriendCode(context)
+        )
+        if (officialDeveloper) {
+            Spacer(Modifier.height(8.dp))
+            ProfileInfoField("ACCOUNT", "HarleyTG Developer / Owner")
+            Spacer(Modifier.height(8.dp))
+            ProfileInfoField("STUDIO", "Harley's Studios")
+        }
+    }
+
+    ProfileDropdownCard(
+        key = "identity",
+        icon = "🪪",
+        title = "Account & Identity",
         subtitle = "Friend Code · Player ID · account details",
         expanded = expandedCard == "identity",
         onToggle = {
