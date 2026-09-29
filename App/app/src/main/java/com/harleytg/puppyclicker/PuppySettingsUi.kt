@@ -630,6 +630,7 @@ private fun ProfileSettings(
     ui: PuppyUiState
 ) {
     val context = LocalContext.current
+    val gameState by vm.state.collectAsStateWithLifecycle()
     var username by rememberSaveable {
         mutableStateOf(PuppyPlayerIdentity.username(context))
     }
@@ -638,95 +639,312 @@ private fun ProfileSettings(
     }
     var savedMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var birthdayEditor by rememberSaveable { mutableStateOf(false) }
+    var expandedCard by rememberSaveable { mutableStateOf<String?>(null) }
+
     val officialDeveloper = PuppyPlayerIdentity.isHarleyTgDeveloper(context)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Local Profile", fontWeight = FontWeight.Black)
-            Text(
-                "Your Puppy Clicker identity stays device-bound.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(10.dp))
-            StatusLine("Player ID", PuppyPlayerIdentity.publicPlayerId(context))
-            StatusLine("Friend Code", PuppyPlayerIdentity.publicFriendCode(context))
-            if (officialDeveloper) {
-                StatusLine("Account", "HarleyTG Developer / Owner")
-                StatusLine("Studio", "Harley's Studios")
-            }
-        }
+    val achievements = remember(gameState) {
+        PuppyAchievementsV6.statuses(gameState, emptySet())
     }
-
-    Spacer(Modifier.height(12.dp))
-
-    OutlinedTextField(
-        value = username,
-        onValueChange = {
-            username = it.take(24)
-            savedMessage = null
-        },
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Puppy Clicker display name") },
-        supportingText = {
-            Text("Letters, numbers, _, - and . · up to 24 characters")
-        },
-        singleLine = true
-    )
-    Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = {
-            val issue = PuppyPlayerIdentity.usernameModerationIssue(username)
-            if (issue != null) {
-                usernameModerationMessage = issue
-            } else {
-                username = PuppyPlayerIdentity.setUsername(context, username)
-                savedMessage = "Display name saved."
-            }
-        },
-        enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text("Save Display Name")
-    }
-    savedMessage?.let {
-        Text(
-            it,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-
-    Spacer(Modifier.height(16.dp))
-    SettingsLabel("BIRTHDAY")
+    val completedAchievements = achievements.count { it.completed }
     val birthdayText = if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
         monthName(ui.birthdayMonth) + " " + ui.birthdayDay
     } else {
         "Not set"
     }
-    StatusLine("Birthday", birthdayText)
-    Text(
-        "Only the month and day are stored locally and they are not shown publicly.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    Spacer(Modifier.height(8.dp))
-    OutlinedButton(
-        onClick = { birthdayEditor = true },
-        modifier = Modifier.fillMaxWidth()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StreamedPuppyPortrait(
+                styleId = gameState.puppyStyle,
+                size = 76.dp,
+                accessory = gameState.accessory,
+                background = MaterialTheme.colorScheme.surfaceVariant
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    PuppyPlayerIdentity.username(context),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Level " + gameState.level + " · " + gameState.lifetimeTreats + " XP",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    if (officialDeveloper) {
+                        "Developer / Owner"
+                    } else {
+                        "Local Puppy Clicker profile"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SettingsLabel("PROFILE")
+
+    ProfileDropdownCard(
+        key = "edit-profile",
+        icon = "👤",
+        title = "Edit Profile",
+        subtitle = username.ifBlank { "Choose a display name" },
+        expanded = expandedCard == "edit-profile",
+        onToggle = {
+            expandedCard = if (expandedCard == "edit-profile") null else "edit-profile"
+        }
+    ) {
+        OutlinedTextField(
+            value = username,
+            onValueChange = {
+                username = it.take(24)
+                savedMessage = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Puppy Clicker display name") },
+            supportingText = {
+                Text("Letters, numbers, _, - and . · up to 24 characters")
+            },
+            singleLine = true
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = {
+                val issue = PuppyPlayerIdentity.usernameModerationIssue(username)
+                if (issue != null) {
+                    usernameModerationMessage = issue
+                } else {
+                    username = PuppyPlayerIdentity.setUsername(context, username)
+                    savedMessage = "Display name saved."
+                }
+            },
+            enabled = PuppyPlayerIdentity.normalizeUsername(username).isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Save Display Name")
+        }
+        savedMessage?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+
+    val currentLevelStartXp = if (gameState.level <= 1) {
+        0L
+    } else {
+        val previous = (gameState.level - 1).toLong()
+        previous * previous * 100L
+    }
+    val nextLevelXp = runCatching {
+        val level = gameState.level.toLong().coerceAtLeast(1L)
+        Math.multiplyExact(Math.multiplyExact(level, level), 100L)
+    }.getOrDefault(Long.MAX_VALUE)
+    val levelSpan = if (nextLevelXp == Long.MAX_VALUE) {
+        1L
+    } else {
+        (nextLevelXp - currentLevelStartXp).coerceAtLeast(1L)
+    }
+    val levelProgress = if (nextLevelXp == Long.MAX_VALUE) {
+        levelSpan
+    } else {
+        (gameState.lifetimeTreats - currentLevelStartXp).coerceIn(0L, levelSpan)
+    }
+
+    ProfileDropdownCard(
+        key = "progress",
+        icon = "⭐",
+        title = "Progress & XP",
+        subtitle = if (nextLevelXp == Long.MAX_VALUE) {
+            "Level " + gameState.level + " · maximum tracked level"
+        } else {
+            "Level " + gameState.level + " · " + levelProgress + " / " + levelSpan + " XP"
+        },
+        expanded = expandedCard == "progress",
+        onToggle = {
+            expandedCard = if (expandedCard == "progress") null else "progress"
+        }
     ) {
         Text(
-            if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
-                "Edit Birthday"
+            "Permanent Puppy Clicker progression",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.material3.LinearProgressIndicator(
+            progress = {
+                if (levelSpan <= 0L) 0f
+                else levelProgress.toFloat() / levelSpan.toFloat()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(9.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+        )
+        Spacer(Modifier.height(12.dp))
+        ProfileInfoField("CURRENT LEVEL", gameState.level.toString())
+        Spacer(Modifier.height(8.dp))
+        ProfileInfoField("TOTAL XP", gameState.lifetimeTreats.toString())
+        Spacer(Modifier.height(8.dp))
+        ProfileInfoField(
+            "NEXT LEVEL",
+            if (nextLevelXp == Long.MAX_VALUE) {
+                "Maximum tracked level"
             } else {
-                "Add Birthday"
+                levelProgress.toString() + " / " + levelSpan + " XP"
             }
         )
+    }
+
+    ProfileDropdownCard(
+        key = "achievements",
+        icon = "🏆",
+        title = "Achievements",
+        subtitle = completedAchievements.toString() + " / " + achievements.size + " completed",
+        expanded = expandedCard == "achievements",
+        onToggle = {
+            expandedCard = if (expandedCard == "achievements") null else "achievements"
+        }
+    ) {
+        achievements.forEachIndexed { index, status ->
+            if (index > 0) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(status.definition.emoji, fontSize = 21.sp)
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(status.definition.title, fontWeight = FontWeight.Black)
+                    Text(
+                        status.definition.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        status.progress.coerceAtMost(status.definition.target).toString() +
+                            "/" + status.definition.target,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (status.completed) "✓ Complete" else status.definition.rewardDescription,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (status.completed) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+
+    ProfileDropdownCard(
+        key = "birthday",
+        icon = "🎂",
+        title = "Birthday",
+        subtitle = birthdayText,
+        expanded = expandedCard == "birthday",
+        onToggle = {
+            expandedCard = if (expandedCard == "birthday") null else "birthday"
+        }
+    ) {
+        Text(
+            "Only the month and day are stored locally and they are not shown publicly.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { birthdayEditor = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                if (PuppyBirthday.isValid(ui.birthdayMonth, ui.birthdayDay)) {
+                    "Edit Birthday"
+                } else {
+                    "Add Birthday"
+                }
+            )
+        }
+    }
+
+    ProfileDropdownCard(
+        key = "identity",
+        icon = "🪪",
+        title = "Account & Identity",
+        subtitle = "Friend Code · Player ID · account details",
+        expanded = expandedCard == "identity",
+        onToggle = {
+            expandedCard = if (expandedCard == "identity") null else "identity"
+        }
+    ) {
+        Text(
+            "Your Puppy Clicker identity stays device-bound.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        ProfileInfoField(
+            label = "PLAYER ID",
+            value = PuppyPlayerIdentity.publicPlayerId(context)
+        )
+        Spacer(Modifier.height(8.dp))
+        ProfileInfoField(
+            label = "FRIEND CODE",
+            value = PuppyPlayerIdentity.publicFriendCode(context)
+        )
+        if (officialDeveloper) {
+            Spacer(Modifier.height(8.dp))
+            ProfileInfoField("ACCOUNT", "HarleyTG Developer / Owner")
+            Spacer(Modifier.height(8.dp))
+            ProfileInfoField("STUDIO", "Harley's Studios")
+        }
     }
 
     if (birthdayEditor) {
@@ -761,6 +979,137 @@ private fun ProfileSettings(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun ProfileDropdownCard(
+    key: String,
+    icon: String,
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val reducedMotion = LocalPuppyReducedMotion.current
+    val duration = if (reducedMotion) 1 else 190
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 90f else 0f,
+        animationSpec = tween(duration),
+        label = "profile-$key-chevron"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 9.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (expanded) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.20f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (expanded) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            }
+        )
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(icon, fontSize = 21.sp)
+                    }
+                }
+
+                Spacer(Modifier.width(11.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Text(
+                    "›",
+                    modifier = Modifier.rotate(arrowRotation),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(tween(duration)) + fadeIn(tween(duration)),
+                exit = shrinkVertically(tween(duration)) + fadeOut(tween(duration))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 14.dp, bottom = 14.dp)
+                ) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(12.dp))
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoField(label: String, value: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.74f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
