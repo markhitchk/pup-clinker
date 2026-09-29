@@ -982,7 +982,11 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         enabled = !busy,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(if (busy) "Waiting for Discord…" else "Link")
+        if (busy) {
+            Text("Waiting for Discord…")
+        } else {
+            Text("Link")
+        }
     }
     if (pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING ||
         verify.status == PuppyDiscordLinkStatus.CODE_SENT ||
