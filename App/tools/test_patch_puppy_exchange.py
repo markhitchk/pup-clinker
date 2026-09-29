@@ -54,28 +54,69 @@ class CompactRosterPatchTest(unittest.TestCase):
         self.assertIn("size = if (compact) 58.dp else 68.dp", patched)
 
 
-class SettingsAccountCardTest(unittest.TestCase):
-    def test_complete_account_profile_stays_at_top_of_routed_settings(self) -> None:
+class SettingsOneScreenCardsTest(unittest.TestCase):
+    def test_settings_use_one_screen_expandable_cards(self) -> None:
         source = final_settings_source()
 
-        home = source.index("private fun SettingsHome(")
-        profile = source.index("PuppyPlayerIdentity.username(context)", home)
-        account = source.index('SettingsGroup("Account")', home)
-        appearance = source.index('SettingsGroup("Appearance")', home)
+        self.assertNotIn("SettingsDestination", source)
+        self.assertNotIn("private fun SettingsHome(", source)
+        self.assertIn('var expandedSection by rememberSaveable', source)
+        self.assertIn('Everything in one place. Tap a card to expand its settings.', source)
+        self.assertIn('SettingsLabel("ACCOUNT")', source)
+        self.assertIn('SettingsLabel("APP & EXPERIENCE")', source)
+        self.assertIn('SettingsLabel("GAME")', source)
+        self.assertIn('SettingsLabel("SUPPORT")', source)
+        self.assertIn('SettingsLabel("ADVANCED")', source)
 
-        self.assertLess(profile, account)
-        self.assertLess(account, appearance)
-        self.assertIn("SettingsDestination.PROFILE", source)
+        expected_cards = (
+            "Profile",
+            "Discord",
+            "Import / Export",
+            "Appearance",
+            "Notifications",
+            "Privacy & Data",
+            "Gameplay",
+            "Data Management",
+            "Support & Reports",
+            "Puppy Roster",
+            "PupEye Protection",
+            "Online Assets",
+            "About Puppy Clicker",
+        )
+        for title in expected_cards:
+            self.assertIn(f'title = "{title}"', source)
+
         self.assertIn("ProfileSettings(vm, ui)", source)
+        self.assertIn("DiscordSettings(state, vm)", source)
+        self.assertIn("AppearanceSettings(ui)", source)
+        self.assertIn("NotificationSettings()", source)
+        self.assertIn("PuppyPrivacyDataSettings(ui)", source)
+        self.assertIn("GameplaySettings(state, vm)", source)
+        self.assertIn("SaveDataSettings(vm)", source)
+        self.assertIn("PuppySupportReportSettings(ui)", source)
+        self.assertIn("PuppyRosterSettings()", source)
+        self.assertIn("PupEyeSettings(state)", source)
+        self.assertIn("OnlineAssetSettings()", source)
 
-    def test_top_account_card_shows_identity_summary(self) -> None:
+    def test_profile_and_identity_remain_card_based_inside_settings(self) -> None:
         source = final_settings_source()
 
+        self.assertIn("private fun ProfileDropdownCard(", source)
+        self.assertIn('title = "Account & Identity"', source)
         self.assertIn("PuppyPlayerIdentity.publicPlayerId(context)", source)
         self.assertIn("PuppyPlayerIdentity.publicFriendCode(context)", source)
-        self.assertIn('"Local Profile"', source)
-        self.assertIn('"Protected by PupEye"', source)
-        self.assertIn("SettingsSummaryValue(", source)
+        self.assertIn('title = "Progress & XP"', source)
+        self.assertIn('title = "Achievements"', source)
+        self.assertIn('title = "Birthday"', source)
+
+    def test_settings_cards_show_summary_and_expand_inline(self) -> None:
+        source = final_settings_source()
+
+        self.assertIn("private fun SettingsSectionCard(", source)
+        self.assertIn("subtitle: String", source)
+        self.assertIn("AnimatedVisibility(", source)
+        self.assertIn("targetValue = if (expanded) 90f else 0f", source)
+        self.assertIn("expandedSection = if (expandedSection == section) null else section", source)
 
 
 if __name__ == "__main__":
