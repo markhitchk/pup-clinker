@@ -62,6 +62,24 @@ internal object PuppyReleaseHubModel {
 
 @Composable
 internal fun PuppyReleaseHubScreen(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+    ) {
+        PuppyReleaseHubContent(
+            showHeader = true,
+            onBack = onBack
+        )
+    }
+}
+
+@Composable
+internal fun PuppyReleaseHubContent(
+    showHeader: Boolean,
+    onBack: () -> Unit = {}
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val update by PuppyNotificationCenter.updateNotice.collectAsStateWithLifecycle()
@@ -75,88 +93,91 @@ internal fun PuppyReleaseHubScreen(onBack: () -> Unit) {
         PuppyNotificationCenter.loadCachedUpdate(context)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
+    if (showHeader) {
         TextButton(onClick = onBack) { Text("‹ Back") }
-        Text("Release Hub", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+        Text(
+            "Release Hub",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Black
+        )
         Text(
             "Updates and What's New for Puppy Clicker.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
+    }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-            )
-        ) {
-            Column(Modifier.padding(14.dp)) {
-                Text("Installed", fontWeight = FontWeight.Black)
-                Text("Version ${model.installedVersion} · Build ${model.installedBuild}")
-                if (model.latestBuild != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Latest known", fontWeight = FontWeight.Black)
-                    Text(
-                        buildString {
-                            append(model.releaseName ?: "Puppy Clicker release")
-                            model.latestVersion?.let { append(" · $it") }
-                            append(" · Build ${model.latestBuild}")
-                        }
-                    )
-                }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+        )
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Installed", fontWeight = FontWeight.Black)
+            Text("Version ${model.installedVersion} · Build ${model.installedBuild}")
+            if (model.latestBuild != null) {
+                Spacer(Modifier.height(8.dp))
+                Text("Latest known", fontWeight = FontWeight.Black)
+                Text(
+                    buildString {
+                        append(model.releaseName ?: "Puppy Clicker release")
+                        model.latestVersion?.let { append(" · $it") }
+                        append(" · Build ${model.latestBuild}")
+                    }
+                )
             }
         }
+    }
 
+    Spacer(Modifier.height(12.dp))
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.padding(14.dp)) {
+            Text("What's New in 1.0", fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(6.dp))
+            Text(PuppyReleaseHubModel.WHATS_NEW_1_0)
+        }
+    }
+
+    if (model.releaseNotes.isNotBlank()) {
         Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(14.dp)) {
-                Text("What's New in 1.0", fontWeight = FontWeight.Black)
+                Text("Latest release notes", fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(6.dp))
-                Text(PuppyReleaseHubModel.WHATS_NEW_1_0)
+                Text(model.releaseNotes)
             }
         }
+    }
 
-        if (model.releaseNotes.isNotBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Latest release notes", fontWeight = FontWeight.Black)
-                    Spacer(Modifier.height(6.dp))
-                    Text(model.releaseNotes)
+    Spacer(Modifier.height(12.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    PuppyNotificationCenter.refreshUpdateStatus(context, force = true)
                 }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            },
+            modifier = Modifier.weight(1f)
         ) {
-            OutlinedButton(
-                onClick = { scope.launch { PuppyNotificationCenter.refreshUpdateStatus(context, force = true) } },
+            Text("Refresh")
+        }
+        if (update != null) {
+            Button(
+                onClick = {
+                    val target = update?.apkUrl ?: update?.releaseUrl
+                    if (!target.isNullOrBlank()) openPuppyUpdateUrl(context, target)
+                },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Refresh")
-            }
-            if (update != null) {
-                Button(
-                    onClick = {
-                        val target = update?.apkUrl ?: update?.releaseUrl
-                        if (!target.isNullOrBlank()) openPuppyUpdateUrl(context, target)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (model.updateAvailable) "Update" else "Open Release")
-                }
+                Text(if (model.updateAvailable) "Update" else "Open Release")
             }
         }
-        Spacer(Modifier.height(12.dp))
     }
+    Spacer(Modifier.height(12.dp))
 }
