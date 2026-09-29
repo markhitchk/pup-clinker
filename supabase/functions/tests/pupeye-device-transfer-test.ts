@@ -1,33 +1,15 @@
 import {
+  createHash,
   generateKeyPairSync,
   sign,
 } from "node:crypto";
+import { Buffer } from "node:buffer";
 import {
   parseDeviceTransferClaim,
   verifySignedDeviceTransferClaim,
 } from "../pupeye-device-transfer/policy.ts";
 
-Deno.test("signed device-transfer claim verifies and binds player identity", () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ec", {
-    namedCurve: "prime256v1",
-  });
-  const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
-  const publicKeyB64 = publicKeyDer.toString("base64");
-  const keyId = new Uint8Array(
-    crypto.subtle ? [] : [],
-  );
-  void keyId;
-
-  const fingerprint = Array.from(
-    new Uint8Array(
-      // node:crypto Hash is used here to stay identical to production.
-    ),
-  );
-  void fingerprint;
-});
-
-Deno.test("migration signature rejects a changed Friend Code", async () => {
-  const { createHash } = await import("node:crypto");
+Deno.test("migration signature verifies and rejects changed identity", () => {
   const { privateKey, publicKey } = generateKeyPairSync("ec", {
     namedCurve: "prime256v1",
   });
