@@ -101,46 +101,31 @@ private val ACCENT_PRESETS = listOf(
     AccentPreset("Green", "#22C55E")
 )
 
-private enum class SettingsDestination {
-    HOME,
-    PROFILE,
-    DISCORD,
-    TRANSFER,
-    APPEARANCE,
-    NOTIFICATIONS,
-    PRIVACY,
-    GAMEPLAY,
-    DATA,
-    ROSTER,
-    PUPEYE,
-    ASSETS,
-    SUPPORT,
-    DEVELOPER,
-    ABOUT
-}
-
 @Composable
 internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val ui by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
-    var destinationName by rememberSaveable {
-        mutableStateOf(SettingsDestination.HOME.name)
-    }
+    val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
+    val security = PupEyeSaveGuard.state(context)
+
+    var expandedSection by rememberSaveable { mutableStateOf<String?>(null) }
     var developerConsoleOpen by rememberSaveable { mutableStateOf(false) }
 
-    val destination = runCatching {
-        SettingsDestination.valueOf(destinationName)
-    }.getOrDefault(SettingsDestination.HOME)
+    val showDeveloper =
+        developer.unlocked ||
+            PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
+            discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
 
-    fun open(next: SettingsDestination) {
-        destinationName = next.name
+    fun toggle(section: String) {
+        expandedSection = if (expandedSection == section) null else section
     }
 
-    BackHandler(enabled = developerConsoleOpen || destination != SettingsDestination.HOME) {
+    BackHandler(enabled = developerConsoleOpen || expandedSection != null) {
         if (developerConsoleOpen) {
             developerConsoleOpen = false
         } else {
-            open(SettingsDestination.HOME)
+            expandedSection = null
         }
     }
 
@@ -152,152 +137,11 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
         return
     }
 
-    when (destination) {
-        SettingsDestination.HOME -> SettingsHome(
-            state = state,
-            onOpen = ::open
-        )
-
-        SettingsDestination.PROFILE -> SettingsSubpage(
-            title = "Profile",
-            subtitle = "Identity, progression, XP, achievements, and birthday.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            ProfileSettings(vm, ui)
-        }
-
-        SettingsDestination.DISCORD -> SettingsSubpage(
-            title = "Discord",
-            subtitle = "Connect or manage your Discord account.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            DiscordSettings(state, vm)
-        }
-
-        SettingsDestination.TRANSFER -> SettingsSubpage(
-            title = "Import / Export",
-            subtitle = "Back up or restore your Puppy Clicker save.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
-        }
-
-        SettingsDestination.APPEARANCE -> SettingsSubpage(
-            title = "Appearance",
-            subtitle = "Theme, accent color, scale, contrast, and motion.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            AppearanceSettings(ui)
-        }
-
-        SettingsDestination.NOTIFICATIONS -> SettingsSubpage(
-            title = "Notifications",
-            subtitle = "Choose what Puppy Clicker may alert you about.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            NotificationSettings()
-        }
-
-        SettingsDestination.PRIVACY -> SettingsSubpage(
-            title = "Privacy & Data",
-            subtitle = "Optional diagnostics, crash reporting, network use, and PupEye privacy.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            PuppyPrivacyDataSettings(ui)
-        }
-
-        SettingsDestination.GAMEPLAY -> SettingsSubpage(
-            title = "Gameplay",
-            subtitle = "Interaction, feedback, and gameplay preferences.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            GameplaySettings(state, vm)
-        }
-
-        SettingsDestination.DATA -> SettingsSubpage(
-            title = "Data Management",
-            subtitle = "Save status, backups, resets, and local data.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            SaveDataSettings(vm)
-            Spacer(Modifier.height(16.dp))
-            DangerZoneSettings(state, vm)
-        }
-
-        SettingsDestination.ROSTER -> SettingsSubpage(
-            title = "Puppy Roster",
-            subtitle = "Manage streamed puppy roster content.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            PuppyRosterSettings()
-        }
-
-        SettingsDestination.PUPEYE -> SettingsSubpage(
-            title = "PupEye Protection",
-            subtitle = "Fair-play, save integrity, and protection status.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            PupEyeSettings(state)
-        }
-
-        SettingsDestination.ASSETS -> SettingsSubpage(
-            title = "Online Assets",
-            subtitle = "Roster and streamed asset status.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            OnlineAssetSettings()
-        }
-
-        SettingsDestination.SUPPORT -> SettingsSubpage(
-            title = "Support & Reports",
-            subtitle = "Tier 1 support intake that works without a Puppy Clicker API.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            PuppySupportReportSettings(ui)
-        }
-
-        SettingsDestination.DEVELOPER -> SettingsSubpage(
-            title = "Developer",
-            subtitle = "Diagnostics, logs, and developer-only app tools.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            PuppyDeveloperOptions(
-                onOpenConsole = { developerConsoleOpen = true },
-                onMaxAccount = { vm.maxDeveloperAccount() }
-            )
-        }
-
-        SettingsDestination.ABOUT -> SettingsSubpage(
-            title = "About Puppy Clicker",
-            subtitle = "App information, links, and development details.",
-            onBack = { open(SettingsDestination.HOME) }
-        ) {
-            AboutSettings(
-                onOpenDeveloperConsole = { developerConsoleOpen = true }
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsHome(
-    state: V6GameState,
-    onOpen: (SettingsDestination) -> Unit
-) {
-    val context = LocalContext.current
-    val security = PupEyeSaveGuard.state(context)
-    val developer by PuppyDeveloperPreferences.observe(context).collectAsStateWithLifecycle()
-    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
-    val showDeveloper =
-        developer.unlocked ||
-            PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
-            discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
+            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 18.dp)
     ) {
         Text(
             "Settings",
@@ -305,322 +149,197 @@ private fun SettingsHome(
             fontWeight = FontWeight.Black
         )
         Text(
-            "Customize your experience, manage your account, and more.",
+            "Everything in one place. Tap a card to expand its settings.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(Modifier.height(14.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onOpen(SettingsDestination.PROFILE) },
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StreamedPuppyPortrait(
-                    styleId = state.puppyStyle,
-                    size = 66.dp,
-                    accessory = state.accessory,
-                    background = MaterialTheme.colorScheme.surfaceVariant
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        PuppyPlayerIdentity.username(context),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        "Local Profile",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (security.hasActiveIssue) {
-                            "PupEye needs attention"
-                        } else {
-                            "Protected by PupEye"
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (security.hasActiveIssue) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    "›",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SettingsSummaryValue(
-                label = "Player ID",
-                value = PuppyPlayerIdentity.publicPlayerId(context),
-                modifier = Modifier.weight(1f)
-            )
-            SettingsSummaryValue(
-                label = "Friend Code",
-                value = PuppyPlayerIdentity.publicFriendCode(context),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
         Spacer(Modifier.height(16.dp))
+        SettingsLabel("ACCOUNT")
 
-        SettingsGroup("Account") {
-            SettingsNavRow("👤", "Profile", "Level, XP, achievements, identity, and birthday") {
-                onOpen(SettingsDestination.PROFILE)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◉", "Discord", "Connect or manage your Discord account") {
-                onOpen(SettingsDestination.DISCORD)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("↕", "Import / Export", "Back up or restore your .pupsave") {
-                onOpen(SettingsDestination.TRANSFER)
-            }
+        SettingsSectionCard(
+            key = "profile",
+            icon = "👤",
+            title = "Profile",
+            subtitle = PuppyPlayerIdentity.username(context) + " · Level " + state.level,
+            expanded = expandedSection == "profile",
+            onToggle = { toggle("profile") }
+        ) {
+            ProfileSettings(vm, ui)
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        SettingsGroup("Appearance") {
-            SettingsNavRow("◐", "Theme", "Light, Dark, or System") {
-                onOpen(SettingsDestination.APPEARANCE)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("●", "Accent Color", "Choose your accent color") {
-                onOpen(SettingsDestination.APPEARANCE)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("↔", "UI Scale", "Compact, Default, or Large") {
-                onOpen(SettingsDestination.APPEARANCE)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◌", "Reduced Motion", "Minimize non-essential animations") {
-                onOpen(SettingsDestination.APPEARANCE)
-            }
+        SettingsSectionCard(
+            key = "discord",
+            icon = "◉",
+            title = "Discord",
+            subtitle = discord.account?.let { "Connected as @" + it.username }
+                ?: "Connect or manage your Discord account",
+            expanded = expandedSection == "discord",
+            onToggle = { toggle("discord") }
+        ) {
+            DiscordSettings(state, vm)
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        SettingsGroup("Notifications") {
-            SettingsNavRow("🔔", "Notification Settings", "In-game alerts, updates, and more") {
-                onOpen(SettingsDestination.NOTIFICATIONS)
-            }
+        SettingsSectionCard(
+            key = "transfer",
+            icon = "↕",
+            title = "Import / Export",
+            subtitle = "Back up or restore your Puppy Clicker .pupsave",
+            expanded = expandedSection == "transfer",
+            onToggle = { toggle("transfer") }
+        ) {
+            SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(7.dp))
+        SettingsLabel("APP & EXPERIENCE")
 
-        SettingsGroup("Privacy & Data") {
-            SettingsNavRow("🛡", "Privacy & Data", "Diagnostics consent, crash reports, network use, and PupEye") {
-                onOpen(SettingsDestination.PRIVACY)
-            }
+        SettingsSectionCard(
+            key = "appearance",
+            icon = "🎨",
+            title = "Appearance",
+            subtitle = "Theme, accent color, scale, contrast and motion",
+            expanded = expandedSection == "appearance",
+            onToggle = { toggle("appearance") }
+        ) {
+            AppearanceSettings(ui)
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        SettingsGroup("Game") {
-            SettingsNavRow("🎮", "Gameplay", "Preferences and gameplay options") {
-                onOpen(SettingsDestination.GAMEPLAY)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("▤", "Data Management", "Back up, restore, reset, and delete data") {
-                onOpen(SettingsDestination.DATA)
-            }
+        SettingsSectionCard(
+            key = "notifications",
+            icon = "🔔",
+            title = "Notifications",
+            subtitle = "In-game alerts, updates and notification permissions",
+            expanded = expandedSection == "notifications",
+            onToggle = { toggle("notifications") }
+        ) {
+            NotificationSettings()
         }
 
-        Spacer(Modifier.height(14.dp))
-
-        SettingsGroup("Support") {
-            SettingsNavRow(
-                "🐾",
-                "Support & Reports",
-                "Report bugs, casino issues, users, account problems, and more"
-            ) {
-                onOpen(SettingsDestination.SUPPORT)
-            }
+        SettingsSectionCard(
+            key = "privacy",
+            icon = "🛡",
+            title = "Privacy & Data",
+            subtitle = "Diagnostics, crash reporting, network use and PupEye privacy",
+            expanded = expandedSection == "privacy",
+            onToggle = { toggle("privacy") }
+        ) {
+            PuppyPrivacyDataSettings(ui)
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(7.dp))
+        SettingsLabel("GAME")
 
-        SettingsGroup("Advanced") {
-            SettingsNavRow("🐶", "Puppy Roster", "Roster content and asset refresh") {
-                onOpen(SettingsDestination.ROSTER)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("◉", "PupEye Protection", "Fair-play and save integrity status") {
-                onOpen(SettingsDestination.PUPEYE)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("☁", "Online Assets", "Streamed asset and cache status") {
-                onOpen(SettingsDestination.ASSETS)
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            SettingsNavRow("ⓘ", "About Puppy Clicker", "Version, links, development, and legal") {
-                onOpen(SettingsDestination.ABOUT)
-            }
+        SettingsSectionCard(
+            key = "gameplay",
+            icon = "🎮",
+            title = "Gameplay",
+            subtitle = "Interaction, feedback and gameplay preferences",
+            expanded = expandedSection == "gameplay",
+            onToggle = { toggle("gameplay") }
+        ) {
+            GameplaySettings(state, vm)
+        }
+
+        SettingsSectionCard(
+            key = "data",
+            icon = "💾",
+            title = "Data Management",
+            subtitle = "Save status, backups, resets and local data",
+            expanded = expandedSection == "data",
+            onToggle = { toggle("data") }
+        ) {
+            SaveDataSettings(vm)
+            Spacer(Modifier.height(16.dp))
+            DangerZoneSettings(state, vm)
+        }
+
+        Spacer(Modifier.height(7.dp))
+        SettingsLabel("SUPPORT")
+
+        SettingsSectionCard(
+            key = "support",
+            icon = "🐾",
+            title = "Support & Reports",
+            subtitle = "Report bugs, account problems, users, Casino issues and more",
+            expanded = expandedSection == "support",
+            onToggle = { toggle("support") }
+        ) {
+            PuppySupportReportSettings(ui)
+        }
+
+        Spacer(Modifier.height(7.dp))
+        SettingsLabel("ADVANCED")
+
+        SettingsSectionCard(
+            key = "roster",
+            icon = "🐶",
+            title = "Puppy Roster",
+            subtitle = "Manage streamed puppy roster content and refresh assets",
+            expanded = expandedSection == "roster",
+            onToggle = { toggle("roster") }
+        ) {
+            PuppyRosterSettings()
+        }
+
+        SettingsSectionCard(
+            key = "pupeye",
+            icon = "👁",
+            title = "PupEye Protection",
+            subtitle = if (security.hasActiveIssue) {
+                "Protection needs attention"
+            } else {
+                "Fair-play and save integrity protected"
+            },
+            expanded = expandedSection == "pupeye",
+            onToggle = { toggle("pupeye") }
+        ) {
+            PupEyeSettings(state)
+        }
+
+        SettingsSectionCard(
+            key = "assets",
+            icon = "☁",
+            title = "Online Assets",
+            subtitle = "Streamed asset, roster and cache status",
+            expanded = expandedSection == "assets",
+            onToggle = { toggle("assets") }
+        ) {
+            OnlineAssetSettings()
+        }
+
+        SettingsSectionCard(
+            key = "about",
+            icon = "ⓘ",
+            title = "About Puppy Clicker",
+            subtitle = "Version, links, development and legal information",
+            expanded = expandedSection == "about",
+            onToggle = { toggle("about") }
+        ) {
+            AboutSettings(
+                onOpenDeveloperConsole = { developerConsoleOpen = true }
+            )
         }
 
         if (showDeveloper) {
-            Spacer(Modifier.height(14.dp))
-            SettingsGroup("Developer") {
-                SettingsNavRow("🛠", "Developer Options", "Diagnostics, app logs, and developer tools") {
-                    onOpen(SettingsDestination.DEVELOPER)
-                }
+            Spacer(Modifier.height(7.dp))
+            SettingsLabel("DEVELOPER")
+            SettingsSectionCard(
+                key = "developer",
+                icon = "🛠",
+                title = "Developer Options",
+                subtitle = "Diagnostics, app logs and developer-only tools",
+                expanded = expandedSection == "developer",
+                onToggle = { toggle("developer") }
+            ) {
+                PuppyDeveloperOptions(
+                    onOpenConsole = { developerConsoleOpen = true },
+                    onMaxAccount = { vm.maxDeveloperAccount() }
+                )
             }
         }
 
         Spacer(Modifier.height(4.dp))
-    }
-}
-
-@Composable
-private fun SettingsSubpage(
-    title: String,
-    subtitle: String,
-    onBack: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
-    ) {
-        TextButton(
-            onClick = onBack,
-            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
-        ) {
-            Text("‹ Settings", fontWeight = FontWeight.Bold)
-        }
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black
-        )
-        Text(
-            subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(14.dp))
-        content()
-        Spacer(Modifier.height(4.dp))
-    }
-}
-
-@Composable
-private fun SettingsSummaryValue(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Column(Modifier.padding(10.dp)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                value,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsGroup(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Black
-    )
-    Spacer(Modifier.height(7.dp))
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun SettingsNavRow(
-    icon: String,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            modifier = Modifier.size(38.dp),
-            shape = RoundedCornerShape(11.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(icon, fontWeight = FontWeight.Black)
-            }
-        }
-        Spacer(Modifier.width(11.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            "›",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -1322,6 +1041,7 @@ private fun SettingsSectionCard(
     key: String,
     icon: String,
     title: String,
+    subtitle: String,
     expanded: Boolean,
     onToggle: () -> Unit,
     content: @Composable () -> Unit
@@ -1335,35 +1055,81 @@ private fun SettingsSectionCard(
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 9.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(
+            containerColor = if (expanded) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (expanded) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            }
+        )
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 58.dp)
+                    .heightIn(min = 68.dp)
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 15.dp, vertical = 12.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(icon, fontSize = 22.sp)
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(icon, fontSize = 21.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+
                 Spacer(Modifier.width(11.dp))
-                Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Black)
+
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
                 Text(
                     "›",
                     modifier = Modifier.rotate(arrowRotation),
-                    fontSize = 30.sp,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(tween(duration)) + fadeIn(tween(duration)),
                 exit = shrinkVertically(tween(duration)) + fadeOut(tween(duration))
             ) {
-                Column(Modifier.fillMaxWidth().padding(start = 15.dp, end = 15.dp, bottom = 15.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 14.dp, bottom = 15.dp)
+                ) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(12.dp))
                     content()
