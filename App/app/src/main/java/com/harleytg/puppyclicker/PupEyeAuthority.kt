@@ -169,6 +169,10 @@ internal object PupEyeAuthority {
         val generation = currentGeneration(context)
         val saveId = UUID.randomUUID().toString()
         val createdAt = System.currentTimeMillis()
+        val payloadHash = transferPayloadHash(payloadWithoutProof)
+        val identity = payloadWithoutProof.getJSONObject("identity")
+        val migrationPlayerId = identity.getString("playerId")
+        val migrationFriendCode = identity.getString("friendCode")
         val signature = Signature.getInstance("SHA256withECDSA").run {
             initSign(keyPair.private)
             update(
@@ -179,6 +183,22 @@ internal object PupEyeAuthority {
                     generation = generation,
                     saveId = saveId,
                     createdAt = createdAt
+                )
+            )
+            sign()
+        }
+        val migrationSignature = Signature.getInstance("SHA256withECDSA").run {
+            initSign(keyPair.private)
+            update(
+                migrationClaimSignatureBytes(
+                    installId = installId,
+                    keyId = keyId,
+                    generation = generation,
+                    saveId = saveId,
+                    createdAt = createdAt,
+                    payloadHashSha256 = payloadHash,
+                    playerId = migrationPlayerId,
+                    friendCode = migrationFriendCode
                 )
             )
             sign()
@@ -194,6 +214,33 @@ internal object PupEyeAuthority {
             put("sourceSdkInt", Build.VERSION.SDK_INT)
             put("publicKey", b64(keyPair.public.encoded))
             put("signature", b64(signature))
+            put("migrationClaimSchema", 1)
+            put("migrationPlayerId", migrationPlayerId)
+            put("migrationFriendCode", migrationFriendCode)
+            put("migrationPayloadHashSha256", payloadHash)
+            put("migrationSignature", b64(migrationSignature))
+        }
+    }
+
+    internal fun transferMigrationClaim(payload: JSONObject): JSONObject {
+        val proof = payload.getJSONObject("pupeye")
+        val identity = payload.getJSONObject("identity")
+        val unsignedPayload = JSONObject(payload.toString()).apply { remove("pupeye") }
+        val payloadHash = transferPayloadHash(unsignedPayload)
+
+        return JSONObject().apply {
+            put("sourceInstallationId", proof.getString("installationId"))
+            put("sourceDeviceKeyId", proof.getString("deviceKeyId"))
+            put("sourcePublicKey", proof.getString("publicKey"))
+            put("saveId", proof.getString("saveId"))
+            put("generation", proof.getLong("generation"))
+            put("createdAtEpochMs", proof.getLong("createdAtEpochMs"))
+            put("payloadHashSha256", payloadHash)
+            put("playerId", identity.getString("playerId"))
+            put("friendCode", identity.getString("friendCode"))
+            put("username", identity.optString("username"))
+            put("migrationClaimSchema", proof.optInt("migrationClaimSchema", 0))
+            put("migrationSignature", proof.optString("migrationSignature"))
         }
     }
 
@@ -422,6 +469,30 @@ internal object PupEyeAuthority {
             append(saveId).append('\n')
             append(createdAt).append('\n')
             append(canonicalJson(payload))
+        }
+        return signed.toByteArray(Charsets.UTF_8)
+    }
+
+    private fun migrationClaimSignatureBytes(
+        installId: String,
+        keyId: String,
+        generation: Long,
+        saveId: String,
+        createdAt: Long,
+        payloadHashSha256: String,
+        playerId: String,
+        friendCode: String
+    ): ByteArray {
+        val signed = buildString {
+            append("PuppyClicker/PupEye/migration-claim/v1\n")
+            append(installId).append('\n')
+            append(keyId).append('\n')
+            append(generation).append('\n')
+            append(saveId).append('\n')
+            append(createdAt).append('\n')
+            append(payloadHashSha256).append('\n')
+            append(playerId).append('\n')
+            append(friendCode)
         }
         return signed.toByteArray(Charsets.UTF_8)
     }
