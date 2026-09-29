@@ -680,7 +680,7 @@ internal fun PuppyOnboardingPlayerSetup(
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text(
-                        "Restoring progress does not replace this device's Player ID or Friend Code.",
+                        "A fresh authenticated backup can securely move your existing Player ID, Friend Code, and progress to this device.",
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
