@@ -136,6 +136,10 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                     onStartPlaying = {
                         vm.dismissSeasonalIntro()
                         PuppyUiPreferences.finishSetup(context)
+                        SupabasePupEyeClient.queueSaveCheckpoint(
+                            context,
+                            reason = "onboarding-complete"
+                        )
                     }
                 )
             }
