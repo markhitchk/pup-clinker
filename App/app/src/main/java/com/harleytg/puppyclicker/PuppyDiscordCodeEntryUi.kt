@@ -106,10 +106,11 @@ internal fun PuppyDiscordCodeEntryContent(
     val boxes = normalized.padEnd(PuppyDiscordDmCodePolicy.MAX_LENGTH, ' ')
         .take(PuppyDiscordDmCodePolicy.MAX_LENGTH)
     val locked = snapshot.status == PuppyDiscordLinkStatus.LOCKED
+    val expiresAtMs = snapshot.expiresAtMs
     val expired = snapshot.status == PuppyDiscordLinkStatus.EXPIRED ||
-        (snapshot.expiresAtMs != null && snapshot.expiresAtMs <= nowMs &&
+        (expiresAtMs != null && expiresAtMs <= nowMs &&
             snapshot.status == PuppyDiscordLinkStatus.CODE_SENT)
-    val remainingMs = snapshot.expiresAtMs?.let { max(0L, it - nowMs) } ?: 0L
+    val remainingMs = expiresAtMs?.let { max(0L, it - nowMs) } ?: 0L
     val resendInMs = snapshot.resendAvailableAtMs?.let { max(0L, it - nowMs) } ?: 0L
 
     Column(Modifier.padding(20.dp)) {

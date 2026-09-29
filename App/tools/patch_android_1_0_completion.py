@@ -752,6 +752,11 @@ def patch_activity(source: str) -> str:
                         internalDestination = null
                         releaseHubOpen = true
                     }
+                    PuppyNotificationRoute.SUPPORT -> {
+                        releaseHubOpen = false
+                        internalDestination = null
+                        tab = V6Tab.SETTINGS
+                    }
                     PuppyNotificationRoute.NONE -> {
                         item.externalUrl?.takeIf { it.isNotBlank() }?.let { openPuppyUpdateUrl(context, it) }
                     }
