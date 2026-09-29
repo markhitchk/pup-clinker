@@ -242,6 +242,30 @@ internal object PuppyPlayerIdentity {
         setUsername(context, imported)
     }
 
+    /**
+     * Adopt a Player ID + Friend Code from an authenticated portable save only after
+     * the backend has approved/consumed a device migration for this installation.
+     */
+    internal fun adoptTransferredIdentity(context: Context, metadata: JSONObject) {
+        val importedPlayerId = metadata.optString("playerId").trim().uppercase(Locale.US)
+        val importedFriendCode = metadata.optString("friendCode").trim().uppercase(Locale.US)
+        require(isValidPlayerId(importedPlayerId)) { "Transferred Player ID is invalid" }
+        require(isValidFriendCode(importedFriendCode)) { "Transferred Friend Code is invalid" }
+
+        val importedUsername = normalizeUsername(metadata.optString("username"))
+            .ifBlank { DEFAULT_USERNAME }
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        check(
+            prefs.edit()
+                .putString(KEY_PLAYER_ID, importedPlayerId)
+                .putString(KEY_FRIEND_CODE, importedFriendCode)
+                .putString(KEY_USERNAME, importedUsername)
+                .commit()
+        ) {
+            "Unable to persist transferred Puppy Clicker identity"
+        }
+    }
+
     private fun sanitizeDevicePart(raw: String): String = raw
         .trim()
         .lowercase(Locale.US)
