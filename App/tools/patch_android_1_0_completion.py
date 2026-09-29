@@ -830,7 +830,75 @@ def patch_main_screens(source: str) -> str:
     return source
 
 
+def patch_one_screen_settings(source: str) -> str:
+    """Adapt Android 1.0 progression to the one-screen expandable Settings design."""
+    sentinel = "// ANDROID_1_0_ONE_SCREEN_SETTINGS"
+    if sentinel in source:
+        return source
+
+    profile_start = source.find("@Composable\nprivate fun ProfileSettings(")
+    profile_end = source.find("@Composable\nprivate fun ProfileDropdownCard(", profile_start)
+    if profile_start < 0 or profile_end < 0:
+        raise RuntimeError("Android 1.0 one-screen Settings: ProfileSettings boundary not found")
+
+    profile = source[profile_start:profile_end]
+    profile = profile.replace(
+        "PuppyAchievementsV6.statuses(gameState, emptySet())",
+        "PuppyAchievementsV6.statuses(gameState, gameState.achievementRewardedIds)",
+        1,
+    )
+    profile = profile.replace(
+        '"Level " + gameState.level + " · " + gameState.lifetimeTreats + " XP"',
+        '"Level " + gameState.level + " · " + gameState.playerXp + " XP"',
+        1,
+    )
+    profile = profile.replace(
+        "(gameState.lifetimeTreats - currentLevelStartXp).coerceIn(0L, levelSpan)",
+        "(gameState.playerXp - currentLevelStartXp).coerceIn(0L, levelSpan)",
+        1,
+    )
+    profile = profile.replace(
+        'ProfileInfoField("TOTAL XP", gameState.lifetimeTreats.toString())',
+        'ProfileInfoField("TOTAL XP", gameState.playerXp.toString())',
+        1,
+    )
+
+    badge_anchor = '''                Text(
+                    if (officialDeveloper) {
+                        "Developer / Owner"
+                    } else {
+                        "Local Puppy Clicker profile"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+'''
+    if badge_anchor in profile and "PuppyReleaseMilestones.RELEASE_1_0_BADGE_ID" not in profile:
+        profile = profile.replace(
+            badge_anchor,
+            badge_anchor + '''                if (PuppyReleaseMilestones.RELEASE_1_0_BADGE_ID in gameState.profileBadgeIds) {
+                    Text(
+                        PuppyReleaseMilestones.RELEASE_1_0_BADGE_NAME,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+''',
+            1,
+        )
+
+    source = source[:profile_start] + profile + source[profile_end:]
+    return source + "\n" + sentinel + "\n"
+
+
 def patch_settings(source: str) -> str:
+    if (
+        "var expandedSection by rememberSaveable" in source
+        and "SettingsDestination" not in source
+    ):
+        return patch_one_screen_settings(source)
+
     if "SettingsDestination.RELEASE_HUB" in source:
         return source
     source = replace_once(
