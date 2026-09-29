@@ -131,17 +131,25 @@ val hasPermanentSigning = listOf(
     signingKeyPassword
 ).all { !it.isNullOrBlank() }
 
+val puppyCompileSdk = 36
+val puppyMinSdk = 26
+val puppyTargetSdk = 36
+
 android {
     namespace = "com.harleytg.puppyclicker"
-    compileSdk = 35
+    compileSdk = puppyCompileSdk
 
     defaultConfig {
         applicationId = "com.harleytg.puppyclicker"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 29
-        versionName = "1.7.16"
+        minSdk = puppyMinSdk
+        targetSdk = puppyTargetSdk
+        versionCode = 30
+        versionName = "1.7.17"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
+
+        buildConfigField("int", "MIN_ANDROID_SDK", puppyMinSdk.toString())
+        buildConfigField("int", "TARGET_ANDROID_SDK", puppyTargetSdk.toString())
+        buildConfigField("int", "COMPILE_ANDROID_SDK", puppyCompileSdk.toString())
 
         buildConfigField("String", "DISCORD_CLIENT_ID", quotedBuildConfig(publicRepoSetting("DISCORD_CLIENT_ID")))
         buildConfigField("String", "DISCORD_GUILD_ID", quotedBuildConfig(publicRepoSetting("DISCORD_GUILD_ID")))

@@ -1973,6 +1973,16 @@ private fun AboutSettings(
                 subtitle = "A local-first puppy clicker and collection game."
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsInfoRow(
+                title = "Android on this device",
+                subtitle = "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}"
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SettingsInfoRow(
+                title = "Android compatibility",
+                subtitle = "Android 8.0+ · min API ${BuildConfig.MIN_ANDROID_SDK} · target Android 16 / API ${BuildConfig.TARGET_ANDROID_SDK}"
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             SettingsValueActionRow(
                 title = "Build",
                 value = BuildConfig.VERSION_CODE.toString()

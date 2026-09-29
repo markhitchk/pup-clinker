@@ -3,6 +3,7 @@ package com.harleytg.puppyclicker
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -275,6 +276,11 @@ internal fun PuppyDeveloperConsoleScreen(
             Column(Modifier.padding(11.dp)) {
                 Text("Runtime snapshot", fontWeight = FontWeight.Black)
                 DeveloperMetric("Build", "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                DeveloperMetric("Android", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                DeveloperMetric(
+                    "SDK support",
+                    "min ${BuildConfig.MIN_ANDROID_SDK} · target ${BuildConfig.TARGET_ANDROID_SDK} · compile ${BuildConfig.COMPILE_ANDROID_SDK}"
+                )
                 DeveloperMetric("Device", PuppyPlayerIdentity.deviceModel())
                 DeveloperMetric("PupEye identity", pupEyeActor)
                 DeveloperMetric("Save generation", saveGeneration.toString())
@@ -380,6 +386,8 @@ internal fun PuppyDeveloperConsoleScreen(
                     val diagnostics = buildString {
                         appendLine("Puppy Clicker Developer Diagnostics")
                         appendLine("Build: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                        appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                        appendLine("SDK support: min=${BuildConfig.MIN_ANDROID_SDK}, target=${BuildConfig.TARGET_ANDROID_SDK}, compile=${BuildConfig.COMPILE_ANDROID_SDK}")
                         appendLine("Device: ${PuppyPlayerIdentity.deviceModel()}")
                         appendLine("PupEye identity: $pupEyeActor")
                         appendLine("PupEye generation: $saveGeneration")
