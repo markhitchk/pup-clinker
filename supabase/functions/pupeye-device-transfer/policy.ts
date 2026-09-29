@@ -115,6 +115,12 @@ export function parseDeviceTransferClaim(
   };
 }
 
+export function requiresManualDeviceTransferApproval(
+  claim: DeviceTransferClaim,
+): boolean {
+  return !verifySignedDeviceTransferClaim(claim);
+}
+
 export function sourcePublicKeyMatchesFingerprint(
   claim: DeviceTransferClaim,
 ): boolean {

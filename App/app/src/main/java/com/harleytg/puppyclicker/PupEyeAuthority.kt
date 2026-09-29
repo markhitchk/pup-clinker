@@ -325,7 +325,7 @@ internal object PupEyeAuthority {
                     accepted = false,
                     migrationRequired = true,
                     generation = generation,
-                    message = "This save is authentic, but it was signed by a different Puppy Clicker installation. No progress was imported. Use Puppy Clicker Support to authorize a device transfer.",
+                    message = "This save is authentic and belongs to another Puppy Clicker installation. Tap Restore Save to securely authorize this phone. Older backups may still require one-time Support approval.",
                     errorCode = PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED
                 )
             }
