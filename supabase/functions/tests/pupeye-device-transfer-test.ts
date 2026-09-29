@@ -6,6 +6,7 @@ import {
 import { Buffer } from "node:buffer";
 import {
   parseDeviceTransferClaim,
+  requiresManualDeviceTransferApproval,
   verifySignedDeviceTransferClaim,
 } from "../pupeye-device-transfer/policy.ts";
 
@@ -55,6 +56,9 @@ Deno.test("migration signature verifies and rejects changed identity", () => {
   if (!verifySignedDeviceTransferClaim(verified)) {
     throw new Error("expected signed migration claim to verify");
   }
+  if (requiresManualDeviceTransferApproval(verified)) {
+    throw new Error("fresh signed migration claim should self-authorize");
+  }
 
   const tampered = parseDeviceTransferClaim({
     ...payload,
@@ -63,5 +67,13 @@ Deno.test("migration signature verifies and rejects changed identity", () => {
   });
   if (verifySignedDeviceTransferClaim(tampered)) {
     throw new Error("changed Friend Code must invalidate the migration signature");
+  }
+  if (!requiresManualDeviceTransferApproval(tampered)) {
+    throw new Error("tampered migration claim must require Support approval");
+  }
+
+  const legacy = parseDeviceTransferClaim(payload);
+  if (!requiresManualDeviceTransferApproval(legacy)) {
+    throw new Error("legacy backup without migration signature must require Support approval");
   }
 });
