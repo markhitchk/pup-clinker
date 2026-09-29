@@ -43,6 +43,12 @@ internal data class PupEyeDeviceTransferResult(
     val supportCode: String?
 )
 
+internal data class PupEyeSessionAuth(
+    val token: String,
+    val backendPlayerId: String,
+    val backendInstallationId: String
+)
+
 /**
  * Supabase transport for Puppy Clicker account authority and PupEye.
  *
@@ -179,6 +185,15 @@ internal object SupabasePupEyeClient {
 
     fun hasSession(context: Context): Boolean = readSession(context) != null
 
+    fun sessionAuth(context: Context): PupEyeSessionAuth? {
+        val session = readSession(context) ?: return null
+        return PupEyeSessionAuth(
+            token = session.token,
+            backendPlayerId = session.backendPlayerId,
+            backendInstallationId = session.backendInstallationId
+        )
+    }
+
     suspend fun authenticateDiscord(
         context: Context,
         discordAccessToken: String
@@ -236,11 +251,8 @@ internal object SupabasePupEyeClient {
         SupabaseDiscordAuthResult(
             account = account,
             guildAccess = guildAccess,
-            message = if (guildAccess != null) {
-                "Discord verified by Pupeye: ${guildAccess.role.label}."
-            } else {
-                "Discord verified by Pupeye."
-            }
+            message = "Discord authorized. Enter the DM code to finish linking" +
+                if (guildAccess != null) " as ${guildAccess.role.label}." else "."
         )
     }
 

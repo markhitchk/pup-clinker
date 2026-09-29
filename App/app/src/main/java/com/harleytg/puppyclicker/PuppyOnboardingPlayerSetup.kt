@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,8 +61,13 @@ internal fun PuppyOnboardingPlayerSetup(
     val context = androidx.compose.ui.platform.LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val account = discord.account
+    val pending = discord.pendingAccount
+    var showCodeEntry by rememberSaveable { mutableStateOf(false) }
     val discordBusy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
+    LaunchedEffect(discord.phase) {
+        if (discord.phase == DiscordSignupPhase.CODE_PENDING) showCodeEntry = true
+    }
     val scope = rememberCoroutineScope()
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val accountFlag = flags["puppy_clicker_account"] ?: PuppyFeatureFlags.flag("puppy_clicker_account")
@@ -450,6 +456,19 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Spacer(Modifier.height(12.dp))
 
+                if (showCodeEntry) {
+                    PuppyDiscordCodeEntryDialog(
+                        onDismiss = { showCodeEntry = false },
+                        onVerified = { snapshot ->
+                            val linked = account ?: pending
+                            if (linked != null) {
+                                DiscordSignupAuth.completeVerifiedLink(context, linked, snapshot)
+                            }
+                            showCodeEntry = false
+                        }
+                    )
+                }
+
                 if (account == null) {
                     Button(
                         onClick = { DiscordSignupAuth.startSignup(context) },
@@ -460,6 +479,13 @@ internal fun PuppyOnboardingPlayerSetup(
                             if (discordBusy) "Waiting for Discord…" else "Connect Discord",
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                    if (pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { showCodeEntry = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Enter code") }
                     }
                 } else {
                     val discordUsernameAllowed =

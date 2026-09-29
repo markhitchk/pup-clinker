@@ -65,6 +65,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("notification history") { PuppyNotificationHistory.initialize(this) }
         startupSafely("existing player PupEye upgrade") { ExistingPlayerPupEyeUpgrade.run(this) }
         startupSafely("PupEye Supabase authority") { SupabasePupEyeClient.initialize(this) }
+        startupSafely("Puppy Clicker Auth bot") { PuppyAuthBotClient.start(this) }
         startupSafely("Discord auth migration") { DiscordSignupAuth.observe(this) }
         startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }

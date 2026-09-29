@@ -12,14 +12,16 @@ enum class PuppyNotificationType {
     PARK_READY,
     APP_UPDATE,
     ROSTER_UPDATE,
-    SYSTEM_REWARD
+    SYSTEM_REWARD,
+    SUPPORT
 }
 
 enum class PuppyNotificationRoute {
     NONE,
     REWARDS,
     ROSTER,
-    RELEASE_HUB
+    RELEASE_HUB,
+    SUPPORT
 }
 
 data class PuppyNotificationItem(

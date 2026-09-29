@@ -48,6 +48,7 @@ internal enum class DiscordSignupPhase {
     IDLE,
     AUTHORIZING,
     EXCHANGING,
+    CODE_PENDING,
     CONNECTED,
     ERROR
 }
@@ -55,6 +56,7 @@ internal enum class DiscordSignupPhase {
 internal data class DiscordSignupState(
     val phase: DiscordSignupPhase = DiscordSignupPhase.IDLE,
     val account: DiscordPlayerAccount? = null,
+    val pendingAccount: DiscordPlayerAccount? = null,
     val guildAccess: DiscordGuildAccess? = null,
     val message: String? = null
 )
@@ -97,6 +99,11 @@ internal object DiscordSignupAuth {
     private const val KEY_PENDING_VERIFIER = "oauth_pending_verifier"
     private const val KEY_PENDING_EXPECTED_DISCORD_ID = "oauth_pending_expected_discord_id"
     private const val KEY_PENDING_GUILD_VERIFY = "oauth_pending_guild_verify"
+    private const val KEY_PENDING_ACCOUNT_ID = "pending_discord_id"
+    private const val KEY_PENDING_ACCOUNT_USERNAME = "pending_discord_username"
+    private const val KEY_PENDING_ACCOUNT_GLOBAL_NAME = "pending_discord_global_name"
+    private const val KEY_PENDING_ACCOUNT_AVATAR = "pending_discord_avatar_hash"
+    private const val KEY_PENDING_ACCOUNT_EMAIL = "pending_discord_email"
 
     private const val AUTHORIZE_ENDPOINT = "https://discord.com/oauth2/authorize"
     private const val TOKEN_ENDPOINT = "https://discord.com/api/oauth2/token"
@@ -263,24 +270,44 @@ internal object DiscordSignupAuth {
                     mutableState.value = DiscordSignupState(
                         phase = DiscordSignupPhase.ERROR,
                         account = mutableState.value.account,
+                        pendingAccount = mutableState.value.pendingAccount,
                         guildAccess = mutableState.value.guildAccess,
                         message = "The authorized Discord account does not match the Discord ID you entered."
                     )
                     return@withContext true
                 }
 
-                val guildAccess = verified.guildAccess
-
-                saveAccount(app, account)
-                if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
-                syncPlayerUsername(app, account)
+                savePendingAccount(app, account)
                 clearPending(app)
                 mutableState.value = DiscordSignupState(
-                    phase = DiscordSignupPhase.CONNECTED,
-                    account = account,
-                    guildAccess = guildAccess,
-                    message = verified.message
+                    phase = DiscordSignupPhase.CODE_PENDING,
+                    account = mutableState.value.account,
+                    pendingAccount = account,
+                    guildAccess = mutableState.value.guildAccess,
+                    message = "Discord authorized. Enter the one-time code the Auth bot DMs you to finish linking."
                 )
+                val botResult = runCatching {
+                    PuppyAuthBotClient.sendVerificationCode(app, account)
+                }.getOrElse { error ->
+                    PuppyDiscordVerifySnapshot(
+                        status = PuppyDiscordLinkStatus.DM_FAILED,
+                        discordId = account.id,
+                        discordUsername = account.username,
+                        message = error.message
+                            ?: "The Auth bot could not DM you. Enable DMs from server members or join the Puppy Clicker server, then tap Resend."
+                    )
+                }
+                if (botResult.status == PuppyDiscordLinkStatus.VERIFIED) {
+                    completeVerifiedLink(app, account, botResult)
+                } else if (botResult.status == PuppyDiscordLinkStatus.DM_FAILED) {
+                    mutableState.value = DiscordSignupState(
+                        phase = DiscordSignupPhase.CODE_PENDING,
+                        account = mutableState.value.account,
+                        pendingAccount = account,
+                        guildAccess = mutableState.value.guildAccess,
+                        message = botResult.message
+                    )
+                }
                 true
             } catch (error: Exception) {
                 clearPending(app)
@@ -314,12 +341,44 @@ internal object DiscordSignupAuth {
             .remove(KEY_PENDING_VERIFIER)
             .remove(KEY_PENDING_EXPECTED_DISCORD_ID)
             .remove(KEY_PENDING_GUILD_VERIFY)
+            .remove(KEY_PENDING_ACCOUNT_ID)
+            .remove(KEY_PENDING_ACCOUNT_USERNAME)
+            .remove(KEY_PENDING_ACCOUNT_GLOBAL_NAME)
+            .remove(KEY_PENDING_ACCOUNT_AVATAR)
+            .remove(KEY_PENDING_ACCOUNT_EMAIL)
             .apply()
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.IDLE,
             account = null,
+            pendingAccount = null,
             guildAccess = null,
             message = "Discord account disconnected. Local game progress was not deleted."
+        )
+    }
+
+    fun completeVerifiedLink(
+        context: Context,
+        account: DiscordPlayerAccount,
+        snapshot: PuppyDiscordVerifySnapshot
+    ) {
+        val app = context.applicationContext
+        val guildAccess = snapshot.guildRole?.let {
+            DiscordGuildAccess(
+                guildId = GUILD_ID,
+                role = it,
+                verifiedAtMs = System.currentTimeMillis()
+            )
+        }
+        saveAccount(app, account)
+        if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
+        clearPendingAccount(app)
+        syncPlayerUsername(app, account)
+        mutableState.value = DiscordSignupState(
+            phase = DiscordSignupPhase.CONNECTED,
+            account = account,
+            pendingAccount = null,
+            guildAccess = guildAccess,
+            message = snapshot.message ?: "Discord verified."
         )
     }
 
@@ -349,11 +408,17 @@ internal object DiscordSignupAuth {
         synchronized(this) {
             if (initialized) return
             val account = readAccount(context)
+            val pendingAccount = readPendingAccount(context)
             val guildAccess = readGuildAccess(context)
                 ?.takeIf { SupabasePupEyeClient.hasSession(context) }
             mutableState.value = DiscordSignupState(
-                phase = if (account != null) DiscordSignupPhase.CONNECTED else DiscordSignupPhase.IDLE,
+                phase = when {
+                    account != null -> DiscordSignupPhase.CONNECTED
+                    pendingAccount != null -> DiscordSignupPhase.CODE_PENDING
+                    else -> DiscordSignupPhase.IDLE
+                },
                 account = account,
+                pendingAccount = pendingAccount,
                 guildAccess = guildAccess
             )
             notifyLegacyDiscordAuthUpgradeIfNeeded(context, account, guildAccess)
@@ -418,6 +483,41 @@ internal object DiscordSignupAuth {
         val verifiedAt = prefs.getLong(KEY_GUILD_VERIFIED_AT, 0L)
         if (verifiedAt <= 0L) return null
         return DiscordGuildAccess(guildId = guildId, role = role, verifiedAtMs = verifiedAt)
+    }
+
+    private fun readPendingAccount(context: Context): DiscordPlayerAccount? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val id = prefs.getString(KEY_PENDING_ACCOUNT_ID, null)?.takeIf { it.isNotBlank() } ?: return null
+        val username = prefs.getString(KEY_PENDING_ACCOUNT_USERNAME, null)?.takeIf { it.isNotBlank() } ?: return null
+        return DiscordPlayerAccount(
+            id = id,
+            username = username,
+            globalName = prefs.getString(KEY_PENDING_ACCOUNT_GLOBAL_NAME, null),
+            avatarHash = prefs.getString(KEY_PENDING_ACCOUNT_AVATAR, null),
+            email = prefs.getString(KEY_PENDING_ACCOUNT_EMAIL, null)
+        )
+    }
+
+    private fun savePendingAccount(context: Context, account: DiscordPlayerAccount) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PENDING_ACCOUNT_ID, account.id)
+            .putString(KEY_PENDING_ACCOUNT_USERNAME, account.username)
+            .putString(KEY_PENDING_ACCOUNT_GLOBAL_NAME, account.globalName)
+            .putString(KEY_PENDING_ACCOUNT_AVATAR, account.avatarHash)
+            .putString(KEY_PENDING_ACCOUNT_EMAIL, account.email)
+            .apply()
+    }
+
+    private fun clearPendingAccount(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_PENDING_ACCOUNT_ID)
+            .remove(KEY_PENDING_ACCOUNT_USERNAME)
+            .remove(KEY_PENDING_ACCOUNT_GLOBAL_NAME)
+            .remove(KEY_PENDING_ACCOUNT_AVATAR)
+            .remove(KEY_PENDING_ACCOUNT_EMAIL)
+            .apply()
     }
 
     private fun saveAccount(context: Context, account: DiscordPlayerAccount) {

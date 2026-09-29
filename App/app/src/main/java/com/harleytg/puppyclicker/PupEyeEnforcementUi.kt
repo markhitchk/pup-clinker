@@ -18,12 +18,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -31,6 +37,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun PupEyeEnforcementGate(snapshot: PupEyeEnforcementSnapshot) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
     val ban = snapshot.ban
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -78,11 +86,29 @@ internal fun PupEyeEnforcementGate(snapshot: PupEyeEnforcementSnapshot) {
                     Text("Copy Ban ID")
                 }
             }
+            Button(
+                onClick = {
+                    checking = true
+                    scope.launch {
+                        runCatching { SupabasePupEyeClient.refreshEnforcementAsync(context) }
+                        runCatching { PuppyAuthBotClient.refreshSupportRequests(context) }
+                        checking = false
+                    }
+                },
+                enabled = !checking,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (checking) "Checking…" else "Check again")
+            }
             OutlinedButton(
                 onClick = { PuppyLinks.openDiscord(context) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Contact Support")
+            }
+            if (ban != null) {
+                Spacer(Modifier.height(12.dp))
+                PuppyInAppSupportPanel(banId = ban.id)
             }
             PuppyLegalLinks(
                 modifier = Modifier.fillMaxWidth(),

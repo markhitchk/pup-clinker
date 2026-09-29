@@ -163,6 +163,7 @@ android {
         buildConfigField("String", "DISCORD_UNLOCK_GUEST_PUPPY_ID", quotedBuildConfig(publicRepoSetting("DISCORD_UNLOCK_GUEST_PUPPY_ID")))
         buildConfigField("String", "SUPABASE_URL", quotedBuildConfig(publicRepoSetting("SUPABASE_URL")))
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", quotedBuildConfig(publicRepoSetting("SUPABASE_PUBLISHABLE_KEY")))
+        buildConfigField("String", "PUPPY_AUTH_BOT_URL", quotedBuildConfig(publicRepoSetting("PUPPY_AUTH_BOT_URL")))
     }
 
     signingConfigs {

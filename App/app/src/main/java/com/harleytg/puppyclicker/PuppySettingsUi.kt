@@ -154,6 +154,9 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        Spacer(Modifier.height(14.dp))
+        PuppyIdentityHeaderCard(state)
+
         Spacer(Modifier.height(16.dp))
         SettingsLabel("ACCOUNT")
 
@@ -266,10 +269,27 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             onToggle = { toggle("support") }
         ) {
             PuppySupportReportSettings(ui)
+            Spacer(Modifier.height(16.dp))
+            PuppyInAppSupportPanel()
         }
 
         Spacer(Modifier.height(7.dp))
         SettingsLabel("ADVANCED")
+
+        SettingsSectionCard(
+            key = "advanced",
+            icon = "▾",
+            title = "Advanced",
+            subtitle = "Roster, PupEye, Online Assets, Release Hub and About",
+            expanded = expandedSection == "advanced",
+            onToggle = { toggle("advanced") }
+        ) {
+            Text(
+                "These tools stay collapsed until you need them.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
         SettingsSectionCard(
             key = "roster",
@@ -382,56 +402,11 @@ private fun ProfileSettings(
         "Not set"
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-        ),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StreamedPuppyPortrait(
-                styleId = gameState.puppyStyle,
-                size = 76.dp,
-                accessory = gameState.accessory,
-                background = MaterialTheme.colorScheme.surfaceVariant
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    PuppyPlayerIdentity.username(context),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    "Level " + gameState.level + " · " + gameState.lifetimeTreats + " XP",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    if (officialDeveloper) {
-                        "Developer / Owner"
-                    } else {
-                        "Local Puppy Clicker profile"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+    PuppyIdentityHeaderCard(gameState)
+    Spacer(Modifier.height(10.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdentityTile("PLAYER ID", PuppyPlayerIdentity.publicPlayerId(context), Modifier.weight(1f))
+        IdentityTile("FRIEND CODE", PuppyPlayerIdentity.publicFriendCode(context), Modifier.weight(1f))
     }
 
     Spacer(Modifier.height(14.dp))
@@ -647,7 +622,7 @@ private fun ProfileSettings(
     ProfileDropdownCard(
         key = "identity",
         icon = "🪪",
-        title = "Account & Identity",
+        title = "Account details",
         subtitle = "Friend Code · Player ID · account details",
         expanded = expandedCard == "identity",
         onToggle = {
@@ -844,13 +819,91 @@ private fun ProfileInfoField(label: String, value: String) {
 }
 
 @Composable
+private fun PuppyIdentityHeaderCard(state: V6GameState) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF5B4FE0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StreamedPuppyPortrait(
+                styleId = state.puppyStyle,
+                size = 76.dp,
+                accessory = state.accessory,
+                background = Color.White.copy(alpha = 0.92f)
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    PuppyPlayerIdentity.username(context),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.18f)) {
+                        Text(
+                            "Lv ${state.level}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.18f)) {
+                        Text(
+                            "${state.lifetimeTreats} XP",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IdentityTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
+    val verify by PuppyAuthBotClient.verifyState.collectAsStateWithLifecycle()
+    var showCodeEntry by rememberSaveable { mutableStateOf(false) }
     val account = discord.account
+    val pending = discord.pendingAccount
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(discord.phase) {
+        if (discord.phase == DiscordSignupPhase.CODE_PENDING) showCodeEntry = true
+    }
     val rosterRevision = rosterGroups.sumOf { it.puppies.size }
     LaunchedEffect(discord.guildAccess?.verifiedAtMs, rosterRevision) {
         if (discord.guildAccess != null) {
@@ -867,7 +920,14 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
-                if (account == null) "Discord not connected" else "Discord connected",
+                when {
+                    account != null && discord.guildAccess != null ->
+                        "Verified · @" + account.username + " · " + discord.guildAccess!!.role.label
+                    account != null -> "Verified · @" + account.username
+                    pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING ->
+                        "Code sent · enter the Discord DM code"
+                    else -> "Not linked"
+                },
                 fontWeight = FontWeight.Black
             )
             if (account != null) {
@@ -894,24 +954,40 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         enabled = !busy,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            when {
-                busy -> "Waiting for Discord…"
-                account != null -> "Reconnect Discord"
-                else -> "Connect Discord"
-            }
-        )
+        Text(if (busy) "Waiting for Discord…" else "Link")
     }
-
-    if (account != null) {
+    if (pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING ||
+        verify.status == PuppyDiscordLinkStatus.CODE_SENT ||
+        verify.status == PuppyDiscordLinkStatus.DM_FAILED
+    ) {
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { showCodeEntry = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("Enter code")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { scope.launch { runCatching { PuppyAuthBotClient.resendVerificationCode(context) } } },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Resend") }
+    }
+    if (account != null || pending != null) {
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { DiscordSignupAuth.disconnect(context) },
             enabled = !busy,
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Disconnect Discord")
-        }
+        ) { Text("Unlink") }
+    }
+    if (showCodeEntry) {
+        PuppyDiscordCodeEntryDialog(
+            onDismiss = { showCodeEntry = false },
+            onVerified = { snapshot ->
+                val linked = account ?: pending
+                if (linked != null) DiscordSignupAuth.completeVerifiedLink(context, linked, snapshot)
+                showCodeEntry = false
+            }
+        )
     }
 
     Spacer(Modifier.height(18.dp))
@@ -927,7 +1003,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Verify server role", fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Puppy Clicker verifies the Discord account returned by OAuth and checks its configured server role through Pupeye. You do not need to enter a Discord user ID.",
+                "Link Discord with OAuth, then enter the one-time code the Puppy Clicker Auth bot DMs you. Roles and rewards unlock only after that code is accepted.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -946,7 +1022,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (busy) "Waiting for Discord…" else "Verify Server Role")
+                Text(if (busy) "Waiting for Discord…" else "Link Discord")
             }
 
             discord.guildAccess?.let { access ->

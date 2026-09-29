@@ -205,7 +205,7 @@ internal fun PuppyNotificationInboxDialog(
                             contentPadding = PaddingValues(
                                 start = if (compact) 9.dp else 14.dp,
                                 end = if (compact) 9.dp else 14.dp,
-                                bottom = if (compact) 12.dp else 16.dp
+                                bottom = if (compact) 28.dp else 36.dp
                             ),
                             verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 9.dp)
                         ) {
@@ -437,6 +437,7 @@ private fun PuppyNotificationCard(
                     PuppyNotificationType.PARK_READY,
                     PuppyNotificationType.ROSTER_UPDATE -> Color(0xFFEAF7FF)
                     PuppyNotificationType.APP_UPDATE -> Color(0xFFE4F3FC)
+                    PuppyNotificationType.SUPPORT -> Color(0xFFF3E8FF)
                 }
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -576,7 +577,8 @@ private fun PuppyInboxActions(
                     .padding(
                         horizontal = if (compact) 9.dp else 14.dp,
                         vertical = if (compact) 8.dp else 12.dp
-                    ),
+                    )
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 10.dp)
             ) {
                 OutlinedButton(
@@ -637,7 +639,9 @@ private fun PuppyInboxFilter.matches(item: PuppyNotificationItem): Boolean = whe
     PuppyInboxFilter.PUPPIES ->
         item.type == PuppyNotificationType.PARK_READY ||
             item.type == PuppyNotificationType.ROSTER_UPDATE
-    PuppyInboxFilter.SYSTEM -> item.type == PuppyNotificationType.APP_UPDATE
+    PuppyInboxFilter.SYSTEM ->
+        item.type == PuppyNotificationType.APP_UPDATE ||
+            item.type == PuppyNotificationType.SUPPORT
 }
 
 private fun PuppyNotificationItem.dayGroup(
@@ -681,4 +685,5 @@ private fun PuppyNotificationItem.emoji(): String = when (type) {
     PuppyNotificationType.PARK_READY -> "🐾"
     PuppyNotificationType.ROSTER_UPDATE -> "🐾"
     PuppyNotificationType.APP_UPDATE -> "⚙️"
+    PuppyNotificationType.SUPPORT -> "🎫"
 }
