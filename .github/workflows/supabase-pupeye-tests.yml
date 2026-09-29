@@ -41,4 +41,5 @@ jobs:
             supabase/functions/pupeye-transaction/index.ts \
             supabase/functions/pupeye-enforcement-status/index.ts \
             supabase/functions/pupeye-save-attestation/index.ts \
+            supabase/functions/pupeye-device-transfer/index.ts \
             supabase/functions/pupeye-support-ban/index.ts
