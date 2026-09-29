@@ -141,7 +141,8 @@ class PuppySupportReportingContractTest {
             "src/main/java/com/harleytg/puppyclicker/PuppySupportReportingUi.kt"
         )
 
-        assertTrue(settings.contains("SettingsDestination.SUPPORT"))
+        assertTrue(settings.contains("key = \"support\""))
+        assertTrue(settings.contains("title = \"Support & Reports\""))
         assertTrue(settings.contains("PuppySupportReportSettings(ui)"))
         assertTrue(ui.contains("internal fun PuppySupportReportSettings(ui: PuppyUiState)"))
         assertFalse(settings.contains("PuppyUserReportSettings"))
