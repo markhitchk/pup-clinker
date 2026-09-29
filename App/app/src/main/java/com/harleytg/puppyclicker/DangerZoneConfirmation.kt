@@ -45,7 +45,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -186,10 +185,9 @@ internal fun DangerHoldConfirmationDialog(
             cancelHold()
             onDismiss()
         },
-        properties = DialogProperties(
+        properties = puppyEdgeToEdgeDialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
+            dismissOnClickOutside = false
         )
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -205,7 +203,13 @@ internal fun DangerHoldConfirmationDialog(
             // The border is a single even-odd perimeter mask. One diagonal stripe
             // field is clipped through that mask, so the pattern continues through
             // every corner without four independently drawn strips overlapping.
-            Canvas(Modifier.fillMaxSize()) {
+            // The scrim above stays full-bleed; the tape frame and card stay inside the safe
+            // drawing area so neither is hidden behind the status or navigation bar.
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .puppyDialogSafeDrawingPadding()
+            ) {
                 val frame = 18.dp.toPx()
                 val stripePeriod = 38.dp.toPx()
                 val redStripeWidth = 20.dp.toPx()
@@ -249,6 +253,7 @@ internal fun DangerHoldConfirmationDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .puppyDialogSafeDrawingPadding()
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
