@@ -36,8 +36,8 @@ class PuppyPrivacyDataContractTest {
         val settings = source("PuppySettingsUi.kt")
         val privacy = source("PuppyPrivacyDataUi.kt")
 
-        assertTrue(settings.contains("SettingsDestination.PRIVACY"))
-        assertTrue(settings.contains("Privacy & Data"))
+        assertTrue(settings.contains("key = \"privacy\""))
+        assertTrue(settings.contains("title = \"Privacy & Data\""))
         assertTrue(settings.contains("PuppyPrivacyDataSettings(ui)"))
         assertTrue(privacy.contains("setAnonymousDiagnosticsEnabled"))
         assertTrue(privacy.contains("setCrashReportsEnabled"))
