@@ -15,14 +15,11 @@ enum class PuppyOnboardingStep(val persistedIndex: Int) {
 }
 
 enum class PuppyPlayerSetupMethod {
-    LOCAL,
-    DISCORD,
-    IMPORT_SAVE
+    DISCORD
 }
 
 data class PuppyOnboardingSessionState(
     val playerSetupMethod: PuppyPlayerSetupMethod = PuppyPlayerSetupMethod.DISCORD,
-    val importedSave: Boolean = false,
     val birthdaySkipped: Boolean = false
 )
 
