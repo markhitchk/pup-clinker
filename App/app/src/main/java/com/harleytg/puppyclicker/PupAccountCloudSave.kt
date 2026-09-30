@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
 /**
@@ -30,6 +32,7 @@ internal object PupAccountCloudSave {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dirty = AtomicBoolean(false)
     private val syncLoopRunning = AtomicBoolean(false)
+    private val activationMutex = Mutex()
 
     @Volatile
     private var restoringFromCloud = false
@@ -47,8 +50,24 @@ internal object PupAccountCloudSave {
         if (!DiscordSignupAuth.isConnected(app)) return
 
         scope.launch {
-            runCatching { restoreOrSeed(app) }
+            runCatching { activateAndAwait(app) }
                 .onFailure { noteError(app, it.message ?: "Unable to initialize Pup Account cloud save") }
+        }
+    }
+
+    suspend fun activateAndAwait(context: Context): Boolean {
+        val app = context.applicationContext
+        if (!SupabasePupEyeClient.isConfigured()) return false
+        if (!DiscordSignupAuth.isConnected(app)) return false
+
+        return activationMutex.withLock {
+            runCatching {
+                restoreOrSeed(app)
+                true
+            }.getOrElse {
+                noteError(app, it.message ?: "Unable to initialize Pup Account cloud save")
+                false
+            }
         }
     }
 
