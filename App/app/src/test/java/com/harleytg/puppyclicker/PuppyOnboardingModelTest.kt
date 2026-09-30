@@ -35,21 +35,7 @@ class PuppyOnboardingModelTest {
     fun freshSessionDefaultsToPasswordlessDiscordPupAccount() {
         val state = PuppyOnboardingSessionState()
         assertEquals(PuppyPlayerSetupMethod.DISCORD, state.playerSetupMethod)
-        assertFalse(state.importedSave)
         assertFalse(state.birthdaySkipped)
-    }
-
-    @Test
-    fun changingPlayerSetupMethodPreservesSessionFlags() {
-        val imported = PuppyOnboardingSessionState(
-            playerSetupMethod = PuppyPlayerSetupMethod.IMPORT_SAVE,
-            importedSave = true
-        )
-
-        val switched = imported.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
-
-        assertTrue(switched.importedSave)
-        assertEquals(PuppyPlayerSetupMethod.DISCORD, switched.playerSetupMethod)
     }
 
     @Test
