@@ -175,7 +175,7 @@ internal fun PuppyOnboardingPlayerSetup(
                                         "Unable to load your Pup Account cloud save. Check your connection and try again."
                                     return@launch
                                 }
-                                vm.reloadImportedSave()
+                                vm.reloadFromCloudCache()
                                 onSessionChange(
                                     session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
                                 )
