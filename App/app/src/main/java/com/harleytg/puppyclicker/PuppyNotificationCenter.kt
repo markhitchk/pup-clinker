@@ -75,6 +75,8 @@ internal object PuppyNotificationCenter {
     private const val UPDATE_CHECK_INTERVAL_MS = 6L * 60L * 60L * 1000L
     private const val LATEST_RELEASE_API =
         "https://api.github.com/repos/markhitchk/pup-clinker/releases/latest"
+    private const val PLAY_STORE_URL =
+        "https://play.google.com/store/apps/details?id=com.harleytg.puppyclicker"
 
     private val _updateNotice = MutableStateFlow<PuppyReleaseUpdate?>(null)
     val updateNotice: StateFlow<PuppyReleaseUpdate?> = _updateNotice.asStateFlow()
@@ -528,9 +530,9 @@ internal object PuppyNotificationCenter {
             releaseName = delivery.getString(KEY_CACHED_UPDATE_RELEASE_NAME, "Puppy Clicker update").orEmpty(),
             notes = delivery.getString(KEY_CACHED_UPDATE_NOTES, "").orEmpty(),
             releaseUrl = releaseUrl,
-            apkUrl = delivery.getString(KEY_CACHED_UPDATE_APK_URL, "")
-                .orEmpty()
-                .takeIf { it.isNotBlank() },
+            // Never install a repository APK over a Play-signed install. Google Play owns
+            // the production app-signing key, so every production update routes through Play.
+            apkUrl = PLAY_STORE_URL,
             unread = delivery.getBoolean(KEY_CACHED_UPDATE_UNREAD, false)
         )
     }
@@ -591,20 +593,6 @@ internal object PuppyNotificationCenter {
         val releaseUrl = release.optString("html_url", "").trim()
         if (releaseUrl.isBlank()) return null
 
-        val assets = release.optJSONArray("assets")
-        var apkUrl: String? = null
-        if (assets != null) {
-            for (index in 0 until assets.length()) {
-                val asset = assets.optJSONObject(index) ?: continue
-                val name = asset.optString("name", "")
-                if (!name.endsWith(".apk", ignoreCase = true)) continue
-                apkUrl = asset.optString("browser_download_url", "")
-                    .trim()
-                    .takeIf { it.isNotBlank() }
-                if (apkUrl != null) break
-            }
-        }
-
         return PuppyReleaseUpdate(
             versionCode = versionCode,
             versionName = versionName,
@@ -613,7 +601,7 @@ internal object PuppyNotificationCenter {
                 .ifBlank { if (versionName.isBlank()) "Puppy Clicker update" else "Puppy Clicker $versionName" },
             notes = notes.trim(),
             releaseUrl = releaseUrl,
-            apkUrl = apkUrl,
+            apkUrl = PLAY_STORE_URL,
             unread = false
         )
     }

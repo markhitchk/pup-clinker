@@ -120,16 +120,29 @@ fun protectPuppyAsset(assetId: String, plain: ByteArray): ByteArray {
     return "PCP1".toByteArray(Charsets.US_ASCII) + nonce + encrypted
 }
 
-val signingStoreFilePath = System.getenv("PUPPY_SIGNING_STORE_FILE")
-val signingStorePassword = System.getenv("PUPPY_SIGNING_STORE_PASSWORD")
-val signingKeyAlias = System.getenv("PUPPY_SIGNING_KEY_ALIAS")
-val signingKeyPassword = System.getenv("PUPPY_SIGNING_KEY_PASSWORD")
-val hasPermanentSigning = listOf(
-    signingStoreFilePath,
-    signingStorePassword,
-    signingKeyAlias,
-    signingKeyPassword
+val playUploadStoreFilePath =
+    System.getenv("PUPPY_UPLOAD_STORE_FILE")
+        ?: System.getenv("PUPPY_SIGNING_STORE_FILE")
+val playUploadStorePassword =
+    System.getenv("PUPPY_UPLOAD_STORE_PASSWORD")
+        ?: System.getenv("PUPPY_SIGNING_STORE_PASSWORD")
+val playUploadKeyAlias =
+    System.getenv("PUPPY_UPLOAD_KEY_ALIAS")
+        ?: System.getenv("PUPPY_SIGNING_KEY_ALIAS")
+val playUploadKeyPassword =
+    System.getenv("PUPPY_UPLOAD_KEY_PASSWORD")
+        ?: System.getenv("PUPPY_SIGNING_KEY_PASSWORD")
+val hasPlayUploadSigning = listOf(
+    playUploadStoreFilePath,
+    playUploadStorePassword,
+    playUploadKeyAlias,
+    playUploadKeyPassword
 ).all { !it.isNullOrBlank() }
+
+val playUploadCertSha256 = "37:6A:B3:22:43:90:21:78:33:3A:87:C6:71:1C:48:1E:43:BF:2C:B2:D9:9F:DF:06:7B:3D:27:8A:6E:F8:98:14"
+val playDeploymentCertSha256 = "63:E3:F1:5F:39:69:5B:74:F9:3B:A8:3F:27:51:86:FC:3D:45:FB:A9:5A:9C:7E:27:E1:E5:AA:14:55:51:25:EC"
+val playHybridClassicalCertSha256 = "67:41:63:6C:29:75:29:66:9C:1E:1A:1A:08:59:18:67:A8:4F:AD:76:4B:1C:9D:9E:BB:DB:19:31:5A:17:5B:C9"
+val playHybridPqcCertSha256 = "99:23:02:B9:01:AE:D7:44:49:E2:46:B4:00:4B:95:1B:19:14:16:34:84:63:54:5C:24:8E:EB:3F:A9:2A:88:AD"
 
 val puppyCompileSdk = 36
 val puppyMinSdk = 26
@@ -150,6 +163,10 @@ android {
         buildConfigField("int", "MIN_ANDROID_SDK", puppyMinSdk.toString())
         buildConfigField("int", "TARGET_ANDROID_SDK", puppyTargetSdk.toString())
         buildConfigField("int", "COMPILE_ANDROID_SDK", puppyCompileSdk.toString())
+        buildConfigField("String", "PLAY_UPLOAD_CERT_SHA256", quotedBuildConfig(playUploadCertSha256))
+        buildConfigField("String", "PLAY_DEPLOYMENT_CERT_SHA256", quotedBuildConfig(playDeploymentCertSha256))
+        buildConfigField("String", "PLAY_HYBRID_CLASSICAL_CERT_SHA256", quotedBuildConfig(playHybridClassicalCertSha256))
+        buildConfigField("String", "PLAY_HYBRID_PQC_CERT_SHA256", quotedBuildConfig(playHybridPqcCertSha256))
 
         buildConfigField("String", "DISCORD_CLIENT_ID", quotedBuildConfig(publicRepoSetting("DISCORD_CLIENT_ID")))
         buildConfigField("String", "DISCORD_GUILD_ID", quotedBuildConfig(publicRepoSetting("DISCORD_GUILD_ID")))
@@ -174,12 +191,14 @@ android {
             enableV4Signing = true
         }
 
-        if (hasPermanentSigning) {
-            create("update") {
-                storeFile = file(signingStoreFilePath!!)
-                storePassword = signingStorePassword
-                keyAlias = signingKeyAlias
-                keyPassword = signingKeyPassword
+        if (hasPlayUploadSigning) {
+            create("playUpload") {
+                // This key authenticates the AAB upload to Google Play. It is NOT the
+                // Google-held app-signing key that signs APKs delivered to users.
+                storeFile = file(playUploadStoreFilePath!!)
+                storePassword = playUploadStorePassword
+                keyAlias = playUploadKeyAlias
+                keyPassword = playUploadKeyPassword
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -198,7 +217,7 @@ android {
             // release PNG cruncher can crash while recompressing them. Preserve the exact
             // repository artwork and package it without destructive re-crunching.
             isCrunchPngs = false
-            signingConfigs.findByName("update")?.let { signingConfig = it }
+            signingConfigs.findByName("playUpload")?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
