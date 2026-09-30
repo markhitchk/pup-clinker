@@ -45,7 +45,7 @@ PupEye global enforcement also does not use SIM serial, Wi-Fi MAC, or Bluetooth 
 
 ## 4. Cloud Save Integrity
 
-Supabase is the authoritative store for Puppy Clicker progression. Cloud saves use account/device authorization, monotonic generations, revision checks, and content hashes. The app may keep a local working cache protected by PupEye integrity checks, but Puppy Clicker does not provide a portable `.pupsave` backup or Android/data save mirror.
+Supabase is the authoritative store for Puppy Clicker progression. Cloud saves use account/device authorization, monotonic generations, revision checks, and content hashes. The app may keep a local working cache protected by PupEye integrity checks, but Puppy Clicker does not provide a portable backup file or Android/data save mirror.
 
 Authentication failures, rollback attempts, ownership mismatches, duplicate protected transactions, cloud revision conflicts, or unauthorized local-cache modifications may be recorded by **PupEye** and may cause a save or protected gameplay operation to be rejected, restored from the authoritative cloud state, or blocked pending Support review.
 
