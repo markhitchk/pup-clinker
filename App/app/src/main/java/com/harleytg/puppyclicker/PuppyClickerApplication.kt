@@ -271,6 +271,6 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         private const val TAG = "PuppyClickerStartup"
         const val AFK_TREATS_PER_DAY = PuppyAfkPolicy.TREATS_PER_DAY
         const val DAY_MS = PuppyAfkPolicy.DAY_MS
-        private const val EXTERNAL_SAVE_DEBOUNCE_MS = 300L
+        private const val CLOUD_SAVE_DEBOUNCE_MS = 300L
     }
 }
