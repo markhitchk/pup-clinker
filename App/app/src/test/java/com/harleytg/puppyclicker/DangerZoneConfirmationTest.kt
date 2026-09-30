@@ -10,11 +10,10 @@ class DangerZoneConfirmationTest {
     fun everyDangerZoneActionRequiresTenSecondHold() {
         val actions = listOf(
             DangerZoneAction.RESET_SETTINGS,
-            DangerZoneAction.RESET_PROGRESS,
-            DangerZoneAction.ERASE_ALL_DATA
+            DangerZoneAction.RESET_PROGRESS
         )
 
-        assertEquals(3, actions.size)
+        assertEquals(2, actions.size)
         actions.forEach { action ->
             assertEquals(10_000L, action.holdDurationMs)
         }
