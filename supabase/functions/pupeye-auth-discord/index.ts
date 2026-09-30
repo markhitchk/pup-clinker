@@ -145,6 +145,27 @@ Deno.serve(async (req: Request) => {
         .eq("discord_user_id", discordId)
         .maybeSingle();
       if (discordAccountError) throw discordAccountError;
+
+      if (accountByPlayer && accountByPlayer.discord_user_id !== discordId) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_IDENTITY_REBIND_BLOCKED",
+          "review",
+          {
+            currentDiscordUserId: accountByPlayer.discord_user_id,
+            attemptedDiscordUserId: discordId,
+            attemptedInstallationId: session.installation.installation_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
+        throw new HttpError(
+          409,
+          "PUP_ACCOUNT_IDENTITY_CONFLICT",
+          "This Pup Account is already bound to a different Discord identity. Account recovery or Support approval is required.",
+        );
+      }
+
       if (accountByDiscord && accountByDiscord.player_uuid !== session.player.id) {
         await audit(
           admin,
