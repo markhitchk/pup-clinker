@@ -95,7 +95,7 @@ internal object PuppyUiPreferences {
     private const val KEY_SETUP_COMPLETE = "setup_complete"
     private const val KEY_SETUP_STEP = "setup_step"
     private const val KEY_SETUP_FLOW_VERSION = "setup_flow_version"
-    private const val SETUP_FLOW_VERSION = 4
+    private const val SETUP_FLOW_VERSION = 5
     const val CURRENT_PRIVACY_CONSENT_VERSION = 5
     private const val KEY_ANONYMOUS_DIAGNOSTICS = "anonymous_diagnostics_enabled"
     private const val KEY_CRASH_REPORTS = "crash_reports_enabled"
@@ -330,14 +330,30 @@ internal object PuppyUiPreferences {
 
         val setupComplete = store.getBoolean(KEY_SETUP_COMPLETE, false)
         val previousStep = store.getInt(KEY_SETUP_STEP, PuppyOnboardingStep.WELCOME.persistedIndex)
+
+        // T0/v5 replaces local-only account ownership with a passwordless Discord Pup Account.
+        // Existing completed installs keep every gameplay preference untouched, but setup is
+        // reopened at PLAYER_SETUP once so their current cache can be claimed into Supabase.
+        if (setupComplete && previousVersion < 5) {
+            store.edit()
+                .putBoolean(KEY_SETUP_COMPLETE, false)
+                .putInt(KEY_SETUP_STEP, PuppyOnboardingStep.PLAYER_SETUP.persistedIndex)
+                .putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
+                .apply()
+            return
+        }
+
         val migratedStep = when {
-            setupComplete -> PuppyOnboardingStep.READY.persistedIndex
+            previousVersion >= 4 -> previousStep.coerceIn(
+                PuppyOnboardingStep.WELCOME.persistedIndex,
+                PuppyOnboardingStep.READY.persistedIndex
+            )
             previousVersion >= 3 -> migrateV3OnboardingStepToV4(previousStep)
             else -> PuppyOnboardingStep.WELCOME.persistedIndex
         }
 
         store.edit()
-            .putBoolean(KEY_SETUP_COMPLETE, setupComplete)
+            .putBoolean(KEY_SETUP_COMPLETE, false)
             .putInt(KEY_SETUP_STEP, migratedStep)
             .putInt(KEY_SETUP_FLOW_VERSION, SETUP_FLOW_VERSION)
             .apply()

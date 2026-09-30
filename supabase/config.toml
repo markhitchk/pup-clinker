@@ -35,3 +35,8 @@ verify_jwt = false
 [functions.pupeye-device-transfer]
 verify_jwt = false
 
+
+
+# T0 Pup Accounts use Discord OAuth plus the existing signed PupEye session/device proof.
+[functions.pup-account]
+verify_jwt = false

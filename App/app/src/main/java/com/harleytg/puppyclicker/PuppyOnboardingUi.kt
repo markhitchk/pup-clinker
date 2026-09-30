@@ -49,14 +49,14 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
         mutableIntStateOf(ui.setupStep.coerceIn(0, 5))
     }
     var selectedMethodName by rememberSaveable {
-        mutableStateOf(PuppyPlayerSetupMethod.LOCAL.name)
+        mutableStateOf(PuppyPlayerSetupMethod.DISCORD.name)
     }
     var importedSave by rememberSaveable { mutableStateOf(false) }
     var birthdaySkipped by rememberSaveable { mutableStateOf(false) }
 
     val selectedMethod = runCatching {
         PuppyPlayerSetupMethod.valueOf(selectedMethodName)
-    }.getOrDefault(PuppyPlayerSetupMethod.LOCAL)
+    }.getOrDefault(PuppyPlayerSetupMethod.DISCORD)
 
     val session = PuppyOnboardingSessionState(
         playerSetupMethod = selectedMethod,
@@ -136,6 +136,10 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
                     onStartPlaying = {
                         vm.dismissSeasonalIntro()
                         PuppyUiPreferences.finishSetup(context)
+                        PupAccountCloudSave.queueSync(
+                            context,
+                            reason = "onboarding-complete"
+                        )
                         SupabasePupEyeClient.queueSaveCheckpoint(
                             context,
                             reason = "onboarding-complete"

@@ -6,12 +6,12 @@ import org.junit.Test
 
 class PuppyOnboardingPreferencesContractTest {
     @Test
-    fun preferencesPersistSixStepV4FlowAndPrivacyVersionFive() {
+    fun preferencesPersistSixStepV5PupAccountFlowAndPrivacyVersionFive() {
         val source = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt"
         ).readText()
 
-        assertTrue(source.contains("SETUP_FLOW_VERSION = 4"))
+        assertTrue(source.contains("SETUP_FLOW_VERSION = 5"))
         assertTrue(source.contains("CURRENT_PRIVACY_CONSENT_VERSION = 5"))
         assertTrue(source.contains("coerceIn(0, 5)"))
         assertTrue(source.contains("PuppyOnboardingStep.READY.persistedIndex"))
@@ -22,13 +22,14 @@ class PuppyOnboardingPreferencesContractTest {
     }
 
     @Test
-    fun completedPlayersAreNotForcedBackThroughOnboarding() {
+    fun completedV4PlayersAreRoutedOnceThroughPupAccountSetup() {
         val source = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyUiPreferences.kt"
         ).readText()
 
-        assertTrue(source.contains("setupComplete -> PuppyOnboardingStep.READY.persistedIndex"))
-        assertTrue(source.contains(".putBoolean(KEY_SETUP_COMPLETE, setupComplete)"))
-        assertTrue(source.contains("previousVersion >= 3 -> migrateV3OnboardingStepToV4(previousStep)"))
+        assertTrue(source.contains("setupComplete && previousVersion < 5"))
+        assertTrue(source.contains(".putBoolean(KEY_SETUP_COMPLETE, false)"))
+        assertTrue(source.contains(".putInt(KEY_SETUP_STEP, PuppyOnboardingStep.PLAYER_SETUP.persistedIndex)"))
+        assertTrue(source.contains("previousVersion >= 4 -> previousStep.coerceIn"))
     }
 }

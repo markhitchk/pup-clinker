@@ -1,6 +1,7 @@
 import {
   HttpError,
   assertPublishableRequest,
+  audit,
   createAdminClient,
   authenticateSession,
   errorResponse,
@@ -69,10 +70,23 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (linkedError) throw linkedError;
       if (alreadyLinked && alreadyLinked.id !== session.player.id) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_SECOND_DEVICE_BLOCKED",
+          "review",
+          {
+            discordUserId: discordId,
+            existingPlayerUuid: alreadyLinked.id,
+            attemptedInstallationId: session.installation.installation_id,
+            attemptedDeviceKeyId: session.installation.device_key_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
         throw new HttpError(
           409,
-          "DISCORD_ALREADY_LINKED",
-          "This Discord account is already linked to another Puppy Clicker player. Contact Support for account recovery or device migration.",
+          "PUP_ACCOUNT_ON_OTHER_DEVICE",
+          "This Discord Pup Account is already registered to another active Puppy Clicker device. Device transfer is required.",
         );
       }
 
@@ -115,6 +129,87 @@ Deno.serve(async (req: Request) => {
         evidence_code: "DISCORD_OAUTH_USERS_ME",
       });
       if (linkError && linkError.code !== "23505") throw linkError;
+
+      // T0 Pup Account bootstrap: Discord OAuth is the passwordless account identity.
+      // PupEye's authenticated session + installation remains the one-device authority.
+      const { data: accountByPlayer, error: playerAccountError } = await admin
+        .from("pup_accounts")
+        .select("*")
+        .eq("player_uuid", session.player.id)
+        .maybeSingle();
+      if (playerAccountError) throw playerAccountError;
+
+      const { data: accountByDiscord, error: discordAccountError } = await admin
+        .from("pup_accounts")
+        .select("*")
+        .eq("discord_user_id", discordId)
+        .maybeSingle();
+      if (discordAccountError) throw discordAccountError;
+
+      if (accountByPlayer && accountByPlayer.discord_user_id !== discordId) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_IDENTITY_REBIND_BLOCKED",
+          "review",
+          {
+            currentDiscordUserId: accountByPlayer.discord_user_id,
+            attemptedDiscordUserId: discordId,
+            attemptedInstallationId: session.installation.installation_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
+        throw new HttpError(
+          409,
+          "PUP_ACCOUNT_IDENTITY_CONFLICT",
+          "This Pup Account is already bound to a different Discord identity. Account recovery or Support approval is required.",
+        );
+      }
+
+      if (accountByDiscord && accountByDiscord.player_uuid !== session.player.id) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_SECOND_DEVICE_BLOCKED",
+          "review",
+          {
+            discordUserId: discordId,
+            existingPlayerUuid: accountByDiscord.player_uuid,
+            attemptedInstallationId: session.installation.installation_id,
+            attemptedDeviceKeyId: session.installation.device_key_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
+        throw new HttpError(
+          409,
+          "PUP_ACCOUNT_ON_OTHER_DEVICE",
+          "This Discord Pup Account is already registered to another active Puppy Clicker device. Device transfer is required.",
+        );
+      }
+
+      const existingAccount = accountByPlayer ?? accountByDiscord;
+      const accountValues = {
+        player_uuid: session.player.id,
+        discord_user_id: discordId,
+        username,
+        display_name: typeof profile.global_name === "string" ? profile.global_name : null,
+        avatar_hash: typeof profile.avatar === "string" ? profile.avatar : null,
+        active_installation_uuid: session.installation.id,
+        stage: "t0",
+        status: "active",
+        updated_at: new Date().toISOString(),
+      };
+      const accountWrite = existingAccount
+        ? await admin.from("pup_accounts")
+            .update(accountValues)
+            .eq("id", existingAccount.id)
+            .select("*")
+            .single()
+        : await admin.from("pup_accounts")
+            .insert(accountValues)
+            .select("*")
+            .single();
+      if (accountWrite.error) throw accountWrite.error;
 
       return json(200, {
         discord: {

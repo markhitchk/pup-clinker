@@ -49,6 +49,21 @@ internal data class PupEyeSessionAuth(
     val backendInstallationId: String
 )
 
+internal data class PupAccountCloudSaveRecord(
+    val revision: Long,
+    val generation: Long,
+    val saveSchema: Int,
+    val saveData: JSONObject,
+    val payloadHashSha256: String?
+)
+
+internal data class PupAccountCloudWriteResult(
+    val success: Boolean,
+    val revision: Long,
+    val conflictRevision: Long? = null,
+    val message: String? = null
+)
+
 /**
  * Supabase transport for Puppy Clicker account authority and PupEye.
  *
@@ -64,7 +79,7 @@ internal object SupabasePupEyeClient {
     private const val KEY_LAST_VERIFIED = "last_verified_at"
     private const val KEY_LAST_ERROR = "last_error"
     private const val CHECKPOINT_THROTTLE_MS = 30_000L
-    private const val MAX_RESPONSE_BYTES = 256 * 1024
+    private const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
@@ -192,6 +207,92 @@ internal object SupabasePupEyeClient {
             backendPlayerId = session.backendPlayerId,
             backendInstallationId = session.backendInstallationId
         )
+    }
+
+    suspend fun readPupAccountCloudSave(
+        context: Context
+    ): PupAccountCloudSaveRecord? = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
+        val session = ensureRegistered(app)
+            ?: error("PupEye could not establish an authenticated device session.")
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = "cloud-save-read",
+            payload = JSONObject()
+        )
+        val response = invoke(
+            functionName = "pup-account",
+            envelope = envelope,
+            sessionToken = session.token
+        )
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(app, response)
+            error(response.message("Unable to load Pup Account cloud save"))
+        }
+
+        val save = response.body.optJSONObject("save") ?: return@withContext null
+        PupAccountCloudSaveRecord(
+            revision = save.optLong("revision", 0L).coerceAtLeast(0L),
+            generation = save.optLong("generation", 1L).coerceAtLeast(1L),
+            saveSchema = save.optInt("saveSchema", 1).coerceAtLeast(1),
+            saveData = save.optJSONObject("saveData") ?: JSONObject(),
+            payloadHashSha256 = save.optString("payloadHashSha256")
+                .takeIf { it.matches(Regex("[0-9a-f]{64}")) }
+        )
+    }
+
+    suspend fun writePupAccountCloudSave(
+        context: Context,
+        expectedRevision: Long,
+        saveData: JSONObject,
+        saveSchema: Int = 1
+    ): PupAccountCloudWriteResult = withContext(Dispatchers.IO) {
+        require(expectedRevision >= 0L) { "Cloud save revision cannot be negative" }
+        require(saveSchema >= 1) { "Cloud save schema must be >= 1" }
+
+        val app = context.applicationContext
+        val session = ensureRegistered(app)
+            ?: error("PupEye could not establish an authenticated device session.")
+        val payload = JSONObject().apply {
+            put("expectedRevision", expectedRevision)
+            put("saveSchema", saveSchema)
+            put("saveData", JSONObject(saveData.toString()))
+        }
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = "cloud-save-write",
+            payload = payload
+        )
+        val response = invoke(
+            functionName = "pup-account",
+            envelope = envelope,
+            sessionToken = session.token
+        )
+
+        if (response.status in 200..299) {
+            markConnected(app)
+            return@withContext PupAccountCloudWriteResult(
+                success = true,
+                revision = response.body.optLong("revision", expectedRevision + 1L)
+                    .coerceAtLeast(expectedRevision + 1L)
+            )
+        }
+
+        handleAuthoritativeFailure(app, response)
+        if (
+            response.status == HttpURLConnection.HTTP_CONFLICT &&
+            response.body.optString("code") == "CLOUD_SAVE_CONFLICT"
+        ) {
+            return@withContext PupAccountCloudWriteResult(
+                success = false,
+                revision = expectedRevision,
+                conflictRevision = response.body.optLong("currentRevision", -1L)
+                    .takeIf { it >= 0L },
+                message = response.message("Cloud save changed on the server.")
+            )
+        }
+
+        error(response.message("Unable to save Pup Account progress"))
     }
 
     suspend fun authenticateDiscord(
@@ -600,14 +701,18 @@ internal object SupabasePupEyeClient {
         }
 
         val nextState = when (code) {
-            "DEVICE_MIGRATION_REQUIRED" -> "MIGRATION_REQUIRED"
+            "DEVICE_MIGRATION_REQUIRED",
+            "PUP_ACCOUNT_ON_OTHER_DEVICE",
+            "DISCORD_ALREADY_LINKED" -> "MIGRATION_REQUIRED"
             "REVIEW_REQUIRED",
             "SAVE_ROLLBACK",
             "DUPLICATE_TRANSACTION",
-            "TRANSACTION_CONFLICT" -> "REVIEW_REQUIRED"
+            "TRANSACTION_CONFLICT",
+            "PUP_ACCOUNT_IDENTITY_CONFLICT" -> "REVIEW_REQUIRED"
             "GLOBAL_BANNED",
             "PLAYER_BLOCKED",
-            "INSTALLATION_REVOKED" -> "BLOCKED"
+            "INSTALLATION_REVOKED",
+            "PUP_ACCOUNT_BLOCKED" -> "BLOCKED"
             else -> null
         } ?: return
 

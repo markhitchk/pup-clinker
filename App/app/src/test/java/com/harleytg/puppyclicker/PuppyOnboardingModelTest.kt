@@ -32,9 +32,9 @@ class PuppyOnboardingModelTest {
     }
 
     @Test
-    fun freshSessionDefaultsToLocalProfile() {
+    fun freshSessionDefaultsToPasswordlessDiscordPupAccount() {
         val state = PuppyOnboardingSessionState()
-        assertEquals(PuppyPlayerSetupMethod.LOCAL, state.playerSetupMethod)
+        assertEquals(PuppyPlayerSetupMethod.DISCORD, state.playerSetupMethod)
         assertFalse(state.importedSave)
         assertFalse(state.birthdaySkipped)
     }
@@ -46,10 +46,10 @@ class PuppyOnboardingModelTest {
             importedSave = true
         )
 
-        val switched = imported.copy(playerSetupMethod = PuppyPlayerSetupMethod.LOCAL)
+        val switched = imported.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
 
         assertTrue(switched.importedSave)
-        assertEquals(PuppyPlayerSetupMethod.LOCAL, switched.playerSetupMethod)
+        assertEquals(PuppyPlayerSetupMethod.DISCORD, switched.playerSetupMethod)
     }
 
     @Test
