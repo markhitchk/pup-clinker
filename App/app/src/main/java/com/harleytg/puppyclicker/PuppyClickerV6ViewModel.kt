@@ -2001,6 +2001,21 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
 
+    /** Reload the in-memory game state after Supabase restores the authoritative cache. */
+    fun reloadFromCloudCache() {
+        recentTapTimes.clear()
+        suspicionHits = 0
+        suspicionWindowStartedMs = 0L
+        _state.value = loadState()
+        val casinoInspection = PuppyCasinoPersistence.inspectActiveRound(prefs)
+        _casinoRound.value = casinoInspection.round
+        _casinoRecoveryIssue.value = casinoInspection.issue
+        _casinoRewardLedger.value = PuppyCasinoRewardPersistence.load(prefs)
+        _lastCasinoTicketReward.value = null
+        _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardPersistence.load(prefs)
+        _lastCasinoPuppyReward.value = null
+    }
+
 
     /**
      * Stops this ViewModel from writing its old in-memory state after "Delete Local Save Data".
