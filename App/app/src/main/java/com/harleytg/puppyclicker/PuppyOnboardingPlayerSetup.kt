@@ -426,14 +426,12 @@ internal fun PuppyOnboardingPlayerSetup(
                     }
 
                     Spacer(Modifier.height(6.dp))
-
-                    OutlinedButton(
-                        onClick = { DiscordSignupAuth.startSignup(context) },
-                        enabled = !discordBusy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Use a Different Discord Account")
-                    }
+                    Text(
+                        "This Pup Account is bound to @" + account.username +
+                            ". Changing the Discord identity requires account recovery or Support approval.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 Spacer(Modifier.height(8.dp))
