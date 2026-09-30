@@ -80,12 +80,12 @@ internal object PuppyFeatureFlags {
             "Remote Feature Flags", "Repository-backed remote feature availability."
         ),
         "puppy_clicker_account" to PuppyFeatureFlag(
-            "puppy_clicker_account", true, false, "coming_soon", null,
-            "Puppy Clicker Account", "Online account with username, password, and Discord authentication."
+            "puppy_clicker_account", true, true, "beta", null,
+            "Pup Accounts · T0", "Passwordless Discord identity with Supabase cloud progression."
         ),
         "discord_linking" to PuppyFeatureFlag(
             "discord_linking", true, true, "released", null,
-            "Discord Linking", "Optional Discord identity connection."
+            "Discord Sign-In", "Passwordless identity for T0 Pup Accounts."
         ),
         "save_restore" to PuppyFeatureFlag(
             "save_restore", true, true, "released", null,
