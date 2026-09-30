@@ -118,13 +118,20 @@ Deno.serve(async (req: Request) => {
 
       // T0 Pup Account bootstrap: Discord OAuth is the passwordless account identity.
       // PupEye's authenticated session + installation remains the one-device authority.
-      const { data: existingAccount, error: accountLookupError } = await admin
+      const { data: accountByPlayer, error: playerAccountError } = await admin
+        .from("pup_accounts")
+        .select("*")
+        .eq("player_uuid", session.player.id)
+        .maybeSingle();
+      if (playerAccountError) throw playerAccountError;
+
+      const { data: accountByDiscord, error: discordAccountError } = await admin
         .from("pup_accounts")
         .select("*")
         .eq("discord_user_id", discordId)
         .maybeSingle();
-      if (accountLookupError) throw accountLookupError;
-      if (existingAccount && existingAccount.player_uuid !== session.player.id) {
+      if (discordAccountError) throw discordAccountError;
+      if (accountByDiscord && accountByDiscord.player_uuid !== session.player.id) {
         throw new HttpError(
           409,
           "PUP_ACCOUNT_ON_OTHER_DEVICE",
@@ -132,6 +139,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      const existingAccount = accountByPlayer ?? accountByDiscord;
       const accountValues = {
         player_uuid: session.player.id,
         discord_user_id: discordId,
