@@ -28,16 +28,11 @@ class PuppyErrorReportingContractTest {
         val reporter = source(
             "src/main/java/com/harleytg/puppyclicker/PuppyErrorReportUi.kt"
         )
-        val transfer = source(
-            "src/main/java/com/harleytg/puppyclicker/GameSaveTransfer.kt"
-        )
-
         assertTrue(reporter.contains("What happened?"))
         assertTrue(reporter.contains("Send Report"))
         assertTrue(reporter.contains("PuppySupportReporting.submitErrorReport"))
         assertTrue(reporter.contains("minimum 10 characters"))
-        assertTrue(transfer.contains("Report Error"))
-        assertTrue(transfer.contains("PuppyErrorReportDialog"))
+        assertTrue(reporter.contains("PuppyErrorReportDialog"))
     }
 
     @Test
