@@ -701,14 +701,17 @@ internal object SupabasePupEyeClient {
         }
 
         val nextState = when (code) {
-            "DEVICE_MIGRATION_REQUIRED" -> "MIGRATION_REQUIRED"
+            "DEVICE_MIGRATION_REQUIRED",
+            "PUP_ACCOUNT_ON_OTHER_DEVICE",
+            "DISCORD_ALREADY_LINKED" -> "MIGRATION_REQUIRED"
             "REVIEW_REQUIRED",
             "SAVE_ROLLBACK",
             "DUPLICATE_TRANSACTION",
             "TRANSACTION_CONFLICT" -> "REVIEW_REQUIRED"
             "GLOBAL_BANNED",
             "PLAYER_BLOCKED",
-            "INSTALLATION_REVOKED" -> "BLOCKED"
+            "INSTALLATION_REVOKED",
+            "PUP_ACCOUNT_BLOCKED" -> "BLOCKED"
             else -> null
         } ?: return
 
