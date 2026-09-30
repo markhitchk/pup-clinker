@@ -18,6 +18,12 @@ import org.json.JSONObject
  * SharedPreferences stores remain a fast local cache so gameplay does not depend on network
  * latency. Every cache mutation is debounced into an authenticated, device-bound cloud write.
  */
+internal data class PupAccountCloudSaveStatus(
+    val revision: Long,
+    val lastSyncAtMs: Long,
+    val lastError: String?
+)
+
 internal object PupAccountCloudSave {
     private const val STATE_PREFS = "pup_account_cloud_state_v1"
     private const val KEY_REVISION = "server_revision"
@@ -36,6 +42,15 @@ internal object PupAccountCloudSave {
 
     @Volatile
     private var restoringFromCloud = false
+
+    fun status(context: Context): PupAccountCloudSaveStatus {
+        val prefs = context.applicationContext.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+        return PupAccountCloudSaveStatus(
+            revision = prefs.getLong(KEY_REVISION, 0L).coerceAtLeast(0L),
+            lastSyncAtMs = prefs.getLong(KEY_LAST_SYNC_AT, 0L).coerceAtLeast(0L),
+            lastError = prefs.getString(KEY_LAST_ERROR, null)
+        )
+    }
 
     fun initialize(context: Context) {
         val app = context.applicationContext
