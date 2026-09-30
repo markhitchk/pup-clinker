@@ -85,6 +85,7 @@ internal object SupabasePupEyeClient {
     private val lastCheckpointQueuedAt = AtomicLong(0L)
     private val enforcementLoaded = AtomicBoolean(false)
     private val enforcementWriteLock = Any()
+    private val sessionRecoveryLock = Any()
     private val enforcementResponseGate = PupEyeEnforcementResponseGate()
     private val mutableEnforcementState =
         MutableStateFlow(PupEyeEnforcementSnapshot.allowed())
@@ -220,10 +221,11 @@ internal object SupabasePupEyeClient {
             action = "cloud-save-read",
             payload = JSONObject()
         )
-        val response = invoke(
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
             functionName = "pup-account",
             envelope = envelope,
-            sessionToken = session.token
+            initialSession = session
         )
         if (response.status !in 200..299) {
             handleAuthoritativeFailure(app, response)
@@ -263,10 +265,11 @@ internal object SupabasePupEyeClient {
             action = "cloud-save-write",
             payload = payload
         )
-        val response = invoke(
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
             functionName = "pup-account",
             envelope = envelope,
-            sessionToken = session.token
+            initialSession = session
         )
 
         if (response.status in 200..299) {
@@ -318,10 +321,11 @@ internal object SupabasePupEyeClient {
             action = "auth-discord",
             payload = payload
         )
-        val response = invoke(
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
             functionName = "pupeye-auth-discord",
             envelope = envelope,
-            sessionToken = session.token
+            initialSession = session
         )
         if (response.status !in 200..299) {
             handleAuthoritativeFailure(app, response)
@@ -367,10 +371,11 @@ internal object SupabasePupEyeClient {
                 action = "unlink-discord",
                 payload = JSONObject()
             )
-            val response = invoke(
+            val response = invokeAuthenticatedWithSessionRecovery(
+                context = app,
                 functionName = "pupeye-auth-discord",
                 envelope = envelope,
-                sessionToken = session.token
+                initialSession = session
             )
             if (response.status !in 200..299) {
                 noteTransientError(app, response.message("Unable to unlink Discord from Pupeye"))
@@ -501,10 +506,11 @@ internal object SupabasePupEyeClient {
                     action = "save-attestation",
                     payload = payload
                 )
-                val response = invoke(
+                val response = invokeAuthenticatedWithSessionRecovery(
+                    context = app,
                     functionName = "pupeye-save-attestation",
                     envelope = envelope,
-                    sessionToken = session.token
+                    initialSession = session
                 )
                 if (response.status !in 200..299) {
                     handleAuthoritativeFailure(app, response)
@@ -553,10 +559,11 @@ internal object SupabasePupEyeClient {
                     action = "economy-transaction",
                     payload = payload
                 )
-                val response = invoke(
+                val response = invokeAuthenticatedWithSessionRecovery(
+                    context = app,
                     functionName = "pupeye-transaction",
                     envelope = envelope,
-                    sessionToken = session.token
+                    initialSession = session
                 )
                 if (response.status !in 200..299) {
                     handleAuthoritativeFailure(app, response)
@@ -604,10 +611,11 @@ internal object SupabasePupEyeClient {
             action = "save-checkpoint",
             payload = payload
         )
-        val response = invoke(
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = context,
             functionName = "pupeye-sync",
             envelope = envelope,
-            sessionToken = session.token
+            initialSession = session
         )
         if (response.status !in 200..299) {
             handleAuthoritativeFailure(context, response)
@@ -619,9 +627,9 @@ internal object SupabasePupEyeClient {
         }
     }
 
-    private fun ensureRegistered(context: Context): BackendSession? {
-        readSession(context)?.let { return it }
-        if (!isConfigured()) return null
+    private fun ensureRegistered(context: Context): BackendSession? = synchronized(sessionRecoveryLock) {
+        readSession(context)?.let { return@synchronized it }
+        if (!isConfigured()) return@synchronized null
 
         val payload = JSONObject().apply {
             put("playerId", PuppyPlayerIdentity.playerId(context))
@@ -647,7 +655,7 @@ internal object SupabasePupEyeClient {
             if (response.status !in setOf(HttpURLConnection.HTTP_CONFLICT, HttpURLConnection.HTTP_FORBIDDEN)) {
                 noteTransientError(context, response.message("Pupeye registration failed"))
             }
-            return null
+            return@synchronized null
         }
 
         val token = response.body.optString("sessionToken").takeIf { it.isNotBlank() }
@@ -663,7 +671,44 @@ internal object SupabasePupEyeClient {
         )
         writeSession(context, session)
         markConnected(context)
-        return session
+        session
+    }
+
+    private fun invokeAuthenticatedWithSessionRecovery(
+        context: Context,
+        functionName: String,
+        envelope: JSONObject,
+        initialSession: BackendSession
+    ): ApiResponse {
+        var response = invoke(
+            functionName = functionName,
+            envelope = envelope,
+            sessionToken = initialSession.token
+        )
+        if (!isRecoverableSessionFailure(response)) return response
+
+        synchronized(sessionRecoveryLock) {
+            val current = readSession(context)
+            if (current?.token == initialSession.token) {
+                clearSession(context)
+            }
+        }
+
+        val refreshedSession = ensureRegistered(context) ?: return response
+        response = invoke(
+            functionName = functionName,
+            envelope = envelope,
+            sessionToken = refreshedSession.token
+        )
+        return response
+    }
+
+    private fun isRecoverableSessionFailure(response: ApiResponse): Boolean {
+        if (response.status != HttpURLConnection.HTTP_UNAUTHORIZED) return false
+        return response.body.optString("code") in setOf(
+            "PUPEYE_SESSION_INVALID",
+            "PUPEYE_SESSION_REQUIRED"
+        )
     }
 
     private fun handleAuthoritativeFailure(context: Context, response: ApiResponse) {
