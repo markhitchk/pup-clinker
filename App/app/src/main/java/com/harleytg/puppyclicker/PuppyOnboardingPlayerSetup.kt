@@ -74,6 +74,8 @@ internal fun PuppyOnboardingPlayerSetup(
     val restoreFlag = flags["save_restore"] ?: PuppyFeatureFlags.flag("save_restore")
 
     var discordSheetOpen by rememberSaveable { mutableStateOf(false) }
+    var accountActivating by rememberSaveable { mutableStateOf(false) }
+    var accountSetupMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var importSheetOpen by rememberSaveable { mutableStateOf(false) }
 
     var selectedSaveUri by remember { mutableStateOf<Uri?>(null) }
@@ -193,23 +195,48 @@ internal fun PuppyOnboardingPlayerSetup(
                 } else {
                     Button(
                         onClick = {
-                            val preferredUsername = if (
-                                PuppyPlayerIdentity.isUsernameAllowed(account.username)
-                            ) {
-                                account.username
-                            } else {
-                                "pup" + account.id.takeLast(8)
+                            if (accountActivating) return@Button
+                            accountActivating = true
+                            accountSetupMessage = null
+                            scope.launch {
+                                val preferredUsername = if (
+                                    PuppyPlayerIdentity.isUsernameAllowed(account.username)
+                                ) {
+                                    account.username
+                                } else {
+                                    "pup" + account.id.takeLast(8)
+                                }
+                                PuppyPlayerIdentity.setUsername(context, preferredUsername)
+                                val cloudReady = PupAccountCloudSave.activateAndAwait(context)
+                                accountActivating = false
+                                if (!cloudReady) {
+                                    accountSetupMessage =
+                                        "Unable to load your Pup Account cloud save. Check your connection and try again."
+                                    return@launch
+                                }
+                                vm.reloadImportedSave()
+                                onSessionChange(
+                                    session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
+                                )
+                                onComplete()
                             }
-                            PuppyPlayerIdentity.setUsername(context, preferredUsername)
-                            onSessionChange(
-                                session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
-                            )
-                            PupAccountCloudSave.activate(context)
-                            onComplete()
                         },
+                        enabled = !accountActivating,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Continue with @" + account.username, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (accountActivating) "Loading Pup Account…" else "Continue with @" + account.username,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    accountSetupMessage?.let { message ->
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
 
                     Spacer(Modifier.height(4.dp))
