@@ -28,14 +28,15 @@ class PuppyAuthBotContractTest {
     }
 
     @Test
-    fun settingsExposesLinkCodeResendAndUnlink() {
+    fun settingsUsesSingleStepDiscordOauthLinking() {
         val source = source("PuppySettingsUi.kt")
-        assertTrue(source.contains("Enter code"))
         assertTrue(source.contains("Text(\"Unlink\")"))
         assertTrue(source.contains("Text(\"Link\")"))
-        assertTrue(source.contains("Text(\"Resend\")"))
         assertTrue(source.contains("Not linked"))
-        assertTrue(source.contains("Code sent"))
+        assertTrue(source.contains("No secondary DM code is required."))
+        assertFalse(source.contains("Enter code"))
+        assertFalse(source.contains("Text(\"Resend\")"))
+        assertFalse(source.contains("Code sent"))
         assertTrue(source.contains("title = \"Advanced\""))
         assertTrue(source.contains("title = \"Account details\""))
         assertTrue(source.contains("PuppyIdentityHeaderCard"))
