@@ -70,25 +70,9 @@ internal fun PuppyOnboardingPlayerSetup(
     }
     val scope = rememberCoroutineScope()
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
-    val accountFlag = flags["puppy_clicker_account"] ?: PuppyFeatureFlags.flag("puppy_clicker_account")
     val discordFlag = flags["discord_linking"] ?: PuppyFeatureFlags.flag("discord_linking")
     val restoreFlag = flags["save_restore"] ?: PuppyFeatureFlags.flag("save_restore")
 
-    var username by rememberSaveable {
-        mutableStateOf(
-            PuppyPlayerIdentity.username(context)
-                .takeUnless { it == "localplayer" }
-                .orEmpty()
-        )
-    }
-    var usernameModerationMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var backupPassword by rememberSaveable {
-        mutableStateOf(PuppyBackupPasswordStore.get(context).orEmpty())
-    }
-    var backupPasswordConfirm by rememberSaveable {
-        mutableStateOf(PuppyBackupPasswordStore.get(context).orEmpty())
-    }
-    var backupPasswordVisible by rememberSaveable { mutableStateOf(false) }
     var discordSheetOpen by rememberSaveable { mutableStateOf(false) }
     var importSheetOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -101,12 +85,6 @@ internal fun PuppyOnboardingPlayerSetup(
     var importMessage by remember { mutableStateOf<String?>(null) }
     var checkingSave by remember { mutableStateOf(false) }
     var importingSave by remember { mutableStateOf(false) }
-
-    val profileSourceLabel = when (session.playerSetupMethod) {
-        PuppyPlayerSetupMethod.LOCAL -> "Local profile"
-        PuppyPlayerSetupMethod.DISCORD -> "Discord-linked profile"
-        PuppyPlayerSetupMethod.IMPORT_SAVE -> "Restored save"
-    }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -133,7 +111,7 @@ internal fun PuppyOnboardingPlayerSetup(
         preferViewportFit = true
     ) {
         Text(
-            "One account setup for local now and online later.",
+            "T0 Pup Accounts are passwordless. Discord signs you in; PupEye binds one active device.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -147,188 +125,103 @@ internal fun PuppyOnboardingPlayerSetup(
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Column(Modifier.padding(10.dp)) {
+            Column(Modifier.padding(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SetupBadge("PC")
+                    Image(
+                        painter = painterResource(R.drawable.ic_discord),
+                        contentDescription = "Discord",
+                        modifier = Modifier.size(34.dp),
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                    )
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = 10.dp)
                     ) {
-                        Text("Puppy Clicker Account Credentials", fontWeight = FontWeight.Black)
+                        Text("Pup Account · T0", fontWeight = FontWeight.Black)
                         Text(
-                            profileSourceLabel + " · local now · online-ready",
+                            if (account == null) {
+                                "Passwordless sign-in with Discord"
+                            } else {
+                                account.displayName + " · @" + account.username
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it.take(24) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Username") },
-                    singleLine = true
-                )
-
-                Spacer(Modifier.height(5.dp))
-                OutlinedTextField(
-                    value = backupPassword,
-                    onValueChange = { backupPassword = it.take(128) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Password") },
-                    singleLine = true,
-                    trailingIcon = {
-                        TextButton(onClick = { backupPasswordVisible = !backupPasswordVisible }) {
-                            Text(if (backupPasswordVisible) "Hide" else "View")
-                        }
-                    },
-                    visualTransformation = if (backupPasswordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    }
-                )
-                Spacer(Modifier.height(5.dp))
-                OutlinedTextField(
-                    value = backupPasswordConfirm,
-                    onValueChange = { backupPasswordConfirm = it.take(128) },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Confirm password") },
-                    singleLine = true,
-                    visualTransformation = if (backupPasswordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    }
-                )
-
-                account?.let {
-                    Spacer(Modifier.height(6.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            "Discord linked: @" + it.username,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium,
+                            if (account == null) "SIGN IN" else "CONNECTED",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    if (account == null) {
+                        "Discord provides your username and identity. Puppy Clicker does not create or store a separate account password."
+                    } else {
+                        "Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                if (account == null) {
+                    Button(
+                        onClick = { discordSheetOpen = true },
+                        enabled = discordFlag.isAvailable() && !discordBusy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (discordBusy) "Waiting for Discord…" else "Sign in with Discord",
                             fontWeight = FontWeight.Bold
                         )
                     }
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                Button(
-                    onClick = {
-                        val moderationIssue = PuppyPlayerIdentity.usernameModerationIssue(username)
-                        if (moderationIssue != null) {
-                            usernameModerationMessage = moderationIssue
-                        } else if (backupPassword.length < 8) {
-                            usernameModerationMessage = "Your password must be at least 8 characters."
-                        } else if (backupPassword != backupPasswordConfirm) {
-                            usernameModerationMessage = "Your passwords do not match."
-                        } else {
-                            username = PuppyPlayerIdentity.setUsername(context, username)
-                            val backupSaved = runCatching {
-                                PuppyBackupPasswordStore.set(context, backupPassword)
-                            }.isSuccess
-                            if (!backupSaved) {
-                                usernameModerationMessage =
-                                    "Unable to protect the backup password on this device."
+                } else {
+                    Button(
+                        onClick = {
+                            val preferredUsername = if (
+                                PuppyPlayerIdentity.isUsernameAllowed(account.username)
+                            ) {
+                                account.username
                             } else {
-                                onSessionChange(
-                                    session.copy(playerSetupMethod = PuppyPlayerSetupMethod.LOCAL)
-                                )
-                                onComplete()
+                                "pup" + account.id.takeLast(8)
                             }
-                        }
-                    },
-                    enabled = localUsernameSubmissionEnabled(username) &&
-                        backupPassword.length >= 8 &&
-                        backupPassword == backupPasswordConfirm,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Save Account & Continue", fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        if (accountFlag.visible) {
-            Spacer(Modifier.height(6.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            accountFlag.label.ifBlank { "Puppy Clicker Online Account" },
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            if (accountFlag.isAvailable()) {
-                                "Uses the same username and password above."
-                            } else {
-                                "Coming soon · the same credentials will be used."
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                            PuppyPlayerIdentity.setUsername(context, preferredUsername)
+                            onSessionChange(
+                                session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
+                            )
+                            PupAccountCloudSave.activate(context)
+                            onComplete()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Continue with @" + account.username, fontWeight = FontWeight.Bold)
                     }
-                    Text(
-                        accountFlag.statusLabel(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    TextButton(
+                        onClick = { discordSheetOpen = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Manage Discord sign-in")
+                    }
                 }
             }
-        }
-
-        if (discordFlag.visible) {
-            Spacer(Modifier.height(6.dp))
-            Text("DISCORD ACCOUNT", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(3.dp))
-            OnboardingOptionCard(
-                title = if (account == null) "Connect Discord" else "Discord Connected",
-                detail = if (account == null) {
-                    "Optional identity link."
-                } else {
-                    "@" + account.username + " linked."
-                },
-                action = if (!discordFlag.isAvailable()) {
-                    discordFlag.statusLabel()
-                } else if (account == null) {
-                    "Connect"
-                } else {
-                    "Manage"
-                },
-                enabled = discordFlag.isAvailable(),
-                onClick = { discordSheetOpen = true },
-                leading = {
-                    Image(
-                        painter = painterResource(R.drawable.ic_discord),
-                        contentDescription = "Discord",
-                        modifier = Modifier.size(30.dp),
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
-                    )
-                }
-            )
         }
 
         if (restoreFlag.visible) {
@@ -337,9 +230,19 @@ internal fun PuppyOnboardingPlayerSetup(
             Spacer(Modifier.height(3.dp))
             OnboardingOptionCard(
                 title = "Restore a Save",
-                detail = "Import an existing .pupsave.",
-                action = if (restoreFlag.isAvailable()) "Import" else restoreFlag.statusLabel(),
-                enabled = restoreFlag.isAvailable(),
+                detail = if (account == null) {
+                    "Sign in to a Pup Account before importing legacy progress."
+                } else {
+                    "Import an existing .pupsave, then upload it to your Pup Account."
+                },
+                action = if (account == null) {
+                    "Sign in first"
+                } else if (restoreFlag.isAvailable()) {
+                    "Import"
+                } else {
+                    restoreFlag.statusLabel()
+                },
+                enabled = account != null && restoreFlag.isAvailable(),
                 onClick = { importSheetOpen = true },
                 leading = { SetupBadge("SAVE") }
             )
@@ -402,7 +305,7 @@ internal fun PuppyOnboardingPlayerSetup(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            "Optional account connection",
+                            "Passwordless Pup Account sign-in",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -411,7 +314,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Discord access requests identity, email, server list, server-join authorization, and your member profile for community features. Your Player ID, Friend Code, progress, and save remain local.",
+                    "Discord OAuth proves your Pup Account identity without a Puppy Clicker password. Your username and display name come from Discord; Supabase stores the account and cloud progression. PupEye still allows only one active device.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -488,29 +391,11 @@ internal fun PuppyOnboardingPlayerSetup(
                         ) { Text("Enter code") }
                     }
                 } else {
-                    val discordUsernameAllowed =
-                        PuppyPlayerIdentity.isUsernameAllowed(account.username)
-
                     Button(
-                        onClick = {
-                            username = account.username
-                            onSessionChange(
-                                session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
-                            )
-                            discordSheetOpen = false
-                        },
-                        enabled = discordUsernameAllowed && !discordBusy,
+                        onClick = { discordSheetOpen = false },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Use @" + account.username + " as Player Username")
-                    }
-
-                    if (!discordUsernameAllowed) {
-                        Text(
-                            "This Discord username cannot be used as a Puppy Clicker username. You can still keep the Discord account linked.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("Use this Pup Account", fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(Modifier.height(6.dp))
@@ -521,13 +406,6 @@ internal fun PuppyOnboardingPlayerSetup(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Use a Different Discord Account")
-                    }
-
-                    TextButton(
-                        onClick = { discordSheetOpen = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Done")
                     }
                 }
 
@@ -673,6 +551,7 @@ internal fun PuppyOnboardingPlayerSetup(
                                     runCatching { PuppyBackupPasswordStore.set(context, password) }
                                 }
                                 vm.reloadImportedSave()
+                                PupAccountCloudSave.queueSync(context, reason = "legacy-import")
                                 onSessionChange(
                                     session.copy(
                                         playerSetupMethod = PuppyPlayerSetupMethod.IMPORT_SAVE,
@@ -724,25 +603,6 @@ internal fun PuppyOnboardingPlayerSetup(
         }
     }
 
-    if (usernameModerationMessage != null) {
-        AlertDialog(
-            onDismissRequest = { usernameModerationMessage = null },
-            title = {
-                Text("Account Setup Issue", fontWeight = FontWeight.Black)
-            },
-            text = {
-                Text(
-                    usernameModerationMessage
-                        ?: "That username isn't allowed. Choose another username."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { usernameModerationMessage = null }) {
-                    Text("Choose Another")
-                }
-            }
-        )
-    }
 }
 
 @Composable
