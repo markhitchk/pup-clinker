@@ -707,7 +707,8 @@ internal object SupabasePupEyeClient {
             "REVIEW_REQUIRED",
             "SAVE_ROLLBACK",
             "DUPLICATE_TRANSACTION",
-            "TRANSACTION_CONFLICT" -> "REVIEW_REQUIRED"
+            "TRANSACTION_CONFLICT",
+            "PUP_ACCOUNT_IDENTITY_CONFLICT" -> "REVIEW_REQUIRED"
             "GLOBAL_BANNED",
             "PLAYER_BLOCKED",
             "INSTALLATION_REVOKED",
