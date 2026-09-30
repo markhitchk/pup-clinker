@@ -71,8 +71,9 @@ internal data class DiscordSignupState(
  * Discord account and configured guild role are independently verified before being trusted.
  *
  * T0 Pup Accounts are passwordless: verified Discord OAuth is the external account identity.
- * Player ID and Friend Code remain internal compatibility identifiers, while PupEye's Android
- * Keystore key binds the account to one active device.
+ * Discord OAuth + Pupeye verification completes the link in one step; there is no secondary
+ * Discord-DM code challenge. Player ID and Friend Code remain internal compatibility identifiers,
+ * while PupEye's Android Keystore key binds the account to one active device.
  */
 internal object DiscordSignupAuth {
     val CLIENT_ID: String get() = BuildConfig.DISCORD_CLIENT_ID
@@ -279,37 +280,23 @@ internal object DiscordSignupAuth {
                     return@withContext true
                 }
 
-                savePendingAccount(app, account)
                 clearPending(app)
+                saveAccount(app, account)
+                if (verified.guildAccess != null) {
+                    saveGuildAccess(app, verified.guildAccess)
+                } else {
+                    clearGuildAccess(app)
+                }
+                clearPendingAccount(app)
+                syncPlayerUsername(app, account)
                 mutableState.value = DiscordSignupState(
-                    phase = DiscordSignupPhase.CODE_PENDING,
-                    account = mutableState.value.account,
-                    pendingAccount = account,
-                    guildAccess = mutableState.value.guildAccess,
-                    message = "Discord authorized. Enter the one-time code the Auth bot DMs you to finish linking."
+                    phase = DiscordSignupPhase.CONNECTED,
+                    account = account,
+                    pendingAccount = null,
+                    guildAccess = verified.guildAccess,
+                    message = verified.message
                 )
-                val botResult = runCatching {
-                    PuppyAuthBotClient.sendVerificationCode(app, account)
-                }.getOrElse { error ->
-                    PuppyDiscordVerifySnapshot(
-                        status = PuppyDiscordLinkStatus.DM_FAILED,
-                        discordId = account.id,
-                        discordUsername = account.username,
-                        message = error.message
-                            ?: "The Auth bot could not DM you. Enable DMs from server members or join the Puppy Clicker server, then tap Resend."
-                    )
-                }
-                if (botResult.status == PuppyDiscordLinkStatus.VERIFIED) {
-                    completeVerifiedLink(app, account, botResult)
-                } else if (botResult.status == PuppyDiscordLinkStatus.DM_FAILED) {
-                    mutableState.value = DiscordSignupState(
-                        phase = DiscordSignupPhase.CODE_PENDING,
-                        account = mutableState.value.account,
-                        pendingAccount = account,
-                        guildAccess = mutableState.value.guildAccess,
-                        message = botResult.message
-                    )
-                }
+                PupAccountCloudSave.activate(app)
                 true
             } catch (error: Exception) {
                 clearPending(app)
@@ -410,18 +397,28 @@ internal object DiscordSignupAuth {
         if (initialized) return
         synchronized(this) {
             if (initialized) return
-            val account = readAccount(context)
+            val persistedAccount = readAccount(context)
             val pendingAccount = readPendingAccount(context)
-            val guildAccess = readGuildAccess(context)
-                ?.takeIf { SupabasePupEyeClient.hasSession(context) }
+            val hasSession = SupabasePupEyeClient.hasSession(context)
+            val account = persistedAccount ?: pendingAccount?.takeIf { hasSession }
+            if (persistedAccount == null && account != null) {
+                // Migrate installs that were left waiting on the removed DM-code step.
+                saveAccount(context, account)
+                clearPendingAccount(context)
+                syncPlayerUsername(context, account)
+            } else if (persistedAccount == null && pendingAccount != null && !hasSession) {
+                // A stale pending record without a Pupeye session cannot be trusted as linked.
+                clearPendingAccount(context)
+            }
+            val guildAccess = readGuildAccess(context)?.takeIf { hasSession }
             mutableState.value = DiscordSignupState(
-                phase = when {
-                    account != null -> DiscordSignupPhase.CONNECTED
-                    pendingAccount != null -> DiscordSignupPhase.CODE_PENDING
-                    else -> DiscordSignupPhase.IDLE
+                phase = if (account != null) {
+                    DiscordSignupPhase.CONNECTED
+                } else {
+                    DiscordSignupPhase.IDLE
                 },
                 account = account,
-                pendingAccount = pendingAccount,
+                pendingAccount = null,
                 guildAccess = guildAccess
             )
             notifyLegacyDiscordAuthUpgradeIfNeeded(context, account, guildAccess)
