@@ -188,11 +188,10 @@ internal data class PupEyeSecurityState(
     val tamperEvents: Int,
     val lastReason: String?,
     val lastDetectedAtMs: Long,
-    val privateIntegrityOk: Boolean,
-    val externalIntegrityOk: Boolean
+    val privateIntegrityOk: Boolean
 ) {
     val hasActiveIssue: Boolean
-        get() = !privateIntegrityOk || !externalIntegrityOk
+        get() = !privateIntegrityOk
 }
 
 /**
@@ -208,7 +207,6 @@ internal object PupEyeSaveGuard {
     private const val KEY_LAST_TIME = "last_time"
     private const val KEY_AUTHORIZED_WRITE_PENDING = "authorized_write_pending"
     private const val KEY_PRIVATE_INTEGRITY_OK = "private_integrity_ok"
-    private const val KEY_EXTERNAL_INTEGRITY_OK = "external_integrity_ok"
 
     @Volatile
     private var authorizedWritePending = false
@@ -293,9 +291,9 @@ internal object PupEyeSaveGuard {
                 .edit()
                 .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
                 .commit()
-            // Every authenticated last-known-good seal advances Pupeye's monotonic
-            // save generation. Portable backups can therefore detect valid-but-old
-            // rollback attempts instead of relying on encryption alone.
+            // Every authenticated local-cache seal advances PupEye's monotonic generation.
+            // Supabase compares that generation with the authoritative cloud revision to
+            // detect stale or rolled-back state.
             PupEyeAuthority.noteSealedState(context)
             true
         }.getOrDefault(false)
@@ -305,14 +303,6 @@ internal object PupEyeSaveGuard {
             .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_PRIVATE_INTEGRITY_OK, ok)
-            .apply()
-    }
-
-    fun markExternalIntegrity(context: Context, ok: Boolean) {
-        context.applicationContext
-            .getSharedPreferences(SECURITY_PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_EXTERNAL_INTEGRITY_OK, ok)
             .apply()
     }
 
@@ -332,8 +322,7 @@ internal object PupEyeSaveGuard {
             tamperEvents = prefs.getInt(KEY_TAMPER_COUNT, 0).coerceAtLeast(0),
             lastReason = prefs.getString(KEY_LAST_REASON, null),
             lastDetectedAtMs = prefs.getLong(KEY_LAST_TIME, 0L).coerceAtLeast(0L),
-            privateIntegrityOk = prefs.getBoolean(KEY_PRIVATE_INTEGRITY_OK, true),
-            externalIntegrityOk = prefs.getBoolean(KEY_EXTERNAL_INTEGRITY_OK, true)
+            privateIntegrityOk = prefs.getBoolean(KEY_PRIVATE_INTEGRITY_OK, true)
         )
     }
 }
