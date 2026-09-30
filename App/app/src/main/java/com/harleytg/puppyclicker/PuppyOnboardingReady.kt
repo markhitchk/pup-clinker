@@ -47,8 +47,7 @@ internal fun PuppyOnboardingReady(
                 PuppyClickerV6ViewModel.PREFS_NAME,
                 Context.MODE_PRIVATE
             )
-            PupEyeSaveGuard.verifyAndRecover(context, prefs) &&
-                ExternalGameSave.verifyExisting(context)
+            PupEyeSaveGuard.verifyAndRecover(context, prefs)
         }
         pupEyeState = if (safe) "Protected" else "Checked"
     }
@@ -98,19 +97,6 @@ internal fun PuppyOnboardingReady(
                     value = PuppyPlayerIdentity.publicFriendCode(context)
                 )
 
-                if (session.importedSave) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            "Save restored",
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
 
