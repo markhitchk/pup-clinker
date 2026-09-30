@@ -21,7 +21,7 @@ enum class PuppyPlayerSetupMethod {
 }
 
 data class PuppyOnboardingSessionState(
-    val playerSetupMethod: PuppyPlayerSetupMethod = PuppyPlayerSetupMethod.LOCAL,
+    val playerSetupMethod: PuppyPlayerSetupMethod = PuppyPlayerSetupMethod.DISCORD,
     val importedSave: Boolean = false,
     val birthdaySkipped: Boolean = false
 )
