@@ -1,9 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Supabase is the only supported cross-device progression store. -->
+        <exclude domain="sharedpref" path="puppy_clicker_save.xml" />
+        <exclude domain="sharedpref" path="pup_account_cloud_state_v1.xml" />
+        <exclude domain="sharedpref" path="puppy_ui_preferences_v2.xml" />
+        <exclude domain="sharedpref" path="puppy_discord_signup_v1.xml" />
+        <exclude domain="sharedpref" path="pupeye_security_v1.xml" />
+        <exclude domain="sharedpref" path="pupeye_supabase_status_v1.xml" />
         <exclude domain="sharedpref" path="puppy_seasonal_v1.xml" />
     </cloud-backup>
     <device-transfer>
+        <!-- A new device must restore through the Pup Account database, never copied app data. -->
+        <exclude domain="sharedpref" path="puppy_clicker_save.xml" />
+        <exclude domain="sharedpref" path="pup_account_cloud_state_v1.xml" />
+        <exclude domain="sharedpref" path="puppy_ui_preferences_v2.xml" />
+        <exclude domain="sharedpref" path="puppy_discord_signup_v1.xml" />
+        <exclude domain="sharedpref" path="pupeye_security_v1.xml" />
+        <exclude domain="sharedpref" path="pupeye_supabase_status_v1.xml" />
         <exclude domain="sharedpref" path="puppy_seasonal_v1.xml" />
     </device-transfer>
 </data-extraction-rules>
