@@ -116,6 +116,45 @@ Deno.serve(async (req: Request) => {
       });
       if (linkError && linkError.code !== "23505") throw linkError;
 
+      // T0 Pup Account bootstrap: Discord OAuth is the passwordless account identity.
+      // PupEye's authenticated session + installation remains the one-device authority.
+      const { data: existingAccount, error: accountLookupError } = await admin
+        .from("pup_accounts")
+        .select("*")
+        .eq("discord_user_id", discordId)
+        .maybeSingle();
+      if (accountLookupError) throw accountLookupError;
+      if (existingAccount && existingAccount.player_uuid !== session.player.id) {
+        throw new HttpError(
+          409,
+          "PUP_ACCOUNT_ON_OTHER_DEVICE",
+          "This Discord account already owns a Pup Account on another Puppy Clicker player/device. Device transfer is required.",
+        );
+      }
+
+      const accountValues = {
+        player_uuid: session.player.id,
+        discord_user_id: discordId,
+        username,
+        display_name: typeof profile.global_name === "string" ? profile.global_name : null,
+        avatar_hash: typeof profile.avatar === "string" ? profile.avatar : null,
+        active_installation_uuid: session.installation.id,
+        stage: "t0",
+        status: "active",
+        updated_at: new Date().toISOString(),
+      };
+      const accountWrite = existingAccount
+        ? await admin.from("pup_accounts")
+            .update(accountValues)
+            .eq("id", existingAccount.id)
+            .select("*")
+            .single()
+        : await admin.from("pup_accounts")
+            .insert(accountValues)
+            .select("*")
+            .single();
+      if (accountWrite.error) throw accountWrite.error;
+
       return json(200, {
         discord: {
           id: discordId,
