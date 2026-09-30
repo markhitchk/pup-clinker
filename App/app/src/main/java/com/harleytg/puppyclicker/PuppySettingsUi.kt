@@ -3,7 +3,6 @@ package com.harleytg.puppyclicker
 import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Build
@@ -2403,7 +2402,6 @@ private fun SettingsValueActionRow(
 @Composable
 private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
-    val activity = context as? Activity
     var confirmationKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     Card(
@@ -2436,13 +2434,6 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
             ) {
                 Text("Reset Game Progress")
             }
-            Spacer(Modifier.height(7.dp))
-            Button(
-                onClick = { confirmationKey = DangerZoneAction.ERASE_ALL_DATA.key },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Delete Local Save Data")
-            }
         }
     }
 
@@ -2460,34 +2451,11 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
                         vm.setCompactNumbers(true)
                     }
                     DangerZoneAction.RESET_PROGRESS -> vm.resetRunWithoutPrestige()
-                    DangerZoneAction.ERASE_ALL_DATA -> {
-                        vm.prepareForFullLocalDataErase()
-                        deletePuppyClickerLocalSave(context)
-
-                        val restartIntent = Intent(context, PuppyClickerV6Activity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                        context.startActivity(restartIntent)
-                        activity?.finish()
-                    }
                 }
                 confirmationKey = null
             }
         )
     }
-}
-
-private fun deletePuppyClickerLocalSave(context: Context) {
-    context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().commit()
-    context.getSharedPreferences("puppy_seasonal_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    context.getSharedPreferences("puppy_player_identity_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    DiscordSignupAuth.disconnect(context)
-    PuppyBackupPasswordStore.clear(context)
-    context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
-    ExternalGameSave.path(context)?.let { File(it).delete() }
-    PuppyDeveloperPreferences.clear(context)
-    PuppyUiPreferences.prepareFreshSetupAfterDelete(context)
 }
 
 @Composable
