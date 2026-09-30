@@ -375,7 +375,6 @@ internal object DiscordSignupAuth {
         if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
         clearPendingAccount(app)
         syncPlayerUsername(app, account)
-        PupAccountCloudSave.activate(app)
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.CONNECTED,
             account = account,
@@ -383,6 +382,7 @@ internal object DiscordSignupAuth {
             guildAccess = guildAccess,
             message = snapshot.message ?: "Discord verified."
         )
+        PupAccountCloudSave.activate(app)
     }
 
     internal fun buildAuthorizationUrl(oauthState: String, codeChallenge: String): String {
