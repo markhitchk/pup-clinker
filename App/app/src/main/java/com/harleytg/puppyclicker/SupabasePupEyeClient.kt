@@ -49,7 +49,7 @@ internal data class PupEyeSessionAuth(
     val backendInstallationId: String
 )
 
-internal data class PupAccountCloudSave(
+internal data class PupAccountCloudSaveRecord(
     val revision: Long,
     val generation: Long,
     val saveSchema: Int,
@@ -211,7 +211,7 @@ internal object SupabasePupEyeClient {
 
     suspend fun readPupAccountCloudSave(
         context: Context
-    ): PupAccountCloudSave? = withContext(Dispatchers.IO) {
+    ): PupAccountCloudSaveRecord? = withContext(Dispatchers.IO) {
         val app = context.applicationContext
         val session = ensureRegistered(app)
             ?: error("PupEye could not establish an authenticated device session.")
@@ -231,7 +231,7 @@ internal object SupabasePupEyeClient {
         }
 
         val save = response.body.optJSONObject("save") ?: return@withContext null
-        PupAccountCloudSave(
+        PupAccountCloudSaveRecord(
             revision = save.optLong("revision", 0L).coerceAtLeast(0L),
             generation = save.optLong("generation", 1L).coerceAtLeast(1L),
             saveSchema = save.optInt("saveSchema", 1).coerceAtLeast(1),
