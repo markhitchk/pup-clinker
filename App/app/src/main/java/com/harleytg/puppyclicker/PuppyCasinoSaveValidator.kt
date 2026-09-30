@@ -39,10 +39,10 @@ internal object PuppyCasinoSaveValidator {
     }
 
     /**
-     * Validates a typed SharedPreferences store before GameSaveTransfer replaces
-     * the device's current save. Missing Casino keys are valid pre-Casino saves.
+     * Validates the typed main-store snapshot before a Supabase cloud restore
+     * replaces the local working cache. Missing Casino keys are valid legacy cloud state.
      */
-    fun validateTransferMainStore(
+    fun validateCloudMainStore(
         store: JSONObject,
         disallowedActiveRoundIds: Set<String> = emptySet()
     ): PuppyCasinoSaveValidation {
