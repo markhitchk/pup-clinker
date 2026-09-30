@@ -87,10 +87,6 @@ internal object PuppyFeatureFlags {
             "discord_linking", true, true, "released", null,
             "Discord Sign-In", "Passwordless identity for T0 Pup Accounts."
         ),
-        "save_restore" to PuppyFeatureFlag(
-            "save_restore", true, true, "released", null,
-            "Save Restore", "Import an existing encrypted .pupsave file."
-        ),
         "puppy_casino" to PuppyFeatureFlag(
             "puppy_casino", true, true, "released", null,
             "Puppy Casino", "Casino Chip games isolated from normal Puppy Clicker progression."
