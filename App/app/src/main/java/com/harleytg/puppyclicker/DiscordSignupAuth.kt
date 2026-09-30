@@ -70,7 +70,9 @@ internal data class DiscordSignupState(
  * After PKCE exchange it is sent once to Puppy Clicker's Supabase Pupeye Edge Function, where the
  * Discord account and configured guild role are independently verified before being trusted.
  *
- * Puppy Clicker's Player ID and Friend Code remain device-bound and independent of Discord.
+ * T0 Pup Accounts are passwordless: verified Discord OAuth is the external account identity.
+ * Player ID and Friend Code remain internal compatibility identifiers, while PupEye's Android
+ * Keystore key binds the account to one active device.
  */
 internal object DiscordSignupAuth {
     val CLIENT_ID: String get() = BuildConfig.DISCORD_CLIENT_ID
@@ -352,7 +354,7 @@ internal object DiscordSignupAuth {
             account = null,
             pendingAccount = null,
             guildAccess = null,
-            message = "Discord account disconnected. Local game progress was not deleted."
+            message = "Signed out of Discord. Your Pup Account cloud progress was not deleted."
         )
     }
 
@@ -373,6 +375,7 @@ internal object DiscordSignupAuth {
         if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
         clearPendingAccount(app)
         syncPlayerUsername(app, account)
+        PupAccountCloudSave.activate(app)
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.CONNECTED,
             account = account,
