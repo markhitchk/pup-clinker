@@ -65,9 +65,9 @@ select throws_ok(
       '33333333-3333-4333-8333-333333333333',
       -1, 1, 1, '{}'::jsonb
     )$$,
-  '23503',
+  '23514',
   null,
-  'cloud save requires valid account/device ownership rows'
+  'cloud save rejects negative revisions'
 );
 
 select * from finish();
