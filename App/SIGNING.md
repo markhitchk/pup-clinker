@@ -12,7 +12,7 @@ The public `.der` certificates exported from Play Console are verification certi
 
 The configured upload keystore must resolve to this SHA-256 certificate fingerprint:
 
-`37:6A:B3:22:43:90:21:78:33:3A:87:C6:71:1C:48:1E:43:BF:2C:B2:D9:9F:DF:06:7B:3D:27:8A:6E:F8:98:14`
+`FF:BF:F1:C6:C6:CC:96:EC:8E:4C:56:73:20:27:C9:A8:C0:09:47:8B:E2:E9:14:E5:55:C9:CE:5A:07:19:34:B8`
 
 CI checks this fingerprint before building a production upload bundle. A mismatch fails the workflow instead of producing a bundle with the wrong upload identity.
 
