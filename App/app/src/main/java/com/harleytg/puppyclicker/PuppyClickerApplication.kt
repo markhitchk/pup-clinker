@@ -37,21 +37,19 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         // One saveState() changes many keys. Debounce those callbacks into one integrity seal +
         // one authenticated Pup Account cloud revision. SharedPreferences is a local cache only.
         mainHandler.removeCallbacks(cloudSaveWriter)
-        mainHandler.postDelayed(cloudSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
+        mainHandler.postDelayed(cloudSaveWriter, CLOUD_SAVE_DEBOUNCE_MS)
     }
 
     override fun onCreate() {
         super.onCreate()
 
-        // Optional protection/mirroring features must never make the game process unlaunchable.
-        // If a vendor Keystore, external storage provider, or old cached file is broken, the
-        // internal SharedPreferences save remains usable and the app continues to the UI.
+        // Local cache protection must never make the game process unlaunchable.
+        // Supabase remains authoritative; SharedPreferences is only the responsive working cache.
         startupSafely("PupEye save verification") {
             PupEyeSaveGuard.verifyAndRecover(this, prefs)
         }
 
-        // Older releases and legacy JSON imports may contain the right value under a different
-        // SharedPreferences numeric type. Normalize those values before V6 constructs its state,
+        // Older releases may contain the right value under a different SharedPreferences numeric type. Normalize those values before V6 constructs its state,
         // otherwise Android's typed getters can throw ClassCastException during first launch.
         startupSafely("legacy save compatibility") {
             PuppySaveCompatibility.normalizeMainSave(prefs)
