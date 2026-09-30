@@ -52,7 +52,7 @@ class PuppyCasinoSaveMigrationTest {
 
     @Test
     fun preCasinoStoreWithNoCasinoKeysMigratesCleanly() {
-        val validation = PuppyCasinoSaveValidator.validateTransferMainStore(
+        val validation = PuppyCasinoSaveValidator.validateCloudMainStore(
             typedStore()
         )
 
@@ -60,7 +60,7 @@ class PuppyCasinoSaveMigrationTest {
     }
 
     @Test
-    fun validInterruptedSlotsWagerSurvivesImportValidation() {
+    fun validInterruptedSlotsWagerSurvivesCloudRestoreValidation() {
         val round = PuppyCasinoRound(
             roundId = "round_slots_migrate1",
             game = PuppyCasinoGame.SLOTS,
@@ -78,14 +78,14 @@ class PuppyCasinoSaveMigrationTest {
         )
 
         assertTrue(
-            PuppyCasinoSaveValidator.validateTransferMainStore(store).valid
+            PuppyCasinoSaveValidator.validateCloudMainStore(store).valid
         )
     }
 
     @Test
-    fun activeRoundConsumedOnCurrentDeviceCannotBeReplayedFromBackup() {
+    fun activeRoundConsumedOnCurrentDeviceCannotBeReplayedFromCloudState() {
         val round = PuppyCasinoRound(
-            roundId = "round_replayed_backup1",
+            roundId = "round_replayed_cloud1",
             game = PuppyCasinoGame.SLOTS,
             wagerTreats = 100L,
             state = PuppyCasinoRoundState.WAGER_ACCEPTED,
@@ -97,7 +97,7 @@ class PuppyCasinoSaveMigrationTest {
             )
         )
 
-        val validation = PuppyCasinoSaveValidator.validateTransferMainStore(
+        val validation = PuppyCasinoSaveValidator.validateCloudMainStore(
             store = store,
             disallowedActiveRoundIds = setOf(round.roundId)
         )
@@ -123,7 +123,7 @@ class PuppyCasinoSaveMigrationTest {
         )
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(store).valid
+            PuppyCasinoSaveValidator.validateCloudMainStore(store).valid
         )
     }
 
@@ -136,7 +136,7 @@ class PuppyCasinoSaveMigrationTest {
         )
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(store).valid
+            PuppyCasinoSaveValidator.validateCloudMainStore(store).valid
         )
     }
 
@@ -149,7 +149,7 @@ class PuppyCasinoSaveMigrationTest {
         )
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(store).valid
+            PuppyCasinoSaveValidator.validateCloudMainStore(store).valid
         )
     }
 
@@ -163,7 +163,7 @@ class PuppyCasinoSaveMigrationTest {
             .toString()
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(
+            PuppyCasinoSaveValidator.validateCloudMainStore(
                 typedStore(
                     mapOf(PuppyCasinoRewardPersistence.LEDGER_KEY to badLedger)
                 )
@@ -182,7 +182,7 @@ class PuppyCasinoSaveMigrationTest {
             .toString()
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(
+            PuppyCasinoSaveValidator.validateCloudMainStore(
                 typedStore(
                     mapOf(PuppyCasinoPuppyRewardPersistence.LEDGER_KEY to badLedger)
                 )
@@ -201,7 +201,7 @@ class PuppyCasinoSaveMigrationTest {
             .put("types", types)
 
         assertFalse(
-            PuppyCasinoSaveValidator.validateTransferMainStore(store).valid
+            PuppyCasinoSaveValidator.validateCloudMainStore(store).valid
         )
     }
 
