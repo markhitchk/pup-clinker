@@ -209,6 +209,10 @@ internal object PupAccountCloudSave {
         val mainStore = stores.optJSONObject(MAIN_PREFS)
             ?: error("Pup Account cloud save is missing main progression")
         val seasonalStore = stores.optJSONObject(SEASONAL_PREFS)
+        val casinoValidation = PuppyCasinoSaveValidator.validateCloudMainStore(mainStore)
+        require(casinoValidation.valid) {
+            casinoValidation.message ?: "Cloud save failed Casino integrity validation"
+        }
 
         restoringFromCloud = true
         try {
