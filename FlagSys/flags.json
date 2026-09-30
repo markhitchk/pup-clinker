@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-13T07:00:00Z",
+  "updatedAt": "2026-09-30T01:30:00Z",
   "flags": {
     "feature_flag_system": {
       "visible": true,
@@ -12,19 +12,19 @@
     },
     "puppy_clicker_account": {
       "visible": true,
-      "enabled": false,
-      "status": "coming_soon",
+      "enabled": true,
+      "status": "beta",
       "releaseDate": null,
-      "label": "Puppy Clicker Account",
-      "description": "Online account with username, password, and Discord authentication."
+      "label": "Pup Accounts · T0",
+      "description": "Passwordless Discord identity with Supabase cloud progression and one-device PupEye protection."
     },
     "discord_linking": {
       "visible": true,
       "enabled": true,
       "status": "released",
       "releaseDate": null,
-      "label": "Discord Linking",
-      "description": "Optional Discord identity connection."
+      "label": "Discord Sign-In",
+      "description": "Passwordless identity for T0 Pup Accounts."
     },
     "save_restore": {
       "visible": true,
