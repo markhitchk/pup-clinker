@@ -71,7 +71,6 @@ class SettingsOneScreenCardsTest(unittest.TestCase):
         expected_cards = (
             "Profile",
             "Discord",
-            "Import / Export",
             "Appearance",
             "Notifications",
             "Privacy & Data",
@@ -85,6 +84,10 @@ class SettingsOneScreenCardsTest(unittest.TestCase):
         )
         for title in expected_cards:
             self.assertIn(f'title = "{title}"', source)
+
+        self.assertNotIn('title = "Import / Export"', source)
+        self.assertNotIn("SaveTransferSettings", source)
+        self.assertNotIn(".pupsave", source)
 
         self.assertIn("ProfileSettings(vm, ui)", source)
         self.assertIn("DiscordSettings(state, vm)", source)

@@ -14,14 +14,13 @@ def replace_once(source: str, old: str, new: str, label: str) -> str:
 
 def patch_settings(source: str) -> str:
     # The routed Settings/About implementation now contains the Developer Mode
-    # unlock flow, Developer Options/Console entry point, and local-data reset.
+    # unlock flow and Developer Options/Console entry point.
     # Avoid reapplying the legacy accordion transformation when those features
-    # are already present.
+    # are already present. Database-only saves intentionally removed local-save reset plumbing.
     if (
         "PuppyDeveloperPreferences.observe" in source
         and "PuppyDeveloperOptions(" in source
         and "onOpenDeveloperConsole" in source
-        and "PuppyDeveloperPreferences.clear(context)" in source
     ):
         return source
 

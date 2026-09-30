@@ -29,12 +29,12 @@ class PuppyErrorCodeTest {
     }
 
     @Test
-    fun saveSignatureMismatchHasStablePupEyeCode() {
-        assertEquals("PUPEYE-SAVE-301", PupEyeErrorCode.SIGNATURE_INVALID.code)
+    fun deviceTransferUsesStablePupEyeCode() {
+        assertEquals("PUPEYE-ID-401", PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED.code)
     }
 
     @Test
-    fun decryptFailureHasStablePuppyClickerCode() {
-        assertEquals("PUPPY-SAVE-204", PuppyClickerErrorCode.DECRYPT_FAILED.code)
+    fun networkFailureUsesStablePuppyClickerCode() {
+        assertEquals("PUPPY-NET-701", PuppyClickerErrorCode.NETWORK_UNAVAILABLE.code)
     }
 }

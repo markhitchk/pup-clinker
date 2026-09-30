@@ -3,7 +3,6 @@ package com.harleytg.puppyclicker
 import android.Manifest
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.os.Build
@@ -78,7 +77,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.harleytg.puppyclicker.ui.theme.LocalPuppyReducedMotion
-import java.io.File
 import java.text.DateFormat
 import java.time.Month
 import java.time.format.TextStyle
@@ -183,17 +181,6 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             DiscordSettings(state, vm)
         }
 
-        SettingsSectionCard(
-            key = "transfer",
-            icon = "↕",
-            title = "Import / Export",
-            subtitle = "Back up or restore your Puppy Clicker .pupsave",
-            expanded = expandedSection == "transfer",
-            onToggle = { toggle("transfer") }
-        ) {
-            SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
-        }
-
         Spacer(Modifier.height(7.dp))
         SettingsLabel("APP & EXPERIENCE")
 
@@ -248,7 +235,7 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             key = "data",
             icon = "💾",
             title = "Data Management",
-            subtitle = "Save status, backups, resets and local data",
+            subtitle = "Cloud-save status, resets and local cache",
             expanded = expandedSection == "data",
             onToggle = { toggle("data") }
         ) {
@@ -1774,9 +1761,6 @@ private fun PupEyeSettings(state: V6GameState) {
     var integrityStatus by rememberSaveable {
         mutableStateOf(if (security.privateIntegrityOk) "Verified" else "Warning")
     }
-    var externalStatus by rememberSaveable {
-        mutableStateOf(if (security.externalIntegrityOk) "Verified" else "Warning")
-    }
     val branding = PupEyeAssetStream.status(context)
     val fairPlayEnforced = PuppyPlayerIdentity.shouldEnforcePupEyeFairPlay(context)
     val backend = SupabasePupEyeClient.backendState(context)
@@ -1785,10 +1769,8 @@ private fun PupEyeSettings(state: V6GameState) {
             .getOrDefault("Unavailable")
     }
 
-    val currentProtected =
-        integrityStatus == "Verified" && externalStatus == "Verified"
-    val currentWarning =
-        integrityStatus == "Warning" || externalStatus == "Warning"
+    val currentProtected = integrityStatus == "Verified"
+    val currentWarning = integrityStatus == "Warning"
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         StreamedPupEyeBranding(Modifier.size(54.dp), "PupEye Protection")
@@ -1812,9 +1794,9 @@ private fun PupEyeSettings(state: V6GameState) {
         }
     }
     Spacer(Modifier.height(10.dp))
-    StatusLine("Save file integrity", integrityStatus)
-    StatusLine("Android/data save integrity", externalStatus)
-    StatusLine("Device-bound encryption", "Configured")
+    StatusLine("Local cache integrity", integrityStatus)
+    StatusLine("Database save authority", "Supabase")
+    StatusLine("Device-bound signing", "Configured")
     StatusLine("Supabase authority", backend.state.replace('_', ' '))
     StatusLine("Support installation code", supportCode)
     StatusLine("Save integrity protection", "Always Active")
@@ -1852,12 +1834,11 @@ private fun PupEyeSettings(state: V6GameState) {
         onClick = {
             if (!checking) scope.launch {
                 checking = true
-                val (privateOk, externalOk) = withContext(Dispatchers.IO) {
+                val privateOk = withContext(Dispatchers.IO) {
                     val prefs = context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE)
-                    PupEyeSaveGuard.verifyAndRecover(context, prefs) to ExternalGameSave.verifyExisting(context)
+                    PupEyeSaveGuard.verifyAndRecover(context, prefs)
                 }
                 integrityStatus = if (privateOk) "Verified" else "Warning"
-                externalStatus = if (externalOk) "Verified" else "Warning"
                 checking = false
             }
         },
@@ -1869,26 +1850,35 @@ private fun PupEyeSettings(state: V6GameState) {
 @Composable
 private fun SaveDataSettings(vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
-    val externalPath = ExternalGameSave.path(context)
-    val externalFile = externalPath?.let(::File)
+    val cloud = PupAccountCloudSave.status(context)
+    val backend = SupabasePupEyeClient.backendState(context)
     val security = PupEyeSaveGuard.state(context)
 
-    SettingsLabel("CURRENT SAVE")
+    SettingsLabel("DATABASE SAVE")
     StatusLine("Player", PuppyPlayerIdentity.username(context))
-    StatusLine("Encryption", "AES-256-GCM")
-    StatusLine("PupEye integrity events", security.tamperEvents.toString())
+    StatusLine("Authority", "Supabase")
+    StatusLine("Cloud revision", cloud.revision.toString())
     StatusLine(
-        "Android/data mirror",
-        if (externalFile?.isFile == true) "Saved" else "Not currently available"
+        "Last cloud sync",
+        if (cloud.lastSyncAtMs > 0L) formatTimestamp(cloud.lastSyncAtMs) else "Not synced yet"
     )
-    if (externalFile?.isFile == true) {
-        StatusLine("Last mirrored", formatTimestamp(externalFile.lastModified()))
+    StatusLine("Backend", backend.state.replace('_', ' '))
+    StatusLine("Local cache", "Temporary working copy")
+    StatusLine("PupEye integrity events", security.tamperEvents.toString())
+    cloud.lastError?.let {
+        Text(
+            "Cloud save: " + it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
     }
-    externalPath?.let {
-        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = { PupAccountCloudSave.queueSync(context, reason = "manual-settings-sync") },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("Sync to Supabase")
     }
-    Spacer(Modifier.height(10.dp))
-    SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
 }
 
 @Composable
@@ -2412,7 +2402,6 @@ private fun SettingsValueActionRow(
 @Composable
 private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
-    val activity = context as? Activity
     var confirmationKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     Card(
@@ -2445,13 +2434,6 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
             ) {
                 Text("Reset Game Progress")
             }
-            Spacer(Modifier.height(7.dp))
-            Button(
-                onClick = { confirmationKey = DangerZoneAction.ERASE_ALL_DATA.key },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Delete Local Save Data")
-            }
         }
     }
 
@@ -2469,34 +2451,11 @@ private fun DangerZoneSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) 
                         vm.setCompactNumbers(true)
                     }
                     DangerZoneAction.RESET_PROGRESS -> vm.resetRunWithoutPrestige()
-                    DangerZoneAction.ERASE_ALL_DATA -> {
-                        vm.prepareForFullLocalDataErase()
-                        deletePuppyClickerLocalSave(context)
-
-                        val restartIntent = Intent(context, PuppyClickerV6Activity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                        context.startActivity(restartIntent)
-                        activity?.finish()
-                    }
                 }
                 confirmationKey = null
             }
         )
     }
-}
-
-private fun deletePuppyClickerLocalSave(context: Context) {
-    context.getSharedPreferences(PuppyClickerV6ViewModel.PREFS_NAME, Context.MODE_PRIVATE).edit().clear().commit()
-    context.getSharedPreferences("puppy_seasonal_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    context.getSharedPreferences("puppy_player_identity_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    DiscordSignupAuth.disconnect(context)
-    PuppyBackupPasswordStore.clear(context)
-    context.getSharedPreferences("pupeye_security_v1", Context.MODE_PRIVATE).edit().clear().commit()
-    File(context.noBackupFilesDir, "pupeye/last_good_save.pup").delete()
-    ExternalGameSave.path(context)?.let { File(it).delete() }
-    PuppyDeveloperPreferences.clear(context)
-    PuppyUiPreferences.prepareFreshSetupAfterDelete(context)
 }
 
 @Composable

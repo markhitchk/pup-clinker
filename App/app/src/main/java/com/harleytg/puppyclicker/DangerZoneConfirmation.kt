@@ -74,12 +74,6 @@ enum class DangerZoneAction(
         title = "Reset game progress?",
         description = "This clears gameplay progression back to a fresh save: currencies, upgrades, XP, achievements, streaks, bonds, Casino state, local reward unlocks and prestige progress are removed. Your account identity, app settings and verified account-tied puppy entitlements remain.",
         buttonLabel = "Hold to Reset Progress"
-    ),
-    ERASE_ALL_DATA(
-        key = "delete",
-        title = "Delete local save data?",
-        description = "This deletes local game progress, player identity, birthday/setup state, PupEye local integrity history and the device save mirror. Puppy Clicker will restart into first-run setup.",
-        buttonLabel = "Hold to Delete Local Data"
     );
 
     companion object {

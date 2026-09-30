@@ -2001,8 +2001,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
 
-    /** Reload state after an authenticated portable-save import without recreating the Activity. */
-    fun reloadImportedSave() {
+    /** Reload the in-memory game state after Supabase restores the authoritative cache. */
+    fun reloadFromCloudCache() {
         recentTapTimes.clear()
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
@@ -2015,6 +2015,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _casinoPuppyRewardLedger.value = PuppyCasinoPuppyRewardPersistence.load(prefs)
         _lastCasinoPuppyReward.value = null
     }
+
 
     /**
      * Stops this ViewModel from writing its old in-memory state after "Delete Local Save Data".
@@ -2147,7 +2148,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
 
         // The fresh state becomes the new authenticated baseline for this installation.
         PupEyeSaveGuard.seal(app, prefs)
-        ExternalGameSave.write(app, prefs)
+        PupAccountCloudSave.queueSync(app, reason = "progress-reset")
         PupEyeAuthority.recordEvent(
             app,
             "GAME_PROGRESS_RESET",

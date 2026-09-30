@@ -6,31 +6,21 @@ This Privacy Policy explains how **Puppy Clicker**, provided by **Harley's Studi
 
 ---
 
-## 1. Local Game Data
+## 1. Game Data and Local Cache
 
-Puppy Clicker stores the following information on the user's device:
+Puppy Clicker stores authoritative game progression in the Puppy Clicker **Supabase database**. The Android app also keeps a temporary local working cache and local-only preferences so gameplay and the interface remain responsive.
 
-- Game progress
-- Settings
-- Upgrade data
-- Care statistics
-- Achievements
-- PupEye fair-play state
-- Related gameplay information
+Cloud progression may include upgrades, puppy ownership and care statistics, balances, inventory, achievements, reward state, and related gameplay information. Local-only data may include interface settings, cached assets, transient state, and PupEye device integrity state.
 
 ## 2. Player Username
 
 A player may choose a local Puppy Clicker username.
 
-The username:
-
-- Is normalized to lowercase
-- Is stored locally
-- May be included inside encrypted save files so the app can identify which local player a save belongs to
+The Puppy Clicker display name may be derived from the verified Discord-backed Pup Account, normalized where required, cached locally, and stored with the account/cloud progression where needed.
 
 ## 3. Device and Installation Security Metadata
 
-Encrypted save metadata may contain a coarse manufacturer/model label for the Android device that created the save.
+PupEye installation metadata may contain a coarse manufacturer/model label for the Android device authorized to access the account.
 
 PupEye also creates security metadata that is specific to the Puppy Clicker installation, including:
 
@@ -40,7 +30,7 @@ PupEye also creates security metadata that is specific to the Puppy Clicker inst
 - Random save and economy transaction identifiers
 - Integrity-event and protected economy-ledger information
 
-The corresponding private signing key is generated in Android Keystore and is not exported in portable saves. The installation ID and signing-key fingerprint are app security identifiers, not hardware serial numbers.
+The corresponding private signing key is generated in Android Keystore and is not exported. The installation ID and signing-key fingerprint are app security identifiers, not hardware serial numbers.
 
 Puppy Clicker does **not** use the following for save ownership:
 
@@ -53,18 +43,11 @@ Puppy Clicker does **not** use the following for save ownership:
 
 PupEye global enforcement also does not use SIM serial, Wi-Fi MAC, or Bluetooth MAC addresses as ban identifiers. A coarse device model, username, or IP address alone does not establish that two players are the same person or device.
 
-## 4. Save Encryption
+## 4. Cloud Save Integrity
 
-Automatic `Android/data` saves use authenticated encryption and Android Keystore protection. Portable backups may use password-based authenticated encryption.
+Supabase is the authoritative store for Puppy Clicker progression. Cloud saves use account/device authorization, monotonic generations, revision checks, and content hashes. The app may keep a local working cache protected by PupEye integrity checks, but Puppy Clicker does not provide a portable backup file or Android/data save mirror.
 
-Authentication failures, save rollback attempts, ownership mismatches, duplicate protected transactions, or unauthorized modifications may be recorded locally by **PupEye** and may cause a save or protected gameplay operation to be:
-
-- Rejected
-- Quarantined
-- Restored from a last-known-good state
-- Blocked pending Support review
-
-Portable backups are authenticated to the Puppy Clicker installation that created them. Moving protected progress to another device requires a Support-authorized migration flow.
+Authentication failures, rollback attempts, ownership mismatches, duplicate protected transactions, cloud revision conflicts, or unauthorized local-cache modifications may be recorded by **PupEye** and may cause a save or protected gameplay operation to be rejected, restored from the authoritative cloud state, or blocked pending Support review.
 
 ## 5. PupEye Fair-Play Information
 
@@ -93,7 +76,7 @@ Puppy Clicker may send the following limited information to the Puppy Clicker Su
 
 The corresponding Android Keystore private signing key is not uploaded. Discord OAuth access tokens are used transiently for server verification and are not intentionally stored by Puppy Clicker or in the PupEye database.
 
-For global enforcement, PupEye may maintain a public Ban ID, Player/Discord/installation links, device reputation records, enforcement audit events, and authenticated save-content hash (SHA-256) attestations. These records help detect replay or tampering, require Support review, and enforce temporary or permanent bans. Hashes represent authenticated save content; the save contents themselves are not included in moderation alerts.
+For global enforcement, PupEye may maintain a public Ban ID, Player/Discord/installation links, device reputation records, enforcement audit events, cloud-save revision/generation metadata, and save-content hashes. These records help detect replay or tampering, require Support review, and enforce temporary or permanent bans. Authoritative game progression itself is stored in the Puppy Clicker Supabase database; moderation notifications exclude save contents.
 
 Puppy Clicker does not use IMEI, hardware serial number, Android ID, SIM serial, phone number, advertising ID, Wi-Fi MAC, or Bluetooth MAC as global-ban identifiers. IP and network metadata may be considered as evidence, but do not independently trigger a device or account ban.
 
@@ -150,16 +133,9 @@ Third-party hosting providers may process normal network metadata when streamed 
 
 ## 10. Retention and Deletion
 
-Local Puppy Clicker information remains on the device until it is:
+Local cache and preferences remain on the device until removed by the user, cleared through Android app storage controls, replaced by a cloud restore/sync, or removed when the app is uninstalled, subject to Android behavior.
 
-- Removed by the user
-- Cleared through Android app storage controls
-- Overwritten by an authorized import
-- Removed when the app is uninstalled, subject to Android backup/storage behavior
-
-Exported backup files remain wherever the user chooses to save them until the user deletes them.
-
-Server-side PupEye/account records may remain while needed to protect the player's account, prevent save or transaction replay, resolve device migrations, or handle Support review. A future account-deletion workflow should remove or anonymize server records where they are no longer required for security or legal purposes.
+Authoritative Pup Account progression and PupEye/account records are stored server-side and may remain while needed to provide the account, preserve progression, prevent save or transaction replay, resolve device recovery, or handle Support review. A future account-deletion workflow should remove or anonymize server records where they are no longer required for security or legal purposes.
 
 ## 11. Children and Age-Sensitive Features
 
@@ -171,9 +147,9 @@ Online account, social, or cloud features that may be added later will require a
 
 Harley's Studios uses measures including:
 
-- Authenticated encryption
-- Android Keystore-backed keys for device-bound saves
-- Password-protected portable backups
+- Supabase-backed authoritative progression
+- Revision, generation, and content-hash conflict protection
+- Android Keystore-backed device signing keys
 - PupEye integrity checks
 
 No security system can guarantee protection against every form of device compromise or data loss.

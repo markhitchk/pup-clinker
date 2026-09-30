@@ -51,7 +51,6 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     var selectedMethodName by rememberSaveable {
         mutableStateOf(PuppyPlayerSetupMethod.DISCORD.name)
     }
-    var importedSave by rememberSaveable { mutableStateOf(false) }
     var birthdaySkipped by rememberSaveable { mutableStateOf(false) }
 
     val selectedMethod = runCatching {
@@ -60,13 +59,11 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
 
     val session = PuppyOnboardingSessionState(
         playerSetupMethod = selectedMethod,
-        importedSave = importedSave,
         birthdaySkipped = birthdaySkipped
     )
 
     fun updateSession(next: PuppyOnboardingSessionState) {
         selectedMethodName = next.playerSetupMethod.name
-        importedSave = next.importedSave
         birthdaySkipped = next.birthdaySkipped
     }
 

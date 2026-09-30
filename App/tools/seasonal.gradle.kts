@@ -14,7 +14,6 @@ tasks.named("generateProtectedPuppySources").configure {
     val transparencyPatch = rootProject.file("tools/patch_roster_transparency.py")
     val uxPatch = rootProject.file("tools/patch_puppy_ux.py")
     val pupEyeSecurityPatch = rootProject.file("tools/patch_pupeye_security.py")
-    val importReloadPatch = rootProject.file("tools/patch_import_reload.py")
     val settingsSetupCorePatch = rootProject.file("tools/patch_settings_setup_revamp.py")
     val settingsSetupPatch = rootProject.file("tools/patch_settings_setup_revamp_runner.py")
     val developerConsolePatch = rootProject.file("tools/patch_developer_console.py")
@@ -33,7 +32,6 @@ tasks.named("generateProtectedPuppySources").configure {
         transparencyPatch,
         uxPatch,
         pupEyeSecurityPatch,
-        importReloadPatch,
         settingsSetupCorePatch,
         settingsSetupPatch,
         developerConsolePatch,
@@ -67,9 +65,6 @@ tasks.named("generateProtectedPuppySources").configure {
         }
         project.exec {
             commandLine("python3", pupEyeSecurityPatch.absolutePath, generatedSourceRoot)
-        }
-        project.exec {
-            commandLine("python3", importReloadPatch.absolutePath, generatedSourceRoot)
         }
         // Run the Settings/onboarding integration after all established compatibility patches.
         project.exec {

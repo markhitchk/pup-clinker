@@ -6,7 +6,7 @@ import org.junit.Test
 
 class PuppyOnboardingPlayerSetupContractTest {
     @Test
-    fun playerSetupUsesPasswordlessDiscordPupAccountAndLegacyImport() {
+    fun playerSetupUsesPasswordlessDiscordPupAccountOnly() {
         val file = File(
             "src/main/java/com/harleytg/puppyclicker/PuppyOnboardingPlayerSetup.kt"
         )
@@ -18,10 +18,10 @@ class PuppyOnboardingPlayerSetupContractTest {
         assertTrue(source.contains("PuppyPlayerSetupMethod.DISCORD"))
         assertTrue(source.contains("DiscordSignupAuth.observe"))
         assertTrue(source.contains("PupAccountCloudSave.activateAndAwait"))
-        assertTrue(source.contains("GameSaveTransfer.passwordRequirement"))
-        assertTrue(source.contains("GameSaveTransfer.import"))
-        assertTrue(source.contains("PupAccountCloudSave.queueSync(context, reason = \"legacy-import\")"))
-        assertTrue(source.contains("vm.reloadImportedSave()"))
+        assertTrue(!source.contains("GameSaveTransfer"))
+        assertTrue(!source.contains(".pupsave"))
+        assertTrue(!source.contains("Restore a Save"))
+        assertTrue(!source.contains("Import"))
         assertTrue(!source.contains("Confirm password"))
         assertTrue(!source.contains("Save Account & Continue"))
     }

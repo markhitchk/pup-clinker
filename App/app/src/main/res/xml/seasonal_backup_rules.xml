@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Keep the optional birthday and greeting history on this device only. -->
+    <!-- Supabase is authoritative. Keep gameplay/account/device state out of Android Auto Backup. -->
+    <exclude domain="sharedpref" path="puppy_clicker_save.xml" />
+    <exclude domain="sharedpref" path="pup_account_cloud_state_v1.xml" />
+    <exclude domain="sharedpref" path="puppy_ui_preferences_v2.xml" />
+    <exclude domain="sharedpref" path="puppy_discord_signup_v1.xml" />
+    <exclude domain="sharedpref" path="pupeye_security_v1.xml" />
+    <exclude domain="sharedpref" path="pupeye_supabase_status_v1.xml" />
     <exclude domain="sharedpref" path="puppy_seasonal_v1.xml" />
 </full-backup-content>

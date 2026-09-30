@@ -2,7 +2,7 @@
 """Apply the Settings/onboarding revamp after all existing Puppy Clicker V6 patches.
 
 This intentionally runs last. Earlier patch scripts retain their established source anchors for
-seasonal events, PupEye, dynamic rosters, save import and transparency handling.
+seasonal events, PupEye, dynamic rosters, and transparency handling.
 """
 from pathlib import Path
 import sys
@@ -175,53 +175,6 @@ def patch_ui_preference_migration(source: str) -> str:
     )
 
 
-def patch_save_transfer(source: str) -> str:
-    source = replace_once(
-        source,
-        '''    private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
-    private const val SEASONAL_PREFS = "puppy_seasonal_v1"''',
-        '''    private const val MAIN_PREFS = PuppyClickerV6ViewModel.PREFS_NAME
-    private const val SEASONAL_PREFS = "puppy_seasonal_v1"
-    private const val UI_PREFS = PuppyUiPreferences.PREFS_NAME''',
-        "UI preferences backup constant",
-    )
-    source = replace_once(
-        source,
-        '''            put(MAIN_PREFS, mainStore)
-            put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))''',
-        '''            put(MAIN_PREFS, mainStore)
-            put(SEASONAL_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE)))
-            put(UI_PREFS, SecurePreferenceCodec.encode(context.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE)))''',
-        "UI preferences encrypted export",
-    )
-    source = replace_once(
-        source,
-        '''        stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
-            SecurePreferenceCodec.restore(
-                context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
-                seasonalStore
-            )
-        }
-    }''',
-        '''        stores.optJSONObject(SEASONAL_PREFS)?.let { seasonalStore ->
-            SecurePreferenceCodec.restore(
-                context.getSharedPreferences(SEASONAL_PREFS, Context.MODE_PRIVATE),
-                seasonalStore
-            )
-        }
-        // Optional for backward compatibility with encrypted v3 saves created before the UI revamp.
-        stores.optJSONObject(UI_PREFS)?.let { uiStore ->
-            SecurePreferenceCodec.restore(
-                context.getSharedPreferences(UI_PREFS, Context.MODE_PRIVATE),
-                uiStore
-            )
-        }
-    }''',
-        "UI preferences encrypted import",
-    )
-    return source
-
-
 def add_graphics_imports(source: str, needs_android_color: bool, label: str) -> str:
     if needs_android_color and "import android.graphics.Color as AndroidColor\n" not in source:
         source = replace_once(
@@ -316,7 +269,6 @@ def main(root: Path) -> None:
     preferences = root / PACKAGE / "PuppyUiPreferences.kt"
     settings = root / PACKAGE / "PuppySettingsUi.kt"
     onboarding = root / PACKAGE / "PuppyOnboardingUi.kt"
-    transfer = root / PACKAGE / "GameSaveTransfer.kt"
     theme = root / PACKAGE / "ui/theme/Theme.kt"
 
     activity.write_text(patch_activity(activity.read_text(encoding="utf-8")), encoding="utf-8")
@@ -327,8 +279,6 @@ def main(root: Path) -> None:
         patch_ui_preference_migration(preferences.read_text(encoding="utf-8")),
         encoding="utf-8",
     )
-    transfer.write_text(patch_save_transfer(transfer.read_text(encoding="utf-8")), encoding="utf-8")
-
     settings_source = add_graphics_imports(settings.read_text(encoding="utf-8"), False, "Settings UI")
     settings.write_text(patch_settings_motion(settings_source), encoding="utf-8")
 

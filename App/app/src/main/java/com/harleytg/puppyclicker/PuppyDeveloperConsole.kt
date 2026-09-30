@@ -196,8 +196,7 @@ internal fun PuppyDeveloperConsoleScreen(
         PuppyDebugLog.i(
             "PupEye",
             "Actor=$pupEyeActor; generation=$saveGeneration; " +
-                "privateIntegrity=${security.privateIntegrityOk}; " +
-                "externalIntegrity=${security.externalIntegrityOk}; " +
+                "localCacheIntegrity=${security.privateIntegrityOk}; " +
                 "tamperEvents=${security.tamperEvents}; hardFlags=${hardFlags.joinToString(",").ifBlank { "none" }}"
         )
         PuppyDebugLog.i(
@@ -286,8 +285,7 @@ internal fun PuppyDeveloperConsoleScreen(
                 DeveloperMetric("Save generation", saveGeneration.toString())
                 DeveloperMetric(
                     "PupEye integrity",
-                    "private=${if (security.privateIntegrityOk) "OK" else "FAIL"} · " +
-                        "external=${if (security.externalIntegrityOk) "OK" else "FAIL"}"
+                    if (security.privateIntegrityOk) "Local cache OK" else "Local cache FAIL"
                 )
                 DeveloperMetric("Tamper events", security.tamperEvents.toString())
                 DeveloperMetric(
@@ -391,7 +389,7 @@ internal fun PuppyDeveloperConsoleScreen(
                         appendLine("Device: ${PuppyPlayerIdentity.deviceModel()}")
                         appendLine("PupEye identity: $pupEyeActor")
                         appendLine("PupEye generation: $saveGeneration")
-                        appendLine("PupEye integrity: private=${security.privateIntegrityOk}, external=${security.externalIntegrityOk}")
+                        appendLine("PupEye local-cache integrity: ${security.privateIntegrityOk}")
                         appendLine("PupEye tamper events: ${security.tamperEvents}")
                         appendLine("PupEye hard flags: ${hardFlags.joinToString(",").ifBlank { "none" }}")
                         appendLine("Support code: $supportCode")

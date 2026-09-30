@@ -22,10 +22,10 @@ class PuppyOnePointZeroSaveCompatibilityContractTest {
     }
 
     @Test
-    fun encryptedTransferRemainsV3AndIncludesWholeMainStore() {
-        val source = File("src/main/java/com/harleytg/puppyclicker/GameSaveTransfer.kt").readText()
-        assertTrue(source.contains("private const val PAYLOAD_VERSION = 3"))
-        assertTrue(source.contains("SecurePreferenceCodec.encode(mainPrefs)"))
-        assertTrue(source.contains("put(MAIN_PREFS, mainStore)"))
+    fun cloudSaveIncludesWholeMainStore() {
+        val source = File("src/main/java/com/harleytg/puppyclicker/PupAccountCloudSave.kt").readText()
+        assertTrue(source.contains("private const val FORMAT = \"puppy-clicker-cloud-save\""))
+        assertTrue(source.contains("SecurePreferenceCodec.encode(main)"))
+        assertTrue(source.contains("put(MAIN_PREFS, SecurePreferenceCodec.encode(main))"))
     }
 }

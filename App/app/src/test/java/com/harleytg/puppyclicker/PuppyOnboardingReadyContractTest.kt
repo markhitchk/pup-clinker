@@ -16,7 +16,10 @@ class PuppyOnboardingReadyContractTest {
         assertTrue(source.contains("publicPlayerId"))
         assertTrue(source.contains("publicFriendCode"))
         assertTrue(source.contains("DiscordSignupAuth"))
-        assertTrue(source.contains("Save restored"))
+        assertTrue(source.contains("Cloud save"))
+        assertTrue(source.contains("Supabase"))
+        assertTrue(!source.contains("Save restored"))
+        assertTrue(!source.contains("ExternalGameSave"))
         assertTrue(source.contains("Review Setup"))
         assertTrue(source.contains("Start Playing"))
     }
