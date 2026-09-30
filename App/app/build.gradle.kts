@@ -139,7 +139,7 @@ val hasPlayUploadSigning = listOf(
     playUploadKeyPassword
 ).all { !it.isNullOrBlank() }
 
-val playUploadCertSha256 = "37:6A:B3:22:43:90:21:78:33:3A:87:C6:71:1C:48:1E:43:BF:2C:B2:D9:9F:DF:06:7B:3D:27:8A:6E:F8:98:14"
+val playUploadCertSha256 = "FF:BF:F1:C6:C6:CC:96:EC:8E:4C:56:73:20:27:C9:A8:C0:09:47:8B:E2:E9:14:E5:55:C9:CE:5A:07:19:34:B8"
 val playDeploymentCertSha256 = "63:E3:F1:5F:39:69:5B:74:F9:3B:A8:3F:27:51:86:FC:3D:45:FB:A9:5A:9C:7E:27:E1:E5:AA:14:55:51:25:EC"
 val playHybridClassicalCertSha256 = "67:41:63:6C:29:75:29:66:9C:1E:1A:1A:08:59:18:67:A8:4F:AD:76:4B:1C:9D:9E:BB:DB:19:31:5A:17:5B:C9"
 val playHybridPqcCertSha256 = "99:23:02:B9:01:AE:D7:44:49:E2:46:B4:00:4B:95:1B:19:14:16:34:84:63:54:5C:24:8E:EB:3F:A9:2A:88:AD"
