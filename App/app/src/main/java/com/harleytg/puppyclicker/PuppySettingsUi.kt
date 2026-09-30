@@ -922,16 +922,9 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
-    val verify by PuppyAuthBotClient.verifyState.collectAsStateWithLifecycle()
-    var showCodeEntry by rememberSaveable { mutableStateOf(false) }
     val account = discord.account
-    val pending = discord.pendingAccount
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
         discord.phase == DiscordSignupPhase.EXCHANGING
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(discord.phase) {
-        if (discord.phase == DiscordSignupPhase.CODE_PENDING) showCodeEntry = true
-    }
     val rosterRevision = rosterGroups.sumOf { it.puppies.size }
     LaunchedEffect(discord.guildAccess?.verifiedAtMs, rosterRevision) {
         if (discord.guildAccess != null) {
@@ -952,8 +945,6 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                     account != null && discord.guildAccess != null ->
                         "Verified · @" + account.username + " · " + discord.guildAccess!!.role.label
                     account != null -> "Verified · @" + account.username
-                    pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING ->
-                        "Code sent · enter the Discord DM code"
                     else -> "Not linked"
                 },
                 fontWeight = FontWeight.Black
@@ -988,22 +979,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Link")
         }
     }
-    if (pending != null || discord.phase == DiscordSignupPhase.CODE_PENDING ||
-        verify.status == PuppyDiscordLinkStatus.CODE_SENT ||
-        verify.status == PuppyDiscordLinkStatus.DM_FAILED
-    ) {
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = { showCodeEntry = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("Enter code")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { scope.launch { runCatching { PuppyAuthBotClient.resendVerificationCode(context) } } },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Resend") }
-    }
-    if (account != null || pending != null) {
+    if (account != null) {
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { DiscordSignupAuth.disconnect(context) },
@@ -1011,17 +987,6 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             modifier = Modifier.fillMaxWidth()
         ) { Text("Unlink") }
     }
-    if (showCodeEntry) {
-        PuppyDiscordCodeEntryDialog(
-            onDismiss = { showCodeEntry = false },
-            onVerified = { snapshot ->
-                val linked = account ?: pending
-                if (linked != null) DiscordSignupAuth.completeVerifiedLink(context, linked, snapshot)
-                showCodeEntry = false
-            }
-        )
-    }
-
     Spacer(Modifier.height(18.dp))
     SettingsLabel("DISCORD V2 UNLOCKS")
 
@@ -1035,7 +1000,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Verify server role", fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Link Discord with OAuth, then enter the one-time code the Puppy Clicker Auth bot DMs you. Roles and rewards unlock only after that code is accepted.",
+                "Discord OAuth verifies your account and server role directly through PupEye. No secondary DM code is required.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
