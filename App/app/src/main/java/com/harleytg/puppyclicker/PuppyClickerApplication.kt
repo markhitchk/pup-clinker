@@ -24,17 +24,20 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
     }
 
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
-    private val externalSaveWriter = Runnable {
+    private val cloudSaveWriter = Runnable {
         startupSafely("background PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
-        startupSafely("background Android/data save") { ExternalGameSave.write(this, prefs) }
+        startupSafely("background Pup Account cloud save") {
+            PupAccountCloudSave.queueSync(this, reason = "preference-change")
+        }
     }
     private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         // Mark this change as an authorized in-process save before the debounced
         // encrypted seal catches up. PupEye still detects edits made outside this path.
         PupEyeSaveGuard.noteAuthorizedPreferenceChange(this)
-        // One saveState() changes many keys. Debounce those callbacks into one encrypted write/seal.
-        mainHandler.removeCallbacks(externalSaveWriter)
-        mainHandler.postDelayed(externalSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
+        // One saveState() changes many keys. Debounce those callbacks into one integrity seal +
+        // one authenticated Pup Account cloud revision. SharedPreferences is a local cache only.
+        mainHandler.removeCallbacks(cloudSaveWriter)
+        mainHandler.postDelayed(cloudSaveWriter, EXTERNAL_SAVE_DEBOUNCE_MS)
     }
 
     override fun onCreate() {
@@ -67,7 +70,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("PupEye Supabase authority") { SupabasePupEyeClient.initialize(this) }
         startupSafely("Puppy Clicker Auth bot") { PuppyAuthBotClient.start(this) }
         startupSafely("Discord auth migration") { DiscordSignupAuth.observe(this) }
-        startupSafely("initial Android/data save") { ExternalGameSave.write(this, prefs) }
+        startupSafely("Pup Account cloud persistence") { PupAccountCloudSave.initialize(this) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
 
         // If Android killed the process while it was in the background, the timestamp survives
@@ -117,9 +120,11 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
                     .apply()
             }.onFailure { Log.w(TAG, "Unable to store AFK background timestamp", it) }
 
-            mainHandler.removeCallbacks(externalSaveWriter)
+            mainHandler.removeCallbacks(cloudSaveWriter)
             startupSafely("stop PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
-            startupSafely("stop Android/data save") { ExternalGameSave.write(this, prefs) }
+            startupSafely("stop Pup Account cloud save") {
+                PupAccountCloudSave.queueSync(this, reason = "background")
+            }
         }
     }
 
