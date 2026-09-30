@@ -1,6 +1,7 @@
 import {
   HttpError,
   assertPublishableRequest,
+  audit,
   createAdminClient,
   authenticateSession,
   errorResponse,
@@ -69,10 +70,23 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (linkedError) throw linkedError;
       if (alreadyLinked && alreadyLinked.id !== session.player.id) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_SECOND_DEVICE_BLOCKED",
+          "review",
+          {
+            discordUserId: discordId,
+            existingPlayerUuid: alreadyLinked.id,
+            attemptedInstallationId: session.installation.installation_id,
+            attemptedDeviceKeyId: session.installation.device_key_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
         throw new HttpError(
           409,
-          "DISCORD_ALREADY_LINKED",
-          "This Discord account is already linked to another Puppy Clicker player. Contact Support for account recovery or device migration.",
+          "PUP_ACCOUNT_ON_OTHER_DEVICE",
+          "This Discord Pup Account is already registered to another active Puppy Clicker device. Device transfer is required.",
         );
       }
 
@@ -132,10 +146,23 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (discordAccountError) throw discordAccountError;
       if (accountByDiscord && accountByDiscord.player_uuid !== session.player.id) {
+        await audit(
+          admin,
+          "PUP_ACCOUNT_SECOND_DEVICE_BLOCKED",
+          "review",
+          {
+            discordUserId: discordId,
+            existingPlayerUuid: accountByDiscord.player_uuid,
+            attemptedInstallationId: session.installation.installation_id,
+            attemptedDeviceKeyId: session.installation.device_key_id,
+          },
+          session.player.id,
+          session.installation.id,
+        );
         throw new HttpError(
           409,
           "PUP_ACCOUNT_ON_OTHER_DEVICE",
-          "This Discord account already owns a Pup Account on another Puppy Clicker player/device. Device transfer is required.",
+          "This Discord Pup Account is already registered to another active Puppy Clicker device. Device transfer is required.",
         );
       }
 
