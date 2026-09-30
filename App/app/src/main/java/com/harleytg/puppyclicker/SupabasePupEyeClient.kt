@@ -356,7 +356,7 @@ internal object SupabasePupEyeClient {
         SupabaseDiscordAuthResult(
             account = account,
             guildAccess = guildAccess,
-            message = "Discord authorized. Enter the DM code to finish linking" +
+            message = "Discord connected" +
                 if (guildAccess != null) " as ${guildAccess.role.label}." else "."
         )
     }
