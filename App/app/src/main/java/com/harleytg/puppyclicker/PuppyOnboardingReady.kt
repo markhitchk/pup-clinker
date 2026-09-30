@@ -119,6 +119,7 @@ internal fun PuppyOnboardingReady(
                     ReadyStatusRow("Discord", "Not connected")
                 }
                 ReadyStatusRow("PupEye", pupEyeState)
+                ReadyStatusRow("Cloud save", "Supabase")
 
                 if (ui.hasBirthday) {
                     ReadyStatusRow(
