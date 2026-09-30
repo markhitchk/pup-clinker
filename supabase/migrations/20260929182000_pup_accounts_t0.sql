@@ -31,11 +31,11 @@ create table if not exists public.pup_account_saves (
     check (payload_hash_sha256 is null or payload_hash_sha256 ~ '^[0-9a-f]{64}$')
 );
 
-create index if not exists pup_accounts_discord_user_id_idx
-  on public.pup_accounts(discord_user_id);
-
 create index if not exists pup_accounts_active_installation_idx
   on public.pup_accounts(active_installation_uuid);
+
+create index if not exists pup_account_saves_installation_idx
+  on public.pup_account_saves(installation_uuid);
 
 alter table public.pup_accounts enable row level security;
 alter table public.pup_account_saves enable row level security;
