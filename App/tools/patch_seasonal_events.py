@@ -142,7 +142,7 @@ def patch_view_model(source: str) -> str:
         val style = prefs.getString(KEY_PUPPY_STYLE, "classic")
             ?.takeIf { it in unlocked && DynamicPuppyRoster.isKnown(it) }
             ?: "classic"''',
-        'dynamic save restore')
+        'dynamic roster loading')
     return source
 
 
