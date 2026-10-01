@@ -48,27 +48,7 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
     var step by rememberSaveable {
         mutableIntStateOf(ui.setupStep.coerceIn(0, 5))
     }
-    var selectedMethodName by rememberSaveable {
-        mutableStateOf(PuppyPlayerSetupMethod.DISCORD.name)
-    }
-    var importedSave by rememberSaveable { mutableStateOf(false) }
     var birthdaySkipped by rememberSaveable { mutableStateOf(false) }
-
-    val selectedMethod = runCatching {
-        PuppyPlayerSetupMethod.valueOf(selectedMethodName)
-    }.getOrDefault(PuppyPlayerSetupMethod.DISCORD)
-
-    val session = PuppyOnboardingSessionState(
-        playerSetupMethod = selectedMethod,
-        importedSave = importedSave,
-        birthdaySkipped = birthdaySkipped
-    )
-
-    fun updateSession(next: PuppyOnboardingSessionState) {
-        selectedMethodName = next.playerSetupMethod.name
-        importedSave = next.importedSave
-        birthdaySkipped = next.birthdaySkipped
-    }
 
     LaunchedEffect(step) {
         PuppyUiPreferences.setSetupStep(context, step)
@@ -92,8 +72,6 @@ internal fun PuppyOnboardingFlow(vm: PuppyClickerV6ViewModel) {
             PuppyOnboardingStep.PLAYER_SETUP.persistedIndex -> {
                 PuppyOnboardingPlayerSetup(
                     vm = vm,
-                    session = session,
-                    onSessionChange = ::updateSession,
                     onBack = { step = PuppyOnboardingStep.WELCOME.persistedIndex },
                     onComplete = { step = PuppyOnboardingStep.PERSONALIZE.persistedIndex }
                 )
