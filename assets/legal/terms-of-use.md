@@ -1,6 +1,6 @@
 # Puppy Clicker — Terms of Use
 
-> **Effective date:** September 24, 2026
+> **Effective date:** October 1, 2026
 
 These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**. By using Puppy Clicker, you agree to these terms.
 
@@ -10,13 +10,12 @@ These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**.
 
 Puppy Clicker is provided for personal entertainment.
 
-New player setup uses **Discord OAuth** to verify a Discord account and support community features. The authorization flow may request `identify`, `email`, `guilds`, `guilds.join`, and `guilds.members.read`. Existing local saves may continue to use their existing device-bound Puppy Clicker identity.
+New player setup uses **Discord OAuth** to verify a Discord account and support community features. The authorization flow may request `identify`, `email`, `guilds`, `guilds.join`, and `guilds.members.read`. Existing players keep their progression through Pup Account migration and authenticated synchronization.
 
 Discord signup does **not** replace the local:
 
 - Player ID
 - Friend Code
-- Save file
 - PupEye integrity protections
 
 ## 2. Fair Play and PupEye
@@ -43,27 +42,20 @@ When suspicious activity is detected, the app or Puppy Clicker's Supabase-backed
 
 Support may place an account or a strongly linked recognized device under review, or issue a temporary or permanent global ban for serious or repeated violations. Global enforcement can cover Android and future Puppy Clicker web and desktop clients. Review is a restricted access state separate from a ban; a ban blocks protected game actions until Support revokes it or the server confirms its expiry. Device-wide enforcement applies only where there is a strong, verified link, rather than a shared username, device model, or IP address. Players can contact Support using the app's recovery screen to request review or appeal with their Ban ID or Support Installation Code. Enforcement does not delete saves, puppies, balances, achievements, inventory, or the moderation history.
 
-## 3. Saves and Backups
+## 3. Pup Account Progress
 
-Automatic `Android/data` saves are encrypted and device-bound using Android security features. Portable backups may be password protected.
+Pup Account is the supported player progress and recovery system. Authenticated cloud progression is authoritative; local app data is a gameplay/offline cache protected by Android and PupEye integrity controls.
 
-You are responsible for:
-
-- Keeping backup passwords private
-- Maintaining copies of saves you wish to retain
-
-Modified, damaged, incorrectly authenticated, rolled-back, or incompatible save files may be rejected.
-
-Portable backups are authenticated to the Puppy Clicker installation that created them. A player moving protected progress to another device must use a Support-authorized migration process; copying a save file alone does not transfer its registered installation identity.
+Moving to another device requires signing into the same Pup Account and completing PupEye device authorization. The authorized cloud save is then restored automatically. Puppy Clicker does not provide a file-based game-progress export or import flow.
 
 ## 4. Player Identity
 
 Local player usernames are normalized to lowercase.
 
-Encrypted save metadata may include:
+PupEye account/device metadata may include:
 
-- The player's lowercase username
-- A coarse Android manufacturer/model label used to help identify the save source
+- The player's normalized username
+- A coarse Android manufacturer/model label used to identify the protected installation
 
 Puppy Clicker does **not** use the following for this purpose:
 
@@ -98,7 +90,7 @@ Puppy Clicker may connect to services such as **GitHub** to retrieve streamed as
 
 ## 8. Availability and Changes
 
-Features, balancing, characters, online services, save formats, and PupEye protections may change over time.
+Features, balancing, characters, online services, Pup Account synchronization, and PupEye protections may change over time.
 
 Harley's Studios may update these terms when the app or its services change.
 
@@ -106,12 +98,7 @@ Harley's Studios may update these terms when the app or its services change.
 
 Puppy Clicker is provided on an **as-available basis**.
 
-To the extent permitted by applicable law, Harley's Studios does not guarantee uninterrupted availability or that every save file can be recovered after:
-
-- Device loss
-- Corruption
-- Unsupported modification
-- Forgotten backup credentials
+To the extent permitted by applicable law, Harley's Studios does not guarantee uninterrupted availability or recovery after device loss, corruption, unsupported modification, or loss of access to the authenticated Pup Account identity.
 
 ## 10. Contact
 
