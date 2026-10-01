@@ -825,7 +825,11 @@ internal object SupabasePupEyeClient {
             ).apply {
             requestMethod = "POST"
             connectTimeout = CONNECT_TIMEOUT_MS
-            readTimeout = if (functionName == "pup-account") {
+            readTimeout = if (
+                functionName == "pup-account" ||
+                functionName == "pupeye-auth-discord" ||
+                functionName == "pupeye-register"
+            ) {
                 CLOUD_SAVE_READ_TIMEOUT_MS
             } else {
                 DEFAULT_READ_TIMEOUT_MS
