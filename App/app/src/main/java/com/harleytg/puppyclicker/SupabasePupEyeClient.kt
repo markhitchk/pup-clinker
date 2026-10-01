@@ -57,6 +57,20 @@ internal data class PupAccountCloudSaveRecord(
     val payloadHashSha256: String?
 )
 
+internal data class PupAccountStatusRecord(
+    val realtimeTopic: String,
+    val accountId: String,
+    val accountStatus: String,
+    val username: String,
+    val displayName: String?,
+    val avatarHash: String?,
+    val discordUserId: String,
+    val allowMultipleDevices: Boolean,
+    val serverGuildRole: DiscordGuildRole?,
+    val revision: Long,
+    val generation: Long
+)
+
 internal data class PupAccountRealtimeInfo(
     val topic: String,
     val revision: Long,
@@ -223,9 +237,9 @@ internal object SupabasePupEyeClient {
         )
     }
 
-    suspend fun readPupAccountRealtimeInfo(
+    suspend fun readPupAccountStatus(
         context: Context
-    ): PupAccountRealtimeInfo = withContext(Dispatchers.IO) {
+    ): PupAccountStatusRecord = withContext(Dispatchers.IO) {
         val app = context.applicationContext
         val session = ensureRegistered(app)
             ?: error("PupEye could not establish an authenticated device session.")
@@ -242,19 +256,44 @@ internal object SupabasePupEyeClient {
         )
         if (response.status !in 200..299) {
             handleAuthoritativeFailure(app, response)
-            error(response.message("Unable to initialize Pup Account realtime sync"))
+            error(response.message("Unable to refresh Pup Account status"))
         }
 
         val topic = response.body.optString("realtimeTopic").trim()
         require(REALTIME_TOPIC_PATTERN.matches(topic)) {
             "Pup Account service returned an invalid realtime topic"
         }
+        val account = response.body.optJSONObject("account")
+            ?: error("Pup Account status response is missing account data")
         val save = response.body.optJSONObject("cloudSave")
+        val role = response.body.optString("guildRole")
+            .takeIf { it.isNotBlank() && it != "null" }
+            ?.let { runCatching { DiscordGuildRole.valueOf(it) }.getOrNull() }
+
         markConnected(app)
-        PupAccountRealtimeInfo(
-            topic = topic,
+        PupAccountStatusRecord(
+            realtimeTopic = topic,
+            accountId = account.getString("id"),
+            accountStatus = account.optString("status", "active"),
+            username = account.getString("username"),
+            displayName = account.optString("displayName").takeIf { it.isNotBlank() && it != "null" },
+            avatarHash = account.optString("avatarHash").takeIf { it.isNotBlank() && it != "null" },
+            discordUserId = account.getString("discordUserId"),
+            allowMultipleDevices = account.optBoolean("allowMultipleDevices", false),
+            serverGuildRole = role,
             revision = save?.optLong("revision", 0L)?.coerceAtLeast(0L) ?: 0L,
             generation = save?.optLong("generation", 0L)?.coerceAtLeast(0L) ?: 0L
+        )
+    }
+
+    suspend fun readPupAccountRealtimeInfo(
+        context: Context
+    ): PupAccountRealtimeInfo {
+        val status = readPupAccountStatus(context)
+        return PupAccountRealtimeInfo(
+            topic = status.realtimeTopic,
+            revision = status.revision,
+            generation = status.generation
         )
     }
 
