@@ -24,6 +24,8 @@ class PuppyAuthBotContractTest {
         assertTrue(source.contains("hardware_reset"))
         assertTrue(source.contains("account_recovery"))
         assertTrue(source.contains("ban_appeal"))
+        assertTrue(source.contains("offlineSnapshot(it.message, preserveVerified = false)"))
+        assertTrue(source.contains("offlineSnapshot(it.message, preserveVerified = true)"))
         assertFalse(source.contains("bot token"))
     }
 
