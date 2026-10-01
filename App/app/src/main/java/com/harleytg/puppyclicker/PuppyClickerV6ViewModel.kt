@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -214,6 +215,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _lastCasinoPuppyReward.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            PupAccountCloudSave.restoreEvents.collectLatest {
+                reloadImportedSave()
+            }
+        }
+
         rollDailyDayIfNeeded()
         consumeClaimedAfkReward()
         unlockDiscordRolePuppy()
