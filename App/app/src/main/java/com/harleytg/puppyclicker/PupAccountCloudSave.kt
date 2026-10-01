@@ -23,6 +23,16 @@ import org.json.JSONObject
  * SharedPreferences stores remain a fast local cache so gameplay does not depend on network
  * latency. Every cache mutation is debounced into an authenticated, device-bound cloud write.
  */
+internal data class PupAccountSyncStatus(
+    val label: String,
+    val connected: Boolean,
+    val syncing: Boolean,
+    val pendingUpload: Boolean,
+    val revision: Long,
+    val lastSuccessfulSyncAtMs: Long,
+    val lastError: String?
+)
+
 internal object PupAccountCloudSave {
     private const val STATE_PREFS = "pup_account_cloud_state_v1"
     private const val KEY_REVISION = "server_revision"
@@ -90,6 +100,102 @@ internal object PupAccountCloudSave {
     }
 
     fun isApplyingCloudRestore(): Boolean = restoringFromCloud
+
+    fun status(context: Context): PupAccountSyncStatus {
+        val app = context.applicationContext
+        val state = app.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+        val lastError = state.getString(KEY_LAST_ERROR, null)?.takeIf { it.isNotBlank() }
+        val pending = dirty.get()
+        val syncing = syncLoopRunning.get()
+        val connected = SupabasePupEyeClient.isConfigured() &&
+            DiscordSignupAuth.isConnected(app) &&
+            SupabasePupEyeClient.hasSession(app)
+        val label = when {
+            lastError != null -> "Sync error"
+            syncing || pending -> "Syncing"
+            connected && state.getLong(KEY_LAST_SYNC_AT, 0L) > 0L -> "Synced"
+            connected -> "Connected"
+            else -> "Offline"
+        }
+        return PupAccountSyncStatus(
+            label = label,
+            connected = connected,
+            syncing = syncing,
+            pendingUpload = pending,
+            revision = state.getLong(KEY_REVISION, 0L).coerceAtLeast(0L),
+            lastSuccessfulSyncAtMs = state.getLong(KEY_LAST_SYNC_AT, 0L).coerceAtLeast(0L),
+            lastError = lastError
+        )
+    }
+
+    suspend fun syncNow(context: Context): Boolean {
+        val app = context.applicationContext
+        if (!canSync(app)) return false
+        return activationMutex.withLock {
+            runCatching {
+                retryTransientNetwork {
+                    refreshFromCloudIfNewer(app)
+                    syncOnce(app, "manual-sync")
+                }
+                dirty.set(false)
+                true
+            }.getOrElse {
+                noteError(app, it.message ?: "Unable to sync Pup Account")
+                false
+            }
+        }
+    }
+
+    suspend fun reloadFromPupAccount(context: Context): Boolean {
+        val app = context.applicationContext
+        if (!canSync(app)) return false
+        return activationMutex.withLock {
+            runCatching {
+                val remote = retryTransientNetwork {
+                    SupabasePupEyeClient.readPupAccountCloudSave(app)
+                } ?: return@runCatching false
+                restore(app, remote.saveData)
+                _restoreEvents.tryEmit(Unit)
+                app.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putLong(KEY_REVISION, remote.revision)
+                    .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
+                    .remove(KEY_LAST_ERROR)
+                    .apply()
+                dirty.set(false)
+                true
+            }.getOrElse {
+                noteError(app, it.message ?: "Unable to reload Pup Account")
+                false
+            }
+        }
+    }
+
+    fun reconnect(context: Context) {
+        val app = context.applicationContext
+        if (!SupabasePupEyeClient.isConfigured() || !DiscordSignupAuth.isConnected(app)) return
+        SupabasePupEyeClient.initialize(app)
+        activate(app)
+    }
+
+    /**
+     * Clears only the device cache. The cloud revision marker is cleared with it so the next
+     * authenticated activation must restore the Pup Account instead of uploading an empty cache.
+     */
+    fun clearLocalCacheOnly(context: Context, clearLocal: () -> Unit) {
+        val app = context.applicationContext
+        restoringFromCloud = true
+        try {
+            dirty.set(false)
+            clearLocal()
+            app.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .commit()
+        } finally {
+            restoringFromCloud = false
+        }
+    }
 
     fun refreshNow(context: Context) {
         val app = context.applicationContext
