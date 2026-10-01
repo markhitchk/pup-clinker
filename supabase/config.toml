@@ -28,10 +28,10 @@ verify_jwt = false
 [functions.pupeye-enforcement-status]
 verify_jwt = false
 
-# Signed authenticated portable-save content attestation.
+# Retired compatibility endpoint; returns HTTP 410.
 [functions.pupeye-save-attestation]
 verify_jwt = false
-# Signed new-device request carrying an authenticated portable-save migration claim.
+# Pup Account + PupEye device authorization using verified Discord ownership.
 [functions.pupeye-device-transfer]
 verify_jwt = false
 
