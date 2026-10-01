@@ -61,7 +61,8 @@ internal fun PuppyOnboardingPlayerSetup(
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val account = discord.account
     val discordBusy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
-        discord.phase == DiscordSignupPhase.EXCHANGING
+        discord.phase == DiscordSignupPhase.EXCHANGING ||
+        discord.phase == DiscordSignupPhase.CODE_PENDING
     val scope = rememberCoroutineScope()
     val flags by PuppyFeatureFlags.flags.collectAsStateWithLifecycle()
     val discordFlag = flags["discord_linking"] ?: PuppyFeatureFlags.flag("discord_linking")
@@ -107,7 +108,7 @@ internal fun PuppyOnboardingPlayerSetup(
         preferViewportFit = true
     ) {
         Text(
-            "T0 Pup Accounts are passwordless. Discord signs you in; PupEye binds one active device.",
+            "T0 Pup Accounts are passwordless. Discord OAuth identifies you, Puppy Clicker Auth confirms the login code, and PupEye binds one active device.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -140,7 +141,11 @@ internal fun PuppyOnboardingPlayerSetup(
                         Text("Pup Account · T0", fontWeight = FontWeight.Black)
                         Text(
                             if (account == null) {
-                                "Passwordless sign-in with Discord"
+                                if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                                    "Enter the code from Puppy Clicker Auth"
+                                } else {
+                                    "Passwordless sign-in with Discord"
+                                }
                             } else {
                                 account.displayName + " · @" + account.username
                             },
@@ -153,7 +158,11 @@ internal fun PuppyOnboardingPlayerSetup(
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            if (account == null) "SIGN IN" else "CONNECTED",
+                            when {
+                                account != null -> "CONNECTED"
+                                discord.phase == DiscordSignupPhase.CODE_PENDING -> "VERIFY"
+                                else -> "SIGN IN"
+                            },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black
@@ -165,7 +174,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Text(
                     if (account == null) {
-                        "Discord provides your username and identity. Puppy Clicker does not create or store a separate account password."
+                        "Discord provides your username and identity. Puppy Clicker Auth sends a one-time DM code before the app finishes the Pup Account login; no separate Puppy Clicker password is stored."
                     } else {
                         "Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key."
                     },
@@ -182,7 +191,13 @@ internal fun PuppyOnboardingPlayerSetup(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            if (discordBusy) "Waiting for Discord…" else "Sign in with Discord",
+                            if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                                "Verification code pending…"
+                            } else if (discordBusy) {
+                                "Waiting for Discord…"
+                            } else {
+                                "Sign in with Discord"
+                            },
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -335,7 +350,7 @@ internal fun PuppyOnboardingPlayerSetup(
 
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Discord OAuth proves your Pup Account identity without a Puppy Clicker password. Your username and display name come from Discord; Supabase stores the account and cloud progression. PupEye still allows only one active device.",
+                    "Discord OAuth proves your Pup Account identity without a Puppy Clicker password. Puppy Clicker Auth then DMs a one-time verification code that must be confirmed before the app marks the account connected. Supabase stores the account and cloud progression; PupEye still controls device access.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -357,6 +372,7 @@ internal fun PuppyOnboardingPlayerSetup(
                                 account != null -> account.displayName + " · @" + account.username
                                 discord.phase == DiscordSignupPhase.EXCHANGING -> "Verifying account…"
                                 discord.phase == DiscordSignupPhase.AUTHORIZING -> "Finish authorization in Discord"
+                                discord.phase == DiscordSignupPhase.CODE_PENDING -> "Enter the code from Puppy Clicker Auth"
                                 else -> "Not connected"
                             },
                             style = MaterialTheme.typography.bodySmall,
@@ -387,7 +403,13 @@ internal fun PuppyOnboardingPlayerSetup(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            if (discordBusy) "Waiting for Discord…" else "Connect Discord",
+                            if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                                "Verification code pending…"
+                            } else if (discordBusy) {
+                                "Waiting for Discord…"
+                            } else {
+                                "Connect Discord"
+                            },
                             fontWeight = FontWeight.Bold
                         )
                     }
