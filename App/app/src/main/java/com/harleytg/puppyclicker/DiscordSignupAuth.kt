@@ -445,6 +445,34 @@ internal object DiscordSignupAuth {
         )
     }
 
+    fun applyAuthoritativeAccountStatus(
+        context: Context,
+        status: PupAccountStatusRecord
+    ): Boolean {
+        val app = context.applicationContext
+        ensure(app)
+        val current = mutableState.value.account ?: readAccount(app) ?: return false
+        if (current.id != status.discordUserId) return false
+
+        val updated = DiscordPlayerAccount(
+            id = current.id,
+            username = status.username,
+            globalName = status.displayName,
+            avatarHash = status.avatarHash,
+            // Discord email is intentionally not returned by the general account-status API.
+            // Preserve the OAuth-derived local value without rebroadcasting it.
+            email = current.email
+        )
+        saveAccount(app, updated)
+        syncPlayerUsername(app, updated)
+        mutableState.value = mutableState.value.copy(
+            account = updated
+            // Deliberately preserve guildAccess. Server-known OAuth role metadata is not the
+            // same as the separate Puppy Clicker Auth DM-code role entitlement.
+        )
+        return true
+    }
+
     internal fun buildAuthorizationUrl(oauthState: String, codeChallenge: String): String {
         val params = linkedMapOf(
             "client_id" to CLIENT_ID,
