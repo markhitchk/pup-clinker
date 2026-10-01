@@ -101,6 +101,7 @@ private enum class V6Tab(val label: String, val emoji: String) {
 @Composable
 private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     val context = LocalContext.current
+    val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val enforcement by SupabasePupEyeClient.enforcementState(context)
         .collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -112,6 +113,17 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
         PupEyeEnforcementGate(enforcement)
         return
     }
+
+    discord.pendingAccount
+        ?.takeIf { discord.phase == DiscordSignupPhase.CODE_PENDING }
+        ?.let { pendingAccount ->
+            PuppyDiscordCodeEntryDialog(
+                onDismiss = { DiscordSignupAuth.cancelPendingVerification(context) },
+                onVerified = { snapshot ->
+                    DiscordSignupAuth.completeVerifiedLink(context, pendingAccount, snapshot)
+                }
+            )
+        }
 
     if (!uiPreferences.setupComplete) {
         PuppyOnboardingFlow(vm)
