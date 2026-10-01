@@ -270,7 +270,7 @@ internal fun PuppyCasinoHub(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "New wagers are blocked to protect your Casino Chip balance. Restore a known-good .pupsave or use the existing full local-data reset if you intentionally want to discard the damaged save.",
+                        "New wagers are blocked to protect your Casino Chip balance. Reload the last verified Pup Account save or use the existing full local-data reset if you intentionally want to discard the damaged save.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
