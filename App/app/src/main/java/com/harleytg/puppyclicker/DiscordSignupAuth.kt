@@ -105,8 +105,6 @@ internal object DiscordSignupAuth {
     private const val KEY_AUTH_V2_MIGRATION_NOTICE_SHOWN = "discord_auth_v2_migration_notice_shown"
     private const val KEY_PENDING_STATE = "oauth_pending_state"
     private const val KEY_PENDING_VERIFIER = "oauth_pending_verifier"
-    private const val KEY_PENDING_EXPECTED_DISCORD_ID = "oauth_pending_expected_discord_id"
-    private const val KEY_PENDING_GUILD_VERIFY = "oauth_pending_guild_verify"
     private const val KEY_PENDING_ACCOUNT_ID = "pending_discord_id"
     private const val KEY_PENDING_ACCOUNT_USERNAME = "pending_discord_username"
     private const val KEY_PENDING_ACCOUNT_GLOBAL_NAME = "pending_discord_global_name"
@@ -151,24 +149,9 @@ internal object DiscordSignupAuth {
             uri.scheme.equals(CALLBACK_SCHEME, ignoreCase = true) &&
             uri.path == "/authorize/callback"
 
-    fun startSignup(
-        context: Context,
-        expectedDiscordId: String? = null,
-        verifyGuildRole: Boolean = false
-    ) {
+    fun startSignup(context: Context) {
         val app = context.applicationContext
         ensure(app)
-
-        val normalizedExpectedId = expectedDiscordId?.trim().orEmpty()
-        if (verifyGuildRole && normalizedExpectedId.isNotBlank() && !isDiscordSnowflake(normalizedExpectedId)) {
-            mutableState.value = DiscordSignupState(
-                phase = DiscordSignupPhase.ERROR,
-                account = mutableState.value.account,
-                guildAccess = mutableState.value.guildAccess,
-                message = "Enter a valid Discord user ID before server verification."
-            )
-            return
-        }
 
         val verifier = generateCodeVerifier()
         val challenge = codeChallenge(verifier)
@@ -178,30 +161,13 @@ internal object DiscordSignupAuth {
             .edit()
             .putString(KEY_PENDING_STATE, oauthState)
             .putString(KEY_PENDING_VERIFIER, verifier)
-            .apply {
-                if (verifyGuildRole) {
-                    if (normalizedExpectedId.isNotBlank()) {
-                        putString(KEY_PENDING_EXPECTED_DISCORD_ID, normalizedExpectedId)
-                    } else {
-                        remove(KEY_PENDING_EXPECTED_DISCORD_ID)
-                    }
-                    putBoolean(KEY_PENDING_GUILD_VERIFY, true)
-                } else {
-                    remove(KEY_PENDING_EXPECTED_DISCORD_ID)
-                    remove(KEY_PENDING_GUILD_VERIFY)
-                }
-            }
             .apply()
 
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.AUTHORIZING,
             account = mutableState.value.account,
             guildAccess = mutableState.value.guildAccess,
-            message = if (verifyGuildRole) {
-                "Finish Discord authorization to verify your Puppy Clicker server role."
-            } else {
-                "Finish authorization in Discord."
-            }
+            message = "Finish authorization in Discord to connect your Pup Account."
         )
 
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(buildAuthorizationUrl(oauthState, challenge))).apply {
@@ -228,8 +194,6 @@ internal object DiscordSignupAuth {
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val expectedState = prefs.getString(KEY_PENDING_STATE, null)
         val verifier = prefs.getString(KEY_PENDING_VERIFIER, null)
-        val expectedDiscordId = prefs.getString(KEY_PENDING_EXPECTED_DISCORD_ID, null)
-        val verifyGuildRole = prefs.getBoolean(KEY_PENDING_GUILD_VERIFY, false)
         val returnedState = uri.getQueryParameter("state")
 
         val oauthError = uri.getQueryParameter("error")
@@ -279,18 +243,6 @@ internal object DiscordSignupAuth {
                 val accessToken = exchangeAuthorizationCode(code, verifier)
                 val verified = authenticateWithBackendRetry(app, accessToken)
                 val account = verified.account
-
-                if (verifyGuildRole && !expectedDiscordId.isNullOrBlank() && account.id != expectedDiscordId) {
-                    clearPending(app)
-                    mutableState.value = DiscordSignupState(
-                        phase = DiscordSignupPhase.ERROR,
-                        account = mutableState.value.account,
-                        pendingAccount = mutableState.value.pendingAccount,
-                        guildAccess = mutableState.value.guildAccess,
-                        message = "The authorized Discord account does not match the Discord ID you entered."
-                    )
-                    return@withContext true
-                }
 
                 clearPending(app)
                 saveAccount(app, account)
@@ -343,8 +295,6 @@ internal object DiscordSignupAuth {
             .remove(KEY_GUILD_VERIFIED_AT)
             .remove(KEY_PENDING_STATE)
             .remove(KEY_PENDING_VERIFIER)
-            .remove(KEY_PENDING_EXPECTED_DISCORD_ID)
-            .remove(KEY_PENDING_GUILD_VERIFY)
             .remove(KEY_PENDING_ACCOUNT_ID)
             .remove(KEY_PENDING_ACCOUNT_USERNAME)
             .remove(KEY_PENDING_ACCOUNT_GLOBAL_NAME)
@@ -695,8 +645,6 @@ internal object DiscordSignupAuth {
             .edit()
             .remove(KEY_PENDING_STATE)
             .remove(KEY_PENDING_VERIFIER)
-            .remove(KEY_PENDING_EXPECTED_DISCORD_ID)
-            .remove(KEY_PENDING_GUILD_VERIFY)
             .apply()
     }
 
