@@ -118,7 +118,19 @@ internal object PupAccountRealtimeSync {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 if (ticket != lifecycle.get()) return
                 val message = runCatching { JSONObject(text) }.getOrNull() ?: return
-                if (message.optString("event") != "broadcast") return
+                val event = message.optString("event")
+                if (event == "phx_error" || event == "phx_close") {
+                    webSocket.close(1012, "Supabase realtime channel closed")
+                    return
+                }
+                if (event == "phx_reply" && message.optString("ref") == "1") {
+                    val status = message.optJSONObject("payload")?.optString("status")
+                    if (status != "ok") {
+                        webSocket.close(1012, "Supabase realtime join rejected")
+                    }
+                    return
+                }
+                if (event != "broadcast") return
                 if (message.optString("topic") != "realtime:$channelTopic") return
 
                 val broadcast = message.optJSONObject("payload") ?: return
