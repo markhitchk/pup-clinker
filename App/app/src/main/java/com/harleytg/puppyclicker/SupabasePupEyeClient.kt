@@ -80,9 +80,11 @@ internal object SupabasePupEyeClient {
     private const val KEY_LAST_ERROR = "last_error"
     private const val CHECKPOINT_THROTTLE_MS = 30_000L
     private const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
-    private const val CONNECT_TIMEOUT_MS = 20_000
-    private const val DEFAULT_READ_TIMEOUT_MS = 30_000
-    private const val CLOUD_SAVE_READ_TIMEOUT_MS = 60_000
+    // Mobile networks can have healthy download throughput but very high upload latency.
+    // Give account/save calls enough headroom for weak LTE/5G and congested Wi-Fi.
+    private const val CONNECT_TIMEOUT_MS = 30_000
+    private const val DEFAULT_READ_TIMEOUT_MS = 45_000
+    private const val CLOUD_SAVE_READ_TIMEOUT_MS = 90_000
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
