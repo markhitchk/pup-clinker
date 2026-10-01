@@ -389,7 +389,7 @@ internal object DiscordSignupAuth {
             )
             return
         }
-        if (snapshot.discordId != null && snapshot.discordId != account.id) {
+        if (snapshot.discordId != account.id) {
             clearPendingAccount(app)
             mutableState.value = DiscordSignupState(
                 phase = DiscordSignupPhase.ERROR,
