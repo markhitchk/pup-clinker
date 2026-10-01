@@ -192,6 +192,15 @@ Deno.serve(async (req: Request) => {
       }).eq("id", exactInstallation.id);
       if (error) throw error;
 
+      // Registration may be retried when a mobile connection drops after the server
+      // completed the request but before the phone received the response. Keep one current
+      // session per installation so a safe retry does not accumulate stale valid sessions.
+      const sessionRevocation = await admin.from("pupeye_sessions")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("installation_uuid", exactInstallation.id)
+        .is("revoked_at", null);
+      if (sessionRevocation.error) throw sessionRevocation.error;
+
       const session = await issueSession(admin, player.id, exactInstallation.id);
       return json(200, {
         sessionToken: session.token,
