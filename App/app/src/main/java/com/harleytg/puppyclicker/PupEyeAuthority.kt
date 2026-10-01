@@ -1,30 +1,19 @@
 package com.harleytg.puppyclicker
 
 import android.content.Context
-import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.io.File
-import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
-import java.security.spec.X509EncodedKeySpec
 import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
-
-internal data class PupEyeTransferVerification(
-    val accepted: Boolean,
-    val migrationRequired: Boolean = false,
-    val generation: Long = 0L,
-    val message: String? = null,
-    val errorCode: PupEyeErrorCode? = null
-)
 
 internal enum class PupEyeActorKind(val label: String) {
     HARLEYTG_DEVELOPER("HarleyTG Developer"),
@@ -35,16 +24,13 @@ internal enum class PupEyeActorKind(val label: String) {
  * PupEye's device-bound authority.
  *
  * The private signing key is generated inside Android Keystore and is never exported.
- * Portable saves carry only the public key. A valid signature therefore proves that a save
- * was produced by this Puppy Clicker installation, while the installation ID / Player ID /
- * Friend Code checks prevent a different device from silently adopting the save.
- *
- * Cross-device migration intentionally requires a future support-authorized migration flow.
+ * Signed request envelopes bind Pup Account and protected gameplay operations to this
+ * installation. Cross-device migration requires verified Discord Pup Account ownership
+ * plus PupEye authorization; no file-based save transfer is used.
  */
 internal object PupEyeAuthority {
     private const val AUTHORITY_STATE_FILE = "pupeye/authority_state_v2.pup"
     private const val SIGNING_KEY_ALIAS = "pupeye_install_signing_ec_v2"
-    private const val PROOF_SCHEMA = 2
     private const val STATE_SCHEMA = 2
     private const val MAX_EVENTS = 32
     private const val MAX_HARD_FLAGS = 32
@@ -151,229 +137,15 @@ internal object PupEyeAuthority {
         SupabasePupEyeClient.queueSaveCheckpoint(context, "seal")
     }
 
-    internal fun transferPayloadHash(payloadWithoutProof: JSONObject): String {
-        require(!payloadWithoutProof.has("pupeye")) {
-            "Pupeye transfer payload hash must exclude the proof wrapper"
-        }
-        return MessageDigest.getInstance("SHA-256")
-            .digest(canonicalJson(payloadWithoutProof).toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-    }
-
+    /** Align with the authoritative Pup Account generation after account-based transfer. */
     @Synchronized
-    fun createTransferProof(context: Context, payloadWithoutProof: JSONObject): JSONObject {
-        require(!payloadWithoutProof.has("pupeye")) { "Transfer proof must be added last" }
-        val keyPair = signingKeyPair()
-        val installId = installationId(context)
-        val keyId = publicKeyId(keyPair.public.encoded)
-        val generation = currentGeneration(context)
-        val saveId = UUID.randomUUID().toString()
-        val createdAt = System.currentTimeMillis()
-        val payloadHash = transferPayloadHash(payloadWithoutProof)
-        val identity = payloadWithoutProof.getJSONObject("identity")
-        val migrationPlayerId = identity.getString("playerId")
-        val migrationFriendCode = identity.getString("friendCode")
-        val signature = Signature.getInstance("SHA256withECDSA").run {
-            initSign(keyPair.private)
-            update(
-                signatureBytes(
-                    payload = payloadWithoutProof,
-                    installId = installId,
-                    keyId = keyId,
-                    generation = generation,
-                    saveId = saveId,
-                    createdAt = createdAt
-                )
-            )
-            sign()
-        }
-        val migrationSignature = Signature.getInstance("SHA256withECDSA").run {
-            initSign(keyPair.private)
-            update(
-                migrationClaimSignatureBytes(
-                    installId = installId,
-                    keyId = keyId,
-                    generation = generation,
-                    saveId = saveId,
-                    createdAt = createdAt,
-                    payloadHashSha256 = payloadHash,
-                    playerId = migrationPlayerId,
-                    friendCode = migrationFriendCode
-                )
-            )
-            sign()
-        }
-
-        return JSONObject().apply {
-            put("schema", PROOF_SCHEMA)
-            put("installationId", installId)
-            put("deviceKeyId", keyId)
-            put("generation", generation)
-            put("saveId", saveId)
-            put("createdAtEpochMs", createdAt)
-            put("sourceSdkInt", Build.VERSION.SDK_INT)
-            put("publicKey", b64(keyPair.public.encoded))
-            put("signature", b64(signature))
-            put("migrationClaimSchema", 1)
-            put("migrationPlayerId", migrationPlayerId)
-            put("migrationFriendCode", migrationFriendCode)
-            put("migrationPayloadHashSha256", payloadHash)
-            put("migrationSignature", b64(migrationSignature))
-        }
-    }
-
-    internal fun transferMigrationClaim(payload: JSONObject): JSONObject {
-        val proof = payload.getJSONObject("pupeye")
-        val identity = payload.getJSONObject("identity")
-        val unsignedPayload = JSONObject(payload.toString()).apply { remove("pupeye") }
-        val payloadHash = transferPayloadHash(unsignedPayload)
-
-        return JSONObject().apply {
-            put("sourceInstallationId", proof.getString("installationId"))
-            put("sourceDeviceKeyId", proof.getString("deviceKeyId"))
-            put("sourcePublicKey", proof.getString("publicKey"))
-            put("saveId", proof.getString("saveId"))
-            put("generation", proof.getLong("generation"))
-            put("createdAtEpochMs", proof.getLong("createdAtEpochMs"))
-            put("payloadHashSha256", payloadHash)
-            put("playerId", identity.getString("playerId"))
-            put("friendCode", identity.getString("friendCode"))
-            put("username", identity.optString("username"))
-            put("migrationClaimSchema", proof.optInt("migrationClaimSchema", 0))
-            put("migrationSignature", proof.optString("migrationSignature"))
-        }
-    }
-
-    @Synchronized
-    fun verifyTransfer(context: Context, payload: JSONObject): PupEyeTransferVerification {
-        val proof = payload.optJSONObject("pupeye")
-            ?: return PupEyeTransferVerification(
-                accepted = false,
-                migrationRequired = true,
-                message = "This backup is from an older save format and has no Pupeye ownership proof. No progress was imported. Use Puppy Clicker Support migration to restore it safely.",
-                errorCode = PupEyeErrorCode.AUTH_PROOF_MISSING
-            )
-
-        return runCatching {
-            require(proof.optInt("schema") == PROOF_SCHEMA) {
-                "Unsupported Pupeye save proof"
-            }
-
-            val installId = proof.getString("installationId")
-            val keyId = proof.getString("deviceKeyId")
-            val generation = proof.getLong("generation").coerceAtLeast(1L)
-            val saveId = proof.getString("saveId")
-            val createdAt = proof.getLong("createdAtEpochMs")
-            val publicKeyBytes = Base64.decode(proof.getString("publicKey"), Base64.NO_WRAP)
-            val signatureValue = Base64.decode(proof.getString("signature"), Base64.NO_WRAP)
-
-            require(publicKeyId(publicKeyBytes) == keyId) {
-                "Pupeye device-key fingerprint mismatch"
-            }
-
-            val publicKey = KeyFactory.getInstance("EC")
-                .generatePublic(X509EncodedKeySpec(publicKeyBytes))
-            val unsignedPayload = JSONObject(payload.toString()).apply { remove("pupeye") }
-            val validSignature = Signature.getInstance("SHA256withECDSA").run {
-                initVerify(publicKey)
-                update(
-                    signatureBytes(
-                        payload = unsignedPayload,
-                        installId = installId,
-                        keyId = keyId,
-                        generation = generation,
-                        saveId = saveId,
-                        createdAt = createdAt
-                    )
-                )
-                verify(signatureValue)
-            }
-            if (!validSignature) {
-                recordEvent(context, "SAVE_SIGNATURE_INVALID", "Portable save signature failed verification")
-                return PupEyeTransferVerification(
-                    accepted = false,
-                    message = if (isHarleyTgDeveloper(context)) {
-                        "PupEye recognized this installation as HarleyTG Developer. The backup password was accepted, but the signed game data no longer matches the original export. Developer identity does not bypass save authentication. No progress was imported."
-                    } else {
-                        "The backup decrypted successfully, but its signed game data no longer matches the original export. The file may have been edited or altered after export. No progress was imported."
-                    },
-                    errorCode = PupEyeErrorCode.SIGNATURE_INVALID
-                )
-            }
-
-            val identity = payload.optJSONObject("identity")
-                ?: error("Encrypted save is missing player identity")
-            val importedPlayerId = identity.optString("playerId")
-            val importedFriendCode = identity.optString("friendCode")
-            val localPlayerId = PuppyPlayerIdentity.playerId(context)
-            val localFriendCode = PuppyPlayerIdentity.friendCode(context)
-            val localInstallId = installationId(context)
-            val localKeyId = publicKeyId(signingKeyPair().public.encoded)
-
-            if (
-                importedPlayerId != localPlayerId ||
-                importedFriendCode != localFriendCode ||
-                installId != localInstallId ||
-                keyId != localKeyId
-            ) {
-                recordEvent(
-                    context,
-                    "DEVICE_TRANSFER_REQUIRED",
-                    "Authenticated save belongs to another registered Puppy Clicker installation"
-                )
-                return PupEyeTransferVerification(
-                    accepted = false,
-                    migrationRequired = true,
-                    generation = generation,
-                    message = "This save is authentic and belongs to another Puppy Clicker installation. Tap Restore Save to securely authorize this phone. Older backups may still require one-time Support approval.",
-                    errorCode = PupEyeErrorCode.DEVICE_TRANSFER_REQUIRED
-                )
-            }
-
-            val localGeneration = currentGeneration(context)
-            if (generation < localGeneration) {
-                recordEvent(
-                    context,
-                    "SAVE_ROLLBACK",
-                    "Rejected generation $generation while local generation is $localGeneration"
-                )
-                return PupEyeTransferVerification(
-                    accepted = false,
-                    generation = generation,
-                    message = "This backup is authentic, but it is older than the protected save already registered on this installation (backup generation $generation, current generation $localGeneration). Import was blocked to prevent a rollback. Contact Support if you intentionally need older-backup recovery.",
-                    errorCode = PupEyeErrorCode.ROLLBACK_BLOCKED
-                )
-            }
-
-            PupEyeTransferVerification(
-                accepted = true,
-                generation = generation,
-                message = "Authenticated Puppy Clicker save verified by Pupeye."
-            )
-        }.getOrElse { error ->
-            recordEvent(
-                context,
-                "SAVE_PROOF_INVALID",
-                error.message ?: "Pupeye transfer proof could not be validated"
-            )
-            PupEyeTransferVerification(
-                accepted = false,
-                message = "The backup decrypted, but its Pupeye ownership proof is incomplete, damaged, or unsupported. No progress was imported. Re-export from the original installation or contact Puppy Clicker Support.",
-                errorCode = PupEyeErrorCode.AUTH_PROOF_INVALID
-            )
-        }
-    }
-
-    @Synchronized
-    fun acceptVerifiedTransfer(context: Context, generation: Long) {
+    fun adoptPupAccountGeneration(context: Context, generation: Long) {
         val state = loadState(context)
         val current = state.optLong("generation", 1L).coerceAtLeast(1L)
-        val accepted = maxOf(current, generation)
-        state.put(
-            "generation",
-            if (accepted == Long.MAX_VALUE) Long.MAX_VALUE else accepted + 1L
-        )
-        state.put("lastAcceptedTransferAtEpochMs", System.currentTimeMillis())
+        val authoritative = generation.coerceAtLeast(0L)
+        val baseline = maxOf(current, authoritative)
+        state.put("generation", if (baseline == Long.MAX_VALUE) Long.MAX_VALUE else baseline + 1L)
+        state.put("lastPupAccountTransferAtEpochMs", System.currentTimeMillis())
         saveState(context, state)
     }
 
@@ -449,50 +221,6 @@ internal object PupEyeAuthority {
             append(timestamp).append('\n')
             append(nonce).append('\n')
             append(canonicalJson(payload))
-        }
-        return signed.toByteArray(Charsets.UTF_8)
-    }
-
-    private fun signatureBytes(
-        payload: JSONObject,
-        installId: String,
-        keyId: String,
-        generation: Long,
-        saveId: String,
-        createdAt: Long
-    ): ByteArray {
-        val signed = buildString {
-            append("PuppyClicker/PupEye/transfer/v2\n")
-            append(installId).append('\n')
-            append(keyId).append('\n')
-            append(generation).append('\n')
-            append(saveId).append('\n')
-            append(createdAt).append('\n')
-            append(canonicalJson(payload))
-        }
-        return signed.toByteArray(Charsets.UTF_8)
-    }
-
-    private fun migrationClaimSignatureBytes(
-        installId: String,
-        keyId: String,
-        generation: Long,
-        saveId: String,
-        createdAt: Long,
-        payloadHashSha256: String,
-        playerId: String,
-        friendCode: String
-    ): ByteArray {
-        val signed = buildString {
-            append("PuppyClicker/PupEye/migration-claim/v1\n")
-            append(installId).append('\n')
-            append(keyId).append('\n')
-            append(generation).append('\n')
-            append(saveId).append('\n')
-            append(createdAt).append('\n')
-            append(payloadHashSha256).append('\n')
-            append(playerId).append('\n')
-            append(friendCode)
         }
         return signed.toByteArray(Charsets.UTF_8)
     }
