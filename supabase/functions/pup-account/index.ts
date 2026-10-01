@@ -91,12 +91,23 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
       );
     }
 
+    const desiredDisplayName = session.player.discord_global_name ?? null;
+    const desiredAvatarHash = session.player.discord_avatar_hash ?? null;
+    const accountChanged =
+      existing.username !== discordUsername ||
+      existing.display_name !== desiredDisplayName ||
+      existing.avatar_hash !== desiredAvatarHash ||
+      existing.active_installation_uuid !== session.installation.id ||
+      existing.stage !== "t0";
+
+    if (!accountChanged) return existing;
+
     const { data: updated, error: updateError } = await admin
       .from("pup_accounts")
       .update({
         username: discordUsername,
-        display_name: session.player.discord_global_name ?? null,
-        avatar_hash: session.player.discord_avatar_hash ?? null,
+        display_name: desiredDisplayName,
+        avatar_hash: desiredAvatarHash,
         active_installation_uuid: session.installation.id,
         stage: "t0",
         updated_at: new Date().toISOString(),
