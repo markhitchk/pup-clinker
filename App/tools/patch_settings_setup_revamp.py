@@ -2,7 +2,7 @@
 """Apply the Settings/onboarding revamp after all existing Puppy Clicker V6 patches.
 
 This intentionally runs last. Earlier patch scripts retain their established source anchors for
-seasonal events, PupEye, dynamic rosters, save import and transparency handling.
+seasonal events, PupEye, dynamic rosters and transparency handling.
 """
 from pathlib import Path
 import sys
