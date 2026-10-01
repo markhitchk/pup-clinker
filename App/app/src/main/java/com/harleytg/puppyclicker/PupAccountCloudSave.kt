@@ -8,6 +8,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,6 +42,8 @@ internal object PupAccountCloudSave {
     private val dirty = AtomicBoolean(false)
     private val syncLoopRunning = AtomicBoolean(false)
     private val activationMutex = Mutex()
+    private val _restoreEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val restoreEvents: SharedFlow<Unit> = _restoreEvents.asSharedFlow()
 
     @Volatile
     private var restoringFromCloud = false
@@ -139,6 +144,7 @@ internal object PupAccountCloudSave {
         }
 
         restore(context, remote.saveData)
+        _restoreEvents.tryEmit(Unit)
         state.edit()
             .putLong(KEY_REVISION, remote.revision)
             .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
@@ -170,6 +176,7 @@ internal object PupAccountCloudSave {
             val remote = SupabasePupEyeClient.readPupAccountCloudSave(context)
                 ?: error("Cloud save conflict was reported but no cloud save exists")
             restore(context, remote.saveData)
+            _restoreEvents.tryEmit(Unit)
             state.edit()
                 .putLong(KEY_REVISION, remote.revision)
                 .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
