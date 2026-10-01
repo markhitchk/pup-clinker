@@ -30,8 +30,10 @@ internal object PupAccountCloudSave {
     private const val FORMAT = "puppy-clicker-cloud-save"
     private const val VERSION = 1
     private const val SYNC_DEBOUNCE_MS = 900L
-    private const val NETWORK_ATTEMPTS = 3
-    private val NETWORK_RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L)
+    // Retry transient I/O failures with backoff. A slow or temporarily congested
+    // connection should not force the player to restart onboarding.
+    private const val NETWORK_ATTEMPTS = 4
+    private val NETWORK_RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L, 7_000L)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dirty = AtomicBoolean(false)
