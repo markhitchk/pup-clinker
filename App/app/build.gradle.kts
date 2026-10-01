@@ -156,8 +156,8 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = puppyMinSdk
         targetSdk = puppyTargetSdk
-        versionCode = 31
-        versionName = "1.7.18"
+        versionCode = 33
+        versionName = "1.7.20"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
 
         buildConfigField("int", "MIN_ANDROID_SDK", puppyMinSdk.toString())
