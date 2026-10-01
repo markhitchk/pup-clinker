@@ -123,7 +123,7 @@ internal fun PuppyDiscordCodeEntryContent(
         Text("Enter Discord code", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Puppy Clicker Auth DMed a one-time Pup Account login code to your Discord account. Type or paste it below to finish sign-in.",
+            "Puppy Clicker Auth DMed a one-time server-role verification code to your linked Discord account. Type or paste it below to verify your role.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -231,7 +231,7 @@ internal fun PuppyDiscordCodeEntryContent(
                 onClick = {
                     busy = true
                     scope.launch {
-                        val result = runCatching { DiscordSignupAuth.resendPendingVerification(context) }
+                        val result = runCatching { DiscordSignupAuth.resendRoleVerification(context) }
                             .getOrElse { error ->
                                 PuppyDiscordVerifySnapshot(
                                     status = PuppyDiscordLinkStatus.OFFLINE,
