@@ -46,6 +46,7 @@ class PuppyAuthBotContractTest {
         assertTrue(auth.contains("PuppyAuthBotClient.sendVerificationCode(app, account)"))
         assertTrue(auth.contains("phase = DiscordSignupPhase.CODE_PENDING"))
         assertTrue(auth.contains("snapshot.status != PuppyDiscordLinkStatus.VERIFIED"))
+        assertTrue(auth.contains("snapshot.discordId != account.id"))
         assertTrue(auth.contains("PupAccountCloudSave.activate(app)"))
 
         assertTrue(activity.contains("PuppyDiscordCodeEntryDialog"))
