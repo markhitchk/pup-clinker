@@ -38,7 +38,7 @@ class PuppyAuthBotContractTest {
         val onboarding = source("PuppyOnboardingPlayerSetup.kt")
 
         assertTrue(settings.contains("Text(\"Unlink\")"))
-        assertTrue(settings.contains("Text(\"Link\")"))
+        assertTrue(settings.contains("\"Waiting for Discord…\" else \"Link\""))
         assertTrue(settings.contains("Not linked"))
         assertTrue(settings.contains("DiscordSignupAuth.startRoleVerification(context)"))
         assertTrue(settings.contains("Verify role"))
