@@ -30,29 +30,36 @@ class PuppyAuthBotContractTest {
     }
 
     @Test
-    fun pupAccountLoginIsGatedByBotVerificationCode() {
+    fun pupAccountOauthAndRoleDmVerificationAreSeparate() {
         val settings = source("PuppySettingsUi.kt")
         val auth = source("DiscordSignupAuth.kt")
         val activity = source("PuppyClickerV6Activity.kt")
         val codeUi = source("PuppyDiscordCodeEntryUi.kt")
+        val onboarding = source("PuppyOnboardingPlayerSetup.kt")
 
         assertTrue(settings.contains("Text(\"Unlink\")"))
         assertTrue(settings.contains("Text(\"Link\")"))
         assertTrue(settings.contains("Not linked"))
-        assertTrue(settings.contains("one-time verification code"))
-        assertFalse(settings.contains("No secondary DM code is required."))
+        assertTrue(settings.contains("DiscordSignupAuth.startRoleVerification(context)"))
+        assertTrue(settings.contains("Verify role"))
+        assertFalse(settings.contains("verifyGuildRole = true"))
 
-        assertTrue(auth.contains("savePendingAccount(app, account)"))
-        assertTrue(auth.contains("PuppyAuthBotClient.sendVerificationCode(app, account)"))
-        assertTrue(auth.contains("phase = DiscordSignupPhase.CODE_PENDING"))
-        assertTrue(auth.contains("snapshot.status != PuppyDiscordLinkStatus.VERIFIED"))
-        assertTrue(auth.contains("snapshot.discordId != account.id"))
+        assertTrue(auth.contains("saveAccount(app, account)"))
         assertTrue(auth.contains("PupAccountCloudSave.activate(app)"))
+        assertTrue(auth.contains("suspend fun startRoleVerification"))
+        assertTrue(auth.contains("PuppyAuthBotClient.sendVerificationCode(app, account)"))
+        assertTrue(auth.contains("fun completeRoleVerification"))
+        assertTrue(auth.contains("snapshot.discordId != account.id"))
+        assertTrue(auth.contains("Settings -> Verify server role is the separate DM-code proof."))
 
         assertTrue(activity.contains("PuppyDiscordCodeEntryDialog"))
-        assertTrue(activity.contains("DiscordSignupAuth.completeVerifiedLink"))
-        assertTrue(activity.contains("DiscordSignupAuth.cancelPendingVerification"))
-        assertTrue(codeUi.contains("DiscordSignupAuth.resendPendingVerification"))
+        assertTrue(activity.contains("DiscordSignupAuth.completeRoleVerification"))
+        assertTrue(activity.contains("DiscordSignupAuth.cancelRoleVerification"))
+        assertTrue(codeUi.contains("DiscordSignupAuth.resendRoleVerification"))
+        assertTrue(codeUi.contains("server-role verification code"))
+
+        assertTrue(onboarding.contains("No separate Puppy Clicker password or bot code is required for login."))
+        assertFalse(onboarding.contains("Verification code pending…"))
 
         assertTrue(settings.contains("title = \"Advanced\""))
         assertTrue(settings.contains("title = \"Account details\""))
