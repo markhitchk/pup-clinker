@@ -72,7 +72,7 @@ internal fun PuppyErrorReportDialog(
                 )
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    "Sends the error code, your description, app/build info, device model, detected identity type, and Support Installation Code. Your backup password is never included.",
+                    "Sends the error code, your description, app/build info, device model, detected identity type, and Support Installation Code. Pup Account credentials and Discord access tokens are never included.",
                     style = MaterialTheme.typography.labelSmall
                 )
                 status?.let { message ->
