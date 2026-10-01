@@ -63,6 +63,7 @@ internal object PupAccountCloudSave {
         if (!DiscordSignupAuth.isConnected(app)) return
 
         startContinuousSync(app)
+        PupAccountRealtimeSync.start(app)
         scope.launch {
             runCatching { activateAndAwait(app) }
                 .onFailure { noteError(app, it.message ?: "Unable to initialize Pup Account cloud save") }
