@@ -36,13 +36,6 @@ internal data class PupEyeBackendState(
         get() = state in setOf("MIGRATION_REQUIRED", "REVIEW_REQUIRED", "BLOCKED")
 }
 
-internal data class PupEyeDeviceTransferResult(
-    val approved: Boolean,
-    val pending: Boolean,
-    val message: String,
-    val supportCode: String?
-)
-
 internal data class PupEyeSessionAuth(
     val token: String,
     val backendPlayerId: String,
@@ -113,8 +106,7 @@ internal object SupabasePupEyeClient {
         refreshEnforcementAsync(app)
         scope.launch {
             runCatching {
-                // A fresh install must stay unclaimed until onboarding decides whether this
-                // device is creating a new player or importing an existing authenticated save.
+                // A fresh install stays unclaimed until onboarding creates or reconnects a Pup Account.
                 if (PuppyUiPreferences.current(app).setupComplete) {
                     ensureRegistered(app)
                     sendSaveCheckpoint(app, reason = "startup")
@@ -312,36 +304,53 @@ internal object SupabasePupEyeClient {
     ): SupabaseDiscordAuthResult = withContext(Dispatchers.IO) {
         require(discordAccessToken.isNotBlank()) { "Discord did not return an access token" }
         val app = context.applicationContext
-        val session = ensureRegistered(app)
+        var session = ensureRegistered(app)
             ?: error(
                 when (backendState(app).state) {
                     "MIGRATION_REQUIRED" ->
-                        "Pupeye requires Support authorization before this installation can use the existing player."
-                    else -> "Pupeye could not register this installation with the account service."
+                        "PupEye requires device authorization before this installation can use the existing Pup Account."
+                    else -> "PupEye could not register this installation with the account service."
                 }
             )
 
         val payload = JSONObject().apply {
             put("discordAccessToken", discordAccessToken)
         }
-        val envelope = PupEyeAuthority.signedEnvelope(
-            context = app,
-            action = "auth-discord",
-            payload = payload
-        )
-        val response = invokeAuthenticatedWithSessionRecovery(
-            context = app,
-            functionName = "pupeye-auth-discord",
-            envelope = envelope,
-            initialSession = session
-        )
+
+        fun authenticate(activeSession: BackendSession): ApiResponse {
+            val envelope = PupEyeAuthority.signedEnvelope(
+                context = app,
+                action = "auth-discord",
+                payload = payload
+            )
+            return invokeAuthenticatedWithSessionRecovery(
+                context = app,
+                functionName = "pupeye-auth-discord",
+                envelope = envelope,
+                initialSession = activeSession
+            )
+        }
+
+        var response = authenticate(session)
+        if (
+            response.status == HttpURLConnection.HTTP_CONFLICT &&
+            response.body.optString("code") == "PUP_ACCOUNT_ON_OTHER_DEVICE"
+        ) {
+            session = authorizePupAccountDeviceTransfer(
+                context = app,
+                discordAccessToken = discordAccessToken,
+                currentSession = session
+            )
+            response = authenticate(session)
+        }
+
         if (response.status !in 200..299) {
             handleAuthoritativeFailure(app, response)
-            error(response.message("Supabase Discord verification failed"))
+            error(response.message("Pup Account Discord verification failed"))
         }
 
         val accountJson = response.body.optJSONObject("discord")
-            ?: error("Pupeye auth response is missing the Discord account")
+            ?: error("PupEye auth response is missing the Discord account")
         val account = DiscordPlayerAccount(
             id = accountJson.getString("id"),
             username = accountJson.getString("username"),
@@ -364,9 +373,65 @@ internal object SupabasePupEyeClient {
         SupabaseDiscordAuthResult(
             account = account,
             guildAccess = guildAccess,
-            message = "Discord connected" +
+            message = "Pup Account connected" +
                 if (guildAccess != null) " as ${guildAccess.role.label}." else "."
         )
+    }
+
+    private fun authorizePupAccountDeviceTransfer(
+        context: Context,
+        discordAccessToken: String,
+        currentSession: BackendSession
+    ): BackendSession {
+        val payload = JSONObject().apply {
+            put("discordAccessToken", discordAccessToken)
+        }
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = context,
+            action = "pup-account-device-transfer",
+            payload = payload
+        )
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = context,
+            functionName = "pupeye-device-transfer",
+            envelope = envelope,
+            initialSession = currentSession
+        )
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(context, response)
+            error(response.message("Pup Account could not authorize this device."))
+        }
+
+        val token = response.body.optString("sessionToken").takeIf { it.isNotBlank() }
+            ?: error("Pup Account transfer returned no session token")
+        val expiresAt = response.body.optLong("expiresAtEpochMs", 0L)
+        require(expiresAt > System.currentTimeMillis()) {
+            "Pup Account transfer returned an expired session"
+        }
+
+        val playerId = response.body.optString("playerId")
+        val friendCode = response.body.optString("friendCode")
+        val username = response.body.optString("username")
+        PuppyPlayerIdentity.adoptPupAccountIdentity(
+            context = context,
+            playerId = playerId,
+            friendCode = friendCode,
+            username = username
+        )
+        PupEyeAuthority.adoptPupAccountGeneration(
+            context = context,
+            generation = response.body.optLong("cloudGeneration", 0L)
+        )
+
+        val transferred = BackendSession(
+            token = token,
+            expiresAtEpochMs = expiresAt,
+            backendPlayerId = response.body.optString("backendPlayerId"),
+            backendInstallationId = response.body.optString("backendInstallationId")
+        )
+        writeSession(context, transferred)
+        markConnected(context)
+        return transferred
     }
 
     fun unlinkDiscordAsync(context: Context) {
@@ -393,82 +458,6 @@ internal object SupabasePupEyeClient {
         }
     }
 
-    fun requestDeviceTransfer(
-        context: Context,
-        migrationClaim: JSONObject
-    ): PupEyeDeviceTransferResult {
-        val app = context.applicationContext
-        if (!isConfigured()) {
-            return PupEyeDeviceTransferResult(
-                approved = false,
-                pending = false,
-                message = "Puppy Clicker services are not configured on this build.",
-                supportCode = null
-            )
-        }
-
-        val playerId = migrationClaim.optString("playerId")
-        val friendCode = migrationClaim.optString("friendCode")
-        require(PuppyPlayerIdentity.isValidPlayerId(playerId)) {
-            "Migration claim has an invalid Player ID"
-        }
-        require(PuppyPlayerIdentity.isValidFriendCode(friendCode)) {
-            "Migration claim has an invalid Friend Code"
-        }
-
-        val payload = JSONObject(migrationClaim.toString()).apply {
-            put("supportCode", PupEyeAuthority.supportInstallationCode(app))
-            put("deviceModel", PuppyPlayerIdentity.deviceModel())
-            put("platform", "android")
-            put("appVersion", BuildConfig.VERSION_NAME)
-        }
-        val envelope = PupEyeAuthority.signedEnvelope(
-            context = app,
-            action = "device-transfer",
-            payload = payload
-        )
-        val response = invoke(
-            functionName = "pupeye-device-transfer",
-            envelope = envelope,
-            sessionToken = null
-        )
-
-        if (response.status !in 200..299) {
-            handleAuthoritativeFailure(app, response)
-            val code = response.body.optString("code")
-            return PupEyeDeviceTransferResult(
-                approved = false,
-                pending = code == "DEVICE_MIGRATION_REQUIRED",
-                message = response.message("PupEye could not authorize this device transfer."),
-                supportCode = response.body.optString("supportCode")
-                    .takeIf { it.isNotBlank() }
-                    ?: PupEyeAuthority.supportInstallationCode(app)
-            )
-        }
-
-        val token = response.body.optString("sessionToken").takeIf { it.isNotBlank() }
-            ?: error("Pupeye device transfer returned no session token")
-        val expiresAt = response.body.optLong("expiresAtEpochMs", 0L)
-        require(expiresAt > System.currentTimeMillis()) {
-            "Pupeye device transfer returned an expired session"
-        }
-
-        val session = BackendSession(
-            token = token,
-            expiresAtEpochMs = expiresAt,
-            backendPlayerId = response.body.optString("backendPlayerId"),
-            backendInstallationId = response.body.optString("backendInstallationId")
-        )
-        writeSession(app, session)
-        markConnected(app)
-        return PupEyeDeviceTransferResult(
-            approved = true,
-            pending = false,
-            message = response.message("Device transfer authorized."),
-            supportCode = PupEyeAuthority.supportInstallationCode(app)
-        )
-    }
-
     fun queueSaveCheckpoint(context: Context, reason: String) {
         if (!isConfigured()) return
         val now = System.currentTimeMillis()
@@ -483,63 +472,6 @@ internal object SupabasePupEyeClient {
                 sendSaveCheckpoint(app, reason.take(40))
             }.onFailure { error ->
                 noteTransientError(app, error.message ?: "Pupeye save checkpoint failed")
-            }
-        }
-    }
-
-    fun queueSaveAttestation(
-        context: Context,
-        saveId: String,
-        generation: Long,
-        payloadHashSha256: String
-    ) {
-        if (!isConfigured()) return
-        require(saveId.isNotBlank()) { "Missing PupEye save ID" }
-        require(generation >= 1L) { "Invalid PupEye save generation" }
-        require(payloadHashSha256.matches(Regex("[0-9a-f]{64}"))) {
-            "Invalid PupEye save SHA-256"
-        }
-
-        val app = context.applicationContext
-        scope.launch {
-            runCatching {
-                val session = ensureRegistered(app) ?: return@runCatching
-                val payload = JSONObject().apply {
-                    put("saveId", saveId)
-                    put("generation", generation)
-                    put("payloadHashSha256", payloadHashSha256)
-                }
-                val envelope = PupEyeAuthority.signedEnvelope(
-                    context = app,
-                    action = "save-attestation",
-                    payload = payload
-                )
-                val response = invokeAuthenticatedWithSessionRecovery(
-                    context = app,
-                    functionName = "pupeye-save-attestation",
-                    envelope = envelope,
-                    initialSession = session
-                )
-                if (response.status !in 200..299) {
-                    handleAuthoritativeFailure(app, response)
-                    if (response.status !in setOf(
-                            HttpURLConnection.HTTP_CONFLICT,
-                            HttpURLConnection.HTTP_FORBIDDEN
-                        )
-                    ) {
-                        noteTransientError(
-                            app,
-                            response.message("Unable to attest Puppy Clicker save")
-                        )
-                    }
-                } else {
-                    markConnected(app)
-                }
-            }.onFailure { error ->
-                noteTransientError(
-                    app,
-                    error.message ?: "PupEye save attestation failed"
-                )
             }
         }
     }
