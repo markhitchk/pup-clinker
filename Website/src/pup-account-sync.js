@@ -26,6 +26,9 @@ export class PupAccountSync {
     this.onState = onState;
     this.onStatus = onStatus;
     this.realtime = null;
+    this.account = null;
+    this.guildRole = null;
+    this.guildVerifiedAt = null;
     this.revision = 0;
     this.generation = 0;
     this.saveData = null;
@@ -33,7 +36,7 @@ export class PupAccountSync {
   }
 
   async start() {
-    const status = await this.transport.accountStatus();
+    const status = await this.refreshAccount();
     if (!status?.realtimeTopic) throw new Error("Pup Account realtime topic is missing");
 
     await this.refresh(true);
@@ -46,11 +49,32 @@ export class PupAccountSync {
       onChanged: (event) => {
         const eventRevision = Number(event?.revision ?? 0);
         if (event.kind === "save" && eventRevision > 0 && eventRevision <= this.revision) return;
-        void this.refresh(false);
+        if (event.kind === "save") {
+          void this.refresh(false);
+          return;
+        }
+        void this.refreshAccount().then(() => this.refresh(false));
       },
     });
 
     return this.snapshot();
+  }
+
+  async refreshAccount() {
+    const status = await this.transport.accountStatus();
+    if (!status?.account || !status?.realtimeTopic) {
+      throw new Error("Pup Account status response is incomplete");
+    }
+    this.account = status.account;
+    this.guildRole = status.guildRole ?? null;
+    this.guildVerifiedAt = status.guildVerifiedAt ?? null;
+    const cloud = status.cloudSave ?? null;
+    if (cloud) {
+      this.revision = Math.max(this.revision, Number(cloud.revision ?? 0));
+      this.generation = Math.max(this.generation, Number(cloud.generation ?? 0));
+    }
+    this.onState(this.snapshot());
+    return status;
   }
 
   async refresh(force = false) {
@@ -95,6 +119,9 @@ export class PupAccountSync {
 
   snapshot() {
     return {
+      account: this.account,
+      guildRole: this.guildRole,
+      guildVerifiedAt: this.guildVerifiedAt,
       revision: this.revision,
       generation: this.generation,
       saveData: this.saveData,
