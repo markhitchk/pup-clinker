@@ -1778,10 +1778,10 @@ private fun PupEyeSettings(state: V6GameState) {
         }
     }
     Spacer(Modifier.height(10.dp))
-    StatusLine("Save file integrity", integrityStatus)
-    StatusLine("Android/data save integrity", externalStatus)
+    StatusLine("Local cache integrity", integrityStatus)
+    StatusLine("Device cache integrity", externalStatus)
     StatusLine("Device-bound encryption", "Configured")
-    StatusLine("Supabase authority", backend.state.replace('_', ' '))
+    StatusLine("Pup Account authority", backend.state.replace('_', ' '))
     StatusLine("Support installation code", supportCode)
     StatusLine("Save integrity protection", "Always Active")
     StatusLine(
