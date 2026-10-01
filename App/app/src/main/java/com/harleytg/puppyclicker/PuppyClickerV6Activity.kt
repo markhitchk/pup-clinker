@@ -84,6 +84,10 @@ class PuppyClickerV6Activity : ComponentActivity() {
     private fun handleDiscordCallback(intent: Intent?) {
         val callback = intent?.data ?: return
         if (!DiscordSignupAuth.isCallback(callback)) return
+
+        // OAuth authorization codes are single-use. Consume the deep link before launching
+        // the async exchange so Activity recreation cannot replay the same callback.
+        intent.data = null
         lifecycleScope.launch {
             DiscordSignupAuth.handleRedirect(applicationContext, callback)
         }
