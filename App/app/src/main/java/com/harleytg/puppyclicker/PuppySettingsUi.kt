@@ -923,9 +923,10 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val discord by DiscordSignupAuth.observe(context).collectAsStateWithLifecycle()
     val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
     val account = discord.account
-    val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
-        discord.phase == DiscordSignupPhase.EXCHANGING ||
-        discord.phase == DiscordSignupPhase.CODE_PENDING
+    val oauthBusy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
+        discord.phase == DiscordSignupPhase.EXCHANGING
+    val roleVerifyBusy = discord.phase == DiscordSignupPhase.CODE_PENDING
+    val scope = rememberCoroutineScope()
     val rosterRevision = rosterGroups.sumOf { it.puppies.size }
     LaunchedEffect(discord.guildAccess?.verifiedAtMs, rosterRevision) {
         if (discord.guildAccess != null) {
@@ -944,10 +945,8 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text(
                 when {
                     account != null && discord.guildAccess != null ->
-                        "Verified · @" + account.username + " · " + discord.guildAccess!!.role.label
-                    account != null -> "Verified · @" + account.username
-                    discord.phase == DiscordSignupPhase.CODE_PENDING && discord.pendingAccount != null ->
-                        "Verification code pending · @" + discord.pendingAccount!!.username
+                        "Connected · @" + account.username + " · role verified: " + discord.guildAccess!!.role.label
+                    account != null -> "Connected · @" + account.username
                     else -> "Not linked"
                 },
                 fontWeight = FontWeight.Black
@@ -973,26 +972,16 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
 
     Button(
         onClick = { DiscordSignupAuth.startSignup(context) },
-        enabled = !busy,
+        enabled = !oauthBusy,
         modifier = Modifier.fillMaxWidth()
     ) {
-        if (busy) {
-            Text(
-                if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
-                    "Verification code pending…"
-                } else {
-                    "Waiting for Discord…"
-                }
-            )
-        } else {
-            Text("Link")
-        }
+        Text(if (oauthBusy) "Waiting for Discord…" else "Link")
     }
     if (account != null) {
         Spacer(Modifier.height(8.dp))
         OutlinedButton(
             onClick = { DiscordSignupAuth.disconnect(context) },
-            enabled = !busy,
+            enabled = !oauthBusy && !roleVerifyBusy,
             modifier = Modifier.fillMaxWidth()
         ) { Text("Unlink") }
     }
@@ -1009,7 +998,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Verify server role", fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Discord OAuth verifies your identity and server role through PupEye. Puppy Clicker Auth then DMs a one-time verification code before a new Pup Account login is completed.",
+                "Discord OAuth signs your Pup Account in through Supabase and syncs your Discord identity and server-role metadata there. Verify server role is separate: Puppy Clicker Auth sends a one-time DM code before role rewards are accepted locally.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1020,23 +1009,15 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Button(
                 onClick = {
                     unlockMessage = null
-                    DiscordSignupAuth.startSignup(
-                        context = context,
-                        verifyGuildRole = true
-                    )
+                    scope.launch {
+                        val result = DiscordSignupAuth.startRoleVerification(context)
+                        unlockMessage = result.message
+                    }
                 },
-                enabled = !busy,
+                enabled = account != null && !oauthBusy && !roleVerifyBusy,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
-                        "Verification code pending…"
-                    } else if (busy) {
-                        "Waiting for Discord…"
-                    } else {
-                        "Link Discord"
-                    }
-                )
+                Text(if (roleVerifyBusy) "Verification code pending…" else "Verify role")
             }
 
             discord.guildAccess?.let { access ->
