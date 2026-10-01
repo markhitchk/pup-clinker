@@ -131,6 +131,12 @@ internal object PupAccountRealtimeSync {
                 // of applying unauthenticated broadcast payload data directly.
                 PupAccountCloudSave.refreshNow(context)
                 if (kind != "save") {
+                    scope.launch {
+                        runCatching {
+                            val status = SupabasePupEyeClient.readPupAccountStatus(context)
+                            DiscordSignupAuth.applyAuthoritativeAccountStatus(context, status)
+                        }
+                    }
                     SupabasePupEyeClient.refreshEnforcementAsync(context)
                 }
             }
