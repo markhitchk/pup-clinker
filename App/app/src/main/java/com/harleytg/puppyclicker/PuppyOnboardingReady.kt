@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,7 +32,6 @@ import java.util.Locale
 @Composable
 internal fun PuppyOnboardingReady(
     ui: PuppyUiState,
-    session: PuppyOnboardingSessionState,
     onReviewSetup: () -> Unit,
     onStartPlaying: () -> Unit
 ) {
@@ -98,19 +96,6 @@ internal fun PuppyOnboardingReady(
                     value = PuppyPlayerIdentity.publicFriendCode(context)
                 )
 
-                if (session.importedSave) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            "Save restored",
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
 
