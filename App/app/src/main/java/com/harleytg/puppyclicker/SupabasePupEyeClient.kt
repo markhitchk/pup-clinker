@@ -80,6 +80,9 @@ internal object SupabasePupEyeClient {
     private const val KEY_LAST_ERROR = "last_error"
     private const val CHECKPOINT_THROTTLE_MS = 30_000L
     private const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+    private const val CONNECT_TIMEOUT_MS = 20_000
+    private const val DEFAULT_READ_TIMEOUT_MS = 30_000
+    private const val CLOUD_SAVE_READ_TIMEOUT_MS = 60_000
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
@@ -258,7 +261,10 @@ internal object SupabasePupEyeClient {
         val payload = JSONObject().apply {
             put("expectedRevision", expectedRevision)
             put("saveSchema", saveSchema)
-            put("saveData", JSONObject(saveData.toString()))
+            // Keep cloud-save JSON as a string inside the signed envelope. This avoids
+            // cross-runtime number canonicalization differences (for example 1.0 vs 1)
+            // between Android org.json and JavaScript JSON.parse/JSON.stringify.
+            put("saveDataJson", saveData.toString())
         }
         val envelope = PupEyeAuthority.signedEnvelope(
             context = app,
@@ -816,8 +822,12 @@ internal object SupabasePupEyeClient {
                 .openConnection() as HttpURLConnection
             ).apply {
             requestMethod = "POST"
-            connectTimeout = 15_000
-            readTimeout = 15_000
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = if (functionName == "pup-account") {
+                CLOUD_SAVE_READ_TIMEOUT_MS
+            } else {
+                DEFAULT_READ_TIMEOUT_MS
+            }
             doOutput = true
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-Type", "application/json")
