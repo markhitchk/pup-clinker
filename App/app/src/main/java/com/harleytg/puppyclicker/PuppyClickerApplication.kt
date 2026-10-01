@@ -31,6 +31,11 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         }
     }
     private val saveChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        if (PupAccountCloudSave.isApplyingCloudRestore()) {
+            mainHandler.removeCallbacks(cloudSaveWriter)
+            return@OnSharedPreferenceChangeListener
+        }
+
         // Mark this change as an authorized in-process save before the debounced
         // encrypted seal catches up. PupEye still detects edits made outside this path.
         PupEyeSaveGuard.noteAuthorizedPreferenceChange(this)
@@ -92,6 +97,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         if (returningFromBackground) {
             startupSafely("foreground PupEye enforcement refresh") {
                 SupabasePupEyeClient.refreshEnforcementAsync(this)
+            }
+            startupSafely("foreground Pup Account refresh") {
+                PupAccountCloudSave.refreshNow(this)
             }
             startupSafely("foreground AFK reward preparation") {
                 prepareAfkReward(System.currentTimeMillis())
