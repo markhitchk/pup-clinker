@@ -28,7 +28,9 @@ class PupAccountRealtimeContractTest {
 
         assertTrue(cloud.contains("PupAccountRealtimeSync.start(app)"))
         assertTrue(backend.contains("action = \"account-status\""))
+        assertTrue(backend.contains("readPupAccountStatus"))
         assertTrue(backend.contains("realtimeTopic"))
+        assertTrue(realtime.contains("DiscordSignupAuth.applyAuthoritativeAccountStatus"))
     }
 
     @Test
