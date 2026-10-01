@@ -102,6 +102,12 @@ internal fun PuppyDiscordCodeEntryContent(
         }
     }
 
+    LaunchedEffect(snapshot.status, snapshot.discordId) {
+        if (snapshot.status == PuppyDiscordLinkStatus.VERIFIED) {
+            onVerified(snapshot)
+        }
+    }
+
     val normalized = PuppyDiscordDmCodePolicy.normalize(code)
     val boxes = normalized.padEnd(PuppyDiscordDmCodePolicy.MAX_LENGTH, ' ')
         .take(PuppyDiscordDmCodePolicy.MAX_LENGTH)
