@@ -1,0 +1,2 @@
+Build request for a Google Play AAB from main commit 78e05e8419995b8c8f4649a4a40a4965aca784fb.
+This file is CI-only and does not change app runtime behavior.
