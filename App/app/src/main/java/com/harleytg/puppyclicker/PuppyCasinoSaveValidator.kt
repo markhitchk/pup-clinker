@@ -39,10 +39,10 @@ internal object PuppyCasinoSaveValidator {
     }
 
     /**
-     * Validates a typed SharedPreferences store before GameSaveTransfer replaces
-     * the device's current save. Missing Casino keys are valid pre-Casino saves.
+     * Validates a typed SharedPreferences store before an authoritative Pup Account restore.
+     * Missing Casino keys are valid for older cloud revisions created before Casino data existed.
      */
-    fun validateTransferMainStore(
+    fun validateCloudMainStore(
         store: JSONObject,
         disallowedActiveRoundIds: Set<String> = emptySet()
     ): PuppyCasinoSaveValidation {
