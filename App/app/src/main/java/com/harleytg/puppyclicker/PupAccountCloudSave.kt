@@ -32,7 +32,8 @@ internal object PupAccountCloudSave {
     private const val SEASONAL_PREFS = "puppy_seasonal_v1"
     private const val FORMAT = "puppy-clicker-cloud-save"
     private const val VERSION = 1
-    private const val SYNC_DEBOUNCE_MS = 900L
+    private const val SYNC_DEBOUNCE_MS = 500L
+    private const val FOREGROUND_CLOUD_REFRESH_MS = 5_000L
     // Retry transient I/O failures with backoff. A slow or temporarily congested
     // connection should not force the player to restart onboarding.
     private const val NETWORK_ATTEMPTS = 4
@@ -41,6 +42,7 @@ internal object PupAccountCloudSave {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dirty = AtomicBoolean(false)
     private val syncLoopRunning = AtomicBoolean(false)
+    private val continuousSyncRunning = AtomicBoolean(false)
     private val activationMutex = Mutex()
     private val _restoreEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val restoreEvents: SharedFlow<Unit> = _restoreEvents.asSharedFlow()
@@ -60,6 +62,7 @@ internal object PupAccountCloudSave {
         if (!SupabasePupEyeClient.isConfigured()) return
         if (!DiscordSignupAuth.isConnected(app)) return
 
+        startContinuousSync(app)
         scope.launch {
             runCatching { activateAndAwait(app) }
                 .onFailure { noteError(app, it.message ?: "Unable to initialize Pup Account cloud save") }
@@ -86,12 +89,52 @@ internal object PupAccountCloudSave {
         }
     }
 
+    fun isApplyingCloudRestore(): Boolean = restoringFromCloud
+
+    fun refreshNow(context: Context) {
+        val app = context.applicationContext
+        if (!canSync(app)) return
+
+        scope.launch {
+            activationMutex.withLock {
+                runCatching {
+                    retryTransientNetwork { refreshFromCloudIfNewer(app) }
+                }.onFailure {
+                    noteError(app, it.message ?: "Unable to refresh Pup Account cloud save")
+                }
+            }
+        }
+    }
+
+    private fun startContinuousSync(context: Context) {
+        val app = context.applicationContext
+        if (!continuousSyncRunning.compareAndSet(false, true)) return
+
+        scope.launch {
+            while (true) {
+                if (PuppyAppRuntime.isForeground && canSync(app)) {
+                    activationMutex.withLock {
+                        runCatching {
+                            retryTransientNetwork { refreshFromCloudIfNewer(app) }
+                        }.onFailure {
+                            noteError(app, it.message ?: "Unable to refresh Pup Account cloud save")
+                        }
+                    }
+                }
+                delay(FOREGROUND_CLOUD_REFRESH_MS)
+            }
+        }
+    }
+
+    private fun canSync(context: Context): Boolean =
+        SupabasePupEyeClient.isConfigured() &&
+            DiscordSignupAuth.isConnected(context) &&
+            PuppyUiPreferences.current(context).setupComplete
+
     fun queueSync(context: Context, reason: String = "cache-change") {
         val app = context.applicationContext
         if (restoringFromCloud) return
-        if (!SupabasePupEyeClient.isConfigured()) return
-        if (!DiscordSignupAuth.isConnected(app)) return
-        if (!PuppyUiPreferences.current(app).setupComplete) return
+        if (!canSync(app)) return
 
         dirty.set(true)
         if (!syncLoopRunning.compareAndSet(false, true)) return
@@ -112,6 +155,28 @@ internal object PupAccountCloudSave {
                 if (dirty.get()) queueSync(app, reason)
             }
         }
+    }
+
+    private suspend fun refreshFromCloudIfNewer(context: Context) {
+        val remote = SupabasePupEyeClient.readPupAccountCloudSave(context) ?: return
+        val state = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+        val localRevision = state.getLong(KEY_REVISION, 0L).coerceAtLeast(0L)
+
+        if (remote.revision <= localRevision) {
+            state.edit()
+                .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
+                .remove(KEY_LAST_ERROR)
+                .apply()
+            return
+        }
+
+        restore(context, remote.saveData)
+        _restoreEvents.tryEmit(Unit)
+        state.edit()
+            .putLong(KEY_REVISION, remote.revision)
+            .putLong(KEY_LAST_SYNC_AT, System.currentTimeMillis())
+            .remove(KEY_LAST_ERROR)
+            .apply()
     }
 
     private suspend fun restoreOrSeed(context: Context) {
