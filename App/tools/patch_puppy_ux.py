@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply Puppy Clicker V6 welcome, signup, notification, save-transfer and overlay UX."""
+"""Apply Puppy Clicker V6 welcome, signup, notification and overlay UX."""
 from pathlib import Path
 import sys
 
@@ -34,26 +34,10 @@ def patch_activity(source: str) -> str:
         source = replace_once(
             source,
             legacy_settings_header,
-            '        V6Header("Settings", "Game preferences, notifications, saves, fair play and app information.")',
+            '        V6Header("Settings", "Game preferences, notifications, Pup Account, fair play and app information.")',
             "settings subtitle",
         )
 
-    legacy_settings_controls = '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
-        Spacer(Modifier.height(14.dp))
-        SeasonalBirthdaySettings(vm)'''
-    if legacy_settings_controls in source:
-        source = replace_once(
-            source,
-            legacy_settings_controls,
-            '''        V6Switch("🔢", "Compact numbers", "Use K/M/B abbreviations.", state.compactNumbers, vm::setCompactNumbers)
-        Spacer(Modifier.height(8.dp))
-        PuppyAttentionSettings()
-        Spacer(Modifier.height(8.dp))
-        SaveTransferSettings()
-        Spacer(Modifier.height(14.dp))
-        SeasonalBirthdaySettings(vm)''',
-            "notification and save settings",
-        )
     return source
 
 
