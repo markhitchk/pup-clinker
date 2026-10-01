@@ -118,9 +118,9 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
         ?.takeIf { discord.phase == DiscordSignupPhase.CODE_PENDING }
         ?.let { pendingAccount ->
             PuppyDiscordCodeEntryDialog(
-                onDismiss = { DiscordSignupAuth.cancelPendingVerification(context) },
+                onDismiss = { DiscordSignupAuth.cancelRoleVerification(context) },
                 onVerified = { snapshot ->
-                    DiscordSignupAuth.completeVerifiedLink(context, pendingAccount, snapshot)
+                    DiscordSignupAuth.completeRoleVerification(context, pendingAccount, snapshot)
                 }
             )
         }
