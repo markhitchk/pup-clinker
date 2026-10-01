@@ -80,6 +80,16 @@ export function createPupAccountRealtime({
       } catch {
         return;
       }
+      if (message?.event === "phx_error" || message?.event === "phx_close") {
+        socket?.close(1012, "Supabase realtime channel closed");
+        return;
+      }
+      if (message?.event === "phx_reply" && message?.ref === "1") {
+        if (message?.payload?.status !== "ok") {
+          socket?.close(1012, "Supabase realtime join rejected");
+        }
+        return;
+      }
       if (message?.event !== "broadcast") return;
       if (message?.topic !== "realtime:" + realtimeTopic) return;
       const broadcast = message?.payload;
