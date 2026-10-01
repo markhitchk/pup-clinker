@@ -1,7 +1,9 @@
 package com.harleytg.puppyclicker
 
 import android.content.Context
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +30,8 @@ internal object PupAccountCloudSave {
     private const val FORMAT = "puppy-clicker-cloud-save"
     private const val VERSION = 1
     private const val SYNC_DEBOUNCE_MS = 900L
+    private const val NETWORK_ATTEMPTS = 3
+    private val NETWORK_RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dirty = AtomicBoolean(false)
@@ -62,7 +66,11 @@ internal object PupAccountCloudSave {
 
         return activationMutex.withLock {
             runCatching {
-                restoreOrSeed(app)
+                retryTransientNetwork { restoreOrSeed(app) }
+                app.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .remove(KEY_LAST_ERROR)
+                    .apply()
                 true
             }.getOrElse {
                 noteError(app, it.message ?: "Unable to initialize Pup Account cloud save")
@@ -86,8 +94,11 @@ internal object PupAccountCloudSave {
                 do {
                     delay(SYNC_DEBOUNCE_MS)
                     dirty.set(false)
-                    runCatching { syncOnce(app, reason.take(40)) }
-                        .onFailure { noteError(app, it.message ?: "Unable to sync Pup Account save") }
+                    runCatching {
+                        retryTransientNetwork { syncOnce(app, reason.take(40)) }
+                    }.onFailure {
+                        noteError(app, it.message ?: "Unable to sync Pup Account save")
+                    }
                 } while (dirty.get())
             } finally {
                 syncLoopRunning.set(false)
@@ -217,6 +228,23 @@ internal object PupAccountCloudSave {
         } finally {
             restoringFromCloud = false
         }
+    }
+
+    private suspend fun <T> retryTransientNetwork(block: suspend () -> T): T {
+        var lastFailure: Throwable? = null
+        for (attempt in 0 until NETWORK_ATTEMPTS) {
+            try {
+                return block()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastFailure = error
+                val canRetry = error is IOException && attempt < NETWORK_ATTEMPTS - 1
+                if (!canRetry) throw error
+                delay(NETWORK_RETRY_DELAYS_MS[attempt])
+            }
+        }
+        throw lastFailure ?: IOException("Pup Account network request failed")
     }
 
     private fun noteError(context: Context, message: String) {
