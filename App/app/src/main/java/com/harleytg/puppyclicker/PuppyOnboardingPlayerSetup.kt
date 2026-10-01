@@ -40,8 +40,6 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun PuppyOnboardingPlayerSetup(
     vm: PuppyClickerV6ViewModel,
-    session: PuppyOnboardingSessionState,
-    onSessionChange: (PuppyOnboardingSessionState) -> Unit,
     onBack: () -> Unit,
     onComplete: () -> Unit
 ) {
@@ -168,9 +166,6 @@ internal fun PuppyOnboardingPlayerSetup(
                                     return@launch
                                 }
                                 vm.reloadPupAccountSave()
-                                onSessionChange(
-                                    session.copy(playerSetupMethod = PuppyPlayerSetupMethod.DISCORD)
-                                )
                                 onComplete()
                             }
                         },
