@@ -73,8 +73,10 @@ internal data class DiscordSignupState(
  * Discord account and configured guild role are independently verified before being trusted.
  *
  * T0 Pup Accounts are passwordless: verified Discord OAuth is the external account identity.
- * Discord OAuth establishes the Pup Account identity with Supabase, then Puppy Clicker Auth sends
- * a one-time Discord DM code. The account remains pending until the bot verifies that code.
+ * Discord OAuth completes Pup Account sign-in through Supabase and sends identity, profile, and
+ * guild-role information to the authoritative backend. Role entitlement is a separate action:
+ * Settings -> Verify server role starts a Puppy Clicker Auth DM-code challenge, and only that
+ * challenge grants local role-verified access/rewards.
  * Player ID and Friend Code remain internal compatibility identifiers, while PupEye's Android
  * Keystore key binds the account to one active device.
  */
@@ -291,38 +293,21 @@ internal object DiscordSignupAuth {
                 }
 
                 clearPending(app)
-                savePendingAccount(app, account)
+                saveAccount(app, account)
+                // Supabase has already verified and stored the Discord profile + guild role.
+                // Do not turn that server-side role metadata into a local role entitlement here:
+                // Settings -> Verify server role is the separate DM-code proof.
+                clearGuildAccess(app)
+                clearPendingAccount(app)
+                syncPlayerUsername(app, account)
                 mutableState.value = DiscordSignupState(
-                    phase = DiscordSignupPhase.CODE_PENDING,
-                    account = mutableState.value.account?.takeIf { it.id == account.id },
-                    pendingAccount = account,
-                    guildAccess = verified.guildAccess,
-                    message = "Discord verified. Check your DMs for the Puppy Clicker Auth code."
+                    phase = DiscordSignupPhase.CONNECTED,
+                    account = account,
+                    pendingAccount = null,
+                    guildAccess = null,
+                    message = verified.message ?: "Pup Account connected through Discord and Supabase."
                 )
-
-                val verification = PuppyAuthBotClient.sendVerificationCode(app, account)
-                if (verification.status == PuppyDiscordLinkStatus.VERIFIED) {
-                    completeVerifiedLink(app, account, verification)
-                } else {
-                    mutableState.value = mutableState.value.copy(
-                        phase = DiscordSignupPhase.CODE_PENDING,
-                        pendingAccount = account,
-                        message = verification.message ?: when (verification.status) {
-                            PuppyDiscordLinkStatus.CODE_SENT ->
-                                "Verification code sent by Puppy Clicker Auth. Enter it to finish Pup Account sign-in."
-                            PuppyDiscordLinkStatus.DM_FAILED ->
-                                "Puppy Clicker Auth could not DM you. Enable server DMs, then resend the code."
-                            PuppyDiscordLinkStatus.LOCKED ->
-                                "Too many verification attempts. Request a new code later or contact Support."
-                            PuppyDiscordLinkStatus.EXPIRED ->
-                                "The verification code expired. Resend a new code."
-                            PuppyDiscordLinkStatus.OFFLINE ->
-                                "Puppy Clicker Auth is unavailable. Use Resend when the bot is back online."
-                            else ->
-                                "Enter the verification code from Puppy Clicker Auth to finish Pup Account sign-in."
-                        }
-                    )
-                }
+                PupAccountCloudSave.activate(app)
                 true
             } catch (error: Exception) {
                 clearPending(app)
@@ -375,7 +360,51 @@ internal object DiscordSignupAuth {
         )
     }
 
-    fun completeVerifiedLink(
+    suspend fun startRoleVerification(context: Context): PuppyDiscordVerifySnapshot {
+        val app = context.applicationContext
+        ensure(app)
+        val account = mutableState.value.account ?: readAccount(app)
+            ?: return PuppyDiscordVerifySnapshot(
+                status = PuppyDiscordLinkStatus.NOT_LINKED,
+                message = "Connect your Pup Account with Discord before verifying a server role."
+            )
+
+        savePendingAccount(app, account)
+        mutableState.value = mutableState.value.copy(
+            phase = DiscordSignupPhase.CODE_PENDING,
+            account = account,
+            pendingAccount = account,
+            message = "Requesting a one-time role verification code from Puppy Clicker Auth…"
+        )
+
+        val snapshot = PuppyAuthBotClient.sendVerificationCode(app, account)
+        if (snapshot.status == PuppyDiscordLinkStatus.VERIFIED) {
+            completeRoleVerification(app, account, snapshot)
+        } else {
+            mutableState.value = mutableState.value.copy(
+                phase = DiscordSignupPhase.CODE_PENDING,
+                account = account,
+                pendingAccount = account,
+                message = snapshot.message ?: when (snapshot.status) {
+                    PuppyDiscordLinkStatus.CODE_SENT ->
+                        "Role verification code sent by Puppy Clicker Auth. Check your Discord DMs."
+                    PuppyDiscordLinkStatus.DM_FAILED ->
+                        "Puppy Clicker Auth could not DM you. Enable server DMs, then resend."
+                    PuppyDiscordLinkStatus.LOCKED ->
+                        "Too many verification attempts. Request a new code later or contact Support."
+                    PuppyDiscordLinkStatus.EXPIRED ->
+                        "The role verification code expired. Resend a new code."
+                    PuppyDiscordLinkStatus.OFFLINE ->
+                        "Puppy Clicker Auth is unavailable. Use Resend when the bot is back online."
+                    else ->
+                        "Enter the DM code from Puppy Clicker Auth to verify your server role."
+                }
+            )
+        }
+        return snapshot
+    }
+
+    fun completeRoleVerification(
         context: Context,
         account: DiscordPlayerAccount,
         snapshot: PuppyDiscordVerifySnapshot
@@ -384,8 +413,9 @@ internal object DiscordSignupAuth {
         if (snapshot.status != PuppyDiscordLinkStatus.VERIFIED) {
             mutableState.value = mutableState.value.copy(
                 phase = DiscordSignupPhase.CODE_PENDING,
+                account = account,
                 pendingAccount = account,
-                message = snapshot.message ?: "Enter the Puppy Clicker Auth verification code."
+                message = snapshot.message ?: "Enter the Puppy Clicker Auth role verification code."
             )
             return
         }
@@ -393,7 +423,7 @@ internal object DiscordSignupAuth {
             clearPendingAccount(app)
             mutableState.value = DiscordSignupState(
                 phase = DiscordSignupPhase.ERROR,
-                account = readAccount(app),
+                account = account,
                 pendingAccount = null,
                 guildAccess = readGuildAccess(app),
                 message = "The verification code belongs to a different Discord account."
@@ -407,58 +437,59 @@ internal object DiscordSignupAuth {
                 role = it,
                 verifiedAtMs = System.currentTimeMillis()
             )
-        } ?: mutableState.value.guildAccess
-
-        saveAccount(app, account)
+        }
         if (guildAccess != null) saveGuildAccess(app, guildAccess) else clearGuildAccess(app)
         clearPendingAccount(app)
-        syncPlayerUsername(app, account)
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.CONNECTED,
             account = account,
             pendingAccount = null,
             guildAccess = guildAccess,
-            message = snapshot.message ?: "Pup Account verified with Discord."
+            message = snapshot.message ?: if (guildAccess != null) {
+                "Discord server role verified through Puppy Clicker Auth."
+            } else {
+                "Discord ownership verified. No mapped Puppy Clicker server role was found."
+            }
         )
-        PupAccountCloudSave.activate(app)
     }
 
-    suspend fun resendPendingVerification(context: Context): PuppyDiscordVerifySnapshot {
+    suspend fun resendRoleVerification(context: Context): PuppyDiscordVerifySnapshot {
         val app = context.applicationContext
         ensure(app)
-        val account = mutableState.value.pendingAccount ?: readPendingAccount(app)
+        val account = mutableState.value.pendingAccount
+            ?: readPendingAccount(app)
+            ?: mutableState.value.account
+            ?: readAccount(app)
             ?: return PuppyDiscordVerifySnapshot(
                 status = PuppyDiscordLinkStatus.NOT_LINKED,
-                message = "Start Discord sign-in again before requesting a verification code."
+                message = "Connect Discord before requesting a role verification code."
             )
 
+        savePendingAccount(app, account)
         val snapshot = PuppyAuthBotClient.sendVerificationCode(app, account)
         mutableState.value = mutableState.value.copy(
             phase = DiscordSignupPhase.CODE_PENDING,
+            account = account,
             pendingAccount = account,
             message = snapshot.message
         )
         return snapshot
     }
 
-    fun cancelPendingVerification(context: Context) {
+    fun cancelRoleVerification(context: Context) {
         val app = context.applicationContext
         val persistedAccount = readAccount(app)
         val hasSession = SupabasePupEyeClient.hasSession(app)
         clearPendingAccount(app)
         mutableState.value = DiscordSignupState(
-            phase = if (persistedAccount != null) {
-                DiscordSignupPhase.CONNECTED
-            } else {
-                DiscordSignupPhase.IDLE
-            },
+            phase = if (persistedAccount != null) DiscordSignupPhase.CONNECTED else DiscordSignupPhase.IDLE,
             account = persistedAccount,
             pendingAccount = null,
             guildAccess = readGuildAccess(app)?.takeIf { hasSession },
             message = if (persistedAccount != null) {
-                "Verification cancelled. Your existing Pup Account remains connected."
+                "Role verification cancelled. Your Pup Account remains connected."
             } else {
-                "Pup Account sign-in cancelled before bot verification."
+                "Role verification cancelled."
             }
         )
     }
@@ -491,21 +522,21 @@ internal object DiscordSignupAuth {
             val persistedAccount = readAccount(context)
             val storedPendingAccount = readPendingAccount(context)
             val hasSession = SupabasePupEyeClient.hasSession(context)
-            val pendingAccount = storedPendingAccount?.takeIf { hasSession }
-            if (storedPendingAccount != null && pendingAccount == null) {
-                // Pending bot verification is meaningful only while the authenticated PupEye
-                // session that requested it is still available.
+            val pendingRoleAccount = storedPendingAccount
+                ?.takeIf { hasSession && persistedAccount != null && it.id == persistedAccount.id }
+            if (storedPendingAccount != null && pendingRoleAccount == null) {
+                // A DM-code challenge is only valid for an already-connected Pup Account.
                 clearPendingAccount(context)
             }
 
             val guildAccess = readGuildAccess(context)?.takeIf { hasSession }
             mutableState.value = when {
-                pendingAccount != null -> DiscordSignupState(
+                pendingRoleAccount != null -> DiscordSignupState(
                     phase = DiscordSignupPhase.CODE_PENDING,
                     account = persistedAccount,
-                    pendingAccount = pendingAccount,
-                    guildAccess = if (persistedAccount != null) guildAccess else null,
-                    message = "Enter the verification code from Puppy Clicker Auth to finish sign-in."
+                    pendingAccount = pendingRoleAccount,
+                    guildAccess = guildAccess,
+                    message = "Enter the Puppy Clicker Auth DM code to verify your server role."
                 )
                 persistedAccount != null -> DiscordSignupState(
                     phase = DiscordSignupPhase.CONNECTED,
@@ -548,7 +579,7 @@ internal object DiscordSignupAuth {
                 id = noticeId,
                 type = PuppyNotificationType.APP_UPDATE,
                 title = "Discord verification updated",
-                body = "You connected Discord before server-role verification was added. Re-authorize in Settings → Discord to verify your server role and unlock Discord Pup if you are a Pup Member.",
+                body = "Your Pup Account is already connected through Discord. Open Settings → Discord → Verify server role to complete the separate Puppy Clicker Auth DM-code check for role rewards.",
                 createdAtMs = System.currentTimeMillis(),
                 read = false,
                 route = PuppyNotificationRoute.NONE
