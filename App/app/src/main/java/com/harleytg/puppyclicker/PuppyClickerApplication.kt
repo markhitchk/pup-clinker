@@ -101,6 +101,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             startupSafely("foreground Pup Account refresh") {
                 PupAccountCloudSave.refreshNow(this)
             }
+            startupSafely("foreground Pup Account realtime") {
+                PupAccountRealtimeSync.start(this)
+            }
             startupSafely("foreground AFK reward preparation") {
                 prepareAfkReward(System.currentTimeMillis())
             }
@@ -132,6 +135,9 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
             startupSafely("stop PupEye seal") { PupEyeSaveGuard.seal(this, prefs) }
             startupSafely("stop Pup Account cloud save") {
                 PupAccountCloudSave.queueSync(this, reason = "background")
+            }
+            startupSafely("stop Pup Account realtime") {
+                PupAccountRealtimeSync.stop()
             }
         }
     }
