@@ -57,6 +57,12 @@ internal data class PupAccountCloudSaveRecord(
     val payloadHashSha256: String?
 )
 
+internal data class PupAccountRealtimeInfo(
+    val topic: String,
+    val revision: Long,
+    val generation: Long
+)
+
 internal data class PupAccountCloudWriteResult(
     val success: Boolean,
     val revision: Long,
@@ -85,6 +91,8 @@ internal object SupabasePupEyeClient {
     private const val CONNECT_TIMEOUT_MS = 30_000
     private const val DEFAULT_READ_TIMEOUT_MS = 45_000
     private const val CLOUD_SAVE_READ_TIMEOUT_MS = 90_000
+    private val REALTIME_TOPIC_PATTERN =
+        Regex("^pup-account:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastCheckpointQueuedAt = AtomicLong(0L)
@@ -212,6 +220,41 @@ internal object SupabasePupEyeClient {
             token = session.token,
             backendPlayerId = session.backendPlayerId,
             backendInstallationId = session.backendInstallationId
+        )
+    }
+
+    suspend fun readPupAccountRealtimeInfo(
+        context: Context
+    ): PupAccountRealtimeInfo = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
+        val session = ensureRegistered(app)
+            ?: error("PupEye could not establish an authenticated device session.")
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = "account-status",
+            payload = JSONObject()
+        )
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
+            functionName = "pup-account",
+            envelope = envelope,
+            initialSession = session
+        )
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(app, response)
+            error(response.message("Unable to initialize Pup Account realtime sync"))
+        }
+
+        val topic = response.body.optString("realtimeTopic").trim()
+        require(REALTIME_TOPIC_PATTERN.matches(topic)) {
+            "Pup Account service returned an invalid realtime topic"
+        }
+        val save = response.body.optJSONObject("cloudSave")
+        markConnected(app)
+        PupAccountRealtimeInfo(
+            topic = topic,
+            revision = save?.optLong("revision", 0L)?.coerceAtLeast(0L) ?: 0L,
+            generation = save?.optLong("generation", 0L)?.coerceAtLeast(0L) ?: 0L
         )
     }
 
