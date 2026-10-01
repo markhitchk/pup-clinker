@@ -208,7 +208,7 @@ internal object PuppyAuthBotClient {
 
     private suspend fun postVerify(context: Context, path: String, payload: JSONObject): PuppyDiscordVerifySnapshot {
         val snapshot = runCatching { parseVerify(request(context, "POST", path, payload)) }
-            .getOrElse { offlineSnapshot(it.message) }
+            .getOrElse { offlineSnapshot(it.message, preserveVerified = false) }
         mutableVerify.value = snapshot
         mutableOnline.value = !snapshot.offline
         return snapshot
@@ -216,16 +216,19 @@ internal object PuppyAuthBotClient {
 
     private suspend fun getVerify(context: Context, path: String): PuppyDiscordVerifySnapshot {
         val snapshot = runCatching { parseVerify(request(context, "GET", path, null)) }
-            .getOrElse { offlineSnapshot(it.message) }
+            .getOrElse { offlineSnapshot(it.message, preserveVerified = true) }
         mutableVerify.value = snapshot
         mutableOnline.value = !snapshot.offline
         return snapshot
     }
 
-    private fun offlineSnapshot(message: String?): PuppyDiscordVerifySnapshot {
+    private fun offlineSnapshot(
+        message: String?,
+        preserveVerified: Boolean
+    ): PuppyDiscordVerifySnapshot {
         val current = mutableVerify.value
         return current.copy(
-            status = if (current.status == PuppyDiscordLinkStatus.VERIFIED) {
+            status = if (preserveVerified && current.status == PuppyDiscordLinkStatus.VERIFIED) {
                 current.status
             } else {
                 PuppyDiscordLinkStatus.OFFLINE
