@@ -4,22 +4,17 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.util.Base64
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
-import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
-import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.PBEKeySpec
-import javax.crypto.spec.SecretKeySpec
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Typed SharedPreferences codec shared by encrypted saves and PupEye integrity checks. */
+/** Typed SharedPreferences codec shared by Pup Account snapshots and PupEye local-cache integrity checks. */
 internal object SecurePreferenceCodec {
     fun encode(prefs: SharedPreferences): JSONObject {
         val values = JSONObject()
@@ -74,20 +69,14 @@ internal object SecurePreferenceCodec {
         encode(prefs).toString().toByteArray(Charsets.UTF_8)
 }
 
-/** AES-GCM encryption for device-bound automatic saves and password-protected transfer saves. */
+/** AES-GCM encryption for device-bound local cache and PupEye integrity state. */
 internal object PuppySaveCrypto {
     private const val KEYSTORE = "AndroidKeyStore"
     private const val DEVICE_KEY_ALIAS = "puppy_clicker_save_aes_v1"
     private const val DEVICE_MAGIC = "PCE1"
-    private const val TRANSFER_FORMAT = "puppy-clicker-encrypted-save"
-    private const val TRANSFER_VERSION = 3
-    private const val PBKDF2_ITERATIONS = 210_000
     private const val GCM_TAG_BITS = 128
     private const val IV_BYTES = 12
-    private const val SALT_BYTES = 16
     private const val DEVICE_AAD = "PuppyClicker/device-save/v1"
-    private const val TRANSFER_AAD = "PuppyClicker/transfer-save/v3"
-    private val random = SecureRandom()
 
     fun encryptDevice(plain: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
@@ -112,56 +101,6 @@ internal object PuppySaveCrypto {
         return cipher.doFinal(encrypted)
     }
 
-    fun encryptTransfer(plain: ByteArray, password: CharArray): ByteArray {
-        require(password.size >= 8) { "Backup password must be at least 8 characters" }
-        val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
-        val iv = ByteArray(IV_BYTES).also(random::nextBytes)
-        val key = passwordKey(password, salt, PBKDF2_ITERATIONS)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
-        cipher.updateAAD(TRANSFER_AAD.toByteArray(Charsets.UTF_8))
-        val encrypted = cipher.doFinal(plain)
-        val envelope = JSONObject().apply {
-            put("format", TRANSFER_FORMAT)
-            put("version", TRANSFER_VERSION)
-            put("cipher", "AES-256-GCM")
-            put("kdf", "PBKDF2-HMAC-SHA256")
-            put("iterations", PBKDF2_ITERATIONS)
-            put("salt", b64(salt))
-            put("iv", b64(iv))
-            put("ciphertext", b64(encrypted))
-        }
-        return envelope.toString().toByteArray(Charsets.UTF_8)
-    }
-
-    fun decryptTransfer(container: ByteArray, password: CharArray): ByteArray {
-        require(password.size >= 8) { "Backup password must be at least 8 characters" }
-        val envelope = JSONObject(container.toString(Charsets.UTF_8))
-        require(envelope.optString("format") == TRANSFER_FORMAT) { "Not an encrypted Puppy Clicker save" }
-        require(envelope.optInt("version") == TRANSFER_VERSION) { "Unsupported encrypted save version" }
-        val iterations = envelope.getInt("iterations")
-        require(iterations in 100_000..1_000_000) { "Invalid key-derivation settings" }
-        val salt = unb64(envelope.getString("salt"))
-        val iv = unb64(envelope.getString("iv"))
-        val encrypted = unb64(envelope.getString("ciphertext"))
-        require(salt.size == SALT_BYTES && iv.size == IV_BYTES) { "Invalid encrypted save parameters" }
-        val key = passwordKey(password, salt, iterations)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
-        cipher.updateAAD(TRANSFER_AAD.toByteArray(Charsets.UTF_8))
-        return cipher.doFinal(encrypted)
-    }
-
-    private fun passwordKey(password: CharArray, salt: ByteArray, iterations: Int): SecretKey {
-        val spec = PBEKeySpec(password, salt, iterations, 256)
-        return try {
-            val bytes = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
-            SecretKeySpec(bytes, "AES")
-        } finally {
-            spec.clearPassword()
-        }
-    }
-
     private fun deviceKey(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         (keyStore.getKey(DEVICE_KEY_ALIAS, null) as? SecretKey)?.let { return it }
@@ -180,8 +119,6 @@ internal object PuppySaveCrypto {
         return generator.generateKey()
     }
 
-    private fun b64(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
-    private fun unb64(value: String): ByteArray = Base64.decode(value, Base64.NO_WRAP)
 }
 
 internal data class PupEyeSecurityState(
@@ -293,9 +230,9 @@ internal object PupEyeSaveGuard {
                 .edit()
                 .putBoolean(KEY_AUTHORIZED_WRITE_PENDING, false)
                 .commit()
-            // Every authenticated last-known-good seal advances Pupeye's monotonic
-            // save generation. Portable backups can therefore detect valid-but-old
-            // rollback attempts instead of relying on encryption alone.
+            // Every authenticated last-known-good seal advances PupEye's monotonic
+            // generation so Pup Account/server checks can reject valid-but-old rollback
+            // or replay attempts instead of relying on encryption alone.
             PupEyeAuthority.noteSealedState(context)
             true
         }.getOrDefault(false)
