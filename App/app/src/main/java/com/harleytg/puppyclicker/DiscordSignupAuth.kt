@@ -281,6 +281,7 @@ internal object DiscordSignupAuth {
 
     fun disconnect(context: Context) {
         val app = context.applicationContext
+        PupAccountRealtimeSync.stop()
         SupabasePupEyeClient.unlinkDiscordAsync(app)
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
