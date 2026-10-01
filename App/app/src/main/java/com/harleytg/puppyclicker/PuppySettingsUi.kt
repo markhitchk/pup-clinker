@@ -924,7 +924,8 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
     val rosterGroups by DynamicPuppyRoster.groups.collectAsStateWithLifecycle()
     val account = discord.account
     val busy = discord.phase == DiscordSignupPhase.AUTHORIZING ||
-        discord.phase == DiscordSignupPhase.EXCHANGING
+        discord.phase == DiscordSignupPhase.EXCHANGING ||
+        discord.phase == DiscordSignupPhase.CODE_PENDING
     val rosterRevision = rosterGroups.sumOf { it.puppies.size }
     LaunchedEffect(discord.guildAccess?.verifiedAtMs, rosterRevision) {
         if (discord.guildAccess != null) {
@@ -945,6 +946,8 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                     account != null && discord.guildAccess != null ->
                         "Verified · @" + account.username + " · " + discord.guildAccess!!.role.label
                     account != null -> "Verified · @" + account.username
+                    discord.phase == DiscordSignupPhase.CODE_PENDING && discord.pendingAccount != null ->
+                        "Verification code pending · @" + discord.pendingAccount!!.username
                     else -> "Not linked"
                 },
                 fontWeight = FontWeight.Black
@@ -974,7 +977,13 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
         modifier = Modifier.fillMaxWidth()
     ) {
         if (busy) {
-            Text("Waiting for Discord…")
+            Text(
+                if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                    "Verification code pending…"
+                } else {
+                    "Waiting for Discord…"
+                }
+            )
         } else {
             Text("Link")
         }
@@ -1000,7 +1009,7 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
             Text("Verify server role", fontWeight = FontWeight.Black)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Discord OAuth verifies your account and server role directly through PupEye. No secondary DM code is required.",
+                "Discord OAuth verifies your identity and server role through PupEye. Puppy Clicker Auth then DMs a one-time verification code before a new Pup Account login is completed.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1019,7 +1028,15 @@ private fun DiscordSettings(state: V6GameState, vm: PuppyClickerV6ViewModel) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (busy) "Waiting for Discord…" else "Link Discord")
+                Text(
+                    if (discord.phase == DiscordSignupPhase.CODE_PENDING) {
+                        "Verification code pending…"
+                    } else if (busy) {
+                        "Waiting for Discord…"
+                    } else {
+                        "Link Discord"
+                    }
+                )
             }
 
             discord.guildAccess?.let { access ->
