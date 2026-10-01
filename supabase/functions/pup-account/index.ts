@@ -169,12 +169,18 @@ Deno.serve(async (req: Request) => {
       if (saveError) throw saveError;
 
       return json(200, {
+        realtimeTopic: `pup-account:${account.realtime_topic}`,
+        guildRole: session.player.guild_role ?? null,
+        guildVerifiedAt: session.player.guild_verified_at ?? null,
         account: {
           id: account.id,
           stage: account.stage,
+          status: account.status,
           username: account.username,
           displayName: account.display_name ?? null,
+          avatarHash: account.avatar_hash ?? null,
           discordUserId: account.discord_user_id,
+          allowMultipleDevices: Boolean(account.allow_multiple_devices),
         },
         cloudSave: save
           ? {
@@ -196,6 +202,7 @@ Deno.serve(async (req: Request) => {
       if (saveError) throw saveError;
 
       return json(200, {
+        realtimeTopic: `pup-account:${account.realtime_topic}`,
         save: save
           ? {
               revision: Number(save.revision),
@@ -263,6 +270,7 @@ Deno.serve(async (req: Request) => {
     if (writeError) throw writeError;
 
     return json(200, {
+      realtimeTopic: `pup-account:${account.realtime_topic}`,
       revision: nextRevision,
       generation: envelope.generation,
       payloadHashSha256,
