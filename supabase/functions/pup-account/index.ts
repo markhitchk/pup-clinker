@@ -26,6 +26,44 @@ function integerValue(value: unknown, field: string, minimum = 0): number {
   return value;
 }
 
+function cloudSaveValue(payload: Record<string, unknown>): Record<string, unknown> {
+  const serialized = payload.saveDataJson;
+  if (typeof serialized === "string") {
+    const encoded = new TextEncoder().encode(serialized);
+    if (encoded.byteLength > MAX_SAVE_BYTES) {
+      throw new HttpError(
+        413,
+        "PUP_ACCOUNT_SAVE_TOO_LARGE",
+        "Pup Account cloud save exceeds the T0 1 MiB limit.",
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(serialized);
+    } catch {
+      throw new HttpError(
+        400,
+        "PUP_ACCOUNT_PAYLOAD_INVALID",
+        "saveDataJson must contain valid JSON.",
+      );
+    }
+    return objectValue(parsed, "saveDataJson");
+  }
+
+  // Backward compatibility for older Puppy Clicker builds.
+  const legacy = objectValue(payload.saveData, "saveData");
+  const encoded = new TextEncoder().encode(JSON.stringify(legacy));
+  if (encoded.byteLength > MAX_SAVE_BYTES) {
+    throw new HttpError(
+      413,
+      "PUP_ACCOUNT_SAVE_TOO_LARGE",
+      "Pup Account cloud save exceeds the T0 1 MiB limit.",
+    );
+  }
+  return legacy;
+}
+
 async function ensureAccount(admin: any, session: any): Promise<any> {
   const discordUserId = session.player.discord_user_id;
   const discordUsername = session.player.discord_username;
@@ -174,15 +212,7 @@ Deno.serve(async (req: Request) => {
     const payload = envelope.payload;
     const expectedRevision = integerValue(payload.expectedRevision, "expectedRevision", 0);
     const saveSchema = integerValue(payload.saveSchema ?? 1, "saveSchema", 1);
-    const saveData = objectValue(payload.saveData, "saveData");
-    const encoded = new TextEncoder().encode(JSON.stringify(saveData));
-    if (encoded.byteLength > MAX_SAVE_BYTES) {
-      throw new HttpError(
-        413,
-        "PUP_ACCOUNT_SAVE_TOO_LARGE",
-        "Pup Account cloud save exceeds the T0 1 MiB limit.",
-      );
-    }
+    const saveData = cloudSaveValue(payload);
 
     const { data: current, error: currentError } = await admin
       .from("pup_account_saves")
