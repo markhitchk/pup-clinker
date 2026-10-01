@@ -19,7 +19,8 @@ class PupAccountRealtimeContractTest {
         val backend = source("SupabasePupEyeClient.kt")
 
         assertTrue(realtime.contains("/realtime/v1/websocket"))
-        assertTrue(realtime.contains("event\") != \"broadcast"))
+        assertTrue(realtime.contains("if (event != \"broadcast\") return"))
+        assertTrue(realtime.contains("event == \"phx_reply\""))
         assertTrue(realtime.contains("PupAccountCloudSave.refreshNow(context)"))
         assertTrue(realtime.contains("private\", false"))
         assertFalse(realtime.contains("save_data"))
