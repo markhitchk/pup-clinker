@@ -291,7 +291,7 @@ internal object PuppyNotificationCenter {
             channel = CHANNEL_UPDATES,
             id = NOTIFY_DISCORD_AUTH_UPGRADE,
             title = "Discord verification updated",
-            text = "Re-authorize Discord in Settings to verify your server role and unlock Discord Pup."
+            text = "Open Settings → Discord → Verify server role and enter the Puppy Clicker Auth DM code to verify role rewards."
         )
     }
 
