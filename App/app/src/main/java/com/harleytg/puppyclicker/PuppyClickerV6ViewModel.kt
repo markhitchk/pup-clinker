@@ -217,7 +217,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     init {
         viewModelScope.launch {
             PupAccountCloudSave.restoreEvents.collectLatest {
-                reloadImportedSave()
+                reloadPupAccountSave()
             }
         }
 
@@ -2008,8 +2008,8 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
     fun setAnimationsEnabled(value: Boolean) { _state.update { it.copy(animationsEnabled = value) }; saveState() }
     fun setCompactNumbers(value: Boolean) { _state.update { it.copy(compactNumbers = value) }; saveState() }
 
-    /** Reload state after an authenticated portable-save import without recreating the Activity. */
-    fun reloadImportedSave() {
+    /** Reload live gameplay state after an authoritative Pup Account restore without recreating the Activity. */
+    fun reloadPupAccountSave() {
         recentTapTimes.clear()
         suspicionHits = 0
         suspicionWindowStartedMs = 0L
