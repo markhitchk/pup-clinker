@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import java.util.Base64
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -111,6 +113,13 @@ internal object DiscordSignupAuth {
     private const val AUTHORIZE_ENDPOINT = "https://discord.com/oauth2/authorize"
     private const val TOKEN_ENDPOINT = "https://discord.com/api/oauth2/token"
     private const val CURRENT_USER_ENDPOINT = "https://discord.com/api/v10/users/@me"
+
+    // OAuth payloads are tiny, but congested mobile upload can have very high latency.
+    // Do not fail a valid Discord login just because a response is slow.
+    private const val OAUTH_CONNECT_TIMEOUT_MS = 30_000
+    private const val OAUTH_READ_TIMEOUT_MS = 60_000
+    private const val BACKEND_AUTH_ATTEMPTS = 4
+    private val BACKEND_AUTH_RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L, 7_000L)
 
     private val random = SecureRandom()
     private val mutableState = MutableStateFlow(DiscordSignupState())
@@ -259,13 +268,13 @@ internal object DiscordSignupAuth {
         mutableState.value = DiscordSignupState(
             phase = DiscordSignupPhase.EXCHANGING,
             account = mutableState.value.account,
-            message = "Verifying Discord account…"
+            message = "Verifying Discord account… Slow connections may take a little longer."
         )
 
         return withContext(Dispatchers.IO) {
             try {
                 val accessToken = exchangeAuthorizationCode(code, verifier)
-                val verified = SupabasePupEyeClient.authenticateDiscord(app, accessToken)
+                val verified = authenticateWithBackendRetry(app, accessToken)
                 val account = verified.account
 
                 if (verifyGuildRole && !expectedDiscordId.isNullOrBlank() && account.id != expectedDiscordId) {
@@ -304,8 +313,12 @@ internal object DiscordSignupAuth {
                     phase = DiscordSignupPhase.ERROR,
                     account = mutableState.value.account,
                     guildAccess = mutableState.value.guildAccess,
-                    message = error.message?.take(180)
-                        ?: "Discord signup could not be completed. Check your connection and try again."
+                    message = if (error is IOException) {
+                        "Your connection was too slow or interrupted while signing in. Please try Discord sign-in again."
+                    } else {
+                        error.message?.take(180)
+                            ?: "Discord signup could not be completed. Check your connection and try again."
+                    }
                 )
                 true
             }
@@ -590,8 +603,8 @@ internal object DiscordSignupAuth {
 
         val connection = (URL(TOKEN_ENDPOINT).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 15_000
-            readTimeout = 15_000
+            connectTimeout = OAUTH_CONNECT_TIMEOUT_MS
+            readTimeout = OAUTH_READ_TIMEOUT_MS
             doOutput = true
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             setRequestProperty("Accept", "application/json")
@@ -606,8 +619,8 @@ internal object DiscordSignupAuth {
         if (GUILD_ID.isBlank()) return null
         val connection = (URL("https://discord.com/api/v10/users/@me/guilds/$GUILD_ID/member").openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 15_000
-            readTimeout = 15_000
+            connectTimeout = OAUTH_CONNECT_TIMEOUT_MS
+            readTimeout = OAUTH_READ_TIMEOUT_MS
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Authorization", "Bearer $accessToken")
         }
@@ -676,8 +689,8 @@ internal object DiscordSignupAuth {
     private fun fetchCurrentUser(accessToken: String): DiscordPlayerAccount {
         val connection = (URL(CURRENT_USER_ENDPOINT).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 15_000
-            readTimeout = 15_000
+            connectTimeout = OAUTH_CONNECT_TIMEOUT_MS
+            readTimeout = OAUTH_READ_TIMEOUT_MS
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Authorization", "Bearer $accessToken")
         }
@@ -696,14 +709,35 @@ internal object DiscordSignupAuth {
     }
 
     private fun readJsonResponse(connection: HttpURLConnection, operation: String): JSONObject {
-        val status = connection.responseCode
-        val stream: InputStream? = if (status in 200..299) connection.inputStream else connection.errorStream
-        val body = stream?.use { input ->
-            BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8)).use { it.readText() }
-        }.orEmpty()
-        connection.disconnect()
-        if (status !in 200..299) error("$operation failed with HTTP $status")
-        return JSONObject(body)
+        try {
+            val status = connection.responseCode
+            val stream: InputStream? =
+                if (status in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.use { input ->
+                BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8)).use { it.readText() }
+            }.orEmpty()
+            if (status !in 200..299) error("$operation failed with HTTP $status")
+            return JSONObject(body)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private suspend fun authenticateWithBackendRetry(
+        context: Context,
+        accessToken: String
+    ): SupabaseDiscordAuthResult {
+        var lastNetworkFailure: IOException? = null
+        for (attempt in 0 until BACKEND_AUTH_ATTEMPTS) {
+            try {
+                return SupabasePupEyeClient.authenticateDiscord(context, accessToken)
+            } catch (error: IOException) {
+                lastNetworkFailure = error
+                if (attempt >= BACKEND_AUTH_ATTEMPTS - 1) throw error
+                delay(BACKEND_AUTH_RETRY_DELAYS_MS[attempt])
+            }
+        }
+        throw lastNetworkFailure ?: IOException("Discord backend verification failed")
     }
 
     private fun formEncode(value: String): String =
