@@ -29,11 +29,23 @@ def patch_view_model(source: str) -> str:
 ''', 'seasonal store')
     source = replace_once(source,
         '''    init {
+        viewModelScope.launch {
+            PupAccountCloudSave.restoreEvents.collectLatest {
+                reloadImportedSave()
+            }
+        }
+
         rollDailyDayIfNeeded()''',
         '''    init {
+        viewModelScope.launch {
+            PupAccountCloudSave.restoreEvents.collectLatest {
+                reloadImportedSave()
+            }
+        }
+
         syncDynamicFreePuppies()
         viewModelScope.launch {
-            DynamicPuppyRoster.groups.collect { syncDynamicFreePuppies() }
+            DynamicPuppyRoster.groups.collectLatest { syncDynamicFreePuppies() }
         }
         rollDailyDayIfNeeded()
         refreshSeasonalEvents()''',
