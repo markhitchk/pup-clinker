@@ -9,8 +9,8 @@ import org.json.JSONObject
 /**
  * Local Puppy Clicker identity metadata.
  *
- * Username is editable presentation data. Player ID and Friend Code are generated once
- * for this local device identity and are deliberately not replaced by save imports.
+ * Username is editable presentation data. Player ID and Friend Code are generated for a new
+ * player, then follow the authenticated Pup Account when PupEye authorizes a device transfer.
  * No IMEI, serial number, Android ID, advertising ID, phone number, or account token is stored.
  */
 internal object PuppyPlayerIdentity {
@@ -26,7 +26,7 @@ internal object PuppyPlayerIdentity {
 
     // Reserved HarleyTG developer identity. Canonical values remain protocol/storage-safe;
     // the custom values are presentation/input aliases and are never written over the
-    // device-bound identity preferences.
+    // canonical Pup Account identity preferences.
     private const val HARLEYTG_CANONICAL_PLAYER_ID = "PC-5AD7F57F80FBE69809F96AEA963E2426"
     private const val HARLEYTG_CANONICAL_FRIEND_CODE = "PUP-5XUV-SGZB-S9CX"
     const val HARLEYTG_PUBLIC_PLAYER_ID = "PC-HARLEYTG-DEV-0001"
@@ -97,7 +97,7 @@ internal object PuppyPlayerIdentity {
     /**
      * Official HarleyTG aliases are deliberately presentation/input aliases.
      * Keeping the canonical values underneath preserves ownership ledgers, WebRTC
-     * protocol validation and PupEye's authenticated save state.
+     * protocol validation and PupEye's authenticated account state.
      */
     internal fun isHarleyTgDeveloperIdentity(playerId: String, friendCode: String): Boolean =
         playerId == HARLEYTG_CANONICAL_PLAYER_ID &&
@@ -233,36 +233,34 @@ internal object PuppyPlayerIdentity {
         put("platform", "android")
     }
 
-    /**
-     * Save imports may update the display username but must never replace the destination
-     * device's Player ID or Friend Code. Identity migration is intentionally a separate concern.
-     */
-    fun applyImportedUsername(context: Context, metadata: JSONObject?) {
-        val imported = metadata?.optString("username")?.takeIf { it.isNotBlank() } ?: return
-        setUsername(context, imported)
+
     }
 
     /**
-     * Adopt a Player ID + Friend Code from an authenticated portable save only after
-     * the backend has approved/consumed a device migration for this installation.
+     * Adopt the identity of an existing Pup Account only after the backend has verified the
+     * Discord identity and moved this PupEye installation to that account.
      */
-    internal fun adoptTransferredIdentity(context: Context, metadata: JSONObject) {
-        val importedPlayerId = metadata.optString("playerId").trim().uppercase(Locale.US)
-        val importedFriendCode = metadata.optString("friendCode").trim().uppercase(Locale.US)
-        require(isValidPlayerId(importedPlayerId)) { "Transferred Player ID is invalid" }
-        require(isValidFriendCode(importedFriendCode)) { "Transferred Friend Code is invalid" }
+    internal fun adoptPupAccountIdentity(
+        context: Context,
+        playerId: String,
+        friendCode: String,
+        username: String
+    ) {
+        val canonicalPlayerId = playerId.trim().uppercase(Locale.US)
+        val canonicalFriendCode = friendCode.trim().uppercase(Locale.US)
+        require(isValidPlayerId(canonicalPlayerId)) { "Pup Account Player ID is invalid" }
+        require(isValidFriendCode(canonicalFriendCode)) { "Pup Account Friend Code is invalid" }
+        val normalizedUsername = normalizeUsername(username).ifBlank { DEFAULT_USERNAME }
 
-        val importedUsername = normalizeUsername(metadata.optString("username"))
-            .ifBlank { DEFAULT_USERNAME }
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         check(
             prefs.edit()
-                .putString(KEY_PLAYER_ID, importedPlayerId)
-                .putString(KEY_FRIEND_CODE, importedFriendCode)
-                .putString(KEY_USERNAME, importedUsername)
+                .putString(KEY_PLAYER_ID, canonicalPlayerId)
+                .putString(KEY_FRIEND_CODE, canonicalFriendCode)
+                .putString(KEY_USERNAME, normalizedUsername)
                 .commit()
         ) {
-            "Unable to persist transferred Puppy Clicker identity"
+            "Unable to persist Pup Account identity"
         }
     }
 
