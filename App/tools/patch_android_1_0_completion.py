@@ -61,6 +61,20 @@ def patch_view_model(source: str) -> str:
         "XP level curve",
     )
 
+    # Developer Max Account must update the live XP state as well as SharedPreferences.
+    # Otherwise the next accepted tap saves the old in-memory XP back over the maxed key.
+    source = replace_once(
+        source,
+        '''            treats = maxLong,
+            lifetimeTreats = maxLong,
+            bones = maxLong,''',
+        '''            treats = maxLong,
+            lifetimeTreats = maxLong,
+            playerXp = maxLong,
+            bones = maxLong,''',
+        "developer max live XP",
+    )
+
     if "private fun withCare(state: V6GameState, care: PuppyCareProfile)" in source:
         source = replace_once(
             source,
