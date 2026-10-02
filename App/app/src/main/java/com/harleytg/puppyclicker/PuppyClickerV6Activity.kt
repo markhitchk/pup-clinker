@@ -107,7 +107,10 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val uiPreferences by PuppyUiPreferences.observe(context).collectAsStateWithLifecycle()
     val viewport = LocalPuppyViewport.current
+    val notificationItems by PuppyNotificationHistory.items.collectAsStateWithLifecycle()
+    val notificationUnreadCount by PuppyNotificationHistory.unreadCount.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(V6Tab.PLAY) }
+    var notificationsOpen by rememberSaveable { mutableStateOf(false) }
 
     if (enforcement.blocksApp(System.currentTimeMillis())) {
         PupEyeEnforcementGate(enforcement)
@@ -130,8 +133,9 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
         return
     }
 
-    if (viewport.isExpanded) {
-        Row(
+    Box(Modifier.fillMaxSize()) {
+        if (viewport.isExpanded) {
+            Row(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -213,6 +217,29 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 }
             }
         }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 10.dp, end = 12.dp)
+        ) {
+            PuppyUpdateBellButton(
+                hasUnread = notificationUnreadCount > 0,
+                onClick = { notificationsOpen = true }
+            )
+        }
+    }
+
+    if (notificationsOpen) {
+        PuppyNotificationInboxDialog(
+            items = notificationItems,
+            onDismiss = { notificationsOpen = false },
+            onOpenItem = { item ->
+                PuppyNotificationHistory.markRead(context, item.id)
+            },
+            onClaimReward = { item -> vm.claimSystemReward(item.id) },
+            onMarkAllRead = { PuppyNotificationHistory.markAllRead(context) }
+        )
     }
 }
 
