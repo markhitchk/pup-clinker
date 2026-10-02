@@ -84,6 +84,51 @@ internal data class PupAccountCloudWriteResult(
     val message: String? = null
 )
 
+internal data class PupSystemNotificationRecord(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val body: String,
+    val createdAtMs: Long
+)
+
+internal data class PupAdminUserSummary(
+    val playerUuid: String,
+    val playerId: String,
+    val friendCode: String,
+    val username: String,
+    val discordUsername: String?,
+    val guildRole: String?,
+    val status: String,
+    val cloudRevision: Long?,
+    val updatedAtMs: Long
+)
+
+internal data class PupAdminGameData(
+    val activePuppy: String,
+    val treats: Long,
+    val lifetimeTreats: Long,
+    val bones: Long,
+    val pupCoins: Long,
+    val casinoChips: Long,
+    val happiness: Int,
+    val fullness: Int,
+    val energy: Int,
+    val cleanliness: Int,
+    val bond: Int,
+    val unlockedPuppies: Set<String>,
+    val ownedAccessories: Set<String>,
+    val tickets: Map<String, Int>
+)
+
+internal data class PupAdminUserDetail(
+    val user: PupAdminUserSummary,
+    val displayName: String?,
+    val allowMultipleDevices: Boolean,
+    val cloudGeneration: Long?,
+    val game: PupAdminGameData?
+)
+
 /**
  * Supabase transport for Puppy Clicker account authority and PupEye.
  *
@@ -386,6 +431,238 @@ internal object SupabasePupEyeClient {
         }
 
         error(response.message("Unable to save Pup Account progress"))
+    }
+
+    suspend fun readSystemNotifications(
+        context: Context
+    ): List<PupSystemNotificationRecord> = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
+        val session = ensureRegistered(app)
+            ?: error("PupEye could not establish an authenticated device session.")
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = "system-notifications-read",
+            payload = JSONObject()
+        )
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
+            functionName = "pup-system",
+            envelope = envelope,
+            initialSession = session
+        )
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(app, response)
+            error(response.message("Unable to load Puppy Clicker system messages"))
+        }
+        val rows = response.body.optJSONArray("notifications") ?: JSONArray()
+        buildList {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                val id = row.optString("id").trim()
+                val title = row.optString("title").trim()
+                if (id.isBlank() || title.isBlank()) continue
+                val createdAt = row.optString("createdAt")
+                    .takeIf { it.isNotBlank() }
+                    ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+                    ?: System.currentTimeMillis()
+                add(
+                    PupSystemNotificationRecord(
+                        id = id,
+                        kind = row.optString("kind", "system"),
+                        title = title.take(100),
+                        body = row.optString("body").take(1_500),
+                        createdAtMs = createdAt
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun listAdminUsers(
+        context: Context,
+        query: String = ""
+    ): List<PupAdminUserSummary> = withContext(Dispatchers.IO) {
+        val response = invokeAdminAction(
+            context = context,
+            action = "admin-users-list",
+            payload = JSONObject().put("query", query.take(80))
+        )
+        val rows = response.optJSONArray("users") ?: JSONArray()
+        buildList {
+            for (index in 0 until rows.length()) {
+                rows.optJSONObject(index)?.let { parseAdminUserSummary(it)?.let(::add) }
+            }
+        }
+    }
+
+    suspend fun readAdminUser(
+        context: Context,
+        targetPlayerUuid: String
+    ): PupAdminUserDetail = withContext(Dispatchers.IO) {
+        val body = invokeAdminAction(
+            context = context,
+            action = "admin-user-detail",
+            payload = JSONObject().put("targetPlayerUuid", targetPlayerUuid)
+        )
+        val player = body.optJSONObject("player")
+            ?: error("Developer user response is missing player data")
+        val account = body.optJSONObject("account")
+        val cloud = body.optJSONObject("cloudSave")
+        val summaryJson = JSONObject(player.toString()).apply {
+            if (account != null) put("account", account)
+            if (cloud != null) put("cloudSave", cloud)
+        }
+        val summary = parseAdminUserSummary(summaryJson)
+            ?: error("Developer user response is invalid")
+        PupAdminUserDetail(
+            user = summary,
+            displayName = account?.optString("display_name")
+                ?.takeIf { it.isNotBlank() && it != "null" },
+            allowMultipleDevices = account?.optBoolean("allow_multiple_devices", false) ?: false,
+            cloudGeneration = cloud?.optLong("generation")?.takeIf { it >= 0L },
+            game = cloud?.optJSONObject("game")?.let(::parseAdminGame)
+        )
+    }
+
+    suspend fun updateAdminGameData(
+        context: Context,
+        targetPlayerUuid: String,
+        fields: JSONObject
+    ): PupAdminGameData = withContext(Dispatchers.IO) {
+        val body = invokeAdminAction(
+            context = context,
+            action = "admin-game-update",
+            payload = JSONObject().apply {
+                put("targetPlayerUuid", targetPlayerUuid)
+                put("fields", fields)
+            }
+        )
+        body.optJSONObject("game")?.let(::parseAdminGame)
+            ?: error("Developer edit returned no game data")
+    }
+
+    suspend fun setAdminItem(
+        context: Context,
+        targetPlayerUuid: String,
+        itemType: String,
+        itemId: String,
+        present: Boolean? = null,
+        count: Int? = null
+    ): PupAdminGameData = withContext(Dispatchers.IO) {
+        val body = invokeAdminAction(
+            context = context,
+            action = "admin-item-set",
+            payload = JSONObject().apply {
+                put("targetPlayerUuid", targetPlayerUuid)
+                put("itemType", itemType)
+                put("itemId", itemId)
+                present?.let { put("present", it) }
+                count?.let { put("count", it) }
+            }
+        )
+        body.optJSONObject("game")?.let(::parseAdminGame)
+            ?: error("Developer item edit returned no game data")
+    }
+
+    suspend fun sendAdminMessage(
+        context: Context,
+        targetPlayerUuid: String,
+        title: String,
+        body: String
+    ) = withContext(Dispatchers.IO) {
+        invokeAdminAction(
+            context = context,
+            action = "admin-message-send",
+            payload = JSONObject().apply {
+                put("targetPlayerUuid", targetPlayerUuid)
+                put("title", title.take(100))
+                put("body", body.take(1_500))
+            }
+        )
+        Unit
+    }
+
+    private fun invokeAdminAction(
+        context: Context,
+        action: String,
+        payload: JSONObject
+    ): JSONObject {
+        val app = context.applicationContext
+        val session = ensureRegistered(app)
+            ?: error("PupEye could not establish an authenticated device session.")
+        val envelope = PupEyeAuthority.signedEnvelope(
+            context = app,
+            action = action,
+            payload = payload
+        )
+        val response = invokeAuthenticatedWithSessionRecovery(
+            context = app,
+            functionName = "pup-admin",
+            envelope = envelope,
+            initialSession = session
+        )
+        if (response.status !in 200..299) {
+            handleAuthoritativeFailure(app, response)
+            error(response.message("Developer action was rejected"))
+        }
+        return response.body
+    }
+
+    private fun parseAdminUserSummary(root: JSONObject): PupAdminUserSummary? {
+        val playerUuid = root.optString("id").trim()
+        if (playerUuid.isBlank()) return null
+        val cloud = root.optJSONObject("cloudSave")
+        return PupAdminUserSummary(
+            playerUuid = playerUuid,
+            playerId = root.optString("player_id").ifBlank { "Unknown" },
+            friendCode = root.optString("friend_code").ifBlank { "Unknown" },
+            username = root.optString("username").ifBlank { "Player" },
+            discordUsername = root.optString("discord_username")
+                .takeIf { it.isNotBlank() && it != "null" },
+            guildRole = root.optString("guild_role")
+                .takeIf { it.isNotBlank() && it != "null" },
+            status = root.optString("status", "active"),
+            cloudRevision = cloud?.optLong("revision")?.takeIf { it >= 0L },
+            updatedAtMs = root.optString("updated_at")
+                .takeIf { it.isNotBlank() }
+                ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+                ?: 0L
+        )
+    }
+
+    private fun parseAdminGame(root: JSONObject): PupAdminGameData {
+        fun intValue(name: String, fallback: Int = 0): Int =
+            root.optInt(name, fallback).coerceAtLeast(0)
+        fun longValue(name: String): Long =
+            root.optLong(name, 0L).coerceAtLeast(0L)
+        fun stringSet(name: String): Set<String> {
+            val array = root.optJSONArray(name) ?: return emptySet()
+            return buildSet {
+                for (index in 0 until array.length()) {
+                    array.optString(index).takeIf { it.isNotBlank() }?.let(::add)
+                }
+            }
+        }
+        val ticketsJson = root.optJSONObject("tickets") ?: JSONObject()
+        val tickets = listOf("common", "uncommon", "rare", "epic", "legendary")
+            .associateWith { ticketsJson.optInt(it, 0).coerceIn(0, 9_999) }
+        val care = root.optJSONObject("care") ?: JSONObject()
+        return PupAdminGameData(
+            activePuppy = root.optString("activePuppy", "classic"),
+            treats = longValue("treats"),
+            lifetimeTreats = longValue("lifetimeTreats"),
+            bones = longValue("bones"),
+            pupCoins = longValue("pupCoins"),
+            casinoChips = longValue("casinoChips"),
+            happiness = care.optInt("happiness", 100).coerceIn(0, 100),
+            fullness = care.optInt("fullness", 100).coerceIn(0, 100),
+            energy = care.optInt("energy", 100).coerceIn(0, 100),
+            cleanliness = care.optInt("cleanliness", 100).coerceIn(0, 100),
+            bond = care.optInt("bond", 10).coerceIn(0, 100),
+            unlockedPuppies = stringSet("unlockedPuppies"),
+            ownedAccessories = stringSet("ownedAccessories"),
+            tickets = tickets
+        )
     }
 
     suspend fun authenticateDiscord(
