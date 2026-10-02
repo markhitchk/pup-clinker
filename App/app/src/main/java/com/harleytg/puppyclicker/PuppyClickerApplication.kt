@@ -76,6 +76,7 @@ class PuppyClickerApplication : Application(), Application.ActivityLifecycleCall
         startupSafely("Puppy Clicker Auth bot") { PuppyAuthBotClient.start(this) }
         startupSafely("Discord auth migration") { DiscordSignupAuth.observe(this) }
         startupSafely("Pup Account cloud persistence") { PupAccountCloudSave.initialize(this) }
+        startupSafely("Pup Account system messages") { PupSystemNotificationSync.start(this) }
         startupSafely("notification scheduling") { PuppyNotificationCenter.schedule(this) }
 
         // If Android killed the process while it was in the background, the timestamp survives
