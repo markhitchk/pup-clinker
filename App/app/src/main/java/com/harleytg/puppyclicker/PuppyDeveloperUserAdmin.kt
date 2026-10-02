@@ -486,12 +486,14 @@ private fun PuppyDeveloperUserEditor(
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
+                        val outgoingTitle = messageTitle
+                        val outgoingBody = messageBody
                         runAction("System message sent.") {
                             SupabasePupEyeClient.sendAdminMessage(
                                 context,
                                 detail.user.playerUuid,
-                                messageTitle,
-                                messageBody
+                                outgoingTitle,
+                                outgoingBody
                             )
                         }
                         messageBody = ""
