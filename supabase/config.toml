@@ -40,3 +40,7 @@ verify_jwt = false
 # T0 Pup Accounts use Discord OAuth plus the existing signed PupEye session/device proof.
 [functions.pup-account]
 verify_jwt = false
+
+# Discord bot only. Secret-authenticated developer gifts and system messages.
+[functions.pup-bot-gift]
+verify_jwt = false
