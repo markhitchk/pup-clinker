@@ -438,6 +438,7 @@ private fun PuppyNotificationCard(
                     PuppyNotificationType.ROSTER_UPDATE -> Color(0xFFEAF7FF)
                     PuppyNotificationType.APP_UPDATE -> Color(0xFFE4F3FC)
                     PuppyNotificationType.SUPPORT -> Color(0xFFF3E8FF)
+                    PuppyNotificationType.DEVELOPER -> Color(0xFFEDE7FF)
                 }
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -641,7 +642,8 @@ private fun PuppyInboxFilter.matches(item: PuppyNotificationItem): Boolean = whe
             item.type == PuppyNotificationType.ROSTER_UPDATE
     PuppyInboxFilter.SYSTEM ->
         item.type == PuppyNotificationType.APP_UPDATE ||
-            item.type == PuppyNotificationType.SUPPORT
+            item.type == PuppyNotificationType.SUPPORT ||
+            item.type == PuppyNotificationType.DEVELOPER
 }
 
 private fun PuppyNotificationItem.dayGroup(
@@ -686,4 +688,5 @@ private fun PuppyNotificationItem.emoji(): String = when (type) {
     PuppyNotificationType.ROSTER_UPDATE -> "🐾"
     PuppyNotificationType.APP_UPDATE -> "⚙️"
     PuppyNotificationType.SUPPORT -> "🎫"
+    PuppyNotificationType.DEVELOPER -> "🛠️"
 }
