@@ -178,8 +178,8 @@ internal fun PuppyDeveloperConsoleScreen(
         PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
             discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
 
-    BackHandler {
-        if (userAdminOpen) userAdminOpen = false else onBack()
+    if (!userAdminOpen) {
+        BackHandler(onBack = onBack)
     }
 
     if (userAdminOpen) {
