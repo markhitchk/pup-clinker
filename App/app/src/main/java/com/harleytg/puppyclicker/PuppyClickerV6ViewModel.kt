@@ -51,7 +51,6 @@ data class V6GameState(
 
     val treats: Long = 0,
     val lifetimeTreats: Long = 0,
-    val playerXp: Long = 0,
     val bones: Long = 0,
     val pupCoins: Long = 0,
     val casinoChips: Long = 0,
@@ -108,7 +107,7 @@ data class V6GameState(
     val afkLastClaimed: Long = 0
 ) {
     val level: Int
-        get() = PuppyProgression.levelForXp(playerXp)
+        get() = 1 + sqrt(lifetimeTreats.coerceAtLeast(0).toDouble() / 100.0).toInt()
 
     val careScore: Int
         get() = ((happiness + fullness + energy + cleanliness) / 4).coerceIn(0, 100)
@@ -1095,7 +1094,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = current.copy(
             treats = safeAdd(current.treats, tapPayout),
             lifetimeTreats = safeAdd(current.lifetimeTreats, tapPayout),
-            playerXp = PuppyProgression.addXp(current.playerXp, PuppyXpEvent.MANUAL_TAP),
             bones = safeAdd(current.bones, boneDrop),
             pupCoins = safeAdd(current.pupCoins, pupCoinDrop),
             totalTaps = nextTaps,
@@ -1200,7 +1198,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             happiness = (s.happiness + 5).coerceAtMost(100),
             bond = (s.bond + 1).coerceAtMost(100),
             cleanliness = (s.cleanliness - 1).coerceAtLeast(0),
-            playerXp = PuppyProgression.addXp(s.playerXp, PuppyXpEvent.CARE_ACTION),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1221,7 +1218,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             energy = (s.energy - 12).coerceAtLeast(0),
             cleanliness = (s.cleanliness - 3).coerceAtLeast(0),
             bond = (s.bond + 3).coerceAtMost(100),
-            playerXp = PuppyProgression.addXp(s.playerXp, PuppyXpEvent.CARE_ACTION),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1234,7 +1230,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             energy = (s.energy + 30).coerceAtMost(100),
             happiness = (s.happiness + 3).coerceAtMost(100),
-            playerXp = PuppyProgression.addXp(s.playerXp, PuppyXpEvent.CARE_ACTION),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1249,7 +1244,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             cleanliness = (s.cleanliness + 35).coerceAtMost(100),
             happiness = (s.happiness + 4).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
-            playerXp = PuppyProgression.addXp(s.playerXp, PuppyXpEvent.CARE_ACTION),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1262,7 +1256,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
         _state.value = s.copy(
             happiness = (s.happiness + 8).coerceAtMost(100),
             bond = (s.bond + 2).coerceAtMost(100),
-            playerXp = PuppyProgression.addXp(s.playerXp, PuppyXpEvent.CARE_ACTION),
             careActions = safeAdd(s.careActions, 1)
         )
         saveState()
@@ -1671,7 +1664,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             ownedAccessories = current.ownedAccessories + ACCESSORIES,
             treats = maxLong,
             lifetimeTreats = maxLong,
-            playerXp = maxLong,
             bones = maxLong,
             pupCoins = maxLong,
             casinoChips = maxLong,
@@ -2382,14 +2374,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             ),
             treats = prefs.getLong(KEY_TREATS, 0L).coerceAtLeast(0L),
             lifetimeTreats = prefs.getLong(KEY_LIFETIME, 0L).coerceAtLeast(0L),
-            playerXp = PuppyProgressionStore.migrateXp(
-                existingXp = if (prefs.contains(PuppyProgressionStore.KEY_PLAYER_XP)) {
-                    prefs.getLong(PuppyProgressionStore.KEY_PLAYER_XP, 0L)
-                } else {
-                    null
-                },
-                lifetimeTreats = prefs.getLong(KEY_LIFETIME, 0L)
-            ),
             bones = prefs.getLong(KEY_BONES, 0L).coerceAtLeast(0L),
             pupCoins = prefs.getLong(KEY_PUP_COINS, 0L).coerceAtLeast(0L),
             casinoChips = prefs.getLong(KEY_CASINO_CHIPS, 0L).coerceAtLeast(0L),
@@ -2452,7 +2436,6 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             putStringSet(KEY_OWNED_ACCESSORIES, s.ownedAccessories)
             putLong(KEY_TREATS, s.treats)
             putLong(KEY_LIFETIME, s.lifetimeTreats)
-            putLong(PuppyProgressionStore.KEY_PLAYER_XP, s.playerXp)
             putLong(KEY_BONES, s.bones)
             putLong(KEY_PUP_COINS, s.pupCoins)
             putLong(KEY_CASINO_CHIPS, s.casinoChips)
