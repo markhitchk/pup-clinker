@@ -44,6 +44,7 @@ internal object PuppyNotificationCenter {
     private const val CHANNEL_REWARDS = "puppy_rewards_v1"
     private const val CHANNEL_EVENTS = "puppy_events_v1"
     private const val CHANNEL_UPDATES = "puppy_updates_v1"
+    private const val CHANNEL_SYSTEM = "puppy_system_v1"
 
     private const val NOTIFY_DAILY = 42101
     private const val NOTIFY_EVENT = 42102
@@ -52,6 +53,7 @@ internal object PuppyNotificationCenter {
     private const val NOTIFY_TEST = 42105
     private const val NOTIFY_DISCORD_AUTH_UPGRADE = 42106
     private const val NOTIFY_PUPEYE_SECURITY_UPGRADE = 42107
+    private const val NOTIFY_DEVELOPER_MESSAGE_BASE = 42150
     private const val NOTIFY_SYSTEM_REWARD_BASE = 42200
     private const val NOTIFY_SEASONAL_BASE = 42400
 
@@ -106,6 +108,13 @@ internal object PuppyNotificationCenter {
                     NotificationManager.IMPORTANCE_DEFAULT
                 ).apply {
                     description = "Notifications when a newer Puppy Clicker build is available."
+                },
+                NotificationChannel(
+                    CHANNEL_SYSTEM,
+                    "Pup Account Messages",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Developer and Pup Account system messages."
                 }
             )
         )
@@ -281,6 +290,25 @@ internal object PuppyNotificationCenter {
         )
     }
 
+    internal fun notifyDeveloperSystemMessage(
+        context: Context,
+        messageId: String,
+        title: String,
+        body: String
+    ) {
+        val app = context.applicationContext
+        createChannels(app)
+        if (!canNotify(app)) return
+        val suffix = (messageId.hashCode() and 0x7fffffff) % 40
+        post(
+            context = app,
+            channel = CHANNEL_SYSTEM,
+            id = NOTIFY_DEVELOPER_MESSAGE_BASE + suffix,
+            title = title.take(100),
+            text = body.take(1_500)
+        )
+    }
+
     internal fun notifyDiscordAuthUpgrade(context: Context) {
         val app = context.applicationContext
         createChannels(app)
@@ -383,6 +411,10 @@ internal object PuppyNotificationCenter {
         // updates discoverable in the background without polling every sweep.
         withContext(Dispatchers.IO) {
             DynamicPuppyRoster.refreshIfDue(app)
+        }
+
+        runCatching {
+            PupSystemNotificationSync.refresh(app, postAndroidNotification = true)
         }
 
         val ui = PuppyUiPreferences.current(app)
