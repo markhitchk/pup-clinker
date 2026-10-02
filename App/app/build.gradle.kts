@@ -156,7 +156,7 @@ android {
         applicationId = "com.harleytg.puppyclicker"
         minSdk = puppyMinSdk
         targetSdk = puppyTargetSdk
-        versionCode = 33
+        versionCode = 34
         versionName = "1.7.20"
         testInstrumentationRunner = "com.harleytg.puppyclicker.PuppyTestRunner"
 
