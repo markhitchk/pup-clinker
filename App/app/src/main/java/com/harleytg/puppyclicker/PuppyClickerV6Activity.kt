@@ -217,6 +217,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                 }
             }
         }
+    }
 
         Box(
             modifier = Modifier
