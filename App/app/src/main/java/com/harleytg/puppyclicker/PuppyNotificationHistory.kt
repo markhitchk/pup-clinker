@@ -13,7 +13,8 @@ enum class PuppyNotificationType {
     APP_UPDATE,
     ROSTER_UPDATE,
     SYSTEM_REWARD,
-    SUPPORT
+    SUPPORT,
+    DEVELOPER
 }
 
 enum class PuppyNotificationRoute {
