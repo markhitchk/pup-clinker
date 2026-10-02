@@ -173,8 +173,19 @@ internal fun PuppyDeveloperConsoleScreen(
     var showWarn by rememberSaveable { mutableStateOf(true) }
     var showError by rememberSaveable { mutableStateOf(true) }
     var copyStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    var userAdminOpen by rememberSaveable { mutableStateOf(false) }
+    val userAdminAuthorized =
+        PuppyPlayerIdentity.isHarleyTgDeveloper(context) ||
+            discord.guildAccess?.role == DiscordGuildRole.DEVELOPER
 
-    BackHandler(onBack = onBack)
+    BackHandler {
+        if (userAdminOpen) userAdminOpen = false else onBack()
+    }
+
+    if (userAdminOpen) {
+        PuppyDeveloperUserAdminScreen(onBack = { userAdminOpen = false })
+        return
+    }
 
     LaunchedEffect(Unit) {
         PuppyDebugLog.i(
@@ -267,6 +278,21 @@ internal fun PuppyDeveloperConsoleScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(10.dp))
+
+        if (userAdminAuthorized) {
+            Button(
+                onClick = { userAdminOpen = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Manage Pup Accounts")
+            }
+            Text(
+                "Server-authorized user data, inventory and system-message controls.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+        }
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
