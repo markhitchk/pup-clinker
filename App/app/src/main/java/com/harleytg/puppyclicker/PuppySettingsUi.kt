@@ -464,7 +464,7 @@ private fun ProfileSettings(
     val levelProgress = if (nextLevelXp == Long.MAX_VALUE) {
         levelSpan
     } else {
-        (gameState.playerXp - currentLevelStartXp).coerceIn(0L, levelSpan)
+        (gameState.lifetimeTreats - currentLevelStartXp).coerceIn(0L, levelSpan)
     }
 
     ProfileDropdownCard(
@@ -501,7 +501,7 @@ private fun ProfileSettings(
         Spacer(Modifier.height(12.dp))
         ProfileInfoField("CURRENT LEVEL", gameState.level.toString())
         Spacer(Modifier.height(8.dp))
-        ProfileInfoField("TOTAL XP", gameState.playerXp.toString())
+        ProfileInfoField("TOTAL XP", gameState.lifetimeTreats.toString())
         Spacer(Modifier.height(8.dp))
         ProfileInfoField(
             "NEXT LEVEL",
