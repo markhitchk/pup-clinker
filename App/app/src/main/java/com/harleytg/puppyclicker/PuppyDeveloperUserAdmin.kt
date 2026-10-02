@@ -228,9 +228,20 @@ private fun PuppyDeveloperUserEditor(
     val game = detail.game
     var treats by remember(detail.user.playerUuid, game?.treats) { mutableStateOf(game?.treats?.toString().orEmpty()) }
     var lifetimeTreats by remember(detail.user.playerUuid, game?.lifetimeTreats) { mutableStateOf(game?.lifetimeTreats?.toString().orEmpty()) }
+    var playerXp by remember(detail.user.playerUuid, game?.playerXp) { mutableStateOf(game?.playerXp?.toString().orEmpty()) }
     var bones by remember(detail.user.playerUuid, game?.bones) { mutableStateOf(game?.bones?.toString().orEmpty()) }
     var pupCoins by remember(detail.user.playerUuid, game?.pupCoins) { mutableStateOf(game?.pupCoins?.toString().orEmpty()) }
     var casinoChips by remember(detail.user.playerUuid, game?.casinoChips) { mutableStateOf(game?.casinoChips?.toString().orEmpty()) }
+    var totalTaps by remember(detail.user.playerUuid, game?.totalTaps) { mutableStateOf(game?.totalTaps?.toString().orEmpty()) }
+    var careActions by remember(detail.user.playerUuid, game?.careActions) { mutableStateOf(game?.careActions?.toString().orEmpty()) }
+    var totalShopPurchases by remember(detail.user.playerUuid, game?.totalShopPurchases) { mutableStateOf(game?.totalShopPurchases?.toString().orEmpty()) }
+    var totalTicketsFound by remember(detail.user.playerUuid, game?.totalTicketsFound) { mutableStateOf(game?.totalTicketsFound?.toString().orEmpty()) }
+    var dailyStreak by remember(detail.user.playerUuid, game?.dailyStreak) { mutableStateOf(game?.dailyStreak?.toString().orEmpty()) }
+    var prestigeCount by remember(detail.user.playerUuid, game?.prestigeCount) { mutableStateOf(game?.prestigeCount?.toString().orEmpty()) }
+    var skillPoints by remember(detail.user.playerUuid, game?.skillPoints) { mutableStateOf(game?.skillPoints?.toString().orEmpty()) }
+    var totalPrestigePointsEarned by remember(detail.user.playerUuid, game?.totalPrestigePointsEarned) {
+        mutableStateOf(game?.totalPrestigePointsEarned?.toString().orEmpty())
+    }
     var happiness by remember(detail.user.playerUuid, game?.happiness) { mutableStateOf(game?.happiness?.toString().orEmpty()) }
     var fullness by remember(detail.user.playerUuid, game?.fullness) { mutableStateOf(game?.fullness?.toString().orEmpty()) }
     var energy by remember(detail.user.playerUuid, game?.energy) { mutableStateOf(game?.energy?.toString().orEmpty()) }
@@ -306,11 +317,25 @@ private fun PuppyDeveloperUserEditor(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
+                    Text("Currencies & XP", fontWeight = FontWeight.Bold)
                     AdminNumberField("Treats", treats) { treats = it }
                     AdminNumberField("Lifetime Treats", lifetimeTreats) { lifetimeTreats = it }
+                    AdminNumberField("Player XP", playerXp) { playerXp = it }
                     AdminNumberField("Bones", bones) { bones = it }
                     AdminNumberField("Pup Coins", pupCoins) { pupCoins = it }
                     AdminNumberField("Casino Chips", casinoChips) { casinoChips = it }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    Text("Progression", fontWeight = FontWeight.Bold)
+                    AdminNumberField("Total Taps", totalTaps) { totalTaps = it }
+                    AdminNumberField("Care Actions", careActions) { careActions = it }
+                    AdminNumberField("Shop Purchases", totalShopPurchases) { totalShopPurchases = it }
+                    AdminNumberField("Tickets Found", totalTicketsFound) { totalTicketsFound = it }
+                    AdminNumberField("Daily Streak", dailyStreak) { dailyStreak = it }
+                    AdminNumberField("Prestige Count", prestigeCount) { prestigeCount = it }
+                    AdminNumberField("Skill Points", skillPoints) { skillPoints = it }
+                    AdminNumberField("Prestige Points Earned", totalPrestigePointsEarned) {
+                        totalPrestigePointsEarned = it
+                    }
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     Text("Active puppy care · " + game.activePuppy, fontWeight = FontWeight.Bold)
                     AdminNumberField("Happiness", happiness) { happiness = it }
@@ -325,9 +350,18 @@ private fun PuppyDeveloperUserEditor(
                             listOf(
                                 "treats" to treats,
                                 "lifetimeTreats" to lifetimeTreats,
+                                "playerXp" to playerXp,
                                 "bones" to bones,
                                 "pupCoins" to pupCoins,
                                 "casinoChips" to casinoChips,
+                                "totalTaps" to totalTaps,
+                                "careActions" to careActions,
+                                "totalShopPurchases" to totalShopPurchases,
+                                "totalTicketsFound" to totalTicketsFound,
+                                "dailyStreak" to dailyStreak,
+                                "prestigeCount" to prestigeCount,
+                                "skillPoints" to skillPoints,
+                                "totalPrestigePointsEarned" to totalPrestigePointsEarned,
                                 "happiness" to happiness,
                                 "fullness" to fullness,
                                 "energy" to energy,
