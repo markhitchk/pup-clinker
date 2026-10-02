@@ -183,17 +183,6 @@ internal fun PuppySettingsScreen(state: V6GameState, vm: PuppyClickerV6ViewModel
             DiscordSettings(state, vm)
         }
 
-        SettingsSectionCard(
-            key = "transfer",
-            icon = "↕",
-            title = "Import / Export",
-            subtitle = "Back up or restore your Puppy Clicker .pupsave",
-            expanded = expandedSection == "transfer",
-            onToggle = { toggle("transfer") }
-        ) {
-            SaveTransferSettings(onImportSuccess = vm::reloadImportedSave)
-        }
-
         Spacer(Modifier.height(7.dp))
         SettingsLabel("APP & EXPERIENCE")
 
@@ -475,7 +464,7 @@ private fun ProfileSettings(
     val levelProgress = if (nextLevelXp == Long.MAX_VALUE) {
         levelSpan
     } else {
-        (gameState.lifetimeTreats - currentLevelStartXp).coerceIn(0L, levelSpan)
+        (gameState.playerXp - currentLevelStartXp).coerceIn(0L, levelSpan)
     }
 
     ProfileDropdownCard(
@@ -512,7 +501,7 @@ private fun ProfileSettings(
         Spacer(Modifier.height(12.dp))
         ProfileInfoField("CURRENT LEVEL", gameState.level.toString())
         Spacer(Modifier.height(8.dp))
-        ProfileInfoField("TOTAL XP", gameState.lifetimeTreats.toString())
+        ProfileInfoField("TOTAL XP", gameState.playerXp.toString())
         Spacer(Modifier.height(8.dp))
         ProfileInfoField(
             "NEXT LEVEL",
@@ -611,39 +600,6 @@ private fun ProfileSettings(
                     "Add Birthday"
                 }
             )
-        }
-    }
-
-    ProfileDropdownCard(
-        key = "identity",
-        icon = "🪪",
-        title = "Account details",
-        subtitle = "Friend Code · Player ID · account details",
-        expanded = expandedCard == "identity",
-        onToggle = {
-            expandedCard = if (expandedCard == "identity") null else "identity"
-        }
-    ) {
-        Text(
-            "Your Puppy Clicker identity stays device-bound.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
-        ProfileInfoField(
-            label = "PLAYER ID",
-            value = PuppyPlayerIdentity.publicPlayerId(context)
-        )
-        Spacer(Modifier.height(8.dp))
-        ProfileInfoField(
-            label = "FRIEND CODE",
-            value = PuppyPlayerIdentity.publicFriendCode(context)
-        )
-        if (officialDeveloper) {
-            Spacer(Modifier.height(8.dp))
-            ProfileInfoField("ACCOUNT", "HarleyTG Developer / Owner")
-            Spacer(Modifier.height(8.dp))
-            ProfileInfoField("STUDIO", "Harley's Studios")
         }
     }
 
