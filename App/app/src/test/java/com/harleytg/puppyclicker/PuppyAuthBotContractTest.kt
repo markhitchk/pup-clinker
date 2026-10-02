@@ -62,7 +62,8 @@ class PuppyAuthBotContractTest {
         assertFalse(onboarding.contains("Verification code pending…"))
 
         assertTrue(settings.contains("title = \"Advanced\""))
-        assertTrue(settings.contains("title = \"Account details\""))
+        assertTrue(settings.contains("title = \"Account & Identity\""))
+        assertFalse(settings.contains("title = \"Account details\""))
         assertTrue(settings.contains("PuppyIdentityHeaderCard"))
     }
 
