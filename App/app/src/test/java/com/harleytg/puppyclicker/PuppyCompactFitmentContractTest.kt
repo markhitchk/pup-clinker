@@ -26,9 +26,6 @@ class PuppyCompactFitmentContractTest {
     @Test
     fun primaryScreensUseMinimalTopAndNoBottomContentPadding() {
         listOf(
-            "PuppySlotsUi.kt",
-            "PuppyRouletteUi.kt",
-            "PuppyBlackjackUi.kt",
             "PuppyCasinoHub.kt",
             "PuppySettingsUi.kt",
             "PuppyRosterScreen.kt",

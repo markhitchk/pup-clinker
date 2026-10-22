@@ -141,12 +141,7 @@ internal fun PuppyScratchersScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
-    ) {
+    PuppyCasinoScrollableColumn {
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Scratchers", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
@@ -288,6 +283,7 @@ internal fun PuppyScratchersScreen(
         }
 
         Spacer(Modifier.height(16.dp))
+        PuppyCasinoHelp {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -314,6 +310,7 @@ internal fun PuppyScratchersScreen(
                 Text("• Faster scratch-token movement creates a slightly wider scratch trail.", style = MaterialTheme.typography.bodySmall)
                 Text("• All costs and payouts use Casino Chips only.", style = MaterialTheme.typography.bodySmall)
             }
+        }
         }
         Spacer(Modifier.height(4.dp))
     }

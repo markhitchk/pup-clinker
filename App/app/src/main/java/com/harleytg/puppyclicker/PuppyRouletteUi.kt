@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -216,12 +217,7 @@ internal fun PuppyRouletteScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
-    ) {
+    PuppyCasinoScrollableColumn {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
         }
@@ -391,7 +387,7 @@ internal fun PuppyRouletteScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        RouletteRulesCard()
+        PuppyCasinoHelp { RouletteRulesCard() }
 
         Spacer(Modifier.height(4.dp))
     }
@@ -854,7 +850,7 @@ private fun RouletteNumberButton(
 
     Surface(
         modifier = modifier
-            .height(42.dp)
+            .heightIn(min = 48.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(10.dp),
         color = color,

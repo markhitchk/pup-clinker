@@ -135,6 +135,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                     )
                 )
                 .padding(padding)
+                .consumeWindowInsets(padding)
         ) {
             val internal = internalDestination
             if (internal != null) {

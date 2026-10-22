@@ -19,14 +19,7 @@ class PuppyCasinoScreenshotUiContractTest {
         assertTrue(wheel.contains("Color.Black.copy(alpha = 0.42f)"))
     }
 
-    @Test
-    fun blackjackWalletReplacesBakedTreatCopyBeforeDrawingCasinoChipCopy() {
-        val blackjack = source("PuppyBlackjackUi.kt")
-
-        assertTrue(blackjack.contains("BlackjackWalletCopy("))
-        assertTrue(blackjack.contains("\"Casino Chip Wallet\""))
-        assertFalse(blackjack.contains("modifier = Modifier.offset(x = maxWidth * 0.23f, y = maxHeight * 0.49f)"))
-    }
+    // Blackjack screenshots and wallet semantics are verified by PuppyBlackjackResponsiveTest.
 
     @Test
     fun scratcherStatusLivesOutsideTheScratchArtwork() {
