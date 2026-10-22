@@ -211,6 +211,7 @@ private fun PuppyClickerV6App(vm: PuppyClickerV6ViewModel) {
                         )
                     )
                     .padding(padding)
+                    .consumeWindowInsets(padding)
             ) {
                 PuppyResponsiveContent(maxWidth = viewport.primaryContentMaxWidth) {
                     V6TabContent(tab = tab, state = state, vm = vm)

@@ -95,7 +95,7 @@ class PuppyBlackjackIntegrationContractTest {
     fun acceptedBlackjackCanContinueEvenIfFlagLaterDisables() {
         val ui = source("PuppyBlackjackUi.kt")
 
-        val actionsStart = ui.indexOf("if (\n            blackjackRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED")
+        val actionsStart = ui.indexOf("acceptingActions = blackjackRound?.state == PuppyCasinoRoundState.WAGER_ACCEPTED")
         val startButton = ui.indexOf("canPlayFeature &&")
 
         assertTrue(actionsStart >= 0)

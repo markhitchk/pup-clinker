@@ -115,12 +115,7 @@ internal fun PuppyPlinkoScreen(
             !showResult &&
             plinkoRound?.state == PuppyCasinoRoundState.OUTCOME_COMMITTED
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
-    ) {
+    PuppyCasinoScrollableColumn {
         TextButton(onClick = onBack) { Text("‹ Puppy Casino", fontWeight = FontWeight.Bold) }
         Text("Pup Plinko", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
         Text(
@@ -206,6 +201,7 @@ internal fun PuppyPlinkoScreen(
         )
 
         Spacer(Modifier.height(16.dp))
+        PuppyCasinoHelp {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -220,6 +216,7 @@ internal fun PuppyPlinkoScreen(
                 Text("• The exact path, bin, multiplier and payout are committed before the ball moves.", style = MaterialTheme.typography.bodySmall)
                 Text("• All wagers and payouts use the Casino Chip wallet.", style = MaterialTheme.typography.bodySmall)
             }
+        }
         }
         Spacer(Modifier.height(4.dp))
     }

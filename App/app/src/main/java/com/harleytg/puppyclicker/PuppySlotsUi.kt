@@ -182,12 +182,7 @@ internal fun PuppySlotsScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 2.dp, end = 16.dp, bottom = 0.dp)
-    ) {
+    PuppyCasinoScrollableColumn {
         TextButton(onClick = onBack) {
             Text("‹ Puppy Casino", fontWeight = FontWeight.Bold)
         }
@@ -351,7 +346,7 @@ internal fun PuppySlotsScreen(
         }
 
         Spacer(Modifier.height(16.dp))
-        SlotsRulesCard()
+        PuppyCasinoHelp { SlotsRulesCard() }
 
         Spacer(Modifier.height(16.dp))
         SlotsPayoutTable()

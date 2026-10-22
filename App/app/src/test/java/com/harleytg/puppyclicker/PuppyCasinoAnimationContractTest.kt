@@ -48,25 +48,7 @@ class PuppyCasinoAnimationContractTest {
         assertTrue(roulette.contains("delay(if (state.animationsEnabled) 2_600 else 250)"))
     }
 
-    @Test
-    fun blackjackDealsAndRevealsCardsWithMotion() {
-        val blackjack = source("PuppyBlackjackUi.kt")
-
-        assertTrue(blackjack.contains("val reveal = remember { Animatable(1f) }"))
-        assertTrue(blackjack.contains("dealDelayMs = index * 120L"))
-        assertTrue(blackjack.contains("translationX = (1f - reveal.value) * 42f"))
-        assertTrue(blackjack.contains("translationY = (1f - reveal.value) * -46f"))
-        assertTrue(blackjack.contains("rotationY = (1f - reveal.value) * 105f"))
-        assertTrue(blackjack.contains("rotationZ = (1f - reveal.value) * -7f"))
-        assertTrue(blackjack.contains("shadowElevation = 2f + (9f * reveal.value)"))
-        assertTrue(blackjack.contains("BlackjackActionPanel("))
-        assertTrue(blackjack.contains(".aspectRatio(1192f / 720f)"))
-        assertTrue(blackjack.contains("compact = true"))
-        assertTrue(blackjack.contains("🐾 + HIT"))
-        assertTrue(blackjack.contains("■ STAND"))
-        assertTrue(blackjack.contains("animateFloatAsState("))
-        assertTrue(blackjack.contains("animationToken = id.toString() + \":\" + hidden"))
-    }
+    // Blackjack motion and layout are exercised by PuppyBlackjackResponsiveTest on Compose.
 
     @Test
     fun newGamesUseRequiredPhysicalInteractions() {
