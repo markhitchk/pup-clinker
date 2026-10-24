@@ -4,6 +4,7 @@ import {validPendingScratch} from './scratch.js';
 import {validPendingSlots} from './slotsV6.js';
 import {validPendingRoulette} from './rouletteV6.js';
 import {validPendingPlinko} from './plinkoV6.js';
+import {validPendingWheel} from './wheelV6.js';
 import {localEpochDay} from './monthlyRewards.js';
 // Kotlin PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY.
 export const MAX_TICKETS_PER_RARITY=9999;
@@ -62,7 +63,7 @@ export const freshGame=()=>({
   totalTicketsFound:0,ticketDropSerial:0,lastTicketDrop:null,
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
-  xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,pendingSlots:null,pendingRoulette:null,pendingPlinko:null,
+  xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,pendingSlots:null,pendingRoulette:null,pendingPlinko:null,pendingWheel:null,
   onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
   hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,cooldownUntilMs:0,
   careActions:0,totalShopPurchases:0,
@@ -113,6 +114,7 @@ export function sanitizeGame(input){
   b.pendingSlots=validPendingSlots(b.pendingSlots)?b.pendingSlots:null;
   b.pendingRoulette=validPendingRoulette(b.pendingRoulette)?b.pendingRoulette:null;
   b.pendingPlinko=validPendingPlinko(b.pendingPlinko)?b.pendingPlinko:null;
+  b.pendingWheel=validPendingWheel(b.pendingWheel)?b.pendingWheel:null;
   return b;
 }
 export const level=g=>1+Math.floor(Math.sqrt(g.lifetimeTreats/100));
