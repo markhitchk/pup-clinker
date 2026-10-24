@@ -28,7 +28,7 @@ npx expo run:android
 npx expo prebuild --platform android
 ```
 
-The package ID matches the Play app. Debug builds use a different signing key: installing them on top of the existing Play version **will fail with a signature mismatch**. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
+The package ID matches the Play app. Use `PUPPY_NATIVE_PREVIEW=1 npx expo run:android` to install the separately named `com.harleytg.puppyclicker.preview` test app alongside the existing Play app. **Never** try to install an untrusted debug build over the Play install; original Play signing is different. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
 
 ## Screens implemented in React Native
 
@@ -56,3 +56,7 @@ Full parity still requires original onboarding, achievements/XP, 100% native cha
 ## CI
 
 `react-native-android.yml` runs Node economy/state tests and attempts an Android Metro export and native prebuild on GitHub-hosted CI. These checks do not prove Google Play signing or user-data migration. Use the signed original-key AAB and Google Play internal test track for actual replacement, only after migration gates pass.
+
+## Test APK from GitHub Actions
+
+Manually run [React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) via GitHub Actions → Run workflow on the migration branch. It compiles and uploads a **debug-signed installable preview APK** named `puppy-clicker-react-native-preview-debug`. It uses `PUPPY_NATIVE_PREVIEW=1` and package `com.harleytg.puppyclicker.preview`, so it cannot overwrite the current signed app. The artifact is **not** the production Google Play AAB.

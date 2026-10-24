@@ -1,0 +1,42 @@
+name: Puppy Clicker React Native Preview APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-safe-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mobile
+    env:
+      PUPPY_NATIVE_PREVIEW: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Expo dependencies
+        run: npm install --no-audit --no-fund
+      - name: Ensure preview package cannot replace the production installation
+        run: |
+          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; if(c({config:a.expo}).android.package!=='com.harleytg.puppyclicker.preview')process.exit(1)"
+      - name: Test game logic
+        run: npm test
+      - name: Generate safe Android preview project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build debug APK (NOT Google Play signed)
+        run: cd android && chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+      - name: Upload installable preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-react-native-preview-debug
+          path: Mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
