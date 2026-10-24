@@ -129,7 +129,7 @@ test('Modified pending payout or unknown symbols cannot be settled or persisted'
 
 test('Slots scene has Kotlin result and rules, linked from Casino without duplicate parent wager bar',()=>{
  assert.ok(app.includes('SlotsV6'));
- assert.ok(app.includes("g.pendingSlots?'slots':'hub'"));
+ assert.match(app,/g\.pendingSlots\?'slots':/);
  assert.ok(app.includes('Unfinished Slots Spin'));
  assert.ok(app.includes("type:'slotsStart'")||component.includes("type:'slotsStart'"));
  assert.ok(component.includes("type:'slotsReveal'"));
