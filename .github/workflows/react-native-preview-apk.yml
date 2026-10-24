@@ -7,6 +7,10 @@ on:
     branches: [feat/react-native-full-android]
     paths:
       - 'Mobile/**'
+      # Do not cancel a valid queued APK for documentation-only commits.
+      - '!Mobile/**/*.md'
+      - '!Mobile/**/*.py'
+      - '!Mobile/.gitignore'
       - '.github/workflows/react-native-preview-apk.yml'
 concurrency:
   group: puppy-react-native-preview-${{ github.ref }}
@@ -27,6 +31,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: Mobile/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
