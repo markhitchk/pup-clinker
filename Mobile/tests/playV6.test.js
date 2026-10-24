@@ -91,7 +91,7 @@ test('Kotlin revamped Play supports both puppy portrait and full-width tap butto
  assert.ok(react.includes("onLayout={e=>setPrimaryHeight("));
  assert.ok(react.includes("style={[styles.revampedPlayViewport"));
  assert.ok(!reactPlay.includes('stageHeight'));
- assert.ok(react.includes("borderRadius:transparent?0:size/2"));
+ assert.ok(react.includes("borderRadius:size/2,overflow:\'hidden\'"));
  assert.ok(react.includes("const ratio=0.96;"));
  assert.ok(react.includes("!transparent&&puppy.emoji"));
 });
