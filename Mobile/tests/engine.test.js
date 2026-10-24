@@ -9,10 +9,10 @@ test('new native profile uses the Android four-currency ledger and roster', ()=>
   assert.equal(g.puppyStyle,'classic');
   assert.ok(ROSTER.length>=25);
 });
-test('twenty valid taps give a bone but do not grant idle income',()=>{
+test('twenty healthy-puppy taps award care bonus and one Bone without idle income',()=>{
   const g=freshGame();
   for(let i=1;i<=20;i++)tap(g,1000+i*1100,()=>0.99);
-  assert.equal(g.treats,20);
+  assert.equal(g.treats,40); // +1 base and +1 healthy-care bonus on each tap
   assert.equal(g.bones,1);
   assert.equal(g.autoPerSecond,0);
 });
