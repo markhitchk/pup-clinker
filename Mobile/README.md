@@ -2,7 +2,7 @@
 
 This is a genuine React Native / Expo Android application, **NOT a website wrapper**. Its React components draw Android UI with React Native views and native touch handling.
 
-**Status:** PLAYABLE LOCAL GUEST PREVIEW ONLY — not a feature-complete production replacement. The signed Kotlin/Compose app in [`../App/`](../App/) remains the sole existing Google Play release.
+**Status:** LOCAL GUEST PREVIEW SOURCE PORT ONLY — build and device parity not yet certified; not a feature-complete production replacement. The signed Kotlin/Compose app in [`../App/`](../App/) remains the sole existing Google Play release.
 
 ## Versions / Android identity
 
@@ -38,7 +38,7 @@ The `app.json` reserves the future Play package ID, but **runtime configuration 
 - Prestige reset and permanent skill tree.
 - Roster selection, local favorites/search, nine source achievements, guest XP, Settings and guest reset.
 - Six-step guest onboarding: welcome, player setup, personalization, privacy, notifications, ready.
-- Casino Chips conversion; slots, roulette, fixed-wager scratchers, Plinko, Lucky Wheel, Blackjack with physical 52-card deck, Hit/Stand/Double/Split and persisted local round.
+- Casino Chips conversion; six dedicated Kotlin-sourced game screens: Slots, Roulette, Scratchers, Plinko, Lucky Wheel and Blackjack with physical 52-card deck, Hit/Stand/Double/Split and persisted local round.
 
 `src/engine/` contains a **copied, traceable starting point** of the earlier web Android-derived economy. Those engines are not a full reimplementation of the giant Kotlin ViewModel, nor are they currently verified against every Android state transition.
 
@@ -68,7 +68,7 @@ The preview remains separately installed from the Kotlin Google Play app (`com.h
 
 ## Artwork
 
-The original logo and all **30 V1/V2/Discord puppy PNG portraits** are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Unlocking restricted or role-gated puppies still requires verified official entitlements; including a picture does not grant ownership. Future V3+ streamed art must be validated before native rendering.
+The original logo and all **32 V1/V2/Discord and Kotlin test puppy PNG portraits** are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Unlocking restricted or role-gated puppies still requires verified official entitlements; including a picture does not grant ownership. Future V3+ streamed art must be validated before native rendering.
 
 ## Detailed migration audit
 
@@ -77,3 +77,9 @@ See [PARITY.md](PARITY.md) for a feature-by-feature status against the Kotlin so
 ## Production release guard
 
 `Mobile/app.config.js` always chooses `com.harleytg.puppyclicker.preview` unless **both** `PUPPY_NATIVE_PRODUCTION=1` and `PUPPY_NATIVE_RELEASE_APPROVED=1` are set, and the preview flag is absent. This is a build-time safeguard, **not proof** of parity or permission to publish. Release candidates require manual confirmation of original signing, verified Supabase/PupEye authority and Kotlin-to-RN data migration, plus signed Play internal testing. Do not set the release approval flag just to generate an APK.
+
+## Part 6 Android build and screenshot verification
+
+GitHub workflow [React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) must finish green before an APK artifact is advertised as working. On October 24, 2026, workflow run [40068347188](https://github.com/markhitchk/pup-clinker/actions/runs/40068347188) failed **8 of 147** Node tests and did **not** produce a verified APK. Part 6 commits fix the Wheel width crash and stale asset/navigation/daily-goal assertions; verify a **new completed** workflow run before claiming that those fixes pass CI or that an APK exists.
+
+For actual image parity rather than source assumptions, follow [PART_6_DEVICE_QA.md](PART_6_DEVICE_QA.md) and [VISUAL_PARITY_AUDIT.md](VISUAL_PARITY_AUDIT.md). `scripts/android_visual_audit.py` compares original Kotlin and React screenshots at identical size, exports changed-pixel percentages and heatmaps, and refuses missing screenshots. Run on the same physical Android device with matching states. **No comparison images have been collected in this repository; 100% visual parity is not verified.**
