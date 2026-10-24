@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {freshGame} from '../src/engine/game.js';
+import {freshGame,sanitizeGame} from '../src/engine/game.js';
 import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../src/engine/onboarding.js';
 import {transition} from '../src/state/reducer.js';
 import {parseGuestSave,serializeGuestSave} from '../src/state/guestSave.js';
@@ -38,4 +38,9 @@ test('no replay can finish onboarding before explicit final ready step',()=>{
  s=transition(s,{type:'onboardFinish'});
  assert.equal(s.game.onboardingComplete,true);
  assert.equal(parseGuestSave(serializeGuestSave(s.game)).onboardingComplete,true);
+});
+
+test('local guest names normalize whitespace when restoring saved state',()=>{
+ const g=sanitizeGame({...freshGame(),guestName:'  Puppy\\n  Tester  '});
+ assert.equal(g.guestName,'Puppy Tester');
 });
