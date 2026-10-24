@@ -188,7 +188,7 @@ export function transition(state,action){
    break;
   }
   case 'slotsStart':{
-   if(blackjack||g.pendingScratch||g.pendingSlots)return {...state,notice:'Finish your current Casino round first'};
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round first'};
    const pending=newSlotsGuestRound(action.wager,action.rolls,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Slots wager or rolls'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
