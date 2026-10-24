@@ -9,3 +9,6 @@ ios/
 *.apk
 .env
 .env.*
+# Device QA artifacts may contain sensitive account data; never commit them.
+screenshots/
+visual-audit-output/
