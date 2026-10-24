@@ -29,6 +29,21 @@
 | Lucky Pup Wheel | Part 5F seven source-weighted slices, segmented labels, independent 18-click pointer, committed spin + once-only payout. 2% protected PUP reward intentionally refunded in guest mode; no trusted entitlement integration | 3 byte-identical Kotlin wheel PNGs | **Missing** | **Not 100% verified** |
 | Settings / profile / dialogs / notifications / admin | Incomplete; native auth and settings parity pending | Partial | **Missing** | **Not 100% verified** |
 
+## October 23 user-supplied Android UI mismatch: revamp vs old V6 preview
+
+A screenshot of the installed React preview was compared with a screenshot of the installed Kotlin app on the user's Android phone. **They are not synchronized game-state screenshots**: the guest React app shows Buddy and zero currency, while Kotlin shows an owned Dev Pup and progressed currencies. This is a genuine *structural* mismatch, but these captures cannot establish pixel metrics or save parity.
+
+| Observed difference | Kotlin production screenshot | Corrective React PR |
+| --- | --- | --- |
+| Main navigation | Play · Care · Roster · Shop · Rewards | Switch five tabs to the same order; Settings/Prestige are internal |
+| Top toolbar | Brand logo/title with bell and settings | Shared header with notification/settings routes; preview identity remains visible |
+| Play heading | Play + short tagline | Current page header instead of Buddy/mood brand banner |
+| Wallet | Horizontal 4 currency summary | Preserve horizontal wallet; compact big values to avoid uncontrolled wrapping |
+| Tap area | Centered art, energy and care bonus, full-width cyan tap button | Replace old rounded circle + inset tap badge and move care needs to Care page |
+| Next reward | Goal summary, progress bar, gift icon | Add date-driven next unclaimed goal and reward strip |
+
+**Remaining parity blockers:** React still uses a local guest state with different portraits/entitlements than Kotlin. Settings, notifications, roster and all other screens are still incompletely ported; original animation/spacing and responsive behavior have not been visually verified. The current change corrects major structural discrepancies but **does not certify the complete app UI or a successful APK build**.
+
 ## Minimum evidence to mark EACH screen 100%
 
 1. Start the same feature state with the **same actual Kotlin original assets** in both APKs. Use identical Android device, density, system fontScale, theme, locale and orientation. Record the native status/navigation bar and safe-area offsets.
