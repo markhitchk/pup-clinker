@@ -31,8 +31,9 @@ test('Care, Shop and Roster retain native filtered pages',()=>{
  assert.ok(kotlin.includes('FilterChip(selected = page == 0'));
  for(const title of ['💖 Care','📅 Daily','🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins'])
   assert.ok(ui.includes(title),title);
- assert.ok(ui.includes("kind:'feed'"));
- assert.ok(ui.includes("kind:'wash'"));
+ assert.ok(ui.includes("careAction('feed'"));
+ assert.ok(ui.includes("careAction('wash'"));
+ assert.ok(ui.includes("type:'care',kind,now:Date.now()"));
  for(const option of ['Unlocked','Locked','All Categories'])assert.ok(ui.includes(option),option);
 });
 
