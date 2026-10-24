@@ -874,7 +874,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
- const [page,setPage]=useState(g.pendingScratch?'scratchers':'hub');
+ const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':'hub');
  const [accepted,setAccepted]=useState(false);
  const {width}=useWindowDimensions();
  useEffect(()=>{
@@ -893,6 +893,12 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
   {page==='hub'?<>
+   {state.blackjack?<View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:26}}>🃏</Txt>
+    <View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Blackjack Hand</Txt>
+     <Txt muted style={styles.small}>Your original cards and wager are saved. Resume before opening another casino game.</Txt></View>
+    <Button compact onPress={()=>setPage('blackjack')}>Resume</Button>
+   </View>:null}
    {g.pendingScratch?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🎟️</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Scratchers Card</Txt><Txt muted style={styles.small}>Your saved result is ready. Scratch 68% to claim it; no other wagers can start.</Txt></View>
     <Button compact onPress={()=>setPage('scratchers')}>Resume</Button>
