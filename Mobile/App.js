@@ -15,6 +15,9 @@ import ScratchStage from './src/components/ScratchStage.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
+import {LEGACY_V6_PUPPIES,legacyRosterSections,unlockedLegacyCount} from './src/engine/rosterV6.js';
+import {GACHA_ART} from './src/assets/gacha.js';
+import {GACHA_MACHINE,gachaMachineFrame} from './src/engine/gachaV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -45,11 +48,24 @@ function Meter({label,value,icon}){
   </View>
  </View>;
 }
-function Portrait({puppy,size=228}){
+function Portrait({puppy,size=228,unlocked=true,accessory='None'}){
  const [broken,setBroken]=useState(false);
  useEffect(()=>setBroken(false),[puppy.id,puppy.image]);
- return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2}]}>
-  {broken?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:<Image accessibilityLabel={puppy.name} source={PUPPY_IMAGES[puppy.id]||{uri:puppy.image}} resizeMode="contain" onError={()=>setBroken(true)} style={{width:'100%',height:'100%'}}/>}
+ const v2=puppy.id.startsWith('v2_');
+ const ratio=v2?0.96:0.90;
+ const asset=PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
+ return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2,overflow:'hidden'}]}>
+  {broken||!asset?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:
+   <Image accessibilityLabel={puppy.name} source={asset} resizeMode="contain"
+    onError={()=>setBroken(true)} style={{width:size*ratio,height:size*ratio}}/>}
+  {puppy.emoji?<View pointerEvents="none" style={[styles.portraitBadge,{top:size*0.05,right:size*0.05}]}>
+   <Txt style={{fontSize:Math.max(9,size*0.13)}}>{puppy.emoji}</Txt>
+  </View>:null}
+  {!unlocked?<View pointerEvents="none" style={styles.lockedPortraitOverlay}>
+   <Txt style={{fontSize:size*0.22}}>🔒</Txt>
+  </View>:accessory!=='None'?<View pointerEvents="none" style={[styles.portraitAccessory,accessory==='Bandana'?{bottom:0}:{top:0}]}>
+   <Txt style={{fontSize:size*(accessory==='Bandana'?0.18:0.16)}}>{accessory==='Bandana'?'🧣':accessory==='Bow'?'🎀':'👑'}</Txt>
+  </View>:null}
  </View>;
 }
 // Visual structure follows V6Play/V6Wallet/V6NeedPill in the Kotlin launcher.
@@ -398,6 +414,12 @@ function RosterScreen({g,act,registry}){
  const available=registry.items;
  const [sort,setSort]=useState('unlocked');
  const [inspected,setInspected]=useState(g.puppyStyle);
+ const [view,setView]=useState('collection');
+ const [renameOpen,setRenameOpen]=useState(false);
+ const [editing,setEditing]=useState(g.puppyName);
+ const sections=legacyRosterSections(registry.items);
+ useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
+
  const selected=available.find(p=>p.id===inspected)||available.find(p=>p.id===g.puppyStyle)||available[0];
  const selectedOwned=g.unlockedPuppies.includes(selected.id);
  const selectedFavorite=g.favoritePuppies.includes(selected.id);
@@ -409,7 +431,56 @@ function RosterScreen({g,act,registry}){
    (p.name.toLowerCase().includes(search.toLowerCase().trim())||p.id.includes(search.toLowerCase().trim()));
  }).sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='number'?a.number-b.number:Number(g.unlockedPuppies.includes(b.id))-Number(g.unlockedPuppies.includes(a.id)));
  const reset=()=>{setSearch('');setStatus('all');setCategory('all');setFavoritesOnly(false);setSort('unlocked');};
+ if(view==='collection')return <View style={styles.gamePage}>
+  <PageHeader withLogo title="Puppy Collection" subtitle="V1 classics and V2 puppies in one collection."/>
+  <Txt style={styles.itemName}>Unlocked {unlockedLegacyCount(g.unlockedPuppies)} / {LEGACY_V6_PUPPIES.length}</Txt>
+  {sections.map(section=><View key={section.id} style={styles.rosterCollectionGroup}>
+   <Txt style={styles.sectionTitle}>{section.title}</Txt>
+   {section.items.map(p=>{
+    const owned=g.unlockedPuppies.includes(p.id),selected=g.puppyStyle===p.id;
+    return <Pressable key={p.id} disabled={!owned}
+     accessibilityRole="button" accessibilityState={{disabled:!owned,selected}}
+     accessibilityLabel={p.name+(owned?', unlocked':', locked')}
+     onPress={()=>act({type:'switch',id:p.id,now:Date.now()})}
+     style={[styles.rosterCollectionRow,selected&&styles.rosterSelected]}>
+     <Portrait puppy={p} size={86} unlocked={owned}
+      accessory={selected?g.accessory:'None'}/>
+     <View style={{flex:1,gap:5}}>
+      <Txt style={styles.itemName}>{p.name}</Txt>
+      <Txt muted style={styles.small}>{p.description}</Txt>
+      {p.redeemOnly?<Txt muted style={styles.tiny}>{section.id.toUpperCase()} Puppy Code {owned?'unlocked':'unlock'}</Txt>:null}
+     </View>
+     <Txt style={styles.itemName}>{selected?'✓':owned?'Choose':'🔒'}</Txt>
+    </Pressable>;
+   })}
+  </View>)}
+  <Button secondary onPress={()=>setRenameOpen(!renameOpen)}>Rename {g.puppyName}</Button>
+  {renameOpen?<View style={styles.rosterRename}>
+   <TextInput value={editing} onChangeText={setEditing} maxLength={18}
+    accessibilityLabel="Rename puppy" placeholder="Puppy name" placeholderTextColor={C.muted} style={styles.input}/>
+   <View style={styles.actions}>
+    <Button onPress={()=>{act({type:'rename',name:editing});setRenameOpen(false);}}>Save</Button>
+    <Button secondary onPress={()=>setRenameOpen(false)}>Cancel</Button>
+   </View>
+  </View>:null}
+  <Txt style={styles.sectionTitle}>Accessories</Txt>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:7}}>
+   {['None','Bandana','Bow','Crown'].map(name=><Pressable key={name}
+    accessibilityRole="button"
+    accessibilityState={{disabled:!g.ownedAccessories.includes(name),selected:g.accessory===name}}
+    disabled={!g.ownedAccessories.includes(name)}
+    onPress={()=>act({type:'equip',name})}
+    style={[styles.filterChip,{flex:0,minWidth:90},g.accessory===name&&styles.filterChipSelected]}>
+    <Txt style={[styles.filterText,g.accessory===name&&styles.filterTextSelected]}>
+     {name}{g.ownedAccessories.includes(name)?'':' 🔒'}
+    </Txt>
+   </Pressable>)}
+  </ScrollView>
+  <Button compact secondary onPress={()=>setView('browser')}>Browse online V3+ and advanced filters</Button>
+  <Txt muted style={styles.small}>Guest preview collection; original Puppy Code and Discord entitlements are not connected.</Txt>
+ </View>;
  return <View style={styles.gamePage}>
+  <Button compact secondary onPress={()=>setView('collection')}>← Kotlin Puppy Collection</Button>
   <PageHeader title="Puppy Roster" subtitle="Browse the original Kotlin puppy roster and streamed artwork."/>
   <View style={styles.filterRow}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.filterChip,status===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,status===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍 Search puppies or ID" placeholderTextColor={C.muted} style={styles.input} maxLength={64} value={search} onChangeText={setSearch}/>
@@ -851,6 +922,13 @@ const styles=StyleSheet.create({
  settingsChevron:{fontSize:22,fontWeight:'700',color:C.muted},
  previewPill:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:'#352B13',paddingHorizontal:8,paddingVertical:6,borderRadius:10,overflow:'hidden'},
 
+ // Kotlin V6Pups portrait, 86dp horizontal entries and locked scrim.
+ portraitBadge:{position:'absolute',backgroundColor:'rgba(19,28,32,0.86)',borderRadius:999,padding:3},
+ portraitAccessory:{position:'absolute',alignSelf:'center'},
+ lockedPortraitOverlay:{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.42)',alignItems:'center',justifyContent:'center'},
+ rosterCollectionGroup:{gap:8},
+ rosterCollectionRow:{backgroundColor:C.surface,borderRadius:16,padding:12,flexDirection:'row',alignItems:'center',gap:11,borderWidth:1,borderColor:C.line},
+ rosterRename:{gap:9},
  // Kotlin V6Shop and PuppyPupCoinShop native card and offer hierarchy.
  shopTopActions:{flexDirection:'row',gap:8},
  shopDiscountLabel:{color:C.accent,fontWeight:'800',fontSize:13},
