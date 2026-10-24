@@ -46,6 +46,12 @@ test('Play wallet and label use Kotlin formatV6 thresholds and precision',()=>{
  assert.equal(v6Format(1234567,false),'1,234,567');
  assert.equal(v6Format(1000000000,true),'1.00B');
  assert.equal(v6Format(1000000000000,true),'1.00T');
+ assert.equal(v6Format('9000000000000000015',false),'9,000,000,000,000,000,015');
+ assert.equal(v6Format(9_000_000_000_000_000_015n,false),'9,000,000,000,000,000,015');
+ assert.equal(v6Format('9000000000000000015',true),'9000000.00T');
+ assert.equal(v6Format('not-a-balance',false),'0');
+ assert.equal(v6Format('9223372036854775807',false),'9,223,372,036,854,775,807');
+
  const g=freshGame();g.clickPower=1500;
  assert.equal(v6PlayTapLabel(g,1000),'Tap Buddy · +1.5K 🍪');
  g.compactNumbers=false;
