@@ -3,7 +3,11 @@
 // owner/developer/role/event-only skins must NEVER be randomly granted.
 import {ROSTER} from './game.js';
 
-const FREE_IDS=new Set(['classic','golden','poodle','spotty']);
+const FREE_IDS=new Set(['classic','golden','poodle','spotty','test_v1_crash_dummy','test_v2_crash_dummy']);
+// Source allowlist: four Kotlin non-redeemOnly V1 puppies plus two entries
+// explicitly marked free in the bundled assets/test/manifest.json.
+// Future live free V3+ manifests remain browse-only until their guest-save
+// and backend ownership handling are implemented safely.
 export const GACHA_TREAT_COST=2500;
 export const GACHA_COMMON_TICKET_COST=1;
 export const eligibleGachaPuppies=(roster=ROSTER)=>[...new Map(roster.filter(p=>FREE_IDS.has(p.id)).map(p=>[p.id,p])).values()].sort((a,b)=>a.id.localeCompare(b.id,'en'));
