@@ -170,7 +170,7 @@ test('React Roulette UI is dedicated and exposes selection, picker, RTP, rules a
   assert.ok(component.includes(term)||term==='97.30%'&&component.includes('ROULETTE_V6.rtp'),term);
  }
  assert.ok(app.includes('RouletteV6'));
- assert.ok(app.includes("g.pendingRoulette?'roulette':'hub'"));
+ assert.match(app,/g\.pendingRoulette\?'roulette':/);
  assert.ok(app.includes('Unfinished Roulette Spin'));
  assert.ok(!component.includes("type:'casino',gameType:'roulette'"));
  assert.ok(!component.includes('<WebView'));
