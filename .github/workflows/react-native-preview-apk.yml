@@ -1,6 +1,9 @@
 name: Puppy Clicker React Native Preview APK
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/react-native-full-android]
+    paths: ['.github/workflows/react-native-preview-apk.yml']
 permissions:
   contents: read
 jobs:
