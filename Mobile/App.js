@@ -26,6 +26,7 @@ import {GACHA_ART} from './src/assets/gacha.js';
 import {GACHA_MACHINE,gachaMachineFrame} from './src/engine/gachaV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
+import {MATTE_FREE_PUPPY_IMAGES} from './src/assets/puppies-transparent.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['roster','🐶','Roster'],['shop','🛍️','Shop'],['rewards','🎁','Rewards']];
 const skillNames={TAP_TRAINING:'Tap Training',AUTO_TRAINING:'Bonus Training',SMART_SHOPPER:'Smart Shopper',TICKET_SENSE:'Ticket Sense'};
 const die=()=>1+Math.floor(Math.random()*13);
@@ -58,8 +59,10 @@ function Portrait({puppy,size=228,unlocked=true,accessory='None',transparent=fal
  const [broken,setBroken]=useState(false);
  useEffect(()=>setBroken(false),[puppy.id,puppy.image]);
  const v2=puppy.id.startsWith('v2_');
- const ratio=transparent?1:v2?0.96:0.90;
- const asset=PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
+ // Kotlin StreamedPuppyPortrait always uses size * 0.96 for decoded assets.
+ const ratio=0.96;
+ // Derived edge-matte PNGs are generated before Metro bundles the Android APK.
+ const asset=MATTE_FREE_PUPPY_IMAGES[puppy.id]||PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
  return <View style={[styles.portrait,{width:size,height:size,borderRadius:transparent?0:size/2,overflow:transparent?'visible':'hidden'},transparent&&{backgroundColor:'transparent'}]}>
   {broken||!asset?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:
    <Image accessibilityLabel={puppy.name} source={asset} resizeMode="contain"
@@ -1089,7 +1092,7 @@ function AppContent(){
    </Pressable>:null}
   {showFixedPlay?
    <View onLayout={e=>setPrimaryHeight(Math.max(0,Math.round(e.nativeEvent.layout.height)-8))} style={[styles.revampedPlayViewport,{maxWidth:width>650?670:undefined}]}>
-    <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>
+    <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} availableHeight={primaryHeight}/>
    </View>:
    <ScrollView onLayout={e=>setPrimaryHeight(Math.round(e.nativeEvent.layout.height))} key={secondary||tab} style={styles.scroll}
     contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
@@ -1326,7 +1329,7 @@ const styles=StyleSheet.create({
  walletLabel:{fontSize:11,color:C.muted,textAlign:'center'},
  walletNumber:{fontSize:16,fontWeight:'900',color:C.text,textAlign:'center'},
  bigTap:{alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft,borderRadius:26,minHeight:286,padding:12,gap:8,borderWidth:1,borderColor:'#23516A'},
- portrait:{backgroundColor:'#273843',overflow:'hidden',alignItems:'center',justifyContent:'center'},
+ portrait:{backgroundColor:C.surface,overflow:'hidden',alignItems:'center',justifyContent:'center'},
  tapCaption:{fontSize:13,color:C.accent,fontWeight:'800',letterSpacing:0.5},
  statsRow:{flexDirection:'row',justifyContent:'space-between'},
  meter:{gap:4},meters:{gap:10},
