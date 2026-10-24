@@ -3,7 +3,7 @@
 **Audit state:** NOT CERTIFIED. A screen being source-ported or unit-tested does NOT imply 100% screenshot or runtime parity.
 
 **Production reference:** `App/` Kotlin Android, actual launcher functions and UI test captures.
-**React target:** `Mobile/` on `feat/react-native-full-android`, installed side-by-side as `com.harleytg.puppyclicker.preview`.
+**React target:** `Mobile/` on existing `fix/react-android-kotlin-revamp-ui-20261023` (PR #74, targeting `feat/react-native-full-android`), installed side-by-side as `com.harleytg.puppyclicker.preview`.
 **Never:** merge the preview into production, rename its package, migrate guest currencies or mark parity 100% without an on-device Kotlin/React comparison.
 
 ## Screen-by-screen evidence
@@ -54,3 +54,7 @@ A screenshot of the installed React preview was compared with a screenshot of th
 6. Treat any **deliberate deviation** (extra preview browser, guest-only login, generated source fallback) as non-parity until an explicit scoped exception is agreed upon. Keep Supabase/Discord/PupEye identity and transaction security blocked until the verified production migration stage.
 
 **Current conclusion:** All six Casino source ports are committed, but **none** of the listed screens has the device screenshot/video evidence required for 100% parity. A Preview APK build at commit `76c118ad` ([run 40068347188](https://github.com/markhitchk/pup-clinker/actions/runs/40068347188)) failed 8/147 tests (139 passed), including a Wheel ReferenceError and outdated source-contract assertions. Subsequent Part 6 commits correct those eight detected causes, but require a fresh passing CI run before the tests or APK can be called verified. The next task is **Part 6: green APK build and side-by-side Android screenshot/video captures**; see [PART_6_DEVICE_QA.md](PART_6_DEVICE_QA.md).
+
+## October 24 correct-branch follow-up
+
+The earlier work on `markhitchk/Puppy-Clicker` was in a separate repository and **did not update this app**. Kotlin UI parity changes now target this repository's existing React preview branch (`fix/react-android-kotlin-revamp-ui-20261023`) and PR #74. The React preview uses Kotlin's 48dp toolbar, 40dp action buttons, 80dp bottom navigation, indicator pills, Android safe-area insets, and available-height breakpoints (590/700dp) for Play/Care. The guest disclaimer remains in Settings rather than changing the Kotlin header height. Kotlin production remains unchanged. Full device screenshot matching, protected asset transparency, authoritative Supabase data and remaining UI screens are still unverified.
