@@ -26,7 +26,7 @@
 | Roulette | Part 5C source UI/ledger port: 37 pockets, full selectable table, 2.6s reveal and saved round; animations and pixel layout unverified | Four original Kotlin PNGs | **Missing** | **Not 100% verified** |
 | Plinko | Part 5D board layer/peg/ball source port and validated saved 8-bounce guest round; actual Android timing and clipping unverified | Seven byte-exact Kotlin PNGs | **Missing** | **Not 100% verified** |
 | Scratchers | Part 5E ported 48×20 mask, 68% reveal, weighted coin movement, tier cards and saved guest prize; React overlay still uses tiled Views instead of Kotlin Offscreen Canvas BlendMode.Clear | Original border and byte-exact Pup Coin PNG | **Missing** | **Not 100% verified** |
-| Lucky Pup Wheel | Rough React preview; Kotlin wheel/pointer sequence pending | Some original art | **Missing** | **Not 100% verified** |
+| Lucky Pup Wheel | Part 5F seven source-weighted slices, segmented labels, independent 18-click pointer, committed spin + once-only payout. 2% protected PUP reward intentionally refunded in guest mode; no trusted entitlement integration | 3 byte-identical Kotlin wheel PNGs | **Missing** | **Not 100% verified** |
 | Settings / profile / dialogs / notifications / admin | Incomplete; native auth and settings parity pending | Partial | **Missing** | **Not 100% verified** |
 
 ## Minimum evidence to mark EACH screen 100%
