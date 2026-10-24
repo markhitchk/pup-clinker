@@ -84,7 +84,7 @@ The **launched** tab path is `PuppyClickerV6Activity.kt → V6TabContent → V6P
 | Subpart | Kotlin source | React status |
 | --- | --- | --- |
 | **5A Blackjack** | `PuppyBlackjackUi.kt`, `PuppyBlackjackEngine.kt`, `PuppyBlackjackLayout.kt` | **Implemented in code, tests added; Android-device validation pending** |
-| 5B Slots | Kotlin Slots UI/engine/reels | Existing rough preview; full UI/animation/ledger parity **pending** |
+| **5B Slots** | `PuppySlotsUi.kt`, `PuppySlotsEngine.kt` | **Code rebuilt:** original machine/mascot/lever + six original reel drawables; Kotlin 440×483 reel placement, 92.66% RTP, 20/100/500/2500 presets, 2.35s staggered reveal, 70ms reel ticks, published rules/weights/payout table, once-only saved guest round. Automated tests added. **GitHub CI, APK, real-device screenshots still pending.** |
 | 5C Roulette | Kotlin roulette UI/engine/wheel | Existing rough preview; physics/anim/ledger parity **pending** |
 | 5D Plinko | Kotlin peg-board/UI/engine | Existing rough preview; ball path/board fit/ledger parity **pending** |
 | 5E Scratchers | `PuppyScratchersUi.kt`, `PuppyScratchersEngine.kt` | A staged guest gesture / pending prize exists, but still not Kotlin's native 48×20 coated Canvas / scratch coin **pending** |
@@ -100,3 +100,14 @@ The **launched** tab path is `PuppyClickerV6Activity.kt → V6TabContent → V6P
 - **Not yet certified 1:1:** real-phone screenshot comparison at 360dp/large fonts/landscape, original timed card reveal and chip animation, backend casino transaction replay/anti-cheat, and signed production APK. Do not merge into Kotlin production or call the guest economy authoritative.
 
 **Next casino subpart: 5B — Slots.** Use exact Kotlin source-art reels, lever behavior, payout table and transaction lifecycle; keep React Android work in `feat/react-native-full-android`.
+
+### 5B Slots — implemented source correspondence (not pixel certification)
+
+- Loaded **six original Kotlin slot symbol PNGs**, byte-for-byte, into `Mobile/assets/casino/slot_{treat,ball,paw,ticket,puppy,star}.png`. Previously React rendered an unchanging slot cabinet with a disconnected lever.
+- New native React `Mobile/src/components/SlotsV6.jsx` overlays original machine, mascot, lever base, interactive pull handle and three independently cycling symbols. Frame uses Kotlin machine aspect 0.86, visible source 440×483, exact reel x/y fractions, mascot and lever positions. Wager and help sections follow Kotlin's `PuppySlotsScreen`, with its 92.66% *published* RTP, preset wagers and the exact static payout/weight tables.
+- Deterministic engine `Mobile/src/engine/slotsV6.js` validates all six symbol weights (30/25/20/13/8/4), payouts (7/12/18/35/100/500× triples, 0.5× pair), wager limits, and exact starting 3-symbol rolls. **Ticket symbols only pay Casino Chips; never mint Upgrade Tickets**.
+- **Local guest settlement:** `slotsStart` deducts the initial Casino Chip wager and saves the committed result to `g.pendingSlots` before animation. Reels stop at 16, 23 and 30 ticks of 70 ms; `slotsReveal` (2,350 ms, or 250 ms with disabled animations) recomputes/checks the persisted symbols and payout before crediting once, clears pending state, and retains a display-only final result. Resuming the Casino opens interrupted Slots and can settle safely after rehydration. New independent bets, Blackjack, Scratchers and Prestige are blocked until the pending Slots round resolves. The legacy one-step Slots payout is disabled; existing Scratchers staged purchase actions remain supported.
+- Automated Kotlin source-regression suite in `Mobile/tests/slotsV6.test.js` checks original PNG byte equality, reel source geometry, published paytable, valid rolls, guest-save recovery and once-only payout. The preview engine is **not a server casino ledger**; serialized local guest state and client-side RNG remain untrusted.
+- **Unverified visually:** exact onscreen pixels, icon masking and reveal animation curves (the RN animation approximates Kotlin's `AnimatedContent`), layout on narrow/landscape/large-text screens, and live Android installation. No evidence of screenshot-perfect equivalence exists. See `Mobile/VISUAL_PARITY_AUDIT.md` for the release gates.
+
+**Next casino subpart: 5C — Roulette.** After 5F, run a full Android-side screenshot audit of every migrated screen before considering any 100% visual parity assertion.
