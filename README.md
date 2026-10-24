@@ -6,7 +6,8 @@ Puppy Clicker is organized as a multi-platform project. The existing native Andr
 
 | Folder | Purpose |
 | --- | --- |
-| [`App/`](App/) | Native Android project, Gradle configuration, source code, build tools, and signing documentation. |
+| [`App/`](App/) | Existing signed Kotlin/Compose Android production app and its Play release pipeline. |
+| [`Mobile/`](Mobile/) | **New React Native Android migration preview** (Expo SDK 57); no production account or Play cutover yet. |
 | [`Website/`](Website/) | Website and browser edition. No website implementation is included yet. |
 | [`assets/`](assets/) | Existing shared artwork and versioned puppy assets. Keep this path stable for all platforms. |
 | [`Desktop/`](Desktop/) | Future desktop edition, installers, and platform-specific packaging. No desktop implementation is included yet. |

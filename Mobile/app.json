@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Puppy Clicker",
+    "slug": "puppy-clicker-native",
+    "version": "1.8.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "puppyclicker",
+    "android": {
+      "package": "com.harleytg.puppyclicker",
+      "versionCode": 35,
+      "permissions": ["INTERNET", "VIBRATE"],
+      "edgeToEdgeEnabled": true
+    },
+    "extra": {
+      "migrationStatus": "guest-preview-not-production",
+      "productionReplacementApproved": false
+    }
+  }
+}
