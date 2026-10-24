@@ -13,7 +13,7 @@ const TOKEN=require('../../assets/casino/pup_coin.png');
 const backgrounds={
  casino_scratch:'#FFECEC',ultra_pup:'#E9F8FF',golden_paw:'#FFF7D6'
 };
-export default function ScratchStage({round,borderImage,onReveal,lastResult}){
+export default function ScratchStage({round,borderImage,onReveal,lastResult,cardId='pup_scratch'}){
  const [scratched,setScratched]=useState(()=>new Set());
  const [coin,setCoin]=useState(null);
  const cells=useRef(new Set()),bounds=useRef({width:0,height:0});
@@ -73,7 +73,6 @@ export default function ScratchStage({round,borderImage,onReveal,lastResult}){
   update(next);
  };
  const progress=Math.min(100,Math.floor(scratchCoverage(scratched)*100));
- const cardId=shown?.id||shown?.cardId||'pup_scratch';
  const bg=backgrounds[cardId]||'#FFF8E7';
  const symbols=shown?.symbols||['?','?','?'];
  const diameter=Math.min(SCRATCH_COIN_DIAMETER,Math.max(24,Math.min(bounds.current.width,bounds.current.height)*.8||56));
