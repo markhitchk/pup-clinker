@@ -16,6 +16,7 @@ import ScratchersV6 from './src/components/ScratchersV6.jsx';
 import SlotsV6 from './src/components/SlotsV6.jsx';
 import RouletteV6 from './src/components/RouletteV6.jsx';
 import PlinkoV6 from './src/components/PlinkoV6.jsx';
+import LuckyWheelV6 from './src/components/LuckyWheelV6.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
@@ -877,7 +878,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
- const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':g.pendingPlinko?'plinko':'hub');
+ const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':g.pendingPlinko?'plinko':g.pendingWheel?'wheel':'hub');
  const [accepted,setAccepted]=useState(false);
  const {width}=useWindowDimensions();
  useEffect(()=>{
@@ -887,15 +888,21 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
  },[accepted,onBack]);
  const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
  const choices=[20,50,100,500,1000];
- const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch);
+ const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch||g.pendingWheel);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
-  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'?<><View style={styles.pair}>
+  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<><View style={styles.pair}>
    <Button compact secondary onPress={()=>page==='hub'?onBack():setPage('hub')}>{page==='hub'?'‹ Rewards':'‹ Casino'}</Button>
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
   {page==='hub'?<>
+   {g.pendingWheel?<View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:26}}>🎡</Txt>
+    <View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Lucky Pup Wheel Spin</Txt>
+     <Txt muted style={styles.small}>Your result is committed. Resume the wheel to reveal and settle once.</Txt></View>
+    <Button compact onPress={()=>setPage('wheel')}>Resume</Button>
+   </View>:null}
    {g.pendingPlinko?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🔵</Txt>
     <View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Plinko Drop</Txt>
@@ -934,7 +941,7 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
-   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
+   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
    {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
     lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<RouletteV6 game={g} pending={g.pendingRoulette}
@@ -943,14 +950,8 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     lastResult={state.plinkoDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='scratchers'?<ScratchersV6 game={g} pending={g.pendingScratch}
     lastResult={state.scratchDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
-   {page==='wheel'?<>
-    <View style={styles.wheelScene}>
-     <Image source={CASINO_ART.wheelFrame} resizeMode="contain" style={styles.wheelLayer}/>
-     <Image source={CASINO_ART.wheel} resizeMode="contain" style={styles.wheelLayer}/>
-     <Image source={CASINO_ART.wheelPointer} resizeMode="contain" style={styles.wheelPointer}/>
-    </View>
-    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('wheel',{roll:roll()})}>🎠 Spin Lucky Pup Wheel · {bet} Chips</Button>
-   </>:null}
+   {page==='wheel'?<LuckyWheelV6 game={g} pending={g.pendingWheel}
+    lastResult={state.wheelDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='blackjack'?<BlackjackV6Panel g={g} act={act} state={state} onBack={()=>setPage('hub')}/>:null}
   </>}
  </View>;
@@ -1064,7 +1065,7 @@ export default function App(){
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)}/>;
+  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
  };
  return <View style={styles.root}>
