@@ -13,6 +13,7 @@ import {BLACKJACK_V6,blackjackViewportWidth,blackjackActions,canDealBlackjack,bl
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
 import ScratchStage from './src/components/ScratchStage.jsx';
+import SlotsV6 from './src/components/SlotsV6.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
@@ -874,7 +875,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
- const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':'hub');
+ const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':'hub');
  const [accepted,setAccepted]=useState(false);
  const {width}=useWindowDimensions();
  useEffect(()=>{
@@ -887,12 +888,20 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
  const inBlackjack=Boolean(state.blackjack);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
-  {page!=='blackjack'?<><View style={styles.pair}>
+  {page!=='blackjack'&&page!=='slots'?<><View style={styles.pair}>
    <Button compact secondary onPress={()=>page==='hub'?onBack():setPage('hub')}>{page==='hub'?'‹ Rewards':'‹ Casino'}</Button>
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
   {page==='hub'?<>
+   {g.pendingSlots?<View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:26}}>🎰</Txt>
+    <View style={{flex:1}}>
+     <Txt style={styles.itemName}>Unfinished Slots Spin</Txt>
+     <Txt muted style={styles.small}>Your original wager and outcome are saved. Resume to reveal and settle once.</Txt>
+    </View>
+    <Button compact onPress={()=>setPage('slots')}>Resume</Button>
+   </View>:null}
    {state.blackjack?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🃏</Txt>
     <View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Blackjack Hand</Txt>
@@ -911,12 +920,9 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
-   {page!=='blackjack'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
-   {page==='slots'?<>
-    <CasinoArtwork image={CASINO_ART.slots} ratio={1.17} height={Math.min(330,width*.72)}/>
-    <View style={styles.dailyGiftCard}><Image source={CASINO_ART.slotsMascot} resizeMode="contain" style={{width:72,height:70}}/><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Slots</Txt><Txt muted style={styles.small}>Triple-symbol and weighted reel payouts.</Txt></View><Image source={CASINO_ART.slotsLever} resizeMode="contain" style={{width:42,height:80}}/></View>
-    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('slots',{rolls:[roll(),roll(),roll()]})}>🎰 Pull Lever · {bet} Chips</Button>
-   </>:null}
+   {page!=='blackjack'&&page!=='slots'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
+   {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
+    lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<>
     <View style={styles.rouletteScene}><Image source={CASINO_ART.roulette} resizeMode="contain" style={styles.rouletteWheel}/><Image source={CASINO_ART.rouletteRotor} resizeMode="contain" style={styles.rouletteRotor}/></View>
     <CasinoArtwork image={CASINO_ART.rouletteTable} ratio={2}/>
