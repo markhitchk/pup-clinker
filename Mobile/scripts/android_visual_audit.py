@@ -28,6 +28,8 @@ def audit(kotlin: Path, react: Path, output: Path, tolerance: int,
     output.mkdir(parents=True, exist_ok=True)
     left = {f.name: f for f in kotlin.glob("*.png") if f.is_file()}
     right = {f.name: f for f in react.glob("*.png") if f.is_file()}
+    if not left or not right:
+        raise SystemExit("No screenshot pairs: both input directories must contain PNGs")
     results = []
     print("Screen                  Changed%  Mean error  Dimensions    Status")
     print("-" * 78)
