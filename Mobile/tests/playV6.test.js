@@ -31,7 +31,8 @@ test('Part 1 matches launched V6Play instead of unused RevampedPlayScreen',()=>{
  assert.ok(reactPlay.includes('<NeedPill icon="💖"'));
  assert.ok(reactPlay.includes('styles.tapStage'));
  assert.ok(reactPlay.includes('v6PlayTapLabel(g,clock)'));
- assert.ok(react.includes('styles.needMeterTrack')===false||react.includes('needMeterTrack:'));
+ assert.ok(react.includes('style={styles.needMeterTrack}'));
+ assert.ok(react.includes('needMeterTrack:'));
  // The original V6Play has no reward card or quick-action grid on this page.
  assert.ok(!reactPlay.includes('styles.nextRewardCard'));
  assert.ok(!reactPlay.includes('<QuickAction'));
@@ -84,7 +85,9 @@ test('time-bound Kotlin cooldown prevents taps and survives guest save',()=>{
 test('Only the portrait is tappable and Play idle motion honors animation preference',()=>{
  assert.ok(reactPlay.includes('<View style={[styles.tapStage'));
  assert.ok(reactPlay.includes('<Pressable accessibilityRole="button"'));
- assert.ok(!reactPlay.includes('<Pressable accessibilityRole="button" accessibilityLabel={\'Tap '+String.fromCharCode(36)+'{g.puppyName}'));
+ assert.ok(reactPlay.indexOf('<View style={[styles.tapStage')<reactPlay.indexOf('<Pressable accessibilityRole="button"'));
+ assert.ok(reactPlay.includes('onPress={doTap}'));
+ assert.ok(!reactPlay.includes('onOpen('));
  assert.ok(reactPlay.includes('g.animationsEnabled===false'));
  assert.ok(reactPlay.includes('Animated.loop('));
  assert.ok(reactPlay.includes('disabled={cooldown>0}'));
