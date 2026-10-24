@@ -56,6 +56,6 @@ test('React renders generated static portraits without replacing original bundle
  const app=readFileSync(join(root,'App.js'),'utf8');
  const converted=readFileSync(join(root,'src/assets/puppies-transparent.js'),'utf8');
  assert.match(app,/MATTE_FREE_PUPPY_IMAGES\[puppy\.id\]/);
- assert.match(converted,/classic: require\('\.\.\/\.\.\/assets\/generated\/puppies\/v1\/v1_classic\.png'\)/);
+ assert.match(converted,/"classic": require\('\.\.\/\.\.\/assets\/generated\/puppies\/v1\/v1_classic\.png'\)/);
  assert.match(app,/const ratio=0\.96/);
 });
