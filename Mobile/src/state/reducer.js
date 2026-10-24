@@ -11,7 +11,7 @@ import {newSlotsGuestRound,validPendingSlots} from '../engine/slotsV6.js';
 import {newRouletteGuestRound,validPendingRoulette,rouletteResult} from '../engine/rouletteV6.js';
 import {newPlinkoGuestRound,validPendingPlinko,plinkoResult} from '../engine/plinkoV6.js';
 
-export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
+export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
 const validCard=n=>Number.isInteger(n)&&n>=1&&n<=13;
 function casinoRound(action){
@@ -46,7 +46,7 @@ export function transition(state,action){
   game.pendingSlots=validPendingSlots(game.pendingSlots)?game.pendingSlots:null;
   game.pendingRoulette=validPendingRoulette(game.pendingRoulette)?game.pendingRoulette:null;
   game.pendingPlinko=validPendingPlinko(game.pendingPlinko)?game.pendingPlinko:null;
-  return {...state,game,blackjack,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,ready:true};
+  return {...state,game,blackjack,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,ready:true};
  }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
@@ -56,6 +56,7 @@ export function transition(state,action){
  let slotsDisplay=state.slotsDisplay||null;
  let rouletteDisplay=state.rouletteDisplay||null;
  let plinkoDisplay=state.plinkoDisplay||null;
+ let scratchDisplay=state.scratchDisplay||null;
  let gachaResult=state.gachaResult||null;
  switch(action.type){
   case 'onboardNext':
@@ -146,6 +147,7 @@ export function transition(state,action){
    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
    if(!casinoSpend(g,action.wager))return no();
    g.pendingScratch=pending;
+   scratchDisplay=null;
    notice='🎟️ Scratch your card to reveal the committed prize';
    break;
   }
@@ -221,6 +223,7 @@ export function transition(state,action){
     if(!pending)return {...state,notice:'Invalid Scratchers wager'};
     if(!casinoSpend(g,action.wager))return no();
     g.pendingScratch=pending;
+    scratchDisplay=null;
     notice='🎟️ Scratch your card to reveal the committed prize';
     break;
    }
@@ -235,6 +238,7 @@ export function transition(state,action){
    if(!validPendingScratch(g.pendingScratch))return {...state,notice:'No valid Scratchers card to settle'};
    const payout=g.pendingScratch.payout;
    const prize=g.pendingScratch.prize;
+   scratchDisplay={...g.pendingScratch};
    casinoPayout(g,payout);
    g.pendingScratch=null;
    notice='🎟️ '+prize.replaceAll('_',' ')+' · +'+payout+' Casino Chips';
@@ -290,5 +294,5 @@ export function transition(state,action){
  g.careProfiles[g.puppyStyle]={happiness:g.happiness,fullness:g.fullness,energy:g.energy,cleanliness:g.cleanliness,bond:g.bond};
  const granted=settleGuestAchievements(g);
  if(granted.length)notice=(notice?notice+' · ':'')+'🏆 '+granted.length+' achievement'+(granted.length===1?'':'s')+' earned (+50 XP each)';
- return {...state,game:g,ready:true,notice,blackjack,blackjackDisplay,slotsDisplay,rouletteDisplay,plinkoDisplay,gachaResult};
+ return {...state,game:g,ready:true,notice,blackjack,blackjackDisplay,slotsDisplay,rouletteDisplay,plinkoDisplay,scratchDisplay,gachaResult};
 }
