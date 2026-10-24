@@ -5,11 +5,13 @@ import {dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ROSTER} from '../src/engine/game.js';
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
-test('all 30 V1/V2 and Discord puppy portraits are bundled for offline React Native display',()=>{
+test('all 32 V1/V2, Discord and original Kotlin test puppy portraits are bundled offline',()=>{
  const map=readFileSync(join(root,'src/assets/puppies.js'),'utf8');
- assert.equal(ROSTER.length,30);
+ assert.equal(ROSTER.length,32);
  for(const p of ROSTER){
-  const file=p.id.startsWith('v2_')?p.id==='v2_discord_pup'?'discord_rewards/'+p.id+'.png':'v2/'+p.id+'.png':'v1/v1_'+p.id+'.png';
+  const file=p.id==='test_v1_crash_dummy'?'test/v1_test_crash_dummy.png':
+   p.id==='test_v2_crash_dummy'?'test/v2_test_crash_dummy.png':
+   p.id.startsWith('v2_')?p.id==='v2_discord_pup'?'discord_rewards/'+p.id+'.png':'v2/'+p.id+'.png':'v1/v1_'+p.id+'.png';
   const path=join(root,'assets',file);
   assert.equal(existsSync(path),true,'Missing '+p.id);
   const png=readFileSync(path);
