@@ -3,7 +3,7 @@ import {AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
  ROSTER_INDEX_URL,ROSTER_ASSET_URL,ROSTER_CACHE_KEY,ROSTER_REFRESH_MS,ROSTER_RETRY_MS,
- ROSTER_MAX_REMOTE,ROSTER_MANIFEST_MAX_BYTES,parseRosterIndex,parseRosterManifest,
+ ROSTER_MAX_REMOTE,ROSTER_MANIFEST_MAX_BYTES,utf8WithinLimit,parseRosterIndex,parseRosterManifest,
  parseCachedRoster,packRosterCache,mergeRoster,categoriesForRoster
 } from '../engine/dynamicRoster.js';
 
@@ -23,7 +23,7 @@ export function useRoster(){
     const response=await fetch(url,{signal:controller.signal,headers:{Accept:'application/json'}});
     if(!response.ok)throw new Error('Roster HTTP '+response.status);
     const text=await response.text();
-    if(new TextEncoder().encode(text).length>maxBytes)throw new Error('Roster file too large');
+    if(!utf8WithinLimit(text,maxBytes))throw new Error('Roster file too large');
     return text;
    }finally{clearTimeout(timeout);}
   };

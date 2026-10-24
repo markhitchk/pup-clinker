@@ -11,6 +11,7 @@ export const ROSTER_MANIFEST_MAX_BYTES=256*1024;
 export const ROSTER_MAX_REMOTE=500;
 const folders=new Set(['v2','test','discord_rewards']);
 const validFolder=s=>folders.has(s)||/^v[3-9][0-9]*$/.test(s);
+const folderFetchOrder=folder=>folder==='test'?2147483647:folder==='discord_rewards'?2147483646:Number(folder.slice(1));
 const validId=s=>typeof s==='string'&&/^[a-z0-9_]{1,64}$/.test(s);
 const validFile=s=>typeof s==='string'&&/^[A-Za-z0-9._-]{1,128}\.png$/.test(s);
 const groupTitle=(folder,root)=>{
@@ -21,7 +22,17 @@ const groupTitle=(folder,root)=>{
 };
 const groupOrder=folder=>folder==='test'?2147483647:folder==='discord_rewards'?3:Number(folder.slice(1));
 const trim=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
-const safeSize=(text,max)=>typeof text==='string'&&new TextEncoder().encode(text).length<=max;
+export function utf8WithinLimit(text,max){
+ if(typeof text!=='string')return false;
+ let size=0;
+ for(const c of text){
+  const code=c.codePointAt(0);
+  size+=code<=0x7f?1:code<=0x7ff?2:code<=0xffff?3:4;
+  if(size>max)return false;
+ }
+ return true;
+}
+const safeSize=utf8WithinLimit;
 const prefix=folder=>folder==='test'?'test_':folder==='discord_rewards'?'v2_':folder+'_';
 export function parseRosterIndex(raw){
  if(!safeSize(raw,ROSTER_INDEX_MAX_BYTES))throw new Error('Roster index size exceeds limit');
@@ -31,7 +42,7 @@ export function parseRosterIndex(raw){
  for(const entry of data){
   if(entry&&entry.type==='dir'&&validFolder(entry.name))out.add(entry.name);
  }
- return [...out].sort((a,b)=>groupOrder(a)-groupOrder(b)||a.localeCompare(b));
+ return [...out].sort((a,b)=>folderFetchOrder(a)-folderFetchOrder(b)||a.localeCompare(b));
 }
 export function parseRosterManifest(folder,raw){
  if(!validFolder(folder)||!safeSize(raw,ROSTER_MANIFEST_MAX_BYTES))throw new Error('Invalid roster folder or size');

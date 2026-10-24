@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {freshGame} from '../src/engine/game.js';
 import {
  parseRosterManifest,parseRosterIndex,validateRemoteRoster,parseCachedRoster,packRosterCache,
- mergeRoster,categoriesForRoster,ROSTER_ASSET_URL
+ mergeRoster,categoriesForRoster,ROSTER_ASSET_URL,utf8WithinLimit
 } from '../src/engine/dynamicRoster.js';
 const read=path=>readFileSync(new URL('../../assets/'+path,import.meta.url),'utf8');
 
@@ -41,7 +42,6 @@ test('remote assets never change base game engine or local account unlock rules'
  assert.equal(remote[0].free,true);
  const shown=mergeRoster(remote);
  assert.ok(shown.some(p=>p.id==='v3_surprise'));
- const {freshGame}=await import('../src/engine/game.js');
  assert.ok(!freshGame().unlockedPuppies.includes('v3_surprise'));
 });
 test('only permitted assets directories can be fetched',()=>{
@@ -51,4 +51,6 @@ test('only permitted assets directories can be fetched',()=>{
  ]));
  assert.deepEqual(folders,['v2','v3','discord_rewards','test']);
  assert.throws(()=>parseRosterIndex('{}'));
+ assert.equal(utf8WithinLimit('🐾',4),true);
+ assert.equal(utf8WithinLimit('🐾',3),false);
 });
