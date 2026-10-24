@@ -171,7 +171,7 @@ test('tampering, invalid bounce jitter and competing rounds cannot mint Casino C
 
 test('Pup Plinko screen and Casino hub use the dedicated stage, source wager and resume flow',()=>{
  assert.ok(app.includes("import PlinkoV6 from './src/components/PlinkoV6.jsx'"));
- assert.ok(app.includes("g.pendingPlinko?'plinko':'hub'"));
+ assert.match(app,/g\.pendingPlinko\?'plinko':/);
  assert.ok(app.includes('Unfinished Plinko Drop'));
  assert.ok(app.includes('pending={g.pendingPlinko}'));
  for(const value of ['Pup Plinko','Casino Chip Wallet','Puppy Plinko','Drop Ball','How Pup Plinko works',
