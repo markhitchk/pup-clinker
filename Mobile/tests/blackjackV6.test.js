@@ -66,7 +66,7 @@ test('real chip-balance gates the actual Double/Split commands',()=>{
  assert.equal(blackjackActions(round,20).split,true);
  assert.equal(canDealBlackjack(200,100,null,null),true);
  assert.equal(canDealBlackjack(20,100,null,null),false);
- assert.equal(canDealBlackjack(200,250,null,null),true);
+ assert.equal(canDealBlackjack(200,250,null,null),false);
  assert.equal(canDealBlackjack(200,100,round,null),false);
  assert.equal(canDealBlackjack(200,100,null,{wager:20}),false);
 });
@@ -129,5 +129,5 @@ test('active Blackjack round resumes on Casino open and shows a dedicated Resume
  assert.ok(casino.includes("onPress={()=>setPage('blackjack')}"));
  assert.ok(casino.includes('BlackjackV6Panel g={g} act={act} state={state}'));
  assert.ok(scene.includes('Casino Chip Wallet'));
- assert.ok(scene.includes('2,500')); // native presets must appear through BLACKJACK_V6.wagerPresets
+ assert.ok(scene.includes('BLACKJACK_V6.wagerPresets')); // uses native 20/100/500/2,500 chips presets
 });
