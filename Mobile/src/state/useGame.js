@@ -18,8 +18,8 @@ export function useGame(){
  useEffect(()=>{
    let alive=true;
    AsyncStorage.getItem(GUEST_SAVE_KEY).then(raw=>{
-     if(alive)dispatch({type:'hydrate',game:parseGuestSave(raw)});
-   }).catch(()=>{if(alive)dispatch({type:'hydrate'});});
+     if(alive)dispatch({type:'hydrate',game:parseGuestSave(raw),now:Date.now()});
+   }).catch(()=>{if(alive)dispatch({type:'hydrate',now:Date.now()});});
    return ()=>{alive=false;};
  },[]);
  useEffect(()=>{
@@ -28,7 +28,10 @@ export function useGame(){
    return ()=>clearTimeout(timeout);
  },[state.game,state.ready,write]);
  useEffect(()=>{
-   const sub=AppState.addEventListener('change',status=>{if(status!=='active')write();});
+   const sub=AppState.addEventListener('change',status=>{
+    if(status==='active')dispatch({type:'resume',now:Date.now()});
+    else write();
+   });
    return ()=>sub.remove();
  },[write]);
  return {state,act:dispatch};

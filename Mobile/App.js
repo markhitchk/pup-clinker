@@ -1,9 +1,11 @@
-import React,{useEffect,useMemo,useState} from 'react';
-import {Alert,Image,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
+import React,{useEffect,useRef,useState} from 'react';
+import {Alert,Animated,Easing,Image,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
+import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
+import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 
 const LOCAL_PUPPIES={classic:require('./assets/v1/v1_classic.png'),golden:require('./assets/v1/v1_golden.png'),poodle:require('./assets/v1/v1_poodle.png'),spotty:require('./assets/v1/v1_spotty.png')};
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -40,17 +42,17 @@ function PlayScreen({g,act,onOpen}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const gain=g.clickPower+(wellness(g)>=85&&g.bond>=50?2:wellness(g)>=70?1:0);
  return <>
-  <Card title={'🐶 '+g.puppyName} subtitle={'Lv. '+level(g)+' · '+mood(g)}>
+  <Card title={'🐶 '+g.puppyName} subtitle={'Lv. '+guestLevel(g)+' · '+mood(g)}>
    <View style={styles.statsRow}><Txt muted>⚡ Per tap: {format(gain)}</Txt><Txt muted>🔥 Combo: {g.combo}</Txt></View>
    <Pressable accessibilityRole="button" accessibilityLabel="Tap your puppy for Treats" onPress={()=>act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]})} style={({pressed})=>[styles.bigTap,pressed&&{transform:[{scale:0.97}]}]}>
     <Portrait puppy={pup} size={220}/>
     <Txt style={styles.tapCaption}>TAP TO EARN TREATS  🐾</Txt>
    </Pressable>
-   <Txt muted style={styles.center}>{g.totalTaps} taps · +{g.activeBonus} every 10 active taps</Txt>
+   <Txt muted style={styles.center}>{g.totalTaps} taps · +{g.activeBonus} every 10 active taps · {format(g.xp||0)} XP</Txt>
   </Card>
   <Card title="YOUR PUPPY">
    <View style={styles.meters}><Meter label="Happiness" icon="💖" value={g.happiness}/><Meter label="Fullness" icon="🍖" value={g.fullness}/><Meter label="Energy" icon="⚡" value={g.energy}/><Meter label="Clean" icon="🫧" value={g.cleanliness}/></View>
-   <View style={styles.actions}><Button onPress={()=>onOpen('roster')} secondary compact>🐕 Roster</Button><Button onPress={()=>onOpen('casino')} secondary compact>🎰 Casino</Button><Button onPress={()=>onOpen('rewards')} compact>🎁 Rewards</Button></View>
+   <View style={styles.actions}><Button onPress={()=>onOpen('roster')} secondary compact>🐕 Roster</Button><Button onPress={()=>onOpen('gacha')} secondary compact>🎲 Gacha</Button><Button onPress={()=>onOpen('casino')} secondary compact>🎰 Casino</Button><Button onPress={()=>onOpen('rewards')} compact>🎁 Rewards</Button></View>
   </Card>
  </>;
 }
@@ -109,20 +111,71 @@ function PrestigeScreen({g,act}){
  </>;
 }
 function RosterScreen({g,act}){
+ const [query,setQuery]=useState('');
+ const [filter,setFilter]=useState('all');
+ const matches=ROSTER.filter(p=>{
+  const owned=g.unlockedPuppies.includes(p.id);
+  return (filter==='all'||(filter==='unlocked'&&owned)||(filter==='favorites'&&g.favoritePuppies.includes(p.id)))&&
+   (p.name.toLowerCase().includes(query.trim().toLowerCase())||p.id.includes(query.trim().toLowerCase()));
+ });
  return <Card title="🐕 PUPPY ROSTER" subtitle={(g.unlockedPuppies.length)+' unlocked'}>
-  <View style={styles.roster}>
-   {ROSTER.map(p=>{
-    const unlocked=g.unlockedPuppies.includes(p.id);
-    return <Pressable key={p.id} accessibilityRole="button" disabled={!unlocked} onPress={()=>act({type:'switch',id:p.id})} style={[styles.rosterPup,g.puppyStyle===p.id&&styles.rosterSelected,!unlocked&&{opacity:0.38}]}>
-      <Portrait puppy={p} size={86}/><Txt numberOfLines={1} style={styles.small}>{p.name}</Txt><Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'SELECTED':unlocked?'TAP TO USE':'LOCKED'}</Txt>
-    </Pressable>;
-   })}
-  </View>
+   <TextInput accessibilityLabel="Search puppies" placeholder="Search puppies…" placeholderTextColor={C.muted} style={styles.input} value={query} onChangeText={setQuery}/>
+   <View style={styles.actions}>{[['all','All'],['unlocked','Unlocked'],['favorites','★ Favorites']].map(([id,label])=>
+    <Button key={id} compact secondary={filter!==id} onPress={()=>setFilter(id)}>{label}</Button>)}</View>
+   <View style={styles.roster}>{matches.map(p=>{
+     const owned=g.unlockedPuppies.includes(p.id),favorite=g.favoritePuppies.includes(p.id);
+     return <View key={p.id} style={[styles.rosterPup,g.puppyStyle===p.id&&styles.rosterSelected,!owned&&{opacity:0.58}]}>
+       <Portrait puppy={p} size={86}/>
+       <Txt numberOfLines={1} style={styles.small}>{p.name}</Txt>
+       <Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'SELECTED':owned?'UNLOCKED':'LOCKED'}</Txt>
+       {owned?<View style={{flexDirection:'row',alignItems:'center',gap:4}}>
+        <Button compact onPress={()=>act({type:'switch',id:p.id,now:Date.now()})} disabled={g.puppyStyle===p.id}>Use</Button>
+        <Button compact secondary onPress={()=>act({type:'favorite',id:p.id})}>{favorite?'★':'☆'}</Button>
+       </View>:null}
+     </View>;
+   })}</View>
  </Card>;
 }
-function RewardsScreen({g,act,clock}){
+function GachaScreen({g,act,state}){
+ const rotation=useRef(new Animated.Value(0)).current;
+ const [revealed,setRevealed]=useState(false);
+ const result=state.gachaResult;
+ useEffect(()=>{
+  rotation.stopAnimation();rotation.setValue(0);setRevealed(false);
+  if(!result?.success)return;
+  const animation=Animated.timing(rotation,{toValue:1,duration:780,easing:Easing.out(Easing.cubic),useNativeDriver:true});
+  animation.start(({finished})=>{if(finished)setRevealed(true);});
+  return ()=>animation.stop();
+ },[result,rotation]);
+ const pool=gachaPool(ROSTER,g.unlockedPuppies);
  return <>
-  <Card title="🎁 REWARDS">
+  <Card title="🎲 PUPPY GACHA" subtitle="Source-matched capsule machine">
+   <Pair left="🍪 Treats" right={format(g.treats)}/>
+   <Pair left="🎟️ Common Tickets" right={String(g.ticketInventory.COMMON||0)}/>
+   <Pair left="Total pulls" right={String(g.gachaPulls||0)}/>
+   <Txt muted>Random Gacha only includes free/unrestricted puppies. Developer, Discord, special-code and event puppies cannot be granted by this machine.</Txt>
+   <View style={styles.bigTap}>
+    {result?.success?<Animated.View style={{transform:[{rotate:rotation.interpolate({inputRange:[0,1],outputRange:['0deg','360deg']})}]}}><Txt style={{fontSize:78}}>🎁</Txt></Animated.View>:<Txt style={{fontSize:88}}>🎰</Txt>}
+    <Txt style={styles.tapCaption}>{result?revealed?'CAPSULE OPENED':'OPENING CAPSULE…':'PULL A PUPPY CAPSULE'}</Txt>
+   </View>
+   {result?.success?revealed?<View style={styles.card}>
+      <Txt style={{fontSize:22,fontWeight:'800',textAlign:'center'}}>{result.isNewUnlock?'🐶 NEW PUPPY!':'🐶 DUPLICATE PUPPY'}</Txt>
+      <Txt style={{textAlign:'center',fontWeight:'700'}}>{result.puppyName}</Txt>
+      <View style={styles.actions}><Button compact disabled={!result.isNewUnlock} onPress={()=>{act({type:'switch',id:result.puppyId,now:Date.now()});act({type:'dismissGacha'});}}>Use Puppy</Button><Button compact secondary onPress={()=>act({type:'dismissGacha'})}>Pull Again</Button></View>
+     </View>:null:<>
+      {pool.length&&pool.every(p=>g.unlockedPuppies.includes(p.id))?<Txt style={styles.small} muted>All available free puppies are already owned. Another pull awards a duplicate but still costs currency, just as in the Android rules.</Txt>:null}
+      <View style={styles.actions}>
+       <Button disabled={g.treats<GACHA_TREAT_COST||!pool.length} onPress={()=>act({type:'gacha',payment:'TREATS',roll:Math.floor(Math.random()*0x7fffffff)})}>🍪 {format(GACHA_TREAT_COST)} Treats</Button>
+       <Button secondary disabled={(g.ticketInventory.COMMON||0)<1||!pool.length} onPress={()=>act({type:'gacha',payment:'COMMON_TICKET',roll:Math.floor(Math.random()*0x7fffffff)})}>🎟️ 1 Common Ticket</Button>
+      </View>
+     </>}
+  </Card>
+ </>;
+}
+function RewardsScreen({g,act,clock}){
+ const statuses=achievementStatuses(g);
+ return <>
+  <Card title="🎁 REWARDS" subtitle={'Player Lv. '+guestLevel(g)+' · '+format(g.xp||0)+' XP'}>
    <Pair left="Daily streak" right={String(g.dailyStreak)}/>
    <Pair left="Tickets found" right={String(g.totalTicketsFound)}/>
    <Pair left="Lifetime Treats" right={format(g.lifetimeTreats)}/>
@@ -130,8 +183,15 @@ function RewardsScreen({g,act,clock}){
    <Pair left="Care actions" right={String(g.careActions)}/>
    <Button disabled={g.lastDailyClaimDay===Math.floor(clock/86400000)} onPress={()=>act({type:'daily',epochDay:Math.floor(clock/86400000)})}>🎁 Claim Daily Reward</Button>
   </Card>
-  <Card title="🏆 ACHIEVEMENTS — MIGRATION">
-   <Txt muted>Full Android achievements, XP and reward receipts still require their source-native progression and server verification before release.</Txt>
+  <Card title="🏆 ACHIEVEMENTS" subtitle={statuses.filter(s=>s.xpRewarded).length+' / '+ACHIEVEMENTS.length+' awarded'}>
+   <Txt muted style={styles.small}>Nine Kotlin-derived achievement milestones. Each award grants 50 guest XP exactly once. Guest XP is not credited to your production Android account.</Txt>
+   {statuses.map(a=><View key={a.id} style={styles.shopItem}>
+    <View style={styles.shopLabel}>
+     <Txt style={styles.itemName}>{a.emoji} {a.title}</Txt>
+     <Txt muted style={styles.small}>{a.description}</Txt>
+    </View>
+    <Txt style={{color:a.completed?C.green:C.muted,fontWeight:'800',fontSize:12}}>{a.xpRewarded?'✓ +50 XP':Math.min(a.progress,a.target)+' / '+a.target}</Txt>
+   </View>)}
   </Card>
  </>;
 }
@@ -193,6 +253,7 @@ export default function App(){
  const main=()=>{
   if(secondary==='roster')return <RosterScreen g={g} act={act}/>;
   if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock}/>;
+  if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock}/>;
