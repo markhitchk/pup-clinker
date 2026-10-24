@@ -31,8 +31,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: Mobile/package-lock.json
+      # This repository deliberately has no Mobile/package-lock.json.
+      # Do not enable setup-node npm caching until a lockfile is committed.
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
