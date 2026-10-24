@@ -20,8 +20,16 @@ const v2 = [
   ['v2_prism','Prism'],['v2_flurry','Flurry'],['v2_harleytg','HarleyTG Puppy'],
   ['v2_dev_pup','Dev Pup'],['v2_rory','Rory'],['v2_discord_pup','Discord Pup']
 ];
+// Kotlin EXTRA_PUPPY_STYLES generated from assets/test/manifest.json.
+// Only these two manifest-declared free TEST puppies are eligible for preview
+// local Gacha; this never unlocks protected, redeem or Discord entitlements.
+export const KOTLIN_FREE_TEST_PUPPIES=[
+ {id:'test_v1_crash_dummy',name:'Crash Test Pup V1',emoji:'🧪',description:'Free test roster puppy.',free:true,redeemOnly:false,groupId:'test',groupTitle:'Test Puppies',groupOrder:2147483647,number:1,image:SOURCE+'/test/v1_test_crash_dummy.png'},
+ {id:'test_v2_crash_dummy',name:'Crash Test Pup V2',emoji:'🧪',description:'Free test roster puppy.',free:true,redeemOnly:false,groupId:'test',groupTitle:'Test Puppies',groupOrder:2147483647,number:2,image:SOURCE+'/test/v2_test_crash_dummy.png'}
+];
 export const ROSTER = [...v1.map(([id,name],i)=>({id,name,number:i+1,image:SOURCE+'/v1/v1_'+id+'.png'})),
-  ...v2.map(([id,name],i)=>({id,name,number:i+19,image:SOURCE+(id==='v2_discord_pup'?'/discord_rewards/':'/v2/')+id+'.png'}))];
+  ...v2.map(([id,name],i)=>({id,name,number:i+19,image:SOURCE+(id==='v2_discord_pup'?'/discord_rewards/':'/v2/')+id+'.png'})),
+  ...KOTLIN_FREE_TEST_PUPPIES];
 export const UPGRADES = [
   {id:'better_treats',name:'Better Treats',emoji:'🦴',description:'+1 per tap',effect:'CLICK',amount:1,base:35},
   {id:'chew_toy',name:'Chew Toy',emoji:'🧸',description:'+1 bonus every 10 active taps',effect:'AUTO',amount:1,base:100},
