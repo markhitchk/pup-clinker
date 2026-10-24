@@ -859,9 +859,9 @@ function BlackjackV6Panel({g,act,state,onBack}){
      <Txt style={[styles.filterText,wager===preset&&styles.filterTextSelected]}>{preset}</Txt>
     </Pressable>)}
    </View>
-   <Button disabled={!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch)}
+   <Button disabled={!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
     onPress={()=>{setSelectedHand(0);act({type:'blackjackStart',wager,deck:shuffledBlackjackDeck(),now:Date.now()});}}>
-    {g.pendingScratch?'Finish Scratchers first':g.casinoChips<wager?'Not Enough Chips':'Deal for '+wager+' Chips'}
+    {g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel?'Finish the current Casino round first':g.casinoChips<wager?'Not Enough Chips':'Deal for '+wager+' Chips'}
    </Button>
   </>:null}
   <Button secondary compact onPress={()=>setShowRules(!showRules)}>{showRules?'Hide Blackjack Rules':'ⓘ Blackjack Rules'}</Button>
