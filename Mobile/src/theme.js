@@ -1,6 +1,17 @@
-export const colors={
-  bg:'#0C0F12',surface:'#151A1F',card:'#1E252C',
-  line:'#29313B',accent:'#00B8F0',accentSoft:'#103647',
-  text:'#F2F5F9',muted:'#A5AFBC',gold:'#FFD56B',green:'#78E5B2',
-  danger:'#FB8888'
-};
+import {effectiveMotion,paletteFor,scaleStyles,uiScaleFactor} from './engine/settings.js';
+// One app surface. Existing scenes share this palette and rebuild their style
+// dictionaries only when appearance changes, never on animation frames.
+export const colors=paletteFor({},true);
+export const interaction={buttons:true};
+let revision=0,scale=1,signature='';
+export function applyAppearance(preferences,systemDark){
+ interaction.buttons=effectiveMotion(preferences).buttons;
+ const palette=paletteFor(preferences,systemDark),nextScale=uiScaleFactor(preferences);
+ const next=JSON.stringify([palette,nextScale]);
+ if(next!==signature){Object.assign(colors,palette);scale=nextScale;signature=next;revision++;}
+ return palette;
+}
+export function themedStyles(factory){
+ let version=-1,cache;
+ return new Proxy({}, {get(_target,key){if(version!==revision){cache=scaleStyles(factory(),scale);version=revision;}return cache[key];}});
+}

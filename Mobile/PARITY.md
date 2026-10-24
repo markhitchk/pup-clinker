@@ -1,3 +1,12 @@
+## October 24 — settings and hardware pointer restoration
+
+- Restored source accordion categories with functional local appearance controls: Light/Dark/Follow System, eight source accents/custom HEX, high contrast, Compact/Default/Large scale, reduced motion and performance presets. Existing UI style dictionaries update when appearance changes; source casino scenes retain an explicit dark surface for their fixed artwork/text palette.
+- Gameplay haptics/test, compact numbers, puppy motion and the original hardware mouse pointer are persisted. `plugins/withPuppyPointer.cjs` registers an Android native root/modal view with Kotlin's exact 64×64 default cursor, theme choice and (16,16) hotspot; all 24 original pointer PNGs are retained byte-for-byte. This is a real OS cursor, not a touch overlay. Physical mouse behavior still requires device QA.
+- Launcher `icon` and `roundIcon` use the same unmodified source drawable as Kotlin instead of a differently scaled adaptive foreground. Header logo, notification bell and settings entry restored with safe-area insets.
+- Notifications now provide a persistent filtered inbox, unread state, mark-all/clear-read, duplicate-safe guest reward claims, Android permission/channels, test delivery, date-based daily/park reminders and background-only puppy attention. Disabling categories/deleting guest progress cancels pending local reminders. Original historical/AFK reward notifications and remote update notices are not fabricated.
+- Guest profile name/birthday, local diagnostics consent, support sharing, roster metadata refresh/cache clearing and confirmed settings/progress resets are available. Settings/inbox actions do not rewrite care timestamps or award achievements.
+- Validation: full Node suite, component interaction tests, notification lifecycle tests, Expo Android export and prebuild. Native compilation/installed phone delivery/hardware pointer and matching Android screenshots remain required. This is still a guest preview, not a complete production Kotlin migration.
+
 # React Native Android parity audit
 
 **Target:** Full Kotlin/Compose Puppy Clicker replacement in React Native, with zero WebViews.
@@ -24,13 +33,13 @@ Status vocabulary: **Implemented guest** = screens/logic usable in local preview
 | Blackjack crash-safe guest wager state | Implemented guest | One persisted guest `casinoRound` with deck uniqueness validation; not server-side settlement |
 | Daily reward and park activity | Partial | Local daily gift, park, validated monthly schedules, four metric-based fallback goals, per-day counters and duplicate-safe claims now work for **guest** state; remote authoritative settlement and broader event rewards missing |
 | Owned roster/favorites/search | Partial | Local V1/V2; source categorization, dynamic groups, reorder, role permissions remain |
-| Player profile, username, settings | Partial | Guest profile exists; native owner/operator/developer/account menus and preferences missing |
+| Player profile, username, settings | Partial | Appearance, scale, contrast, motion, haptics, hardware pointer, guest name/birthday, privacy choices, local support share, resets and roster cache controls implemented; protected account/developer actions remain |
 | Discord OAuth and linked original Pup Account | Blocked | `DiscordSignupAuth.kt`, production callback flow and device identification; cannot impersonate original account |
 | Supabase authoritative cloud saves, one device | Blocked | `PupAccountCloudSave.kt`, revision reconciliation and original data mapping; **never upload guest state** |
 | PupEye device binding, bans, alerts, appeals and audit | Blocked | `SupabasePupEyeClient.kt` and server authority; anti-cheat must be authoritative |
 | Puppy Codes, code-backed rewards and redemption history | Blocked | `PuppyCodeRewards.kt`; ownership and anti-abuse server validation necessary |
 | Player-to-player Exchange/trades/gifts | Blocked | `PuppyExchange*.kt`; server ownership ledger and atomic escrow required |
-| Native notification permission, inbox, channels | Not implemented | `PuppyAttentionNotifications.kt`, onboarding permissions; guest preview only saves preference |
+| Native notification permission, inbox, channels | Partial guest | Local Android permission/channels/test/reminders and persistent categorized inbox implemented; no original Kotlin history, trusted AFK grants or remote update delivery |
 | Android home widget, background scheduler, haptics | Not implemented | `PuppyHomeWidgetProvider.kt`, haptics and platform UI |
 | Source PNGs, 1:1 casino artwork, adaptive layouts | Partial | 22 original Kotlin casino PNGs copied **byte-for-byte** into Mobile assets, plus six React image-backed game scenes; screenshots, true card coordinates and scene animations still unverified |
 | Old Kotlin install migration and compatibility | Blocked | Encrypted/attested Android save and official signing identity; do not uninstall original |

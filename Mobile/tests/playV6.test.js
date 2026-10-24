@@ -88,7 +88,7 @@ test('Only the portrait is tappable and Play idle motion honors animation prefer
  assert.ok(reactPlay.indexOf('<View style={[styles.tapStage')<reactPlay.indexOf('<Pressable accessibilityRole="button"'));
  assert.ok(reactPlay.includes('onPress={doTap}'));
  assert.ok(!reactPlay.includes('onOpen('));
- assert.ok(reactPlay.includes('g.animationsEnabled===false'));
+ assert.ok(reactPlay.includes('g.idleAnimationsEnabled===false')&&reactPlay.includes('g.tapAnimationsEnabled===false'));
  assert.ok(reactPlay.includes('Animated.loop('));
  assert.ok(reactPlay.includes('disabled={cooldown>0}'));
 });

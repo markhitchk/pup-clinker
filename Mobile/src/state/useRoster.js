@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -8,6 +8,8 @@ import {
 } from '../engine/dynamicRoster.js';
 
 export function useRoster(){
+ const controls=useRef({});
+ const [refreshing,setRefreshing]=useState(false),[status,setStatus]=useState('Bundled artwork available offline.');
  const [snapshot,setSnapshot]=useState(()=>({
   items:mergeRoster(),source:'bundled',updatedAt:null,categories:categoriesForRoster(mergeRoster())
  }));
@@ -27,10 +29,10 @@ export function useRoster(){
     return text;
    }finally{clearTimeout(timeout);}
   };
-  const refresh=async()=>{
+  const refresh=async(force=false)=>{
    const now=Date.now();
-   if(!alive||loading||now-lastSuccess<ROSTER_REFRESH_MS||now-lastAttempt<ROSTER_RETRY_MS)return;
-   loading=true;lastAttempt=now;
+   if(!alive||loading||(!force&&(now-lastSuccess<ROSTER_REFRESH_MS||now-lastAttempt<ROSTER_RETRY_MS)))return;
+   loading=true;lastAttempt=now;setRefreshing(true);setStatus('Refreshing puppy assets…');
    try{
     const folders=parseRosterIndex(await getText(ROSTER_INDEX_URL,512*1024));
     let assets=[];
@@ -47,9 +49,9 @@ export function useRoster(){
     const json=packRosterCache(assets);
     await AsyncStorage.setItem(ROSTER_CACHE_KEY,json);
     lastSuccess=Date.now();
-    update(assets,'live');
-   }catch{/* Offline stays on the last validated cached or bundled roster. */}
-   finally{loading=false;}
+    update(assets,'live');setStatus('Assets refreshed successfully.');
+   }catch{if(alive)setStatus('Could not refresh online assets. Using cached or bundled artwork.');}
+   finally{loading=false;if(alive)setRefreshing(false);}
   };
   const init=async()=>{
    try{
@@ -58,10 +60,11 @@ export function useRoster(){
    }catch{/* Corrupt cache falls back to bundled registry. */}
    void refresh();
   };
+  controls.current={refresh:()=>refresh(true),clearCache:async()=>{if(loading)return;try{await AsyncStorage.removeItem(ROSTER_CACHE_KEY);update([],'bundled');lastAttempt=0;lastSuccess=0;setStatus('Roster metadata cache cleared. Bundled artwork remains available.');}catch{if(alive)setStatus('Unable to clear roster cache.');}}};
   void init();
   const timer=setInterval(()=>void refresh(),ROSTER_REFRESH_MS);
   const listener=AppState.addEventListener('change',status=>{if(status==='active')void refresh();});
   return ()=>{alive=false;clearInterval(timer);listener.remove();};
  },[]);
- return snapshot;
+ return {...snapshot,refreshing,status,refresh:()=>controls.current.refresh?.(),clearCache:()=>controls.current.clearCache?.()};
 }

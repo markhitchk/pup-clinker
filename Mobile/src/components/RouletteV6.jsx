@@ -1,5 +1,7 @@
+import PuppyPointer from './PuppyPointer.jsx';
+import {themedStyles} from '../theme.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {Animated,Easing,Image,Modal,Pressable,ScrollView,StyleSheet,Text,View,useWindowDimensions} from 'react-native';
+import {Animated,Easing,Image,Modal,Pressable,ScrollView,Text,View,useWindowDimensions} from 'react-native';
 import {ROULETTE_V6,ROULETTE_BETS,ROULETTE_OUTSIDE,rouletteBoardZones,rouletteWheelTarget,
  rouletteColorHex,rouletteColor,rouletteValidWager,rouletteBetLabel,rouletteResult} from '../engine/rouletteV6.js';
 
@@ -174,8 +176,8 @@ export default function RouletteV6({game,pending,lastResult,onAction,onBack}){
    <Text style={styles.muted}>European single-zero theoretical RTP: {ROULETTE_V6.rtp}.</Text>
   </View>:null}
   <Text style={styles.muted}>Guest preview only; no real money, cash prizes or authoritative cloud betting.</Text>
-  <Modal visible={picker} transparent animationType="fade" onRequestClose={()=>setPicker(false)}>
-   <View style={styles.modalBackdrop}>
+  <Modal visible={picker} transparent animationType={game.reducedMotion||!game.animatedUi?'none':'fade'} onRequestClose={()=>setPicker(false)}>
+   <PuppyPointer enabled={game.puppyPointerEnabled} style={styles.modalBackdrop}>
     <View style={styles.modalBody}>
      <Text style={styles.section}>Choose landing number</Text>
      <Text style={styles.muted}>Pick 0–36. Exact-number bets return 36× total.</Text>
@@ -195,12 +197,12 @@ export default function RouletteV6({game,pending,lastResult,onAction,onBack}){
       <Text style={styles.whiteBold}>Close</Text>
      </Pressable>
     </View>
-   </View>
+   </PuppyPointer>
   </Modal>
  </View>;
 }
-const styles=StyleSheet.create({
- page:{gap:12,width:'100%'},
+const styles=themedStyles(()=>({
+ page:{gap:12,width:'100%',backgroundColor:'#0C0F12'},
  back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
  whiteBold:{color:'#FFFFFF',fontWeight:'900',textAlign:'center'},
  white:{color:'#FFFFFF'},muted:{color:'#AFBBC2',fontSize:12},
@@ -233,4 +235,4 @@ const styles=StyleSheet.create({
  modalBody:{padding:18,borderRadius:20,gap:10,backgroundColor:'#192A2C'},
  numberGrid:{flexDirection:'row',flexWrap:'wrap',gap:6,justifyContent:'space-between'},
  numberOption:{width:'30%',minHeight:48,alignItems:'center',justifyContent:'center',borderRadius:10}
-});
+}));

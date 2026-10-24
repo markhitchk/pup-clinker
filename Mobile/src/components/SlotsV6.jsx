@@ -1,5 +1,6 @@
+import {themedStyles} from '../theme.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {Animated,Easing,Image,Pressable,StyleSheet,Text,View,useWindowDimensions} from 'react-native';
+import {Animated,Easing,Image,Pressable,Text,View,useWindowDimensions} from 'react-native';
 import {SLOTS_V6,SLOT_SYMBOLS,SLOTS_RULES,slotsFrame,slotsResultLabel,validSlotsWager,slotDrawIndex,slotsResultFromRound} from '../engine/slotsV6.js';
 
 const art={
@@ -162,8 +163,8 @@ export default function SlotsV6({game,pending,lastResult,onAction,onBack}){
   <Text style={s.muted}>Guest preview only — no production casino balance, authoritative server settlement or cash prizes.</Text>
  </View>;
 }
-const s=StyleSheet.create({
- page:{gap:12,width:'100%'},
+const s=themedStyles(()=>({
+ page:{gap:12,width:'100%',backgroundColor:'#0C0F12'},
  back:{alignSelf:'flex-start',minHeight:44,justifyContent:'center'},
  title:{fontSize:26,fontWeight:'900',color:'#F7F9FC'},
  section:{fontSize:17,fontWeight:'900',color:'#F7F9FC'},
@@ -189,4 +190,4 @@ const s=StyleSheet.create({
  error:{padding:10,color:'#FF8B91'},
  rules:{borderRadius:18,backgroundColor:'#1B2930',padding:14,gap:7},
  ruleRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10}
-});
+}));

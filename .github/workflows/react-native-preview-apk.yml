@@ -31,8 +31,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # This repository deliberately has no Mobile/package-lock.json.
-      # Do not enable setup-node npm caching until a lockfile is committed.
+      # Dependencies are pinned in Mobile/package-lock.json.
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -41,7 +40,7 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Install Expo dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Ensure preview package cannot replace the production installation
         run: |
           node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; if(c({config:a.expo}).android.package!=='com.harleytg.puppyclicker.preview')process.exit(1)"

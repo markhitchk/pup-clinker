@@ -83,3 +83,10 @@ See [PARITY.md](PARITY.md) for a feature-by-feature status against the Kotlin so
 GitHub workflow [React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) must finish green before an APK artifact is advertised as working. On October 24, 2026, workflow run [40068347188](https://github.com/markhitchk/pup-clinker/actions/runs/40068347188) failed **8 of 147** Node tests and did **not** produce a verified APK. Part 6 commits fix the Wheel width crash and stale asset/navigation/daily-goal assertions; verify a **new completed** workflow run before claiming that those fixes pass CI or that an APK exists.
 
 For actual image parity rather than source assumptions, follow [PART_6_DEVICE_QA.md](PART_6_DEVICE_QA.md) and [VISUAL_PARITY_AUDIT.md](VISUAL_PARITY_AUDIT.md). `scripts/android_visual_audit.py` compares original Kotlin and React screenshots at identical size, exports changed-pixel percentages and heatmaps, and refuses missing screenshots. Run on the same physical Android device with matching states. **No comparison images have been collected in this repository; 100% visual parity is not verified.**
+
+
+### Restored settings and local notifications (October 24)
+
+Open Settings from the header gear or Settings tab. Appearance and Gameplay choices persist in the existing guest save. The header bell opens the notification inbox. Android alerts require permission from Settings → Notifications; no push token or Firebase project is requested. Daily and park reminders are recalculated when opening the app or changing the relevant game/preferences; puppy attention is scheduled only while away. These reminders do not import the original Kotlin history or issue trusted AFK rewards.
+
+The custom hardware cursor requires the standalone Android build (`expo prebuild` applies the config plugin); Expo Go does not contain this native view. Keep `App/` as the original Kotlin reference. The preview launcher uses the original source drawable and preserves the separate preview package.

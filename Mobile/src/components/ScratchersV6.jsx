@@ -1,5 +1,6 @@
+import {themedStyles} from '../theme.js';
 import React,{useState} from 'react';
-import {Image,Pressable,StyleSheet,Text,View} from 'react-native';
+import {Image,Pressable,Text,View} from 'react-native';
 import ScratchStage from './ScratchStage.jsx';
 import {SCRATCHERS} from '../engine/casinoV7.js';
 import {SCRATCH_PUBLISHED_RTP,SCRATCH_CARD_META,SCRATCH_PRIZES} from '../engine/scratch.js';
@@ -86,8 +87,8 @@ export default function ScratchersV6({game,pending,lastResult,onAction,onBack}){
   <Text style={s.muted}>Local guest preview only — no production PupEye, Supabase or real-money Casino settlement.</Text>
  </View>;
 }
-const s=StyleSheet.create({
- page:{gap:12,width:'100%'},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
+const s=themedStyles(()=>({
+ page:{gap:12,width:'100%',backgroundColor:'#0C0F12'},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
  whiteBold:{color:'#FFFFFF',fontWeight:'900'},title:{fontSize:27,color:'#FFFFFF',fontWeight:'900'},
  muted:{fontSize:12,color:'#BBC9D0'},section:{fontSize:18,fontWeight:'900',color:'#FFFFFF'},
  wallet:{flexDirection:'row',alignItems:'center',gap:10,borderRadius:18,padding:14,backgroundColor:'#17292C',
@@ -107,4 +108,4 @@ const s=StyleSheet.create({
  odds:{padding:14,borderRadius:18,backgroundColor:'#192A2F',gap:7},
  oddsRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
  error:{color:'#F28D8D',fontSize:12}
-});
+}));

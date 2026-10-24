@@ -1,5 +1,6 @@
+import {themedStyles} from '../theme.js';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {Animated,Easing,Image,Pressable,StyleSheet,Text,View,useWindowDimensions} from 'react-native';
+import {Animated,Easing,Image,Pressable,Text,View,useWindowDimensions} from 'react-native';
 import {PLINKO_V6,PLINKO_BINS,validPlinkoWager,plinkoLabel,plinkoFrame,
  plinkoAnimationSamples,plinkoResult} from '../engine/plinkoV6.js';
 
@@ -140,8 +141,8 @@ export default function PlinkoV6({game,pending,lastResult,onAction,onBack}){
   <Text style={s.muted}>Local guest preview only; no real-money play or authoritative cloud Casino transactions.</Text>
  </View>;
 }
-const s=StyleSheet.create({
- page:{width:'100%',gap:12},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
+const s=themedStyles(()=>({
+ page:{width:'100%',gap:12,backgroundColor:'#0C0F12'},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
  title:{fontSize:27,fontWeight:'900',color:'#FFFFFF'},whiteBold:{color:'#FFFFFF',fontWeight:'900'},
  muted:{color:'#B8C6CF',fontSize:12},section:{color:'#FFFFFF',fontWeight:'900',fontSize:18},
  wallet:{borderRadius:18,padding:14,backgroundColor:'#192A2D',borderWidth:1,borderColor:'#506067',flexDirection:'row',alignItems:'center',gap:10},
@@ -159,4 +160,4 @@ const s=StyleSheet.create({
  disabled:{opacity:.42},error:{color:'#FF8B90'},
  ruleToggle:{alignItems:'center',padding:12,borderWidth:1,borderColor:'#607078',borderRadius:12},
  rules:{borderRadius:18,padding:14,gap:8,backgroundColor:'#192A2D'}
-});
+}));

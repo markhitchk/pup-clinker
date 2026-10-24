@@ -1,3 +1,5 @@
+import {checkInbox,addTestNotification,reconcileInbox} from '../engine/inbox.js';
+import {DEFAULT_PREFERENCES,preferenceValue} from '../engine/settings.js';
 import {freshGame,tap,care,purchase,switchPuppy,convertTreatsToChips,casinoSpend,casinoPayout,claimDailyReward,startPark,claimPark,prestige,buyPrestigeSkill,buyUpgradeTicket,buyAccessory,handValue} from '../engine/game.js';
 import {slotsOutcome,rouletteOutcome,plinkoOutcome,wheelOutcome} from '../engine/casinoV7.js';
 import {applyGacha} from '../engine/gacha.js';
@@ -78,14 +80,22 @@ export function transition(state,action){
   case 'onboardBirthday':
    if(!validBirthday(action.month,action.day))return {...state,notice:'Choose a valid month and day or skip'};
    g.birthdayMonth=action.month;g.birthdayDay=action.day;break;
-  case 'setPreference':
-   if(!['hapticsEnabled','animationsEnabled','compactNumbers'].includes(action.name)||typeof action.value!=='boolean')return no();
-   g[action.name]=action.value;
-   notice='⚙️ Gameplay preference updated';
+  case 'setPreference':{
+   const value=preferenceValue(action.name,action.value);
+   if(value===undefined)return no();
+   g[action.name]=value;
    break;
+  }
+  case 'checkNotifications':checkInbox(g,action.now||Date.now());break;
+  case 'testNotification':addTestNotification(g,action.now||Date.now());break;
+  case 'markNotificationsRead':g.notificationInbox=g.notificationInbox.map(n=>({...n,read:true}));break;
+  case 'clearReadNotifications':g.notificationInbox=g.notificationInbox.filter(n=>!n.read);break;
+  case 'openNotification':g.notificationInbox=g.notificationInbox.map(n=>n.id===action.id?{...n,read:true}:n);break;
+  case 'resetSettings':Object.assign(g,DEFAULT_PREFERENCES);notice='Interface settings reset';break;
   case 'onboardNotifications':
-   // Preference only, no Android permission is requested before native integration.
    g.notificationsOptIn=action.enabled===true;
+   for(const name of ['dailyRewardNotifications','gameEventNotifications','updateNotifications'])g[name]=g.notificationsOptIn;
+   if(!g.notificationsOptIn)g.puppyAttentionNotifications=false;
    break;
   case 'onboardFinish':
    if(g.onboardingComplete||g.onboardingStep!==ONBOARDING_STEPS.length-1)return state;
@@ -303,11 +313,23 @@ export function transition(state,action){
    }else notice='🃏 '+action.type.replace('blackjack','')+' · Hand '+(blackjack.activeHandIndex+1)+' / '+blackjack.hands.length;
    break;
   }
+  case 'resetGuestProgress':{
+   const fresh=freshGame();
+   for(const name of Object.keys(DEFAULT_PREFERENCES))fresh[name]=g[name];
+   for(const name of ['guestName','birthdayMonth','birthdayDay','onboardingComplete','onboardingStep'])fresh[name]=g[name];
+   return {...initialState(),monthlySchedule:state.monthlySchedule,game:fresh,ready:true,notice:'Local guest progress reset'};
+  }
   case 'clearGuest':return {...initialState(),monthlySchedule:state.monthlySchedule,ready:true,notice:'Guest progress reset'};
   case 'dismiss':return {...state,notice:''};
   default:return no();
  }
+ const localActions=['setPreference','resetSettings','checkNotifications','testNotification','markNotificationsRead','clearReadNotifications','openNotification'];
+ if(localActions.includes(action.type)){
+  if(JSON.stringify(g)===JSON.stringify(state.game)&&!notice)return state;
+  return {...state,game:g,notice:notice||state.notice};
+ }
  const now=action.now||Date.now();
+ reconcileInbox(g,now);
  g.lastActiveAt=now;
  g.casinoRound=blackjack;
  if(!g.careUpdatedAtByPuppy||typeof g.careUpdatedAtByPuppy!=='object')g.careUpdatedAtByPuppy={};

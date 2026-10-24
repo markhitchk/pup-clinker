@@ -1,3 +1,4 @@
+import {sanitizeInbox} from './inbox.js';
 // Android-derived V7 browser engine from Puppy-Clicker merge ddadb7f; provisional, not authoritative.
 // Ported from pup-clinker/Web and Android's GameViewModel: web-specific schema v1.
 import {validPendingScratch} from './scratch.js';
@@ -6,6 +7,7 @@ import {validPendingRoulette} from './rouletteV6.js';
 import {validPendingPlinko} from './plinkoV6.js';
 import {validPendingWheel} from './wheelV6.js';
 import {localEpochDay} from './monthlyRewards.js';
+import {DEFAULT_PREFERENCES,sanitizePreferences} from './settings.js';
 // Kotlin PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY.
 export const MAX_TICKETS_PER_RARITY=9999;
 export const SOURCE = 'https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets';
@@ -65,7 +67,7 @@ export const freshGame=()=>({
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
   xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,pendingSlots:null,pendingRoulette:null,pendingPlinko:null,pendingWheel:null,
   onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
-  hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,cooldownUntilMs:0,
+  ...DEFAULT_PREFERENCES,notificationInbox:[],notificationSeenIds:[],cooldownUntilMs:0,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
@@ -106,6 +108,9 @@ export function sanitizeGame(input){
   b.hapticsEnabled=b.hapticsEnabled!==false;
   b.animationsEnabled=b.animationsEnabled!==false;
   b.compactNumbers=b.compactNumbers!==false;
+  Object.assign(b,sanitizePreferences(b));
+  b.notificationInbox=sanitizeInbox(b.notificationInbox);
+  b.notificationSeenIds=Array.isArray(b.notificationSeenIds)?[...new Set(b.notificationSeenIds.filter(id=>typeof id==='string'&&id.length<=100))].slice(0,500):[];
   b.autoPerSecond=0;
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);

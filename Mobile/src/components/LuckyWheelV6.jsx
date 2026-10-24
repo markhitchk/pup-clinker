@@ -1,5 +1,6 @@
+import {themedStyles} from '../theme.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {Animated,Easing,Image,Pressable,StyleSheet,Text,View,useWindowDimensions} from 'react-native';
+import {Animated,Easing,Image,Pressable,Text,View,useWindowDimensions} from 'react-native';
 import {
  WHEEL_V6,WHEEL_SEGMENTS,WHEEL_GUEST_UNLOCKS_ENABLED,wheelTargetDegrees,
  wheelFrame,wheelLabelPosition,wheelResult,wheelResultLabel,validWheelWager
@@ -165,8 +166,8 @@ export default function LuckyWheelV6({game,pending,lastResult,onAction,onBack}){
   <Text style={styles.muted}>Simulated local Casino Chips only · Not the authoritative Kotlin/PupEye casino.</Text>
  </View>;
 }
-const styles=StyleSheet.create({
- page:{gap:12,width:'100%'},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
+const styles=themedStyles(()=>({
+ page:{gap:12,width:'100%',backgroundColor:'#0C0F12'},back:{minHeight:44,alignSelf:'flex-start',justifyContent:'center'},
  heading:{fontSize:27,fontWeight:'900',color:'#FFFFFF'},section:{fontSize:17,fontWeight:'900',color:'#FFFFFF'},
  muted:{color:'#B7C8CA',fontSize:12,textAlign:'center'},whiteBold:{color:'#FFFFFF',fontWeight:'900'},
  wallet:{borderRadius:18,backgroundColor:'#17272B',borderColor:'#576D73',borderWidth:1,
@@ -192,4 +193,4 @@ const styles=StyleSheet.create({
  rules:{backgroundColor:'#192D30',borderRadius:18,padding:14,gap:8},
  ruleRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8},
  safety:{color:'#F6DCA5',fontSize:12,textAlign:'center',padding:10,borderWidth:1,borderColor:'#8B7142',borderRadius:12}
-});
+}));
