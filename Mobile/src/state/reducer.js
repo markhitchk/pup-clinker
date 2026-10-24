@@ -165,11 +165,21 @@ export function transition(state,action){
   case 'casino':{
    // Slots and Scratchers must use their saved, reveal-then-settle pathways.
    // Never permit a legacy one-step casino action to bypass those ledgers.
-   if(action.gameType==='slots'||action.gameType==='scratch')return {...state,notice:'Open the dedicated game to start a saved round'};
+   if(action.gameType==='slots')return {...state,notice:'Open Slots to start a saved round'};
    if(blackjack)return {...state,notice:'Finish Blackjack before another round'};
    if(g.pendingSlots)return {...state,notice:'Finish Slots before another round'};
    if(g.pendingScratch)return {...state,notice:'Finish the current Scratchers card before another wager'};
-   // Scratchers starts through the dedicated saved card pathway.
+   // Keep the existing Scratchers UI action as an alias for a staged
+   // pending card. Do not settle it or grant payouts until scratchReveal.
+   if(action.gameType==='scratch'){
+    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
+    const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
+    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
+    if(!casinoSpend(g,action.wager))return no();
+    g.pendingScratch=pending;
+    notice='🎟️ Scratch your card to reveal the committed prize';
+    break;
+   }
    if(!Number.isSafeInteger(action.wager)||action.wager<=0||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let result;try{result=casinoRound(action);}catch{return {...state,notice:'Invalid casino bet'};}
    if(!casinoSpend(g,action.wager))return no();
