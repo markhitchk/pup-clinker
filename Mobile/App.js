@@ -1054,6 +1054,7 @@ function AppContent(){
  const {width}=useWindowDimensions();
  const [tab,setTab]=useState('play');
  const [secondary,setSecondary]=useState(null);
+ const [notificationsVisible,setNotificationsVisible]=useState(false);
  const [bet,setBet]=useState(20);
  const [clock,setClock]=useState(Date.now());
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
@@ -1079,7 +1080,7 @@ function AppContent(){
   {inGame?<View style={styles.revampedAppHeader}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" accessibilityLabel="Puppy Clicker logo" style={styles.revampedAppLogo}/>
    <Txt style={[styles.revampedBrand,{flex:1}]} numberOfLines={1}>Puppy Clicker</Txt>
-   <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={()=>setSecondary('notifications')} style={styles.revampedHeaderAction}>
+   <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={()=>setNotificationsVisible(true)} style={styles.revampedHeaderAction}>
     <Txt style={styles.revampedHeaderIcon}>🔔</Txt>
    </Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel="Settings" onPress={()=>setSecondary('settings')} style={styles.revampedHeaderAction}>
@@ -1103,6 +1104,21 @@ function AppContent(){
      !g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:
      <>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
    </ScrollView>}
+  <Modal visible={notificationsVisible} transparent animationType="fade"
+   onRequestClose={()=>setNotificationsVisible(false)}>
+   <View style={styles.kotlinDialogScrim}>
+    <View accessibilityLabel="Notifications dialog" style={styles.kotlinNotificationsDialog}>
+     <Txt style={styles.kotlinNotificationsTitle}>Notifications</Txt>
+     <Txt style={styles.kotlinNotificationsMessage}>
+      Official Kotlin notification history and update checks are not connected in this local preview.
+      No notification or reward is displayed without verified account data.
+     </Txt>
+     <View style={{flexDirection:'row',justifyContent:'flex-end',gap:8,marginTop:16}}>
+      <Button compact onPress={()=>setNotificationsVisible(false)}>Close</Button>
+     </View>
+    </View>
+   </View>
+  </Modal>
   {inGame&&!secondary?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id}}
     onPress={()=>openTab(id)} style={styles.tab}>
@@ -1116,6 +1132,10 @@ function AppContent(){
 }
 export default function App(){return <SafeAreaProvider><AppContent/></SafeAreaProvider>;}
 const styles=StyleSheet.create({
+ kotlinDialogScrim:{flex:1,backgroundColor:'rgba(0,0,0,0.66)',justifyContent:'center',paddingHorizontal:18},
+ kotlinNotificationsDialog:{backgroundColor:C.surface,borderRadius:28,padding:24,borderWidth:1,borderColor:C.line,maxWidth:540,width:'100%',alignSelf:'center',elevation:12},
+ kotlinNotificationsTitle:{color:C.text,fontSize:24,fontWeight:'900',marginBottom:14},
+ kotlinNotificationsMessage:{color:C.text,fontSize:14,lineHeight:21},
  revampedCareIdentity:{flexDirection:'row',alignItems:'center',gap:10,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.accentSoft,paddingHorizontal:12,paddingVertical:9},
  revampedCarePanel:{gap:2,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.surface,paddingHorizontal:11,paddingVertical:8},
  revampedCareMeter:{flexDirection:'row',alignItems:'center',gap:8,minHeight:27},
