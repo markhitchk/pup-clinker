@@ -14,6 +14,7 @@ import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/m
 import ScratchStage from './src/components/ScratchStage.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
+import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -261,61 +262,130 @@ function CareScreen({g,act,clock,schedule,onOpen}){
   </>}
  </View>;
 }
-// V6Shop's 3 material filter sections; the guest preview does not redeem trusted codes.
+// Part 3: actual launched Kotlin V6Shop / V6Prestige, not a generic store.
 function ShopScreen({g,act,onOpen}){
  const [shopTab,setShopTab]=useState('upgrades');
- const upgrades=shopTab==='upgrades'?UPGRADES.filter(u=>!u.rarity):UPGRADES.filter(u=>u.rarity);
+ const upgrades=upgradesForShopTab(shopTab);
+ const compact=g.compactNumbers!==false;
  return <View style={styles.gamePage}>
-  <PageHeader title="Puppy Shop" subtitle="Active upgrades, rare tickets, Pup Coins and Puppy Codes."/>
+  <PageHeader withLogo title="Puppy Shop" subtitle="Active upgrades, rare tickets, Pup Coins and Puppy Codes."/>
   <Wallet game={g}/>
-  <View style={styles.actions}>
-   <Button secondary onPress={()=>Alert.alert('Puppy Codes','Code redemption requires a linked, verified Puppy Account and is not enabled in this guest preview.')}>🎫 Redeem Code</Button>
+  <View style={styles.shopTopActions}>
+   <Button secondary onPress={()=>Alert.alert('🎫 Redeem Puppy Code','Kotlin has local Puppy Codes, but preview code redemption is disabled until original save, account and entitlement behavior can be verified. No protected rewards will be simulated.')}>🎫 Redeem Code</Button>
    <Button secondary onPress={()=>onOpen('roster')}>🐶 Pups</Button>
   </View>
   <View style={styles.filterRow}>
-   {[['upgrades','🍪 Upgrades'],['tickets','🎟️ Tickets'],['coins','🪙 Pup Coins']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:shopTab===id}} style={[styles.filterChip,shopTab===id&&styles.filterChipSelected]} onPress={()=>setShopTab(id)}><Txt style={[styles.filterText,shopTab===id&&styles.filterTextSelected]} numberOfLines={1}>{label}</Txt></Pressable>)}
+   {[['upgrades','🍪 Upgrades'],['tickets','🎟️ Tickets'],['coins','🪙 Pup Coins']].map(([id,label])=>
+    <Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:shopTab===id}}
+     style={[styles.filterChip,shopTab===id&&styles.filterChipSelected]} onPress={()=>setShopTab(id)}>
+     <Txt style={[styles.filterText,shopTab===id&&styles.filterTextSelected]} numberOfLines={1}>{label}</Txt>
+    </Pressable>)}
   </View>
   {shopTab==='coins'?<>
-   <Card title="🪙 PUP COIN SHOP"><Txt muted>Use earned Pup Coins for tickets and accessories.</Txt>
-    {RARITIES.map(r=><View key={r} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{r} Ticket</Txt><Txt muted style={styles.small}>Owned: {g.ticketInventory[r]||0}</Txt></View><Button secondary compact disabled={g.pupCoins<ticketShopCost(r,g.ticketShopPurchases[r]||0)} onPress={()=>act({type:'ticket',rarity:r})}>{format(ticketShopCost(r,g.ticketShopPurchases[r]||0))} 🪙</Button></View>)}
-   </Card>
-   <Card title="🎀 PUPPY ACCESSORIES">
-    {['None',...Object.keys(accessoryPrices)].map(name=><View key={name} style={styles.shopItem}><Txt style={styles.itemName}>{name} {g.accessory===name?'✓':''}</Txt><Button secondary compact onPress={()=>act({type:g.ownedAccessories.includes(name)?'equip':'accessory',name})}>{g.ownedAccessories.includes(name)?'Equip':format(accessoryPrices[name])+' 🪙'}</Button></View>)}
-   </Card>
+   <View style={styles.pupCoinBalance}>
+    <Txt style={styles.itemName}>🪙 Pup Coin Shop</Txt>
+    <Txt style={styles.pageTitle}>{v6Format(g.pupCoins,compact)} Pup Coins</Txt>
+    <Txt muted style={styles.small}>Pup Coins are the normal Shop currency. They are not Casino Chips.</Txt>
+   </View>
+   <Txt style={styles.sectionTitle}>Accessories</Txt>
+   {['None',...Object.keys(accessoryPrices)].map(name=>{
+    const offer=accessoryOffer(g,name);
+    return <View key={name} style={styles.shopAccessoryRow}>
+     <View style={styles.shopLabel}>
+      <Txt style={styles.itemName}>{name}</Txt>
+      <Txt muted style={styles.small}>{name==='None'?'Always available':offer.owned?'Owned permanently':offer.price+' Pup Coins'}</Txt>
+     </View>
+     <Button compact disabled={!offer.canBuy}
+      onPress={()=>act({type:offer.owned?'equip':'accessory',name})}>{offer.equipped?'Equipped':offer.owned?'Equip':'Buy'}</Button>
+    </View>;
+   })}
+   <Txt style={styles.sectionTitle}>Upgrade Tickets</Txt>
+   <Txt muted style={styles.small}>Each purchase raises that rarity’s next price by 25% of its base price, capped at 6×.</Txt>
+   {RARITIES.map(rarity=>{
+    const offer=ticketShopOffer(g,rarity),info=TICKET_RARITY_PRESENTATION[rarity];
+    return <View key={rarity} style={styles.shopAccessoryRow}>
+     <View style={styles.shopLabel}>
+      <Txt style={styles.itemName}>{info.emoji} {info.name}</Txt>
+      <Txt muted style={styles.small}>Owned {offer.owned} · Next {v6Format(offer.price,compact)} 🪙</Txt>
+     </View>
+     <Button compact disabled={!offer.canBuy} onPress={()=>act({type:'ticket',rarity})}>Buy 1</Button>
+    </View>;
+   })}
   </>:<>
-   {shopTab==='tickets'?<Card title="🎟️ TICKET INVENTORY">
-     {RARITIES.map(r=><Pair key={r} left={r} right={g.ticketInventory[r]||0}/>)}
+   {shopTab==='upgrades'&&(g.prestigeSkills.SMART_SHOPPER||0)>0?
+    <Txt style={styles.shopDiscountLabel}>⭐ Smart Shopper discount active</Txt>:null}
+   {shopTab==='tickets'?<Card title="🎟️ Ticket inventory">
+     <Txt muted style={styles.small}>Rare drop: about 1 Upgrade Ticket per 500 legitimate taps.</Txt>
+     {RARITIES.map(rarity=><View key={rarity} style={styles.pair}>
+      <Txt style={styles.itemName}>{TICKET_RARITY_PRESENTATION[rarity].emoji} {TICKET_RARITY_PRESENTATION[rarity].name}</Txt>
+      <Txt style={styles.value}>×{g.ticketInventory[rarity]||0}</Txt>
+     </View>)}
     </Card>:null}
-   {upgrades.map(u=><View key={u.id} style={styles.upgradeCard}>
-    <View style={styles.shopLabel}><Txt style={styles.itemName}>{u.emoji} {u.name}</Txt><Txt muted style={styles.small}>{u.description}</Txt><Txt muted style={styles.small}>Level {g.upgrades[u.id]||0}{u.rarity?' · '+u.rarity+' · '+ticketCost(g,u)+' tickets':''}</Txt></View>
-    <Button compact disabled={g.treats<cost(g,u)||g.bones<boneCost(u)||(u.rarity&&(g.ticketInventory[u.rarity]||0)<ticketCost(g,u))} onPress={()=>act({type:'purchase',upgrade:u})}>{format(cost(g,u))} 🍪 + {boneCost(u)} 🦴</Button>
-   </View>)}
+   {upgrades.map(u=>{
+    const o=upgradeOffer(g,u.id),rarity=u.rarity?TICKET_RARITY_PRESENTATION[u.rarity]:null;
+    const text=o.skill>0?u.rarity?u.description+' · skill bonus +'+o.skill:u.description+' · Prestige value +'+o.actualAmount:u.description;
+    return <View key={u.id} style={[styles.shopUpgradeCard,rarity&&styles.shopTicketUpgradeCard]}>
+     <View style={styles.shopUpgradeHeading}>
+      <Txt style={{fontSize:31}}>{u.emoji}</Txt>
+      <View style={styles.shopLabel}>
+       <Txt style={styles.itemName}>{u.name}</Txt>
+       <Txt muted style={styles.small}>{text}</Txt>
+       <Txt muted style={styles.small}>Owned {o.owned}</Txt>
+      </View>
+      {rarity?<Txt style={styles.shopRarity}>{rarity.emoji} {rarity.name}</Txt>:
+       <Button compact disabled={!o.canBuy}
+        onPress={()=>act({type:'purchase',upgradeId:u.id})}>{v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Button>}
+     </View>
+     {rarity?<View style={styles.shopUpgradeFooter}>
+      <View style={styles.shopLabel}>
+       <Txt style={styles.itemName}>Need {o.tickets} · you have {g.ticketInventory[u.rarity]||0}</Txt>
+       <Txt muted style={styles.small}>+ {v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Txt>
+      </View>
+      <Button compact disabled={!o.canBuy} onPress={()=>act({type:'purchase',upgradeId:u.id})}>Upgrade</Button>
+     </View>:null}
+    </View>;
+   })}
   </>}
  </View>;
 }
-function PrestigeScreen({g,act}){
- const points=prestigePointsAvailable(g);
- const remaining=Math.max(0,50000-g.lifetimeTreats);
- const skills={TAP_TRAINING:['🐾','Tap Training','Boosts purchased tap upgrades.'],AUTO_TRAINING:['⚡','Bonus Training','Boosts purchased active 10-tap upgrades.'],SMART_SHOPPER:['🛍️','Smart Shopper','Reduces Shop upgrade prices.'],TICKET_SENSE:['🎟️','Ticket Sense','Reduces matching ticket costs.']};
+function PrestigeScreen({g,act,activeCasinoRound=false}){
+ const offer=prestigeOffer(g,activeCasinoRound),compact=g.compactNumbers!==false;
  return <View style={styles.gamePage}>
-  <PageHeader title="Prestige" subtitle="Permanent progression and skill points."/>
+  <PageHeader withLogo title="Prestige" subtitle="Permanent progression and skill points."/>
   <View style={styles.prestigeCenter}>
-   <View style={styles.prestigeTitle}><Txt style={{fontSize:32}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.heading}>Prestige Center</Txt><Txt muted>Prestige {g.prestigeCount} · {g.skillPoints} skill points available</Txt></View></View>
-   {points? <Txt style={styles.itemName}>This run can prestige now for +{points} skill point{points===1?'':'s'}.</Txt>:<>
-    <Txt muted>Earn {format(remaining)} more lifetime Treats to unlock Prestige.</Txt>
-    <View style={styles.track}><View style={[styles.fill,{width:Math.min(100,g.lifetimeTreats/50000*100)+'%',backgroundColor:C.accent}]}/></View>
+   <View style={styles.prestigeTitle}>
+    <Txt style={{fontSize:32}}>⭐</Txt>
+    <View style={{flex:1,gap:3}}>
+     <Txt style={styles.prestigeCenterTitle}>Prestige Center</Txt>
+     <Txt muted style={styles.small}>Prestige {g.prestigeCount} · {g.skillPoints} skill points available</Txt>
+    </View>
+   </View>
+   {offer.points?<Txt style={styles.itemName}>This run can prestige now for +{offer.points} skill point{offer.points===1?'':'s'}.</Txt>:<>
+    <Txt muted style={styles.small}>Earn {v6Format(offer.remaining,compact)} more lifetime treats this run to unlock Prestige.</Txt>
+    <View style={styles.prestigeProgressTrack}><View style={[styles.fill,{backgroundColor:C.accent,width:offer.progress+'%'}]}/></View>
    </>}
-   <Button disabled={!points} onPress={()=>Alert.alert('⭐ Prestige this run?','Current Treats, upgrades, tickets and run stats reset; unlocked puppies and permanent skills stay.',[{text:'Cancel',style:'cancel'},{text:'Prestige',onPress:()=>act({type:'prestige'})}])}>{points?'Prestige for +'+points+' SP':'Prestige locked'}</Button>
+   {activeCasinoRound?<Txt muted style={styles.small}>Finish the current Casino round before prestiging.</Txt>:null}
+   <Button disabled={!offer.canPrestige} onPress={()=>Alert.alert('⭐ Prestige this run?',
+    'You will earn '+offer.points+' skill point'+(offer.points===1?'':'s')+'. Current treats, upgrades, tickets, daily progress and run stats reset. Puppy Code unlocks, puppy collection, settings, bond, prestige level and existing skills stay.',
+    [{text:'Cancel',style:'cancel'},{text:'Prestige',style:'destructive',onPress:()=>act({type:'prestige',now:Date.now()})}])}>
+    {offer.canPrestige?'Prestige for +'+offer.points+' SP':'Prestige locked'}
+   </Button>
   </View>
   <Txt style={styles.sectionTitle}>Permanent skill tree</Txt>
-  <Txt muted>Skills improve Shop upgrades; they do not give free tap power by themselves.</Txt>
+  <Txt muted style={styles.small}>Skills improve Shop upgrades; they do not give free tap power by themselves.</Txt>
   {PRESTIGE_SKILLS.map(skill=>{
-   const [emoji,name,description]=skills[skill];
+   const details=PRESTIGE_SKILL_PRESENTATION[skill];
    const lvl=g.prestigeSkills[skill]||0,price=skillCost(g,skill),maxed=lvl>=5;
-   return <View style={styles.upgradeCard} key={skill}>
-    <Txt style={{fontSize:25}}>{emoji}</Txt>
-    <View style={styles.shopLabel}><Txt style={styles.itemName}>{name}</Txt><Txt muted style={styles.small}>Level {lvl} / 5</Txt><Txt muted style={styles.small}>{description}</Txt></View>
-    <Button compact disabled={maxed||g.skillPoints<price} onPress={()=>act({type:'skill',skill})}>{maxed?'MAX':price+' SP'}</Button>
+   return <View style={styles.prestigeSkillCard} key={skill}>
+    <View style={styles.shopUpgradeHeading}>
+     <Txt style={{fontSize:28}}>{details.emoji}</Txt>
+     <View style={styles.shopLabel}>
+      <Txt style={styles.itemName}>{details.title}</Txt>
+      <Txt muted style={styles.small}>Level {lvl} / 5</Txt>
+     </View>
+     <Button compact disabled={!canBuySkill(g,skill)} onPress={()=>act({type:'skill',skill})}>{maxed?'MAX':price+' SP'}</Button>
+    </View>
+    <Txt muted style={styles.small}>{details.description}</Txt>
    </View>;
   })}
  </View>;
@@ -716,7 +786,7 @@ export default function App(){
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
+  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch)}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
  };
  return <View style={styles.root}>
@@ -781,6 +851,19 @@ const styles=StyleSheet.create({
  settingsChevron:{fontSize:22,fontWeight:'700',color:C.muted},
  previewPill:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:'#352B13',paddingHorizontal:8,paddingVertical:6,borderRadius:10,overflow:'hidden'},
 
+ // Kotlin V6Shop and PuppyPupCoinShop native card and offer hierarchy.
+ shopTopActions:{flexDirection:'row',gap:8},
+ shopDiscountLabel:{color:C.accent,fontWeight:'800',fontSize:13},
+ shopUpgradeCard:{backgroundColor:C.surface,borderRadius:16,padding:13,gap:9,borderWidth:1,borderColor:C.line},
+ shopTicketUpgradeCard:{backgroundColor:C.card},
+ shopUpgradeHeading:{flexDirection:'row',alignItems:'center',gap:10},
+ shopUpgradeFooter:{flexDirection:'row',alignItems:'center',gap:8,justifyContent:'space-between'},
+ shopRarity:{fontSize:12,fontWeight:'800',color:C.gold,maxWidth:90,textAlign:'right'},
+ shopAccessoryRow:{flexDirection:'row',alignItems:'center',padding:12,borderRadius:16,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,gap:8},
+ pupCoinBalance:{borderRadius:18,backgroundColor:C.accentSoft,padding:14,gap:5,borderWidth:1,borderColor:C.line},
+ prestigeCenterTitle:{fontSize:21,fontWeight:'900',color:C.text},
+ prestigeProgressTrack:{height:7,backgroundColor:C.line,borderRadius:8,overflow:'hidden'},
+ prestigeSkillCard:{backgroundColor:C.surface,borderRadius:16,padding:12,gap:7,borderWidth:1,borderColor:C.line},
  // Kotlin V6CareAndDaily: two-column action rows, 125dp portrait, 6dp meter tracks.
  careIdentity:{flexDirection:'row',alignItems:'center',gap:14},
  careBond:{fontSize:14,color:C.accent,fontWeight:'800'},
