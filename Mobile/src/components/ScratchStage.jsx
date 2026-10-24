@@ -13,6 +13,20 @@ const TOKEN=require('../../assets/casino/pup_coin.png');
 const backgrounds={
  casino_scratch:'#FFECEC',ultra_pup:'#E9F8FF',golden_paw:'#FFF7D6'
 };
+const ScratchTileGrid=React.memo(function ScratchTileGrid({scratched}){
+ // Memo prevents 960 native tiles rerendering on every 16ms coin position update.
+ // Coverage tiles update at most about 30 frames/sec.
+ return <View pointerEvents="none" style={{position:'absolute',left:0,right:0,top:0,bottom:0,opacity:.95}}>
+  {Array.from({length:SCRATCH_ROWS},(_,row)=><View key={row} style={{flex:1,flexDirection:'row'}}>
+   {Array.from({length:SCRATCH_COLUMNS},(_,col)=>{
+    const id=row*SCRATCH_COLUMNS+col;
+    const alpha=(row*4+col*3)%7;
+    return <View key={col} style={{flex:1,backgroundColor:scratched.has(id)?'transparent':
+     ['#F1F4F6','#E6EBED','#D8DDE1','#CDD3D8','#C4CAD0','#BEC5CA','#B5BCC3'][alpha]}}/>;
+   })}
+  </View>)}
+ </View>;
+});
 export default function ScratchStage({round,borderImage,onReveal,lastResult,cardId='pup_scratch'}){
  const [scratched,setScratched]=useState(()=>new Set());
  const [coatingBounds,setCoatingBounds]=useState({width:0,height:0});
@@ -107,16 +121,7 @@ export default function ScratchStage({round,borderImage,onReveal,lastResult,card
         bounds.current=b;setCoatingBounds(old=>old.width===b.width&&old.height===b.height?old:b);}}
       style={{position:'absolute',left:0,right:0,top:0,bottom:0,borderRadius:12,overflow:'hidden'}}
      >
-      <View pointerEvents="none" style={{position:'absolute',left:0,right:0,top:0,bottom:0,opacity:.95}}>
-       {Array.from({length:SCRATCH_ROWS},(_,row)=><View key={row} style={{flex:1,flexDirection:'row'}}>
-        {Array.from({length:SCRATCH_COLUMNS},(_,col)=>{
-         const id=row*SCRATCH_COLUMNS+col;
-         const alpha=(row*4+col*3)%7;
-         return <View key={col} style={{flex:1,backgroundColor:scratched.has(id)?'transparent':
-          ['#F1F4F6','#E6EBED','#D8DDE1','#CDD3D8','#C4CAD0','#BEC5CA','#B5BCC3'][alpha]}}/>;
-        })}
-       </View>)}
-      </View>
+      <ScratchTileGrid scratched={scratched}/>
       {!pending||progress<55?<View pointerEvents="none" style={{position:'absolute',top:'32%',alignSelf:'center',
        opacity:pending?Math.max(0.06,1-progress/80):1}}>
        <Text style={{fontSize:18,fontWeight:'900',fontStyle:'italic',color:'#58616AA6',textAlign:'center'}}>Scratch</Text>
