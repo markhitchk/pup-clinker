@@ -17,7 +17,7 @@ Status vocabulary: **Implemented guest** = screens/logic usable in local preview
 | Shop, upgrade tickets, Pup Coins, accessories | Partial | Android pricing, rarity tickets and rare items need broader golden-fixture coverage |
 | Prestige skill tree, permanent unlocks | Partial | Source levels and reward edge cases need complete fixture coverage |
 | V1/V2/Discord portraits | Implemented guest | All 30 source PNGs bundled offline, but locked characters remain unclaimable without authorization |
-| Dynamic V3+ streamed art and roster manifests | Not implemented | `DynamicPuppyRoster.kt`; must validate/cap manifests and asset hashes |
+| Dynamic V3+ streamed art and roster manifests | Partial | `Mobile/src/engine/dynamicRoster.js`, `useRoster.js`: strict data-only GitHub roster discovery, validated manifests, cached offline metadata and category tabs; protected ownership, verified assets/hash and stream telemetry remain |
 | Gacha with free-puppy restriction, 2,500 Treats/1 Common Ticket | Implemented guest | `PuppyGacha.kt`; protected/redeem-only skins never randomly granted; source machine animation not 1:1 |
 | Slots/Roulette/Scratchers/Plinko/Wheel | Partial | Source-derived outcomes, visual game scenes and transaction authority incomplete |
 | Blackjack 52-card deck, natural 3:2, dealer stand 17, split/double | Implemented guest | `PuppyBlackjackEngine.kt`; up to 3 hands, no native animation/art yet |
@@ -66,7 +66,7 @@ The previous React preview used a *different* two-column wallet, stacked puppy c
 | V6 Shop | Three category chips, separate ticket inventory, source pricing/purchases, Pup Coin ticket/accessory store | Real redeem codes, remote tickets/entitlements, complete native shop art and special purchase flows |
 | V6 Prestige | Progress toward 50,000 treats, skill-point center, four permanent skills and confirmation | Match all prestige-state reset and migration rules with Kotlin golden fixtures |
 | V6 Settings | Native expandable categories, local haptics/motion/compact-wallet toggles persisted in guest save, and source settings order | Real account actions, full theme presets, developer controls, notifications, support and cloud permissions |
-| V6 Roster | All/Unlocked/Locked, search, sort, favorites, V1/V2 categories, inspected puppy card and three-column grid | Streamed V3+ manifests, every sort/category, inspect/rename/use confirmation, entitlement-aware remote art |
+| V6 Roster | All/Unlocked/Locked, search, sort, favorites, dynamic category chips, inspected puppy card and source-backed V3+ remote portrait display | Remote accounts/entitlements, every sort and inspect/rename/use dialog, image hash verification, exact grid sizing |
 | Casino / Gacha / Rewards | Six navigable React casino scenes use 22 exact source PNGs, existing guest wager engines and Blackjack round persistence; Rewards displays Kotlin-like streaks, live/cache/fallback monthly goals, claim ledger and achievement XP | **Major gaps**: exact scene animation/layout/interaction fidelity, protected rewards, wheel puppy unlock authorization, gacha capsule animation and trusted settlement |
 | Account / PupEye / Cloud / Native OS | No trusted migration performed | **Blocking** Discord OAuth, authoritative signed device saves and cloud recovery, one-device enforcement, PupEye, notification channels/widget, official AAB signing |
 
@@ -83,3 +83,7 @@ The original Kotlin `App/` is **read-only authoritative reference** during the m
 - `Mobile/src/state/useGame.js` loads cached monthly goals from AsyncStorage, refreshes at 15-minute intervals and rolls daily counters on local date changes or app resume. Missing `YYYY-MM.json` months are handled by fallback, not a broken Rewards screen.
 - Kotlin's `hapticsEnabled`, `animationsEnabled` and `compactNumbers` are now represented in the React guest preferences; tap haptics use Android's built-in React Native `Vibration` API (not yet gesture-perfect compared with Compose `performV6Haptic`).
 - **Full 100% parity remains not verified**. Completing GUI sketches or passing CI does not establish account, server, casino, notification, Play identity or game-state parity. Keep `App/` authoritative and production intact.
+
+## Kotlin DynamicPuppyRoster read-only port
+
+The migration preview now loads the same `assets` folder index and v2/test/discord_rewards/v3+ manifests the Kotlin app uses, validates path/ID/size constraints, and caches trusted data separately from guest progression. **This discovery grants no puppy ownership**: newly streamed images appear locked unless the authoritative user account separately verifies an entitlement. `Mobile/tests/dynamicRoster.test.js` checks known Kotlin manifests and malicious path cases. The original cloud-save and account-grant endpoints are not called by this feature.

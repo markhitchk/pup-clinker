@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {Alert,Animated,Easing,Image,ImageBackground,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,Vibration,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
+import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
@@ -223,39 +224,40 @@ function PrestigeScreen({g,act}){
   })}
  </View>;
 }
-function RosterScreen({g,act}){
+function RosterScreen({g,act,registry}){
  const [search,setSearch]=useState('');
  const [status,setStatus]=useState('all');
  const [favoritesOnly,setFavoritesOnly]=useState(false);
  const [category,setCategory]=useState('all');
+ const available=registry.items;
  const [sort,setSort]=useState('unlocked');
  const [inspected,setInspected]=useState(g.puppyStyle);
- const selected=ROSTER.find(p=>p.id===inspected)||ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
+ const selected=available.find(p=>p.id===inspected)||available.find(p=>p.id===g.puppyStyle)||available[0];
  const selectedOwned=g.unlockedPuppies.includes(selected.id);
  const selectedFavorite=g.favoritePuppies.includes(selected.id);
- const matches=ROSTER.filter(p=>{
+ const matches=available.filter(p=>{
   const owned=g.unlockedPuppies.includes(p.id);
   return (status==='all'||(status==='unlocked'&&owned)||(status==='locked'&&!owned))&&
    (!favoritesOnly||g.favoritePuppies.includes(p.id))&&
-   (category==='all'||(category==='v2'?p.id.startsWith('v2_'):!p.id.startsWith('v2_')))&&
+   (category==='all'||p.groupId===category)&&
    (p.name.toLowerCase().includes(search.toLowerCase().trim())||p.id.includes(search.toLowerCase().trim()));
  }).sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='number'?a.number-b.number:Number(g.unlockedPuppies.includes(b.id))-Number(g.unlockedPuppies.includes(a.id)));
  const reset=()=>{setSearch('');setStatus('all');setCategory('all');setFavoritesOnly(false);setSort('unlocked');};
  return <View style={styles.gamePage}>
-  <PageHeader title="Puppy Roster" subtitle="Browse your available and locked puppy artwork."/>
+  <PageHeader title="Puppy Roster" subtitle="Browse the original Kotlin puppy roster and streamed artwork."/>
   <View style={styles.filterRow}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.filterChip,status===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,status===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍 Search puppies or ID" placeholderTextColor={C.muted} style={styles.input} maxLength={64} value={search} onChangeText={setSearch}/>
   <View style={styles.actions}>
    <Button secondary compact onPress={()=>setSort(sort==='unlocked'?'name':sort==='name'?'number':'unlocked')}>Sort: {sort==='unlocked'?'Unlocked first':sort==='name'?'Name':'Number'}</Button>
    <Button compact secondary={!favoritesOnly} onPress={()=>setFavoritesOnly(!favoritesOnly)}>{favoritesOnly?'★':'☆'} Favorites</Button>
   </View>
-  <View style={styles.filterRow}>{[['all','All Categories'],['v1','V1 Puppies'],['v2','V2 & Discord']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
-  <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked</Txt>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,paddingVertical:4}}>{[['all','All Categories'],...registry.categories.map(g=>[g.id,g.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
+  <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked · {registry.source==='live'?'Live roster':registry.source==='cached'?'Cached roster':'Bundled roster'}</Txt>
   <View style={styles.selectedPuppyPanel}>
    <Portrait puppy={selected} size={108}/>
    <View style={{flex:1,gap:7}}>
     <Txt style={styles.heading}>{selected.name}</Txt>
-    <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'}</Txt>
+    <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'} · {selected.groupTitle}</Txt>
     <View style={styles.actions}>
      <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
      <Button compact secondary onPress={()=>act({type:'favorite',id:selected.id})}>{selectedFavorite?'★':'☆'}</Button>
@@ -526,7 +528,7 @@ function SettingsSection({id,icon,title,subtitle,expanded,onToggle,children}){
   {open?<View style={styles.settingsSectionBody}>{children}</View>:null}
  </View>;
 }
-function SettingsScreen({g,act,onOpen}){
+function SettingsScreen({g,act,onOpen,registry}){
  const [editing,setEditing]=useState(g.puppyName);
  const [expanded,setExpanded]=useState(null);
  useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
@@ -564,7 +566,7 @@ function SettingsScreen({g,act,onOpen}){
   {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<Txt muted>Open the items below for more information.</Txt>)}
   {section('roster','🐶','Puppy Roster','Manage your puppy collection',<Button secondary onPress={()=>onOpen('roster')}>🐶 Open Puppy Roster</Button>)}
   {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',pending)}
-  {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<Txt muted>Bundled V1/V2 puppy art is available offline. Dynamic V3+ manifests are not enabled.</Txt>)}
+  {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<><Pair left="Roster source" right={registry.source}/><Pair left="Visible puppies" right={registry.items.length}/><Txt muted>Validated live manifests or cached data are displayed read-only. New puppy ownership must be verified by the production account server.</Txt></>)}
   {section('release-hub','↻','Release Hub',"What's New, installed build and updates",<Txt muted>React Native preview 1.8.0. Install updates through the separate preview GitHub Actions build.</Txt>)}
   {section('about','ⓘ','About Puppy Clicker','Version, development and legal',<>
    <Pair left="Developer" right="Harley's Studios"/><Pair left="React engine" right="React Native 0.86"/><Pair left="App ID" right="com.harleytg.puppyclicker.preview"/><Txt muted>Preview build, not a replacement for the Google Play Kotlin release.</Txt>
@@ -574,6 +576,7 @@ function SettingsScreen({g,act,onOpen}){
 
 export default function App(){
  const {state,act}=useGame();
+ const registry=useRoster();
  const {width}=useWindowDimensions();
  const [tab,setTab]=useState('play');
  const [secondary,setSecondary]=useState(null);
@@ -582,7 +585,7 @@ export default function App(){
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
  const g=state.game;
  const main=()=>{
-  if(secondary==='roster')return <RosterScreen g={g} act={act}/>;
+  if(secondary==='roster')return <RosterScreen g={g} act={act} registry={registry}/>;
   if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>setSecondary('rewards')}/>;
@@ -590,7 +593,7 @@ export default function App(){
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
-  return <SettingsScreen g={g} act={act} onOpen={setSecondary}/>;
+  return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
  };
  return <View style={styles.root}>
   <StatusBar barStyle="light-content" backgroundColor={C.bg}/>

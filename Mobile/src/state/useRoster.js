@@ -1,0 +1,67 @@
+import {useEffect,useState} from 'react';
+import {AppState} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+ ROSTER_INDEX_URL,ROSTER_ASSET_URL,ROSTER_CACHE_KEY,ROSTER_REFRESH_MS,ROSTER_RETRY_MS,
+ ROSTER_MAX_REMOTE,ROSTER_MANIFEST_MAX_BYTES,parseRosterIndex,parseRosterManifest,
+ parseCachedRoster,packRosterCache,mergeRoster,categoriesForRoster
+} from '../engine/dynamicRoster.js';
+
+export function useRoster(){
+ const [snapshot,setSnapshot]=useState(()=>({
+  items:mergeRoster(),source:'bundled',updatedAt:null,categories:categoriesForRoster(mergeRoster())
+ }));
+ useEffect(()=>{
+  let alive=true,loading=false,lastAttempt=0,lastSuccess=0;
+  const update=(remote,source)=>{if(!alive)return;
+   const items=mergeRoster(remote);
+   setSnapshot({items,source,updatedAt:Date.now(),categories:categoriesForRoster(items)});
+  };
+  const getText=async (url,maxBytes)=>{
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+   try{
+    const response=await fetch(url,{signal:controller.signal,headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Roster HTTP '+response.status);
+    const text=await response.text();
+    if(new TextEncoder().encode(text).length>maxBytes)throw new Error('Roster file too large');
+    return text;
+   }finally{clearTimeout(timeout);}
+  };
+  const refresh=async()=>{
+   const now=Date.now();
+   if(!alive||loading||now-lastSuccess<ROSTER_REFRESH_MS||now-lastAttempt<ROSTER_RETRY_MS)return;
+   loading=true;lastAttempt=now;
+   try{
+    const folders=parseRosterIndex(await getText(ROSTER_INDEX_URL,512*1024));
+    let assets=[];
+    for(const folder of folders){
+     try{
+      const entries=parseRosterManifest(folder,await getText(ROSTER_ASSET_URL+'/'+folder+'/manifest.json',ROSTER_MANIFEST_MAX_BYTES));
+      if(assets.length+entries.length>ROSTER_MAX_REMOTE)throw new Error('Roster capacity exceeded');
+      assets=assets.concat(entries);
+     }catch{/* One invalid/unavailable folder cannot hide the rest. */}
+    }
+    // Reject cross-folder ID collisions rather than letting a remote manifest replace ownership.
+    const unique=new Set(assets.map(a=>a.id));
+    if(unique.size!==assets.length)throw new Error('Duplicate cross-folder puppy id');
+    const json=packRosterCache(assets);
+    await AsyncStorage.setItem(ROSTER_CACHE_KEY,json);
+    lastSuccess=Date.now();
+    update(assets,'live');
+   }catch{/* Offline stays on the last validated cached or bundled roster. */}
+   finally{loading=false;}
+  };
+  const init=async()=>{
+   try{
+    const cached=await AsyncStorage.getItem(ROSTER_CACHE_KEY);
+    if(cached)update(parseCachedRoster(cached),'cached');
+   }catch{/* Corrupt cache falls back to bundled registry. */}
+   void refresh();
+  };
+  void init();
+  const timer=setInterval(()=>void refresh(),ROSTER_REFRESH_MS);
+  const listener=AppState.addEventListener('change',status=>{if(status==='active')void refresh();});
+  return ()=>{alive=false;clearInterval(timer);listener.remove();};
+ },[]);
+ return snapshot;
+}
