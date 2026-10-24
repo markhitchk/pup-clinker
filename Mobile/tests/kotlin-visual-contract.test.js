@@ -64,3 +64,11 @@ test('settings layout follows native expandable categories without faking identi
  assert.ok(ui.includes('Guest · Level'));
  assert.ok(ui.includes('original Kotlin app'));
 });
+
+
+test('Kotlin fixed notifications entry opens a modal, not an unverified full-page inbox',()=>{
+ assert.ok(ui.includes('const [notificationsVisible,setNotificationsVisible]=useState(false)'));
+ assert.ok(ui.includes('onPress={()=>setNotificationsVisible(true)}'));
+ assert.ok(ui.includes('visible={notificationsVisible} transparent animationType="fade"'));
+ assert.ok(ui.includes('kotlinNotificationsDialog'));
+});
