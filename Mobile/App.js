@@ -36,7 +36,7 @@ function Meter({label,value,icon}){
 }
 function Portrait({puppy,size=228}){
  const [broken,setBroken]=useState(false);
- useEffect(()=>setBroken(false),[puppy.id]);
+ useEffect(()=>setBroken(false),[puppy.id,puppy.image]);
  return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2}]}>
   {broken?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:<Image accessibilityLabel={puppy.name} source={PUPPY_IMAGES[puppy.id]||{uri:puppy.image}} resizeMode="contain" onError={()=>setBroken(true)} style={{width:'100%',height:'100%'}}/>}
  </View>;
@@ -251,7 +251,7 @@ function RosterScreen({g,act,registry}){
    <Button secondary compact onPress={()=>setSort(sort==='unlocked'?'name':sort==='name'?'number':'unlocked')}>Sort: {sort==='unlocked'?'Unlocked first':sort==='name'?'Name':'Number'}</Button>
    <Button compact secondary={!favoritesOnly} onPress={()=>setFavoritesOnly(!favoritesOnly)}>{favoritesOnly?'★':'☆'} Favorites</Button>
   </View>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,paddingVertical:4}}>{[['all','All Categories'],...registry.categories.map(g=>[g.id,g.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,paddingVertical:4}}>{[['all','All Categories'],...registry.categories.map(group=>[group.id,group.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,{flex:0,minWidth:108,paddingHorizontal:12},category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</ScrollView>
   <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked · {registry.source==='live'?'Live roster':registry.source==='cached'?'Cached roster':'Bundled roster'}</Txt>
   <View style={styles.selectedPuppyPanel}>
    <Portrait puppy={selected} size={108}/>
