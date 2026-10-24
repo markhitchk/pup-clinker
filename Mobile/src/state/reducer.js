@@ -4,6 +4,7 @@ import {applyGacha} from '../engine/gacha.js';
 import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
 import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
 import {newRoundFromDeck,hit as bjHit,stand as bjStand,doubleDown as bjDouble,split as bjSplit,blackjackOutcome,validBlackjackState} from '../engine/blackjack.js';
+import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../engine/onboarding.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false});
 const clone=game=>JSON.parse(JSON.stringify(game));
@@ -41,6 +42,31 @@ export function transition(state,action){
  let blackjack=state.blackjack;
  let gachaResult=state.gachaResult||null;
  switch(action.type){
+  case 'onboardNext':
+   if(g.onboardingComplete||g.onboardingStep>=ONBOARDING_STEPS.length-1)return state;
+   g.onboardingStep++;
+   break;
+  case 'onboardBack':
+   if(g.onboardingComplete||g.onboardingStep<=0)return state;
+   g.onboardingStep--;
+   break;
+  case 'onboardPlayer':{
+   const name=normalizeLocalGuestName(action.name);
+   if(!name)return {...state,notice:'Enter a local preview name'};
+   g.guestName=name;break;
+  }
+  case 'onboardBirthday':
+   if(!validBirthday(action.month,action.day))return {...state,notice:'Choose a valid month and day or skip'};
+   g.birthdayMonth=action.month;g.birthdayDay=action.day;break;
+  case 'onboardNotifications':
+   // Preference only, no Android permission is requested before native integration.
+   g.notificationsOptIn=action.enabled===true;
+   break;
+  case 'onboardFinish':
+   if(g.onboardingComplete||g.onboardingStep!==ONBOARDING_STEPS.length-1)return state;
+   g.onboardingComplete=true;
+   notice='🐶 Welcome, '+g.guestName+'! Your local preview is ready.';
+   break;
   case 'resume':applyOfflineCare(g,action.now||Date.now());break;
   case 'tap': {
    let i=0;

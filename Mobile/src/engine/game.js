@@ -48,6 +48,7 @@ export const freshGame=()=>({
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
   xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,
+  onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
@@ -60,7 +61,7 @@ export function sanitizeGame(input){
   const b=freshGame();
   if(!input||typeof input!=='object'||Array.isArray(input))return b;
   for(const key of Object.keys(b))if(Object.hasOwn(input,key))b[key]=input[key];
-  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
+  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
@@ -80,6 +81,11 @@ export function sanitizeGame(input){
   b.careUpdatedAtByPuppy=Object.fromEntries(Object.entries(b.careUpdatedAtByPuppy&&typeof b.careUpdatedAtByPuppy==='object'?b.careUpdatedAtByPuppy:{}).filter(([id])=>ids.has(id)).map(([id,at])=>[id,cap(at)]));
   b.claimedDailyTasks=Array.isArray(b.claimedDailyTasks)?b.claimedDailyTasks.filter(v=>typeof v==='string').slice(0,50):[];
   b.redeemedCodeIds=Array.isArray(b.redeemedCodeIds)?b.redeemedCodeIds.filter(v=>typeof v==='string').slice(0,100):[];
+  b.onboardingComplete=b.onboardingComplete===true;
+  b.onboardingStep=Math.min(5,cap(b.onboardingStep,0,5));
+  b.guestName=String(b.guestName||'Guest Puppy Fan').replace(/\\s+/g,' ').trim().slice(0,24)||'Guest Puppy Fan';
+  b.birthdayMonth=cap(b.birthdayMonth,0,12);b.birthdayDay=cap(b.birthdayDay,0,31);
+  b.notificationsOptIn=b.notificationsOptIn===true;
   b.autoPerSecond=0;
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
