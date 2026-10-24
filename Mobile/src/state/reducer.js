@@ -3,6 +3,7 @@ import {slotsOutcome,rouletteOutcome,plinkoOutcome,wheelOutcome,scratcherOutcome
 import {applyGacha} from '../engine/gacha.js';
 import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
 import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
+import {newRoundFromDeck,hit as bjHit,stand as bjStand,doubleDown as bjDouble,split as bjSplit,blackjackOutcome,validBlackjackState} from '../engine/blackjack.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false});
 const clone=game=>JSON.parse(JSON.stringify(game));
@@ -30,7 +31,9 @@ export function transition(state,action){
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game)applyOfflineCare(game,action.now||Date.now());
-  return {...state,game,ready:true};
+  const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
+  game.casinoRound=blackjack;
+  return {...state,game,blackjack,ready:true};
  }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
@@ -67,7 +70,7 @@ export function transition(state,action){
   case 'daily':if(!claimDailyReward(g,action.epochDay))return {...state,notice:'Daily reward already claimed'};notice='🎁 Daily reward collected';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
-  case 'prestige':if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
+  case 'prestige':if(blackjack)return {...state,notice:'Finish Blackjack before prestiging'};if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
   case 'skill':if(!buyPrestigeSkill(g,action.skill))return {...state,notice:'Not enough skill points or skill at max level'};notice='⭐ Permanent skill unlocked';break;
   case 'ticket':if(!buyUpgradeTicket(g,action.rarity))return {...state,notice:'Not enough Pup Coins'};notice='🎟️ Ticket purchased';break;
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
@@ -83,35 +86,35 @@ export function transition(state,action){
    break;
   }
   case 'blackjackStart':{
-   if(blackjack)return no();
-   if(!Number.isSafeInteger(action.wager)||action.wager<20||action.wager>100000||action.wager%10!==0)return {...state,notice:'Invalid Blackjack wager'};
-   if(!Array.isArray(action.cards)||action.cards.length!==4||!action.cards.every(validCard))return no();
-   if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
-   const player=action.cards.slice(0,2),dealer=action.cards.slice(2,4);
-   blackjack={wager:action.wager,player,dealer};
-   if(handValue(player)===21||handValue(dealer)===21){
-     const payout=handValue(player)===21&&handValue(dealer)===21?action.wager:handValue(player)===21?Math.floor(action.wager*2.5):0;
-     casinoPayout(g,payout);notice='🃏 Natural Blackjack settled · +'+payout+' Chips';blackjack=null;
-   }else notice='🃏 Blackjack dealt · Hit or Stand';
+   if(blackjack)return {...state,notice:'Finish your active Blackjack round'};
+   if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
+   let next;try{next=newRoundFromDeck(action.wager,action.deck);}catch{return {...state,notice:'Invalid wager or card deck'};}
+   if(!casinoSpend(g,action.wager))return no();
+   if(next.complete){
+    const result=blackjackOutcome(next);casinoPayout(g,result.totalPayout);
+    notice='🃏 Natural Blackjack settled · +'+result.totalPayout+' Chips';blackjack=null;
+   }else{blackjack=next;notice='🃏 Deal complete · Hit, Stand, Double or Split';}
    break;
   }
-  case 'blackjackHit':{
-   if(!blackjack||!validCard(action.card))return no();
-   const player=[...blackjack.player,action.card];
-   blackjack={...blackjack,player};
-   if(handValue(player)>21){blackjack=null;notice='🃏 BUST · wager lost';}
-   else if(handValue(player)===21)notice='🃏 21! Stand to settle';
+  case 'blackjackHit':
+  case 'blackjackStand':
+  case 'blackjackDouble':
+  case 'blackjackSplit':{
+   if(!blackjack||!validBlackjackState(blackjack))return {...state,notice:'No valid Blackjack round'};
+   const op=action.type==='blackjackHit'?bjHit:action.type==='blackjackStand'?bjStand:action.type==='blackjackDouble'?bjDouble:bjSplit;
+   let result;try{result=op(blackjack);}catch{return {...state,notice:'Blackjack deck error'};}
+   if(!result.success)return {...state,notice:'Blackjack move unavailable: '+result.error};
+   if(result.additionalWager){
+    if(!casinoSpend(g,result.additionalWager))return {...state,notice:'Not enough Chips to '+(action.type==='blackjackSplit'?'split':'double')};
+   }
+   blackjack=result.state;
+   if(blackjack.complete){
+    const outcome=blackjackOutcome(blackjack);
+    casinoPayout(g,outcome.totalPayout);
+    notice='🃏 '+outcome.hands.map(h=>h.result).join(' / ')+' · +'+outcome.totalPayout+' Chips';
+    blackjack=null;
+   }else notice='🃏 '+action.type.replace('blackjack','')+' · Hand '+(blackjack.activeHandIndex+1)+' / '+blackjack.hands.length;
    break;
-  }
-  case 'blackjackStand':{
-   if(!blackjack||!Array.isArray(action.dealerCards)||action.dealerCards.length>14||!action.dealerCards.every(validCard))return no();
-   const dealer=[...blackjack.dealer];
-   let pos=0;
-   while(handValue(dealer)<17&&pos<action.dealerCards.length)dealer.push(action.dealerCards[pos++]);
-   if(handValue(dealer)<17)return {...state,notice:'Dealer draw incomplete'};
-   const settled=scoreBlackjack(blackjack.player,dealer,blackjack.wager);
-   casinoPayout(g,settled.payout);notice='🃏 '+settled.result+' · Dealer '+handValue(dealer)+' · +'+settled.payout+' Chips';
-   blackjack=null;break;
   }
   case 'clearGuest':return {...initialState(),ready:true,notice:'Guest progress reset'};
   case 'dismiss':return {...state,notice:''};
@@ -119,6 +122,7 @@ export function transition(state,action){
  }
  const now=action.now||Date.now();
  g.lastActiveAt=now;
+ g.casinoRound=blackjack;
  if(!g.careUpdatedAtByPuppy||typeof g.careUpdatedAtByPuppy!=='object')g.careUpdatedAtByPuppy={};
  g.careUpdatedAtByPuppy[g.puppyStyle]=now;
  if(!g.careProfiles||typeof g.careProfiles!=='object')g.careProfiles={};

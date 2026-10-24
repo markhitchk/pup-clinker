@@ -47,7 +47,7 @@ export const freshGame=()=>({
   totalTicketsFound:0,ticketDropSerial:0,lastTicketDrop:null,
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
-  xp:0,achievementRewardedIds:[],gachaPulls:0,
+  xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
