@@ -13,6 +13,7 @@ import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
 import ScratchStage from './src/components/ScratchStage.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
+import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -35,7 +36,13 @@ function Button({children,onPress,secondary=false,disabled=false,compact=false,d
 function Pair({left,right}){return <View style={styles.pair}><Txt muted style={styles.small}>{left}</Txt><Txt style={styles.value}>{right}</Txt></View>;}
 function Meter({label,value,icon}){
  const safe=Math.min(100,Math.max(0,Number(value)||0));
- return <View style={styles.meter}><View style={styles.pair}><Txt style={styles.small}>{icon} {label}</Txt><Txt style={styles.small}>{safe}%</Txt></View><View style={styles.track}><View style={[styles.fill,{width:safe+'%',backgroundColor:safe<=20?C.danger:C.accent}]}/></View></View>;
+ return <View style={styles.careMeter}>
+  <View style={styles.pair}><Txt style={styles.itemName}>{icon} {label}</Txt><Txt style={styles.itemName}>{safe}%</Txt></View>
+  <View accessibilityRole="progressbar" accessibilityLabel={label+' need'}
+   accessibilityValue={{min:0,max:100,now:safe}} style={styles.careMeterTrack}>
+   <View style={[styles.careMeterFill,{width:safe+'%'}]}/>
+  </View>
+ </View>;
 }
 function Portrait({puppy,size=228}){
  const [broken,setBroken]=useState(false);
@@ -166,47 +173,91 @@ function PlayScreen({g,act,clock}){
   </Animated.View>:null}
  </View>;
 }
+// Part 2: direct port of the launched Kotlin V6CareAndDaily / V6CarePanel /
+// V6DailyPanel. Guest-only data; notification scheduling is not enabled yet.
 function CareScreen({g,act,clock,schedule,onOpen}){
  const [page,setPage]=useState('care');
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const parkSeconds=Math.max(0,Math.ceil((g.parkReadyAtMs-clock)/1000));
- const today=localEpochDay(new Date(clock));
+ const gift=dailyGiftPreview(g,clock);
+ const park=parkPreview(g,clock);
+ const careAction=(kind,text)=>(
+  <Button disabled={!canPerformCare(g,kind)}
+   onPress={()=>act({type:'care',kind,now:Date.now()})}>{text}</Button>
+ );
  return <View style={styles.gamePage}>
-  <PageHeader title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
+  <PageHeader withLogo title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
   <View style={styles.filterRow}>
-   {[['care','💖 Care'],['daily','📅 Daily']].map(([id,label])=><Pressable accessibilityRole="tab" accessibilityState={{selected:page===id}} key={id} onPress={()=>setPage(id)} style={[styles.filterChip,page===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,page===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}
+   {[['care','💖 Care'],['daily','📅 Daily']].map(([id,label])=>
+    <Pressable accessibilityRole="tab" accessibilityState={{selected:page===id}}
+     key={id} onPress={()=>setPage(id)}
+     style={[styles.filterChip,page===id&&styles.filterChipSelected]}>
+     <Txt style={[styles.filterText,page===id&&styles.filterTextSelected]}>{label}</Txt>
+    </Pressable>)}
   </View>
   {page==='care'?<>
-   <View style={styles.activePuppy}>
-    <Portrait puppy={pup} size={78}/>
-    <View style={{flex:1,gap:4}}><Txt style={styles.itemName}>{g.puppyName}</Txt><Txt muted style={styles.small}>{mood(g)} · Wellness {wellness(g)}% · Bond {g.bond}%</Txt></View>
+   <View style={styles.careIdentity}>
+    <Portrait puppy={pup} size={V6_CARE_LAYOUT.portraitSize}/>
+    <View style={{flex:1,gap:5}}>
+     <Txt style={styles.pageTitle} numberOfLines={2}>{g.puppyName}</Txt>
+     <Txt muted style={styles.small}>{mood(g)} · wellness {wellness(g)}%</Txt>
+     <Txt style={styles.careBond}>🤝 Bond {g.bond}%</Txt>
+    </View>
    </View>
-   <Card title="Puppy Needs">
-    <View style={styles.meters}><Meter label="Happiness" icon="💖" value={g.happiness}/><Meter label="Fullness" icon="🍖" value={g.fullness}/><Meter label="Energy" icon="⚡" value={g.energy}/><Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/><Meter label="Bond" icon="🤝" value={g.bond}/></View>
-    <Txt muted style={styles.small}>{g.energy<=10?'😴 Too tired to earn Treats on Play. Rest to restore energy.':wellness(g)>=85&&g.bond>=50?'✨ Thriving care bonus: +2 Treats on every tap.':wellness(g)>=70?'✨ Healthy care bonus: +1 Treat on every tap.':'Keep wellness at 70%+ to unlock a Treat bonus on Play.'}</Txt>
-   </Card>
+   <View style={styles.careMeters}>
+    <Meter label="Happiness" icon="💖" value={g.happiness}/>
+    <Meter label="Fullness" icon="🍖" value={g.fullness}/>
+    <Meter label="Energy" icon="⚡" value={g.energy}/>
+    <Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/>
+    <Meter label="Bond" icon="🤝" value={g.bond}/>
+   </View>
    <Txt style={styles.sectionTitle}>Care actions</Txt>
-   <View style={styles.quickActionRow}>
-    <QuickAction emoji="🍖" title="Feed" subtitle="-20 🍪" disabled={g.treats<20||g.fullness>=100} onPress={()=>act({type:'care',kind:'feed'})}/>
-    <QuickAction emoji="🎾" title="Play" subtitle="-1 🦴 · -12 ⚡" disabled={g.bones<1||g.energy<12||(g.happiness===100&&g.bond===100)} onPress={()=>act({type:'care',kind:'play'})}/>
-    <QuickAction emoji="🫧" title="Clean" subtitle="-10 🍪" disabled={g.treats<10||g.cleanliness>=100} onPress={()=>act({type:'care',kind:'wash'})}/>
+   <View style={styles.careActionRow}>
+    {careAction('feed','🍖 Feed')}
+    {careAction('play','🎾 Play')}
    </View>
-   <View style={styles.quickActionRow}>
-    <QuickAction emoji="🌙" title="Rest" subtitle="Free · +30 ⚡" disabled={g.energy>=100} onPress={()=>act({type:'care',kind:'rest'})}/>
-    <QuickAction emoji="🤗" title="Cuddle" subtitle="Free · Bond" disabled={g.happiness===100&&g.bond===100} onPress={()=>act({type:'care',kind:'cuddle'})}/>
+   <View style={styles.careActionRow}>
+    {careAction('rest','💤 Rest')}
+    {careAction('wash','🫧 Groom')}
+   </View>
+   <Button secondary disabled={!canPerformCare(g,'cuddle')}
+    onPress={()=>act({type:'care',kind:'cuddle',now:Date.now()})}>🤗 Cuddle · build bond</Button>
+   <View style={styles.careRewardNote}>
+    <Txt style={styles.itemName}>Active care rewards</Txt>
+    <Txt muted style={styles.small}>Care actions improve your puppy’s needs and bond.</Txt>
+    <Txt muted style={styles.small}>AFK Treats are claimable from the notification inbox in the original Kotlin app; that inbox has not been ported to this preview.</Txt>
    </View>
   </>:<>
-   <Card title="🎁 DAILY PUPPY GIFT" subtitle={'Claim streak · '+g.dailyStreak+' days'}>
-    <Txt muted>Collect Treats, Bones and Pup Coins once per calendar day.</Txt>
-    <Button disabled={g.lastDailyClaimDay===today} onPress={()=>act({type:'daily',epochDay:today})}>{g.lastDailyClaimDay===today?'✓ Already claimed today':'🎁 Claim Daily Gift'}</Button>
-   </Card>
+   <View style={styles.careStreakBanner}>
+    <Txt style={{fontSize:36}}>🔥</Txt>
+    <View style={{flex:1,gap:4}}>
+     <Txt style={styles.careStreakTitle}>{g.dailyStreak} day streak</Txt>
+     <Txt muted style={styles.small}>Daily rewards grant Treats, Bones and Pup Coins — never automatic Upgrade Tickets.</Txt>
+    </View>
+   </View>
+   <View style={styles.careDailyGift}>
+    <Txt style={{fontSize:34}}>🎁</Txt>
+    <View style={{flex:1,gap:4}}>
+     <Txt style={styles.itemName}>Daily Puppy Gift</Txt>
+     <Txt muted style={styles.small}>{v6Format(gift.rewardTreats,g.compactNumbers!==false)} Treats + 2 Bones + 3 Pup Coins</Txt>
+    </View>
+    <Button compact disabled={gift.claimed}
+     onPress={()=>act({type:'daily',now:Date.now()})}>{gift.claimed?'Claimed':'Claim'}</Button>
+   </View>
    <Txt style={styles.sectionTitle}>Today’s goals</Txt>
-   <Button compact secondary onPress={()=>onOpen('rewards')}>🎁 Open Rewards Hub</Button>
-   {goalsForDay(schedule,new Date(clock)).map(goal=><DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
-   <Card title="🌳 DOG PARK" subtitle="A one-minute puppy adventure">
-    <Txt muted>Spend 20 energy to take your puppy for a walk and earn a reward.</Txt>
-    <Button disabled={g.parkActive&&parkSeconds>0} onPress={()=>act({type:g.parkActive?'parkClaim':'parkStart',now:clock})}>{g.parkActive?parkSeconds>0?'Walk finishes in '+parkSeconds+'s':'Claim Park Reward':'Start Park Walk'}</Button>
-   </Card>
+   {goalsForDay(schedule,new Date(clock)).map(goal=>
+    <DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
+   <View style={styles.careParkCard}>
+    <Txt style={{fontSize:32}}>🌳</Txt>
+    <View style={{flex:1,gap:4}}>
+     <Txt style={styles.itemName}>Dog Park Adventure</Txt>
+     <Txt muted style={styles.small}>{park.detail}</Txt>
+    </View>
+    <Button compact disabled={park.disabled}
+     onPress={()=>act({type:park.ready?'parkClaim':'parkStart',now:Date.now()})}>{park.label}</Button>
+   </View>
+   <View style={{marginTop:8}}>
+    <Button compact secondary onPress={()=>onOpen('rewards')}>Preview · Rewards Hub</Button>
+   </View>
   </>}
  </View>;
 }
@@ -730,6 +781,19 @@ const styles=StyleSheet.create({
  settingsChevron:{fontSize:22,fontWeight:'700',color:C.muted},
  previewPill:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:'#352B13',paddingHorizontal:8,paddingVertical:6,borderRadius:10,overflow:'hidden'},
 
+ // Kotlin V6CareAndDaily: two-column action rows, 125dp portrait, 6dp meter tracks.
+ careIdentity:{flexDirection:'row',alignItems:'center',gap:14},
+ careBond:{fontSize:14,color:C.accent,fontWeight:'800'},
+ careMeters:{gap:V6_CARE_LAYOUT.careMeterSpacing},
+ careMeter:{backgroundColor:C.surface,padding:V6_CARE_LAYOUT.careMeterPadding,borderRadius:14,gap:5},
+ careMeterTrack:{width:'100%',height:V6_CARE_LAYOUT.careMeterHeight,backgroundColor:C.line,borderRadius:10,overflow:'hidden'},
+ careMeterFill:{height:'100%',borderRadius:10,backgroundColor:C.accent},
+ careActionRow:{flexDirection:'row',gap:V6_CARE_LAYOUT.careActionSpacing},
+ careRewardNote:{borderRadius:18,backgroundColor:C.accentSoft,padding:12,gap:5},
+ careStreakBanner:{flexDirection:'row',alignItems:'center',gap:10,padding:16,borderRadius:V6_CARE_LAYOUT.dailyStreakRadius,backgroundColor:C.accentSoft},
+ careStreakTitle:{fontSize:22,fontWeight:'900',color:C.text},
+ careDailyGift:{flexDirection:'row',alignItems:'center',gap:10,padding:14,backgroundColor:C.surface,borderRadius:17},
+ careParkCard:{flexDirection:'row',alignItems:'center',gap:10,padding:14,backgroundColor:C.surface,borderRadius:17},
  // Kotlin V6 source: PuppyClickerV6Activity.kt and PuppyMainScreensRevamp.kt.
  gamePage:{gap:10},
  pageHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,paddingBottom:2},
