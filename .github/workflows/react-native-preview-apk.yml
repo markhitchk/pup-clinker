@@ -1,0 +1,78 @@
+name: Puppy Clicker React Native Preview APK
+# Creates an offline-launchable, debug-key-signed release-variant APK for the
+# isolated preview package. This is NEVER a Play Store production release.
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/react-native-full-android]
+    paths:
+      - 'Mobile/**'
+      # Do not cancel a valid queued APK for documentation-only commits.
+      - '!Mobile/**/*.md'
+      - '!Mobile/**/*.py'
+      - '!Mobile/.gitignore'
+      - '.github/workflows/react-native-preview-apk.yml'
+concurrency:
+  group: puppy-react-native-preview-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build-safe-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mobile
+    env:
+      PUPPY_NATIVE_PREVIEW: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # This repository deliberately has no Mobile/package-lock.json.
+      # Do not enable setup-node npm caching until a lockfile is committed.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Install Expo dependencies
+        run: npm install --no-audit --no-fund
+      - name: Ensure preview package cannot replace the production installation
+        run: |
+          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; if(c({config:a.expo}).android.package!=='com.harleytg.puppyclicker.preview')process.exit(1)"
+      - name: Test game logic
+        run: npm test
+      - name: Generate safe Android preview project
+        run: npx expo prebuild --platform android --no-install
+      # assembleDebug omits the JS bundle and requires a running Metro server.
+      # assembleRelease embeds index.android.bundle so the preview starts offline.
+      # Expo's generated release variant is signed with the *debug* keystore;
+      # keep the .preview package ID and do not publish this artifact to Play.
+      - name: Build standalone preview APK with bundled JavaScript
+        run: cd android && chmod +x gradlew && ./gradlew :app:assembleRelease --no-daemon
+      - name: Verify standalone APK bundle, identity and signature
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK" || { echo "::error::Preview release APK was not generated"; exit 1; }
+          unzip -Z1 "$APK" | grep -Fx 'assets/index.android.bundle' > /dev/null || {
+            echo "::error::index.android.bundle missing from APK; it will crash without Metro"
+            exit 1
+          }
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "package: name='com.harleytg.puppyclicker.preview'" > /dev/null || {
+            echo "::error::Unexpected package ID; refusing to publish preview artifact"
+            exit 1
+          }
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+      - name: Upload standalone preview APK (not Play signed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-react-native-preview-standalone-apk
+          path: Mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14

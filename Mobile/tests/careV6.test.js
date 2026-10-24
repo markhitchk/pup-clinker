@@ -1,0 +1,159 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {freshGame,care,claimDailyReward,startPark,claimPark,level} from '../src/engine/game.js';
+import {transition,initialState} from '../src/state/reducer.js';
+import {parseGuestSave,serializeGuestSave} from '../src/state/guestSave.js';
+import {localEpochDay} from '../src/engine/monthlyRewards.js';
+import {V6_CARE_LAYOUT,V6_CARE_ACTIONS,canPerformCare,dailyGiftPreview,parkPreview} from '../src/engine/careV6.js';
+
+const source=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
+const model=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt',import.meta.url),'utf8');
+const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const screen=app.slice(app.indexOf('function CareScreen('),app.indexOf('// V6Shop'));
+
+test('Part 2 launched Kotlin Care panel matches React five controls and actual geometry',()=>{
+ const original=source.slice(source.indexOf('private fun V6CareAndDaily('),source.indexOf('@OptIn(ExperimentalMaterial3Api::class)',source.indexOf('private fun V6CareAndDaily(')));
+ assert.ok(original.includes('V6CarePanel(state, vm)'));
+ assert.ok(original.includes('V6DailyPanel(state, vm)'));
+ assert.ok(original.includes('V6PuppyPortrait(state.puppyStyle, 125.dp'));
+ assert.ok(source.includes('LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().height(6.dp)'));
+ assert.equal(V6_CARE_LAYOUT.portraitSize,125);
+ assert.equal(V6_CARE_LAYOUT.careMeterHeight,6);
+ assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.kind),['feed','play','rest','wash','cuddle']);
+ assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.row),[0,0,1,1,2]);
+ assert.ok(screen.includes('<PageHeader withLogo title="Pup Care"'));
+ assert.ok(screen.includes('size={V6_CARE_LAYOUT.portraitSize}'));
+ for(const kind of ['feed','play','rest','wash','cuddle'])assert.ok(screen.includes("'"+kind+"'"));
+ for(const label of ['Happiness','Fullness','Energy','Cleanliness','Bond'])assert.ok(screen.includes('label="'+label+'"'));
+ assert.ok(screen.includes('careMeter'));
+ assert.ok(!screen.includes('styles.quickActionRow'));
+});
+
+test('Kotlin care action prerequisites and effect values match local preview exactly',()=>{
+ const g=freshGame();
+ assert.equal(canPerformCare(g,'feed'),false);
+ assert.equal(canPerformCare(g,'play'),false);
+ assert.equal(canPerformCare(g,'rest'),false);
+ assert.equal(canPerformCare(g,'wash'),false);
+ assert.equal(canPerformCare(g,'cuddle'),true);
+ const f=freshGame();Object.assign(f,{treats:30,fullness:75,happiness:80});
+ assert.equal(canPerformCare(f,'feed'),true);
+ assert.equal(care(f,'feed'),true);
+ assert.deepEqual([f.treats,f.fullness,f.happiness,f.bond,f.cleanliness],[10,100,85,11,99]);
+ assert.equal(f.careActions,1);
+ assert.equal(f.bones,0,'Kotlin care methods do not mint Bones despite the old static UI explanation');
+ const p=freshGame();Object.assign(p,{bones:1,energy:25,happiness:65,fullness:80,cleanliness:60});
+ assert.equal(canPerformCare(p,'play'),true);
+ assert.equal(care(p,'play'),true);
+ assert.deepEqual([p.bones,p.happiness,p.fullness,p.energy,p.cleanliness,p.bond],[0,85,76,13,57,13]);
+ assert.equal(canPerformCare(p,'play'),false);
+ const r=freshGame();r.energy=62;
+ assert.equal(canPerformCare(r,'rest'),true);
+ assert.equal(care(r,'rest'),true);
+ assert.equal(r.energy,92);
+ const w=freshGame();Object.assign(w,{treats:10,cleanliness:60});
+ assert.equal(canPerformCare(w,'wash'),true);
+ assert.equal(care(w,'wash'),true);
+ assert.equal(w.cleanliness,95);
+ const c=freshGame();c.happiness=92;
+ assert.equal(canPerformCare(c,'cuddle'),true);
+ assert.equal(care(c,'cuddle'),true);
+ assert.deepEqual([c.happiness,c.bond],[100,12]);
+});
+
+test('the Daily Gift uses Kotlin streak and level formula and ignores forged UI epochDay',()=>{
+ const today=new Date(2026,9,23,12,0).getTime();
+ const day=localEpochDay(new Date(today));
+ const g=freshGame();g.lastDailyClaimDay=day-1;g.dailyStreak=5;g.lifetimeTreats=900;
+ const preview=dailyGiftPreview(g,today);
+ assert.equal(preview.streak,6);
+ assert.equal(preview.rewardTreats,150+6*25+level(g)*10);
+ let state=initialState();state.ready=true;state.game=g;
+ state=transition(state,{type:'daily',epochDay:day+1000,now:today});
+ assert.equal(state.game.lastDailyClaimDay,day,'never trust the UI-provided day');
+ assert.equal(state.game.treats,preview.rewardTreats);
+ assert.equal(state.game.bones,2);
+ assert.equal(state.game.pupCoins,3);
+ const next=transition(state,{type:'daily',epochDay:day+1001,now:today});
+ assert.equal(next.game.treats,preview.rewardTreats,'no double claim on same date');
+ assert.equal(dailyGiftPreview(next.game,today).claimed,true);
+ const tomorrow=new Date(2026,9,24,12,0).getTime();
+ const third=transition(next,{type:'daily',now:tomorrow});
+ assert.equal(third.game.dailyStreak,7);
+ assert.equal(third.game.lastDailyClaimDay,day+1);
+});
+
+test('Dog Park starts for 20 energy, settles only after 60 seconds and only once',()=>{
+ const start=Date.UTC(2026,9,23,12);
+ const g=freshGame();g.energy=19;
+ assert.equal(parkPreview(g,start).disabled,true);
+ assert.equal(startPark(g,start),false);
+ g.energy=20;
+ assert.deepEqual({ready:parkPreview(g,start).ready,label:parkPreview(g,start).label},{ready:false,label:'Go'});
+ assert.equal(startPark(g,start),true);
+ assert.equal(g.energy,0);
+ assert.equal(parkPreview(g,start).label,'Away');
+ assert.equal(parkPreview(g,start).remainingSeconds,60);
+ assert.equal(claimPark(g,start+59_999),false);
+ assert.equal(parkPreview(g,start+60_000).ready,true);
+ const payout=250+level(g)*50;
+ assert.equal(claimPark(g,start+60_000),true);
+ assert.equal(g.treats,payout);
+ assert.equal(g.parkActive,false);
+ assert.equal(claimPark(g,start+60_001),false);
+ assert.equal(g.treats,payout);
+});
+
+test('active park and per-puppy care survive guest reload without phantom payouts',()=>{
+ const now=Date.UTC(2026,9,23,12);
+ const g=freshGame();g.energy=48;
+ assert.equal(startPark(g,now),true);
+ const restored=parseGuestSave(serializeGuestSave(g));
+ assert.equal(restored.parkActive,true);
+ assert.equal(restored.parkReadyAtMs,now+60_000);
+ assert.equal(parkPreview(restored,now+30_000).remainingSeconds,30);
+ assert.equal(claimPark(restored,now+30_000),false);
+ assert.equal(restored.treats,0);
+ assert.equal(claimPark(restored,now+60_000),true);
+ const first=restored.treats;
+ assert.equal(claimPark(restored,now+120_000),false);
+ assert.equal(restored.treats,first);
+});
+
+test('Kotlin daily goal source and React game screen use monthly verified schedule',()=>{
+ assert.ok(model.includes('PuppyMonthlyRewards.goalToday(id)'));
+ assert.ok(screen.includes('goalsForDay(schedule,new Date(clock))'));
+ assert.ok(screen.includes('DailyGoalCard'));
+ assert.ok(screen.includes('dailyGiftPreview(g,clock)'));
+ assert.ok(screen.includes('parkPreview(g,clock)'));
+ assert.ok(screen.includes("type:park.ready?'parkClaim':'parkStart'"));
+ assert.ok(screen.includes('disabled={park.disabled}'));
+ // A real daily gift claim still passes today's epoch day; only goal definitions
+ // must come from the signed/cached monthly schedule, not an invented UI list.
+ assert.ok(screen.includes("type:'daily',epochDay:today,now:clock"));
+ assert.ok(!app.includes('Every completed care action awards +1 Bone.'));
+});
+
+test('care/daily counters roll on rehydrate before first screen render, not after a one-minute delay',()=>{
+ const before=new Date(2026,9,23,12).getTime();
+ const tomorrow=new Date(2026,9,24,12).getTime();
+ const g=freshGame();
+ g.dailyDay=localEpochDay(new Date(before));
+ g.claimedDailyTasks=['tap_time'];
+ g.totalTaps=123;
+ g.careActions=6;
+ g.totalShopPurchases=4;
+ g.dailyTapStart=100;
+ g.dailyCareStart=3;
+ g.dailyShopStart=2;
+ const restored=transition(initialState(),{type:'hydrate',game:parseGuestSave(serializeGuestSave(g)),now:tomorrow});
+ assert.equal(restored.game.dailyDay,localEpochDay(new Date(tomorrow)));
+ assert.deepEqual(restored.game.claimedDailyTasks,[]);
+ assert.equal(restored.game.dailyTapStart,123);
+ assert.equal(restored.game.dailyCareStart,6);
+ assert.equal(restored.game.dailyShopStart,4);
+ const sameDay=transition(initialState(),{type:'hydrate',game:restored.game,now:tomorrow+1000});
+ assert.equal(sameDay.game.dailyDay,restored.game.dailyDay);
+ assert.equal(sameDay.game.dailyTapStart,123);
+});
