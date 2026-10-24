@@ -6,7 +6,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {"PUPPY_NATIVE_PREVIEW": "1"},
+      "env": {
+        "PUPPY_NATIVE_PREVIEW": "1"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -15,6 +17,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "PUPPY_NATIVE_PREVIEW": "1"
       }
     }
   }
