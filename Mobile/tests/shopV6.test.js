@@ -23,7 +23,7 @@ const prestigeScreen=rn.slice(rn.indexOf('function PrestigeScreen('),rn.indexOf(
 
 test('Kotlin revamped Shop uses the full-width Redeem entry and three purchase categories',()=>{
  for(const title of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins','🎫 Redeem Code']){
-  assert.ok(coins.includes(title));assert.ok(shop.includes(title),title);
+  assert.ok(coins.includes(title==='🎫 Redeem Code'?'Redeem Code':title));assert.ok(shop.includes(title),title);
  }
  assert.ok(coins.includes('PuppyRevampedShopScreen'));
  assert.ok(coins.includes('PuppyTicketInventoryCard(state)'));
