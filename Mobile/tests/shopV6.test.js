@@ -35,8 +35,11 @@ test('Kotlin revamped Shop uses the full-width Redeem entry and three purchase c
  assert.ok(shop.includes('accessoryOffer(g,name)'));
  assert.ok(shop.includes('PageHeader withLogo title="Puppy Shop"'));
  assert.ok(shop.includes('styles.revampedShopRedeem'));
- const buttons=['Buy 1','Upgrade','Need {o.tickets}','Ticket inventory','Owned {o.owned}'];
- for(const x of buttons)assert.ok(shop.includes(x),x);
+ const elements=['Buy 1','Ticket inventory','Owned {o.owned}','styles.revampedUpgradeRow','styles.revampedUpgradeBuy','type:\'purchase\',upgradeId:u.id'];
+ for(const x of elements)assert.ok(shop.includes(x),x);
+ assert.ok(shop.includes("const price=v6Format(o.treats,compact)"));
+ assert.ok(shop.includes("<Txt style={styles.revampedUpgradeBuyText}>Buy</Txt>"));
+ assert.ok(coins.includes('PuppyUpgradeCard('));
  assert.equal(upgradesForShopTab('upgrades').length,4);
  assert.equal(upgradesForShopTab('tickets').length,6);
  assert.deepEqual(upgradesForShopTab('coins'),[]);
