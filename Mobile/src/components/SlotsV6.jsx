@@ -34,7 +34,7 @@ export default function SlotsV6({game,pending,lastResult,onAction,onBack}){
  const spin=Boolean(pending);
  const displayed=slotsResultFromRound(pending)||lastResult;
  const stopped=pending?revealStep:3;
- const canSpin=!pending&&validSlotsWager(wager)&&game.casinoChips>=wager&&!game.casinoRound&&!game.pendingScratch;
+ const canSpin=!pending&&validSlotsWager(wager)&&game.casinoChips>=wager&&!game.casinoRound&&!game.pendingScratch&&!game.pendingRoulette;
  const frame=slotsFrame(sceneWidth);
  const motion=game.animationsEnabled!==false;
  useEffect(()=>{
