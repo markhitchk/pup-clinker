@@ -39,28 +39,59 @@ function Portrait({puppy,size=228}){
   {broken?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:<Image accessibilityLabel={puppy.name} source={PUPPY_IMAGES[puppy.id]||{uri:puppy.image}} resizeMode="contain" onError={()=>setBroken(true)} style={{width:'100%',height:'100%'}}/>}
  </View>;
 }
+// Visual structure follows V6Play/V6Wallet/V6NeedPill in the Kotlin launcher.
+function PageHeader({title,subtitle,action}){
+ return <View style={styles.pageHeader}><View style={{flex:1}}>
+   <Txt style={styles.pageTitle}>{title}</Txt><Txt muted style={styles.pageSubtitle}>{subtitle}</Txt>
+  </View>{action||null}</View>;
+}
 function Wallet({game}){
  return <View style={styles.wallet}>
-  {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Chips',game.casinoChips]].map(([icon,label,value])=><View style={styles.walletCell} key={label}><Txt style={styles.walletLabel}>{icon} {label}</Txt><Txt style={styles.walletNumber}>{format(value)}</Txt></View>)}
+  {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
+   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{format(value)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
  </View>;
+}
+function NeedPill({icon,value}){
+ const safe=Math.min(100,Math.max(0,Number(value)||0));
+ return <View style={[styles.needPill,safe<=10&&styles.needPillLow]}><Txt style={styles.needPillText}>{icon} {safe}%</Txt></View>;
+}
+function QuickAction({emoji,title,subtitle,onPress,disabled=false}){
+ return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={({pressed})=>[styles.quickAction,disabled&&styles.buttonDisabled,pressed&&{opacity:0.75}]}>
+  <Txt style={styles.quickActionIcon}>{emoji}</Txt><Txt numberOfLines={1} style={styles.quickActionTitle}>{title}</Txt><Txt numberOfLines={1} style={styles.quickActionDescription}>{subtitle}</Txt>
+ </Pressable>;
 }
 function PlayScreen({g,act,onOpen}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
+ const {width,height}=useWindowDimensions();
+ const tapScale=useRef(new Animated.Value(1)).current;
  const gain=g.clickPower+(wellness(g)>=85&&g.bond>=50?2:wellness(g)>=70?1:0);
- return <>
-  <Card title={'🐶 '+g.puppyName} subtitle={'Lv. '+guestLevel(g)+' · '+mood(g)}>
-   <View style={styles.statsRow}><Txt muted>⚡ Per tap: {format(gain)}</Txt><Txt muted>🔥 Combo: {g.combo}</Txt></View>
-   <Pressable accessibilityRole="button" accessibilityLabel="Tap your puppy for Treats" onPress={()=>act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]})} style={({pressed})=>[styles.bigTap,pressed&&{transform:[{scale:0.97}]}]}>
-    <Portrait puppy={pup} size={220}/>
-    <Txt style={styles.tapCaption}>TAP TO EARN TREATS  🐾</Txt>
-   </Pressable>
-   <Txt muted style={styles.center}>{g.totalTaps} taps · +{g.activeBonus} every 10 active taps · {format(g.xp||0)} XP</Txt>
-  </Card>
-  <Card title="YOUR PUPPY">
-   <View style={styles.meters}><Meter label="Happiness" icon="💖" value={g.happiness}/><Meter label="Fullness" icon="🍖" value={g.fullness}/><Meter label="Energy" icon="⚡" value={g.energy}/><Meter label="Clean" icon="🫧" value={g.cleanliness}/></View>
-   <View style={styles.actions}><Button onPress={()=>onOpen('roster')} secondary compact>🐕 Roster</Button><Button onPress={()=>onOpen('gacha')} secondary compact>🎲 Gacha</Button><Button onPress={()=>onOpen('casino')} secondary compact>🎰 Casino</Button><Button onPress={()=>onOpen('rewards')} compact>🎁 Rewards</Button></View>
-  </Card>
- </>;
+ const portraitSize=Math.min(height<700?198:238,Math.max(150,width-110));
+ const doTap=()=>{
+  if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care before tapping again.');return;}
+  act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
+  tapScale.stopAnimation();
+  Animated.sequence([
+   Animated.timing(tapScale,{toValue:0.89,duration:75,useNativeDriver:true}),
+   Animated.spring(tapScale,{toValue:1,speed:20,bounciness:12,useNativeDriver:true})
+  ]).start();
+ };
+ return <View style={styles.gamePage}>
+  <PageHeader title="Puppy Clicker" subtitle={g.puppyName+' · '+mood(g)}/>
+  <Wallet game={g}/>
+  <View style={styles.needsRow}><NeedPill icon="💖" value={g.happiness}/><NeedPill icon="🍖" value={g.fullness}/><NeedPill icon="⚡" value={g.energy}/><NeedPill icon="🫧" value={g.cleanliness}/></View>
+  <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' for Treats'} onPress={doTap} style={[styles.tapStage,{minHeight:height<700?302:365}]}>
+   <Animated.View style={[styles.puppyCircle,{width:portraitSize+18,height:portraitSize+18,borderRadius:(portraitSize+18)/2,transform:[{scale:tapScale}]}]}>
+    <Portrait puppy={pup} size={portraitSize}/>
+   </Animated.View>
+   <View style={styles.tapLabel}><Txt style={styles.tapLabelText}>Tap {g.puppyName} · +{format(gain)} 🍪</Txt></View>
+  </Pressable>
+  <View style={styles.menuShortcuts}>
+   <QuickAction emoji="🐕" title="Puppies" subtitle="Your roster" onPress={()=>onOpen('roster')}/>
+   <QuickAction emoji="🎁" title="Rewards" subtitle="Daily goals" onPress={()=>onOpen('rewards')}/>
+   <QuickAction emoji="🎲" title="Gacha" subtitle="Puppy pulls" onPress={()=>onOpen('gacha')}/>
+   <QuickAction emoji="🎰" title="Casino" subtitle="Mini games" onPress={()=>onOpen('casino')}/>
+  </View>
+ </View>;
 }
 function CareScreen({g,act,clock}){
  const parkSeconds=Math.max(0,Math.ceil((g.parkReadyAtMs-clock)/1000));
