@@ -8,6 +8,7 @@ import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progress
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
+import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -60,7 +61,24 @@ function QuickAction({emoji,title,subtitle,onPress,disabled=false}){
   <Txt style={styles.quickActionIcon}>{emoji}</Txt><Txt numberOfLines={1} style={styles.quickActionTitle}>{title}</Txt><Txt numberOfLines={1} style={styles.quickActionDescription}>{subtitle}</Txt>
  </Pressable>;
 }
-function PlayScreen({g,act,onOpen}){
+function DailyGoalCard({g,goal,act,clock}){
+ const date=new Date(clock),today=localEpochDay(date),claimed=g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
+ const progress=Math.max(0,progressForGoal(g,goal,date)),complete=progress>=goal.target;
+ return <View style={styles.dailyGoalCard}>
+  <Txt style={{fontSize:28}}>{goal.emoji}</Txt>
+  <View style={{flex:1,gap:6}}>
+   <View style={styles.pair}><Txt style={styles.itemName}>{goal.title}</Txt><Txt style={styles.value}>{Math.min(progress,goal.target)}/{goal.target}</Txt></View>
+   <Txt muted style={styles.small}>{goal.description}</Txt>
+   <View style={styles.track}><View style={[styles.fill,{backgroundColor:C.accent,width:Math.min(100,100*progress/goal.target)+'%'}]}/></View>
+   <View style={styles.pair}><Txt muted style={styles.small}>Reward: {format(goal.rewardTreats)} 🍪 + 1 🦴 + 1 🪙</Txt>
+    {claimed?<Txt style={styles.claimedText}>✓ Claimed</Txt>:<Button compact disabled={!complete} onPress={()=>act({type:'claimDailyGoal',goalId:goal.id,now:clock})}>Claim</Button>}
+   </View>
+  </View>
+ </View>;
+}
+function PlayScreen({g,act,onOpen,schedule,clock}){
+ const date=new Date(clock),today=localEpochDay(date);
+ const nextGoal=goalsForDay(schedule,date).find(goal=>g.dailyDay!==today||!g.claimedDailyTasks.includes(goal.id));
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const {width,height}=useWindowDimensions();
  const tapScale=useRef(new Animated.Value(1)).current;
@@ -85,6 +103,14 @@ function PlayScreen({g,act,onOpen}){
    </Animated.View>
    <View style={styles.tapLabel}><Txt style={styles.tapLabelText}>Tap {g.puppyName} · +{format(gain)} 🍪</Txt></View>
   </Pressable>
+  <View style={styles.nextRewardCard}>
+   <Txt style={{fontSize:22}}>🎁</Txt>
+   <View style={{flex:1,gap:5}}>
+    <View style={styles.pair}><Txt style={styles.itemName} numberOfLines={1}>{nextGoal?'Next Reward · '+nextGoal.title:'Today complete'}</Txt><Txt style={styles.small}>{nextGoal?Math.min(progressForGoal(g,nextGoal,date),nextGoal.target)+'/'+nextGoal.target:'✓'}</Txt></View>
+    <View style={styles.track}><View style={[styles.fill,{backgroundColor:C.accent,width:nextGoal?Math.min(100,100*progressForGoal(g,nextGoal,date)/nextGoal.target)+'%':'100%'}]}/></View>
+   </View>
+   <Txt style={styles.small}>{nextGoal?format(nextGoal.rewardTreats)+' 🍪':'All claimed'}</Txt>
+  </View>
   <View style={styles.menuShortcuts}>
    <QuickAction emoji="🐕" title="Puppies" subtitle="Your roster" onPress={()=>onOpen('roster')}/>
    <QuickAction emoji="🎁" title="Rewards" subtitle="Daily goals" onPress={()=>onOpen('rewards')}/>
@@ -93,11 +119,11 @@ function PlayScreen({g,act,onOpen}){
   </View>
  </View>;
 }
-function CareScreen({g,act,clock}){
+function CareScreen({g,act,clock,schedule}){
  const [page,setPage]=useState('care');
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const parkSeconds=Math.max(0,Math.ceil((g.parkReadyAtMs-clock)/1000));
- const today=Math.floor(clock/86400000);
+ const today=localEpochDay(new Date(clock));
  return <View style={styles.gamePage}>
   <PageHeader title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
   <View style={styles.filterRow}>
@@ -127,6 +153,8 @@ function CareScreen({g,act,clock}){
     <Txt muted>Collect Treats, Bones and Pup Coins once per calendar day.</Txt>
     <Button disabled={g.lastDailyClaimDay===today} onPress={()=>act({type:'daily',epochDay:today})}>{g.lastDailyClaimDay===today?'✓ Already claimed today':'🎁 Claim Daily Gift'}</Button>
    </Card>
+   <Txt style={styles.sectionTitle}>Today’s goals</Txt>
+   {goalsForDay(schedule,new Date(clock)).map(goal=><DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
    <Card title="🌳 DOG PARK" subtitle="A one-minute puppy adventure">
     <Txt muted>Spend 20 energy to take your puppy for a walk and earn a reward.</Txt>
     <Button disabled={g.parkActive&&parkSeconds>0} onPress={()=>act({type:g.parkActive?'parkClaim':'parkStart',now:clock})}>{g.parkActive?parkSeconds>0?'Walk finishes in '+parkSeconds+'s':'Claim Park Reward':'Start Park Walk'}</Button>
@@ -278,28 +306,41 @@ function GachaScreen({g,act,state}){
   </Card>
  </>;
 }
-function RewardsScreen({g,act,clock}){
+function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
+ const date=new Date(clock),today=localEpochDay(date),goals=goalsForDay(schedule,date);
+ const claimed=(goal)=>g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
+ const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
+ const giftClaimed=g.lastDailyClaimDay===today;
+ const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
+ const giftReward=150+nextStreak*25+guestLevel(g)*10;
  const statuses=achievementStatuses(g);
- return <>
-  <Card title="🎁 REWARDS" subtitle={'Player Lv. '+guestLevel(g)+' · '+format(g.xp||0)+' XP'}>
-   <Pair left="Daily streak" right={String(g.dailyStreak)}/>
-   <Pair left="Tickets found" right={String(g.totalTicketsFound)}/>
-   <Pair left="Lifetime Treats" right={format(g.lifetimeTreats)}/>
-   <Pair left="Best combo" right={String(g.bestCombo)}/>
-   <Pair left="Care actions" right={String(g.careActions)}/>
-   <Button disabled={g.lastDailyClaimDay===Math.floor(clock/86400000)} onPress={()=>act({type:'daily',epochDay:Math.floor(clock/86400000)})}>🎁 Claim Daily Reward</Button>
-  </Card>
+ return <View style={styles.gamePage}>
+  <PageHeader title="Rewards" subtitle="Daily goals, adventures and permanent progression."/>
+  <View style={styles.streakCard}>
+   <Txt style={{fontSize:42}}>🔥</Txt>
+   <View style={{flex:1,gap:8}}><Txt style={styles.heading}>{g.dailyStreak} day streak</Txt>
+    <Txt muted style={styles.small}>Keep going! Consistent care unlocks bigger rewards.</Txt>
+    <View style={{flexDirection:'row',gap:6}}>{Array.from({length:7},(_,index)=><View key={index} style={[styles.streakDot,index<g.dailyStreak&&styles.streakDotFilled]}><Txt style={styles.small}>{index<g.dailyStreak?'✓':''}</Txt></View>)}</View>
+   </View>
+  </View>
+  {!giftClaimed?<View style={styles.dailyGiftCard}>
+   <Txt style={{fontSize:32}}>🎁</Txt><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>Daily Puppy Gift</Txt><Txt muted style={styles.small}>{format(giftReward)} Treats + 2 Bones + 3 Pup Coins</Txt></View>
+   <Button compact onPress={()=>act({type:'daily',epochDay:today,now:clock})}>Claim</Button>
+  </View>:null}
+  <View style={styles.pair}><Txt style={styles.sectionTitle}>Today’s goals</Txt><Txt muted style={styles.small}>{monthKey(date)} · {schedule?.source==='github'?'Live':schedule?.source==='cache'?'Cached':'Fallback'}</Txt></View>
+  {active.length?active.map(goal=><DailyGoalCard g={g} goal={goal} act={act} clock={clock} key={goal.id}/>):<Card title="🎉 All of today’s goals claimed"/>}
+  {giftClaimed||completed.length?<><Txt style={styles.sectionTitle}>Claimed</Txt>
+   {giftClaimed?<View style={styles.claimedCard}><Txt>🎁</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Daily Puppy Gift</Txt><Txt muted style={styles.small}>Treats + 2 Bones + 3 Pup Coins</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>:null}
+   {completed.map(goal=><View style={styles.claimedCard} key={goal.id}><Txt style={{fontSize:22}}>{goal.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{goal.title}</Txt><Txt muted style={styles.small}>{goal.rewardTreats} Treats + 1 Bone + 1 Pup Coin</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>)}
+  </>:null}
+  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎲</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Gacha</Txt><Txt muted style={styles.small}>Earn and unlock eligible puppies</Txt></View><Button compact secondary onPress={()=>onOpen('gacha')}>Open</Button></View>
+  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎰</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Casino</Txt><Txt muted style={styles.small}>Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel</Txt></View><Button compact secondary onPress={()=>onOpen('casino')}>Open</Button></View>
+  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Prestige</Txt><Txt muted style={styles.small}>{g.prestigeCount} prestiges · {g.skillPoints} skill points</Txt></View><Button compact secondary onPress={onPrestige}>Open</Button></View>
   <Card title="🏆 ACHIEVEMENTS" subtitle={statuses.filter(s=>s.xpRewarded).length+' / '+ACHIEVEMENTS.length+' awarded'}>
-   <Txt muted style={styles.small}>Nine Kotlin-derived achievement milestones. Each award grants 50 guest XP exactly once. Guest XP is not credited to your production Android account.</Txt>
-   {statuses.map(a=><View key={a.id} style={styles.shopItem}>
-    <View style={styles.shopLabel}>
-     <Txt style={styles.itemName}>{a.emoji} {a.title}</Txt>
-     <Txt muted style={styles.small}>{a.description}</Txt>
-    </View>
-    <Txt style={{color:a.completed?C.green:C.muted,fontWeight:'800',fontSize:12}}>{a.xpRewarded?'✓ +50 XP':Math.min(a.progress,a.target)+' / '+a.target}</Txt>
-   </View>)}
+   <Txt muted style={styles.small}>Local preview achievements and XP are not production Android account rewards.</Txt>
+   {statuses.map(item=><View key={item.id} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{item.emoji} {item.title}</Txt><Txt muted style={styles.small}>{item.description}</Txt></View><Txt style={styles.small}>{item.xpRewarded?'✓ +50 XP':Math.min(item.progress,item.target)+' / '+item.target}</Txt></View>)}
   </Card>
- </>;
+ </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet}){
  const wagers=[20,50,100,500,1000].map(w=>w);
@@ -435,11 +476,11 @@ export default function App(){
  const g=state.game;
  const main=()=>{
   if(secondary==='roster')return <RosterScreen g={g} act={act}/>;
-  if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock}/>;
+  if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='care')return <CareScreen g={g} act={act} clock={clock}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary} schedule={state.monthlySchedule} clock={clock}/>;
+  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary}/>;
@@ -460,6 +501,15 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ dailyGoalCard:{flexDirection:'row',gap:12,padding:14,borderRadius:18,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,alignItems:'flex-start'},
+ nextRewardCard:{flexDirection:'row',alignItems:'center',gap:10,padding:12,backgroundColor:'#1B2930',borderColor:C.line,borderWidth:1,borderRadius:14},
+ dailyGiftCard:{flexDirection:'row',gap:10,alignItems:'center',padding:14,borderRadius:19,backgroundColor:'#1B2930',borderColor:C.line,borderWidth:1},
+ streakCard:{flexDirection:'row',alignItems:'center',gap:12,padding:16,backgroundColor:'#1B2930',borderRadius:22,borderWidth:1,borderColor:C.line},
+ streakDot:{height:24,width:24,justifyContent:'center',alignItems:'center',borderRadius:20,backgroundColor:C.card,borderWidth:1,borderColor:C.line},
+ streakDotFilled:{backgroundColor:C.accent,borderColor:C.accent},
+ claimedCard:{flexDirection:'row',alignItems:'center',gap:10,padding:12,borderRadius:16,backgroundColor:C.surface,borderColor:C.line,borderWidth:1},
+ claimedText:{fontSize:11,fontWeight:'900',color:C.accent},
+
  selectedPuppyPanel:{flexDirection:'row',alignItems:'center',gap:14,backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:18,padding:12},
 
  prestigeCenter:{backgroundColor:'#1B2930',borderRadius:24,padding:16,gap:11,borderWidth:1,borderColor:C.line},
