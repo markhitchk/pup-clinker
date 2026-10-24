@@ -20,7 +20,11 @@ test('Play home renders the native wallet, needs pills and central tap stage',()
   assert.ok(ui.includes("'"+label+"'"),label);
  for(const icon of ['💖','🍖','⚡','🫧'])assert.ok(ui.includes('icon="'+icon+'"'),icon);
  assert.ok(ui.includes('styles.tapStage'));
- assert.ok(ui.includes('Tap {g.puppyName} · +{format(gain)} 🍪'));
+ assert.ok(ui.includes('v6PlayTapLabel(g,clock)'));
+ assert.ok(ui.includes('PageHeader withLogo'));
+ assert.ok(ui.includes('needMeterTrack:'));
+ assert.ok(ui.includes('V6_PLAY_LAYOUT.stageRadius'));
+ assert.ok(!ui.slice(ui.indexOf('function PlayScreen('),ui.indexOf('function CareScreen(')).includes('styles.nextRewardCard'));
 });
 
 test('Care, Shop and Roster retain native filtered pages',()=>{
