@@ -142,7 +142,8 @@ test('Kotlin skill descriptions and prestige controls reset only run-specific pr
  assert.equal(prestigePointsAvailable(g),2);
  assert.equal(prestigeOffer(g,true).canPrestige,false);
  assert.equal(prestigeOffer(g,false).canPrestige,true);
- assert.equal(prestige(g),true);
+ const day=20400;
+ assert.equal(prestige(g,day),true);
  assert.equal(g.prestigeCount,1);assert.equal(g.skillPoints,2);
  assert.equal(g.treats,0);assert.equal(g.lifetimeTreats,0);assert.equal(g.bones,0);
  assert.equal(g.ticketInventory.COMMON,0);assert.equal(g.totalTaps,0);
@@ -151,7 +152,7 @@ test('Kotlin skill descriptions and prestige controls reset only run-specific pr
  assert.equal(g.accessory,'Crown');assert.ok(g.unlockedPuppies.includes('aurora'));
  assert.deepEqual(g.redeemedCodeIds,['CODE_X']);
  assert.equal(g.prestigeSkills.TAP_TRAINING,3);
- assert.equal(g.dailyDay,null);
+ assert.equal(g.dailyDay,day);
  assert.equal(prestigePointsAvailable(g),0);
  assert.equal(skillCost(g,'TAP_TRAINING'),2);
  assert.equal(canBuySkill(g,'TAP_TRAINING'),true);
