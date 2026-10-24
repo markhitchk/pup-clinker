@@ -1,6 +1,8 @@
 // Android-derived V7 browser engine from Puppy-Clicker merge ddadb7f; provisional, not authoritative.
 // Ported from pup-clinker/Web and Android's GameViewModel: web-specific schema v1.
 import {validPendingScratch} from './scratch.js';
+// Kotlin PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY.
+export const MAX_TICKETS_PER_RARITY=9999;
 export const SOURCE = 'https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets';
 export const logo = SOURCE + '/logos/puppy_clicker.png';
 const v1 = [
@@ -73,7 +75,7 @@ export function sanitizeGame(input){
   if(!b.unlockedPuppies.includes(b.puppyStyle))b.puppyStyle='classic';
   b.puppyName=String(b.puppyName||'Buddy').slice(0,18);
   b.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,cap(b.upgrades?.[u.id],0,1000)]));
-  b.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketInventory?.[r],0,99999)]));
+  b.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketInventory?.[r],0,MAX_TICKETS_PER_RARITY)]));
   b.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketShopPurchases?.[r])]));
   b.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,cap(b.prestigeSkills?.[s],0,5)]));
   b.ownedAccessories=[...new Set(['None',...(Array.isArray(b.ownedAccessories)?b.ownedAccessories:[]).filter(s=>['Bandana','Bow','Crown'].includes(s))])];
@@ -130,7 +132,11 @@ export function passive(g,_seconds){g.autoPerSecond=0;g.lastActiveAt=Date.now();
 export function cost(g,u){
   let price=u.base;
   const multiplier=u.rarity?135:155;
-  for(let i=0;i<cap(g.upgrades[u.id],0,1000);i++)price=Math.ceil(price*multiplier/100);
+  for(let i=0;i<cap(g.upgrades[u.id],0,1000);i++){
+    // Kotlin saturates its Long cost math instead of allowing Infinity.
+    if(price>Number.MAX_SAFE_INTEGER/multiplier*100)return Number.MAX_SAFE_INTEGER;
+    price=Math.ceil(price*multiplier/100);
+  }
   const discount=100-5*cap(g.prestigeSkills?.SMART_SHOPPER,0,5);
   return Math.max(1,Math.floor(price*discount/100));
 }
@@ -141,9 +147,13 @@ export function ticketCost(g,u){
   const sense=cap(g.prestigeSkills?.TICKET_SENSE,0,5);
   return Math.max(1,base-(sense>=2?1:0)-(sense>=4?1:0));
 }
-export function purchase(g,u){
+export function purchase(g,selected){
+  // Always use the canonical V5 source-derived upgrade. Guest UI data must
+  // never be able to invent an effect, currency price or amount.
+  const u=UPGRADES.find(item=>item.id===selected?.id);
+  if(!u||(g.upgrades[u.id]||0)>=1000)return false;
   const amount=cost(g,u),bones=boneCost(u),tickets=ticketCost(g,u);
-  if(g.treats<amount||g.bones<bones||(u.rarity&&(g.ticketInventory[u.rarity]||0)<tickets))return false;
+  if(!Number.isSafeInteger(amount)||amount<=0||g.treats<amount||g.bones<bones||(u.rarity&&(g.ticketInventory[u.rarity]||0)<tickets))return false;
   g.treats-=amount;g.bones-=bones;if(u.rarity)g.ticketInventory[u.rarity]-=tickets;
   g.upgrades[u.id]=(g.upgrades[u.id]||0)+1;
   const tapSkill=cap(g.prestigeSkills?.TAP_TRAINING,0,5),activeSkill=cap(g.prestigeSkills?.AUTO_TRAINING,0,5);
@@ -201,7 +211,7 @@ export const ticketShopCost=(rarity,purchased)=>{
 };
 export function buyUpgradeTicket(g,rarity){
   const price=ticketShopCost(rarity,g.ticketShopPurchases[rarity]||0);
-  if(price===null||g.pupCoins<price)return false;
+  if(price===null||g.pupCoins<price||!Number.isSafeInteger(g.ticketInventory[rarity])||g.ticketInventory[rarity]>=MAX_TICKETS_PER_RARITY)return false;
   g.pupCoins-=price;g.ticketInventory[rarity]++;g.ticketShopPurchases[rarity]++;return true;
 }
 export const accessoryPrices={Bandana:150,Bow:250,Crown:1000};
@@ -253,6 +263,8 @@ export function prestige(g){
   g.careActions=0;g.totalTaps=0;g.combo=0;g.bestCombo=0;g.lastTapMs=0;
   g.parkActive=false;g.parkReadyAtMs=0;g.lastDailyClaimDay=null;g.dailyStreak=0;g.cooldownUntilMs=0;
   g.dailyTapStart=0;g.dailyCareStart=0;g.dailyShopStart=0;g.claimedDailyTasks=[];
+  // Kotlin prestige clears this run's daily day and requires re-baselining.
+  g.dailyDay=null;
   g.prestigeCount++;g.skillPoints=cap(g.skillPoints+points);
   g.totalPrestigePointsEarned=cap(g.totalPrestigePointsEarned+points);
   // Pup Coins, Casino Chips, accessories, unlocked puppies and permanent skills survive.
