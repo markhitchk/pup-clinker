@@ -91,7 +91,13 @@ export function transition(state,action){
    break;
   }
   case 'care': rollDailyDay(g,new Date(action.now||Date.now()));if(!care(g,action.kind))return {...state,notice:'This care action is unavailable'};grantGuestXp(g,'CARE_ACTION');notice='💖 Puppy care complete';break;
-  case 'purchase': rollDailyDay(g,new Date(action.now||Date.now()));if(!purchase(g,action.upgrade))return {...state,notice:'Need more Treats, Bones or Tickets'};notice='🛍️ Upgrade purchased';break;
+  case 'purchase': {
+   // Never settle from caller-provided upgrade price/effect fields.
+   const upgradeId=typeof action.upgradeId==='string'?action.upgradeId:action.upgrade?.id;
+   rollDailyDay(g,new Date(action.now||Date.now()));
+   if(!purchase(g,{id:upgradeId}))return {...state,notice:'Upgrade unavailable or insufficient Treats, Bones or Tickets'};
+   notice='🛍️ Upgrade purchased';break;
+  }
   case 'switch': if(!switchCareProfile(g,action.id,action.now||Date.now()))return no();break;
   case 'favorite':{
    if(!Array.isArray(g.favoritePuppies)||!g.unlockedPuppies.includes(action.id))return no();
