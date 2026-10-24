@@ -14,9 +14,11 @@ const names=[
  'puppy_plinko_frame.png','puppy_plinko_glass.png','puppy_plinko_header.png','puppy_plinko_pegs.png',
  'puppy_roulette_ball.png','puppy_roulette_rotor.png','puppy_roulette_table.png','puppy_roulette_wheel_base.png',
  'puppy_scratch_play_border.png','puppy_slots_lever_base.png','puppy_slots_lever_handle.png',
- 'puppy_slots_machine.png','puppy_slots_mascot.png'
+ 'puppy_slots_machine.png','puppy_slots_mascot.png',
+ 'pup_coin.png','slot_ball.png','slot_paw.png','slot_puppy.png',
+ 'slot_star.png','slot_ticket.png','slot_treat.png'
 ];
-test('all 22 mobile casino PNGs are byte-identical to original Kotlin drawables',()=>{
+test('all 29 mobile casino PNGs are byte-identical to original Kotlin drawables',()=>{
  for(const name of names){
   const original=readFileSync(join(source,name));
   const react=readFileSync(join(copied,name));
