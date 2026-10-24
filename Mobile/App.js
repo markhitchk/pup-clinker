@@ -11,6 +11,7 @@ import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engi
 import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
+import ScratchStage from './src/components/ScratchStage.jsx';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -438,7 +439,7 @@ function BlackjackFeltTable({round}){
  </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
- const [page,setPage]=useState('hub');
+ const [page,setPage]=useState(g.pendingScratch?'scratchers':'hub');
  const [accepted,setAccepted]=useState(false);
  const {width}=useWindowDimensions();
  useEffect(()=>{
@@ -457,6 +458,10 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt>
   {page==='hub'?<>
+   {g.pendingScratch?<View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:26}}>🎟️</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Scratchers Card</Txt><Txt muted style={styles.small}>Your saved result is ready. Scratch 68% to claim it; no other wagers can start.</Txt></View>
+    <Button compact onPress={()=>setPage('scratchers')}>Resume</Button>
+   </View>:null}
    <View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:28}}>🐾</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Treats → Casino Chips</Txt><Txt muted style={styles.small}>10 🍪 = 1 🐾 · One-way conversion</Txt></View>
    </View>
@@ -490,9 +495,12 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('plinko',{path:Array.from({length:8},()=>Math.random()<0.5)})}>🔵 Drop Ball · {bet} Chips</Button>
    </>:null}
    {page==='scratchers'?<>
-    <CasinoArtwork image={CASINO_ART.scratchers} ratio={1.45}/>
     <Txt style={styles.sectionTitle}>Puppy Scratchers</Txt>
-    {SCRATCHERS.map(card=><View key={card.id} style={styles.casinoGameTile}><Txt style={{fontSize:26}}>{card.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{card.name}</Txt><Txt muted style={styles.small}>{format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||inBlackjack} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll()})}>Scratch</Button></View>)}
+    {g.pendingScratch?<ScratchStage key={g.pendingScratch.createdAt} round={g.pendingScratch}
+      borderImage={CASINO_ART.scratchers} onReveal={()=>act({type:'scratchReveal',now:Date.now()})}/>
+      :<CasinoArtwork image={CASINO_ART.scratchers} ratio={1426/1077}/>}
+    {g.pendingScratch?<Txt muted style={styles.small}>Card: {g.pendingScratch.card} · Wager: {g.pendingScratch.wager} Chips. Complete the scratch gesture before placing another bet.</Txt>:null}
+    {SCRATCHERS.map(card=><View key={card.id} style={styles.casinoGameTile}><Txt style={{fontSize:26}}>{card.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{card.name}</Txt><Txt muted style={styles.small}>{format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||inBlackjack||Boolean(g.pendingScratch)} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll(),now:Date.now()})}>{g.pendingScratch?'Pending':'Buy card'}</Button></View>)}
    </>:null}
    {page==='wheel'?<>
     <View style={styles.wheelScene}>
