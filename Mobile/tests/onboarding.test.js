@@ -41,6 +41,6 @@ test('no replay can finish onboarding before explicit final ready step',()=>{
 });
 
 test('local guest names normalize whitespace when restoring saved state',()=>{
- const g=sanitizeGame({...freshGame(),guestName:'  Puppy\\n  Tester  '});
+ const g=sanitizeGame({...freshGame(),guestName:'  Puppy\n  Tester  '});
  assert.equal(g.guestName,'Puppy Tester');
 });
