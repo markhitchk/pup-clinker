@@ -85,7 +85,7 @@ test('Kotlin revamped Play supports both puppy portrait and full-width tap butto
  assert.ok(reactPlay.includes('g.animationsEnabled===false'));
  assert.ok(reactPlay.includes('disabled={cooldown>0}'));
  assert.ok(reactPlay.includes('careTapBonus(g)'));
- assert.ok(reactPlay.includes('<View style={styles.revampedTapStage}>'));
+ assert.ok(reactPlay.includes('<View style={[styles.revampedTapStage,{paddingVertical:8}]}>'));
  assert.ok(react.includes("revampedTapStage:{flex:1"));
  assert.ok(react.includes("const showFixedPlay=inGame&&!secondary&&tab==='play'"));
  assert.ok(react.includes("<View style={[styles.revampedPlayViewport"));
