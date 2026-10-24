@@ -12,7 +12,7 @@ import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine
 import {BLACKJACK_V6,blackjackViewportWidth,blackjackActions,canDealBlackjack,blackjackHandSummaries,blackjackDealerCaption,blackjackDisplayRound} from './src/engine/blackjackV6.js';
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
-import ScratchStage from './src/components/ScratchStage.jsx';
+import ScratchersV6 from './src/components/ScratchersV6.jsx';
 import SlotsV6 from './src/components/SlotsV6.jsx';
 import RouletteV6 from './src/components/RouletteV6.jsx';
 import PlinkoV6 from './src/components/PlinkoV6.jsx';
@@ -890,7 +890,7 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
  const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
-  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'?<><View style={styles.pair}>
+  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'?<><View style={styles.pair}>
    <Button compact secondary onPress={()=>page==='hub'?onBack():setPage('hub')}>{page==='hub'?'‹ Rewards':'‹ Casino'}</Button>
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
@@ -934,21 +934,15 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
-   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
+   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
    {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
     lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<RouletteV6 game={g} pending={g.pendingRoulette}
     lastResult={state.rouletteDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='plinko'?<PlinkoV6 game={g} pending={g.pendingPlinko}
     lastResult={state.plinkoDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
-   {page==='scratchers'?<>
-    <Txt style={styles.sectionTitle}>Puppy Scratchers</Txt>
-    {g.pendingScratch?<ScratchStage key={g.pendingScratch.createdAt} round={g.pendingScratch}
-      borderImage={CASINO_ART.scratchers} onReveal={()=>act({type:'scratchReveal',now:Date.now()})}/>
-      :<CasinoArtwork image={CASINO_ART.scratchers} ratio={1426/1077}/>}
-    {g.pendingScratch?<Txt muted style={styles.small}>Card: {g.pendingScratch.card} · Wager: {g.pendingScratch.wager} Chips. Complete the scratch gesture before placing another bet.</Txt>:null}
-    {SCRATCHERS.map(card=><View key={card.id} style={styles.casinoGameTile}><Txt style={{fontSize:26}}>{card.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{card.name}</Txt><Txt muted style={styles.small}>{format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||inBlackjack||Boolean(g.pendingScratch)} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll(),now:Date.now()})}>{g.pendingScratch?'Pending':'Buy card'}</Button></View>)}
-   </>:null}
+   {page==='scratchers'?<ScratchersV6 game={g} pending={g.pendingScratch}
+    lastResult={state.scratchDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='wheel'?<>
     <View style={styles.wheelScene}>
      <Image source={CASINO_ART.wheelFrame} resizeMode="contain" style={styles.wheelLayer}/>
