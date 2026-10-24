@@ -160,5 +160,5 @@ export function transition(state,action){
  g.careProfiles[g.puppyStyle]={happiness:g.happiness,fullness:g.fullness,energy:g.energy,cleanliness:g.cleanliness,bond:g.bond};
  const granted=settleGuestAchievements(g);
  if(granted.length)notice=(notice?notice+' · ':'')+'🏆 '+granted.length+' achievement'+(granted.length===1?'':'s')+' earned (+50 XP each)';
- return {game:g,ready:true,notice,blackjack,gachaResult};
+ return {...state,game:g,ready:true,notice,blackjack,gachaResult};
 }
