@@ -409,13 +409,13 @@ function RosterScreen({g,act,registry}){
  const available=registry.items;
  const [sort,setSort]=useState('unlocked');
  const [inspected,setInspected]=useState(g.puppyStyle);
- const [view,setView]=useState('collection');
+ const [view,setView]=useState('browser');
  const [renameOpen,setRenameOpen]=useState(false);
  const [editing,setEditing]=useState(g.puppyName);
  const sections=legacyRosterSections(registry.items);
  useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
 
- const selected=available.find(p=>p.id===inspected)||available.find(p=>p.id===g.puppyStyle)||available[0];
+ const selected=available.find(p=>p.id===inspected)||available.find(p=>p.id===g.puppyStyle)||available[0]||ROSTER[0];
  const selectedOwned=g.unlockedPuppies.includes(selected.id);
  const selectedFavorite=g.favoritePuppies.includes(selected.id);
  const matches=available.filter(p=>{
@@ -475,8 +475,7 @@ function RosterScreen({g,act,registry}){
   <Txt muted style={styles.small}>Guest preview collection; original Puppy Code and Discord entitlements are not connected.</Txt>
  </View>;
  return <View style={styles.gamePage}>
-  <Button compact secondary onPress={()=>setView('collection')}>← Kotlin Puppy Collection</Button>
-  <PageHeader title="Puppy Roster" subtitle="Browse the original Kotlin puppy roster and streamed artwork."/>
+  <PageHeader title="Puppy Roster" subtitle="Browse every streamed puppy in the live roster."/>
   <View style={styles.filterRow}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.filterChip,status===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,status===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍 Search puppies or ID" placeholderTextColor={C.muted} style={styles.input} maxLength={64} value={search} onChangeText={setSearch}/>
   <View style={styles.actions}>
@@ -486,12 +485,19 @@ function RosterScreen({g,act,registry}){
   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,paddingVertical:4}}>{[['all','All Categories'],...registry.categories.map(group=>[group.id,group.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,{flex:0,minWidth:108,paddingHorizontal:12},category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</ScrollView>
   <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked · {registry.source==='live'?'Live roster':registry.source==='cached'?'Cached roster':'Bundled roster'}</Txt>
   <View style={styles.selectedPuppyPanel}>
-   <Portrait puppy={selected} size={108}/>
+   <Portrait puppy={selected} size={108} unlocked={selectedOwned}/>
    <View style={{flex:1,gap:7}}>
     <Txt style={styles.heading}>{selected.name}</Txt>
     <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'} · {selected.groupTitle}</Txt>
     <View style={styles.actions}>
-     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
+     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle}
+      onPress={()=>Alert.alert('Use '+selected.name+'?', 'Switch your active puppy to '+selected.name+'?', [
+       {text:'Cancel',style:'cancel'},
+       {text:'Use puppy',onPress:()=>act({type:'switch',id:selected.id,now:Date.now()})}
+      ])}>Use</Button>
+     {!selectedOwned?<Button compact secondary onPress={()=>Alert.alert('🔒 '+selected.name,
+       selected.redeemOnly?'This puppy requires an authorized Puppy Code or special verified entitlement.':
+       'This puppy is locked. Unlock requirements are controlled by the original game; the local guest preview cannot grant protected puppies.')}>Unlock info</Button>:null}
      <Button compact secondary onPress={()=>act({type:'favorite',id:selected.id})}>{selectedFavorite?'★':'☆'}</Button>
     </View>
    </View>
@@ -499,7 +505,7 @@ function RosterScreen({g,act,registry}){
   {matches.length?<View style={styles.roster}>{matches.map(p=>{
    const owned=g.unlockedPuppies.includes(p.id),fav=g.favoritePuppies.includes(p.id);
    return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+p.name} key={p.id} onPress={()=>setInspected(p.id)} style={[styles.rosterPup,inspected===p.id&&styles.rosterSelected]}>
-    <Portrait puppy={p} size={86}/>
+    <Portrait puppy={p} size={86} unlocked={owned}/>
     <Txt numberOfLines={1} style={styles.small}>{p.name}</Txt>
     <Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'CURRENT':owned?'UNLOCKED':'LOCKED'} {fav?'★':''}</Txt>
    </Pressable>;
