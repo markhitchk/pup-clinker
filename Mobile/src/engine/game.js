@@ -49,6 +49,7 @@ export const freshGame=()=>({
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
   xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,
   onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
+  hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
@@ -86,6 +87,9 @@ export function sanitizeGame(input){
   b.guestName=String(b.guestName||'Guest Puppy Fan').replace(/\s+/g,' ').trim().slice(0,24)||'Guest Puppy Fan';
   b.birthdayMonth=cap(b.birthdayMonth,0,12);b.birthdayDay=cap(b.birthdayDay,0,31);
   b.notificationsOptIn=b.notificationsOptIn===true;
+  b.hapticsEnabled=b.hapticsEnabled!==false;
+  b.animationsEnabled=b.animationsEnabled!==false;
+  b.compactNumbers=b.compactNumbers!==false;
   b.autoPerSecond=0;
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
