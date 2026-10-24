@@ -1,6 +1,7 @@
 // Source parity: PuppyGachaEngine (PuppyGacha.kt) and PuppyCatalogV6.kt.
-// Only the first four baseline puppies are non-redeemOnly in Kotlin;
-// owner/developer/role/event-only skins must NEVER be randomly granted.
+// The Kotlin catalog has four non-redeemOnly V1 puppies; the checked-in
+// assets/test/manifest.json also declares two free, non-redeem-only puppies.
+// Owner/developer/role/event-only skins must NEVER be randomly granted.
 import {ROSTER} from './game.js';
 
 const FREE_IDS=new Set(['classic','golden','poodle','spotty','test_v1_crash_dummy','test_v2_crash_dummy']);
