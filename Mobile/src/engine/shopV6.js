@@ -5,7 +5,7 @@ import {UPGRADES,RARITIES,accessoryPrices,cost,boneCost,ticketCost,ticketShopCos
 
 export const MAX_TICKETS_PER_RARITY=9999; // PuppyCasinoRewardEngine
 export const TICKET_RARITY_PRESENTATION=Object.freeze({
- COMMON:{emoji:'⚪',name:'Common'},
+ COMMON:{emoji:'🎟️',name:'Common'},
  UNCOMMON:{emoji:'🟢',name:'Uncommon'},
  RARE:{emoji:'🔵',name:'Rare'},
  EPIC:{emoji:'🟣',name:'Epic'},
