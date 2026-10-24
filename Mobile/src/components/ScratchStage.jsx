@@ -43,7 +43,7 @@ export default function ScratchStage({round,borderImage,onReveal}){
   </Text>
   <View style={{width:'100%',aspectRatio:1426/1077,position:'relative'}}>
    <Image pointerEvents="none" source={borderImage} resizeMode="stretch"
-    style={{position:'absolute',left:0,top:0,width:'100%',height:'100%'}}/>
+    style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',zIndex:2}}/>
    <View
     testID="puppy-scratch-coating"
     accessibilityRole="adjustable"
