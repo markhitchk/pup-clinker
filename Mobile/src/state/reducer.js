@@ -78,6 +78,7 @@ export function transition(state,action){
   case 'resume':applyOfflineCare(g,action.now||Date.now());rollDailyDay(g,new Date(action.now||Date.now()));break;
   case 'rollDailyDay':if(!rollDailyDay(g,new Date(action.now||Date.now())))return no();break;
   case 'tap': {
+   if((action.now||Date.now())<(g.cooldownUntilMs||0))return {...state,notice:'🐶👁️ Fair-play cooldown active'};
    rollDailyDay(g,new Date(action.now||Date.now()));
    let i=0;
    const ticket=tap(g,action.now,()=>action.randoms?.[i++]??0.99);
