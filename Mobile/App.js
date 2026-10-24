@@ -57,13 +57,13 @@ function Portrait({puppy,size=228,unlocked=true,accessory='None',transparent=fal
  const [broken,setBroken]=useState(false);
  useEffect(()=>setBroken(false),[puppy.id,puppy.image]);
  const v2=puppy.id.startsWith('v2_');
- const ratio=v2?0.96:0.90;
+ const ratio=transparent?1:v2?0.96:0.90;
  const asset=PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
- return <View style={[styles.portrait,transparent&&{backgroundColor:'transparent'},{width:size,height:size,borderRadius:size/2,overflow:'hidden'}]}>
+ return <View style={[styles.portrait,{width:size,height:size,borderRadius:transparent?0:size/2,overflow:transparent?'visible':'hidden'},transparent&&{backgroundColor:'transparent'}]}>
   {broken||!asset?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:
    <Image accessibilityLabel={puppy.name} source={asset} resizeMode="contain"
     onError={()=>setBroken(true)} style={{width:size*ratio,height:size*ratio}}/>}
-  {puppy.emoji?<View pointerEvents="none" style={[styles.portraitBadge,{top:size*0.05,right:size*0.05}]}>
+  {!transparent&&puppy.emoji?<View pointerEvents="none" style={[styles.portraitBadge,{top:size*0.05,right:size*0.05}]}>
    <Txt style={{fontSize:Math.max(9,size*0.13)}}>{puppy.emoji}</Txt>
   </View>:null}
   {!unlocked?<View pointerEvents="none" style={styles.lockedPortraitOverlay}>
@@ -124,7 +124,6 @@ function PlayScreen({g,act,clock,schedule}){
  const {width,height}=useWindowDimensions();
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const portraitSize=height<650?122:height<780?150:185;
- const stageHeight=Math.max(295,Math.min(455,height-375));
  const cooldown=v6CooldownSeconds(g,clock);
  const tired=g.energy<=10;
  const careBonus=careTapBonus(g);
@@ -166,7 +165,7 @@ function PlayScreen({g,act,clock,schedule}){
  return <View style={styles.revampedScreen}>
   <PageHeader title="Play" subtitle={height<780?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
   <Wallet game={g}/>
-  <View style={[styles.revampedTapStage,{height:stageHeight}]}>
+  <View style={styles.revampedTapStage}>
    <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
     accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0}
     onPress={doTap} style={styles.revampedPortraitTouch}>
@@ -1068,6 +1067,7 @@ export default function App(){
   return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
  };
  const inGame=state.ready&&g.onboardingComplete;
+ const showFixedPlay=inGame&&!secondary&&tab==='play';
  return <View style={styles.root}>
   <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
   {inGame?<View style={styles.revampedAppHeader}>
@@ -1087,15 +1087,19 @@ export default function App(){
    <Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}>
     <Txt style={styles.small}>{state.notice}  ✕</Txt>
    </Pressable>:null}
-  <ScrollView key={secondary||tab} style={styles.scroll}
-   contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary?<View style={styles.back}>
-    <Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]||'Play'}</Button>
-   </View>:null}
-   {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:
-    !g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:
-    <>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
-  </ScrollView>
+  {showFixedPlay?
+   <View style={[styles.revampedPlayViewport,{maxWidth:width>650?670:undefined}]}>
+    <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>
+   </View>:
+   <ScrollView key={secondary||tab} style={styles.scroll}
+    contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
+    {secondary?<View style={styles.back}>
+     <Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]||'Play'}</Button>
+    </View>:null}
+    {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:
+     !g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:
+     <>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
+   </ScrollView>}
   {inGame?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}}
     onPress={()=>openTab(id)} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
@@ -1128,11 +1132,12 @@ const styles=StyleSheet.create({
  revampedGuestLabel:{fontSize:9,fontWeight:'700',color:C.muted,letterSpacing:0.4},
  revampedHeaderAction:{width:43,height:43,borderRadius:24,borderColor:C.text,borderWidth:1,alignItems:'center',justifyContent:'center'},
  revampedHeaderIcon:{fontSize:22},
- revampedScreen:{gap:8},
+ revampedPlayViewport:{flex:1,width:'100%',alignSelf:'center',paddingHorizontal:14,paddingTop:4,paddingBottom:4},
+ revampedScreen:{flex:1,gap:8},
  revampedPageHeader:{gap:2,paddingVertical:2},
  revampedPageTitle:{fontSize:28,fontWeight:'900',color:C.text},
  revampedPageSubtitle:{fontSize:14,color:C.muted},
- revampedTapStage:{borderWidth:1,borderColor:'#174458',backgroundColor:'#0A212B',borderRadius:22,paddingHorizontal:12,paddingVertical:10,justifyContent:'center',alignItems:'center',gap:8},
+ revampedTapStage:{flex:1,minHeight:190,borderWidth:1,borderColor:'#174458',backgroundColor:'#0A212B',borderRadius:22,paddingHorizontal:12,paddingVertical:10,justifyContent:'center',alignItems:'center',gap:8},
  revampedPortraitTouch:{alignItems:'center',justifyContent:'center',paddingVertical:4},
  revampedEnergy:{fontSize:12,color:C.muted,textAlign:'center',fontWeight:'800'},
  revampedTapButton:{width:'100%',minHeight:50,paddingHorizontal:9,backgroundColor:C.accent,borderRadius:18,justifyContent:'center',alignItems:'center'},
