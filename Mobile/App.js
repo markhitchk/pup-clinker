@@ -168,18 +168,30 @@ function ShopScreen({g,act,onOpen}){
 }
 function PrestigeScreen({g,act}){
  const points=prestigePointsAvailable(g);
- return <>
-  <Card title="⭐ PRESTIGE CENTER" subtitle={'Prestiged '+g.prestigeCount+' times'}>
-   <Pair left="Lifetime Treats" right={format(g.lifetimeTreats)}/>
-   <Pair left="Available on prestige" right={points+' Skill Points'}/>
-   <Pair left="Unspent Skill Points" right={String(g.skillPoints)}/>
-   <Txt muted style={styles.small}>Requires 50,000 lifetime Treats. Resets Treats, Bones and temporary upgrades. Permanent skills and unlocked puppies remain.</Txt>
-   <Button disabled={!points} onPress={()=>Alert.alert('Confirm Prestige','Reset your current run for '+points+' Skill Points?', [{text:'Cancel',style:'cancel'},{text:'Prestige',onPress:()=>act({type:'prestige'})}])}>⭐ Prestige Now</Button>
-  </Card>
-  <Card title="🌟 PERMANENT SKILLS">
-   {PRESTIGE_SKILLS.map(skill=><View key={skill} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{skillNames[skill]}</Txt><Txt muted style={styles.small}>Level {g.prestigeSkills[skill]}/5</Txt></View><Button compact secondary disabled={g.skillPoints<skillCost(g,skill)||g.prestigeSkills[skill]>=5} onPress={()=>act({type:'skill',skill})}>{skillCost(g,skill)} ⭐</Button></View>)}
-  </Card>
- </>;
+ const remaining=Math.max(0,50000-g.lifetimeTreats);
+ const skills={TAP_TRAINING:['🐾','Tap Training','Boosts purchased tap upgrades.'],AUTO_TRAINING:['⚡','Bonus Training','Boosts purchased active 10-tap upgrades.'],SMART_SHOPPER:['🛍️','Smart Shopper','Reduces Shop upgrade prices.'],TICKET_SENSE:['🎟️','Ticket Sense','Reduces matching ticket costs.']};
+ return <View style={styles.gamePage}>
+  <PageHeader title="Prestige" subtitle="Permanent progression and skill points."/>
+  <View style={styles.prestigeCenter}>
+   <View style={styles.prestigeTitle}><Txt style={{fontSize:32}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.heading}>Prestige Center</Txt><Txt muted>Prestige {g.prestigeCount} · {g.skillPoints} skill points available</Txt></View></View>
+   {points? <Txt style={styles.itemName}>This run can prestige now for +{points} skill point{points===1?'':'s'}.</Txt>:<>
+    <Txt muted>Earn {format(remaining)} more lifetime Treats to unlock Prestige.</Txt>
+    <View style={styles.track}><View style={[styles.fill,{width:Math.min(100,g.lifetimeTreats/50000*100)+'%',backgroundColor:C.accent}]}/></View>
+   </>}
+   <Button disabled={!points} onPress={()=>Alert.alert('⭐ Prestige this run?','Current Treats, upgrades, tickets and run stats reset; unlocked puppies and permanent skills stay.',[{text:'Cancel',style:'cancel'},{text:'Prestige',onPress:()=>act({type:'prestige'})}])}>{points?'Prestige for +'+points+' SP':'Prestige locked'}</Button>
+  </View>
+  <Txt style={styles.sectionTitle}>Permanent skill tree</Txt>
+  <Txt muted>Skills improve Shop upgrades; they do not give free tap power by themselves.</Txt>
+  {PRESTIGE_SKILLS.map(skill=>{
+   const [emoji,name,description]=skills[skill];
+   const lvl=g.prestigeSkills[skill]||0,price=skillCost(g,skill),maxed=lvl>=5;
+   return <View style={styles.upgradeCard} key={skill}>
+    <Txt style={{fontSize:25}}>{emoji}</Txt>
+    <View style={styles.shopLabel}><Txt style={styles.itemName}>{name}</Txt><Txt muted style={styles.small}>Level {lvl} / 5</Txt><Txt muted style={styles.small}>{description}</Txt></View>
+    <Button compact disabled={maxed||g.skillPoints<price} onPress={()=>act({type:'skill',skill})}>{maxed?'MAX':price+' SP'}</Button>
+   </View>;
+  })}
+ </View>;
 }
 function RosterScreen({g,act}){
  const [query,setQuery]=useState('');
@@ -339,29 +351,56 @@ function OnboardingScreen({g,act}){
   </View>
  </Card>;
 }
-function SettingsScreen({g,act}){
- const [editing,setEditing]=useState(g.puppyName);
- useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
- return <>
-  <Card title="⚙️ SETTINGS">
-   <Txt style={styles.itemName}>Puppy name</Txt>
-   <TextInput style={styles.input} placeholder="Puppy name" placeholderTextColor={C.muted} value={editing} onChangeText={setEditing} maxLength={18}/>
-   <Button compact onPress={()=>act({type:'rename',name:editing})}>Save Name</Button>
-  </Card>
-  <Card title="🔒 ACCOUNT & CLOUD">
-   <Txt style={styles.itemName}>LOCAL GUEST PREVIEW</Txt>
-   <Txt muted>This new React Native project is not yet connected to the original Kotlin app's authorized Supabase account or PupEye enforcement. Guest progress stays on this device and is NOT an official Android or web account save.</Txt>
-   <Txt style={styles.small}>Discord account linking, account recovery, server-authoritative saves, migration of the original installed app and notifications are not available in this preview.</Txt>
-  </Card>
-  <Card title="📱 ABOUT">
-   <Pair left="App engine" right="React Native"/>
-   <Pair left="React edition" right="1.8.0 migration"/>
-   <Pair left="Android ID" right="com.harleytg.puppyclicker"/>
-   <Pair left="Tap count" right={format(g.totalTaps)}/>
-   <Button secondary danger onPress={()=>Alert.alert('Reset Local Guest','Delete this React Native guest profile? This does not affect original Android or cloud saves.',[{text:'Cancel',style:'cancel'},{text:'Reset Guest',style:'destructive',onPress:()=>act({type:'clearGuest'})}])}>Reset Local Guest Progress</Button>
-  </Card>
- </>;
+// Matches the native PuppySettingsScreen accordion groups without inventing
+// an authenticated account, protection status or notification permissions.
+function SettingsSection({id,icon,title,subtitle,expanded,onToggle,children}){
+ const open=expanded===id;
+ return <View style={styles.settingsSection}>
+  <Pressable accessibilityRole="button" accessibilityState={{expanded:open}} onPress={()=>onToggle(open?null:id)} style={styles.settingsSectionHeader}>
+   <Txt style={styles.settingsSectionIcon}>{icon}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{title}</Txt><Txt muted style={styles.small}>{subtitle}</Txt></View><Txt style={styles.settingsChevron}>{open?'⌃':'⌄'}</Txt>
+  </Pressable>
+  {open?<View style={styles.settingsSectionBody}>{children}</View>:null}
+ </View>;
 }
+function SettingsScreen({g,act,onOpen}){
+ const [editing,setEditing]=useState(g.puppyName);
+ const [expanded,setExpanded]=useState(null);
+ useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
+ const toggle=setExpanded;
+ const section=(id,icon,title,subtitle,content)=><SettingsSection key={id} id={id} icon={icon} title={title} subtitle={subtitle} expanded={expanded} onToggle={toggle}>{content}</SettingsSection>;
+ const pending=<Txt muted>Not enabled in this guest preview. The original Kotlin app's linked-account and protected services have not been migrated.</Txt>;
+ return <View style={styles.gamePage}>
+  <PageHeader title="Settings" subtitle="Everything in one place. Tap a card to expand its settings."/>
+  <View style={styles.activePuppy}><Txt style={{fontSize:32}}>🐶</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{g.guestName}</Txt><Txt muted style={styles.small}>Guest · Level {guestLevel(g)} · {g.puppyName}</Txt></View><Txt style={styles.previewPill}>PREVIEW</Txt></View>
+  <Txt style={styles.settingsGroupTitle}>ACCOUNT</Txt>
+  {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
+   <Txt style={styles.itemName}>Puppy name</Txt><TextInput style={styles.input} placeholder="Puppy name" placeholderTextColor={C.muted} value={editing} onChangeText={setEditing} maxLength={18}/><Button compact onPress={()=>act({type:'rename',name:editing})}>Save Name</Button>
+  </>)}
+  {section('discord','◉','Discord','Connect or manage your Discord account',pending)}
+  <Txt style={styles.settingsGroupTitle}>APP & EXPERIENCE</Txt>
+  {section('appearance','🎨','Appearance','Theme, accent color, scale, contrast and motion',<Txt muted>Using the original Kotlin dark palette and Puppy Cyan accent. User-selectable theme, scaling and motion options are still being ported.</Txt>)}
+  {section('notifications','🔔','Notifications','In-game alerts, updates and notification permissions',<Txt muted>Notifications are not active. Onboarding only saves a local preference; no Android permission or push delivery is configured.</Txt>)}
+  {section('privacy','🛡','Privacy & Data','Diagnostics, crash reporting, network use and PupEye privacy',<Txt muted>Guest game data is device-local. No production Discord identity, Supabase save or PupEye attestation is active.</Txt>)}
+  <Txt style={styles.settingsGroupTitle}>GAME</Txt>
+  {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<><Pair left="Puppy" right={g.puppyName}/><Pair left="Tap power" right={format(g.clickPower)}/><Pair left="Total taps" right={format(g.totalTaps)}/></>)}
+  {section('data','💾','Data Management','Save status, backups, resets and local data',<>
+   <Txt muted>LOCAL GUEST SAVE ONLY. This does not access your original Kotlin progress, Supabase saves or Google Play account.</Txt>
+   <Button danger secondary onPress={()=>Alert.alert('Reset Local Guest','Delete only this React Native guest progress? This cannot affect the original Kotlin app.',[{text:'Cancel',style:'cancel'},{text:'Reset guest',style:'destructive',onPress:()=>act({type:'clearGuest'})}])}>Reset Local Guest Progress</Button>
+  </>)}
+  <Txt style={styles.settingsGroupTitle}>SUPPORT</Txt>
+  {section('support','🐾','Support & Reports','Report bugs, accounts and Casino issues',pending)}
+  <Txt style={styles.settingsGroupTitle}>ADVANCED</Txt>
+  {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<Txt muted>Open the items below for more information.</Txt>)}
+  {section('roster','🐶','Puppy Roster','Manage your puppy collection',<Button secondary onPress={()=>onOpen('roster')}>🐶 Open Puppy Roster</Button>)}
+  {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',pending)}
+  {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<Txt muted>Bundled V1/V2 puppy art is available offline. Dynamic V3+ manifests are not enabled.</Txt>)}
+  {section('release-hub','↻','Release Hub',"What's New, installed build and updates",<Txt muted>React Native preview 1.8.0. Install updates through the separate preview GitHub Actions build.</Txt>)}
+  {section('about','ⓘ','About Puppy Clicker','Version, development and legal',<>
+   <Pair left="Developer" right="Harley's Studios"/><Pair left="React engine" right="React Native 0.86"/><Pair left="App ID" right="com.harleytg.puppyclicker.preview"/><Txt muted>Preview build, not a replacement for the Google Play Kotlin release.</Txt>
+  </>)}
+ </View>;
+}
+
 export default function App(){
  const {state,act}=useGame();
  const {width}=useWindowDimensions();
@@ -380,7 +419,7 @@ export default function App(){
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
-  return <SettingsScreen g={g} act={act}/>;
+  return <SettingsScreen g={g} act={act} onOpen={setSecondary}/>;
  };
  return <View style={styles.root}>
   <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
@@ -398,6 +437,16 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ prestigeCenter:{backgroundColor:'#1B2930',borderRadius:24,padding:16,gap:11,borderWidth:1,borderColor:C.line},
+ prestigeTitle:{flexDirection:'row',alignItems:'center',gap:9},
+ settingsGroupTitle:{fontSize:12,fontWeight:'900',letterSpacing:1,color:C.muted,marginTop:7,marginBottom:1},
+ settingsSection:{backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:17,overflow:'hidden'},
+ settingsSectionHeader:{flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:14,paddingVertical:14},
+ settingsSectionBody:{gap:10,paddingHorizontal:14,paddingBottom:14},
+ settingsSectionIcon:{fontSize:24,width:30,textAlign:'center'},
+ settingsChevron:{fontSize:22,fontWeight:'700',color:C.muted},
+ previewPill:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:'#352B13',paddingHorizontal:8,paddingVertical:6,borderRadius:10,overflow:'hidden'},
+
  // Kotlin V6 source: PuppyClickerV6Activity.kt and PuppyMainScreensRevamp.kt.
  gamePage:{gap:10},
  pageHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingBottom:2},
