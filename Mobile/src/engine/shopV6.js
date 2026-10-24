@@ -1,9 +1,8 @@
 // Part 3: Kotlin V6Shop/PuppyPupCoinShop/V6PrestigeCenter presentation
 // and guest-only transaction guards. Source: PuppyClickerV6Activity.kt,
 // PuppyMainScreensRevamp.kt, PuppyEconomyV7.kt, PuppyClickerV6ViewModel.kt.
-import {UPGRADES,RARITIES,accessoryPrices,cost,boneCost,ticketCost,ticketShopCost,prestigePointsAvailable,skillCost} from './game.js';
+import {MAX_TICKETS_PER_RARITY,UPGRADES,RARITIES,accessoryPrices,cost,boneCost,ticketCost,ticketShopCost,prestigePointsAvailable,skillCost} from './game.js';
 
-export const MAX_TICKETS_PER_RARITY=9999; // PuppyCasinoRewardEngine
 export const TICKET_RARITY_PRESENTATION=Object.freeze({
  COMMON:{emoji:'🎟️',name:'Common'},
  UNCOMMON:{emoji:'🟢',name:'Uncommon'},
