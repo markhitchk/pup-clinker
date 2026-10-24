@@ -6,25 +6,39 @@ const ui=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const settings=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt',import.meta.url),'utf8');
 
-test('Kotlin and React Native preserve all five launcher tabs',()=>{
- for(const title of ['Play','Care','Shop','Prestige','Settings']){
-  assert.ok(kotlin.includes(title.toUpperCase()+'("'+title+'"'),title+' missing in Kotlin');
+const revamp=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyMainScreensRevamp.kt',import.meta.url),'utf8');
+const navigation=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyNavigationModel.kt',import.meta.url),'utf8');
+
+test('React Android presents Kotlin current five main destinations, with settings and prestige internal',()=>{
+ for(const title of ['Play','Care','Roster','Shop','Rewards']){
+  assert.ok(navigation.includes('("'+title+'"'),title+' missing from Kotlin destination model');
   assert.ok(ui.includes("'"+title+"'"),title+' missing in React');
  }
+ assert.ok(ui.includes("['roster','🐶','Roster']"));
+ assert.ok(ui.includes("['rewards','🎁','Rewards']"));
+ assert.ok(ui.includes("secondary==='prestige'"));
+ assert.ok(ui.includes("secondary==='settings'"));
  assert.ok(!ui.includes('<WebView'));
 });
 
-test('Play home renders the native wallet, needs pills and central tap stage',()=>{
- assert.ok(kotlin.includes('V6Wallet(state)'));
- for(const label of ['Treats','Bones','Pup Coins','Casino Chips'])
-  assert.ok(ui.includes("'"+label+"'"),label);
- for(const icon of ['💖','🍖','⚡','🫧'])assert.ok(ui.includes('icon="'+icon+'"'),icon);
- assert.ok(ui.includes('styles.tapStage'));
- assert.ok(ui.includes('v6PlayTapLabel(g,clock)'));
- assert.ok(ui.includes('PageHeader withLogo'));
- assert.ok(ui.includes('needMeterTrack:'));
- assert.ok(ui.includes('V6_PLAY_LAYOUT.stageRadius'));
- assert.ok(!ui.slice(ui.indexOf('function PlayScreen('),ui.indexOf('function CareScreen(')).includes('styles.nextRewardCard'));
+test('current Kotlin revamped Play screenshot contract is present',()=>{
+ assert.ok(revamp.includes('PuppyRevampedPlayScreen'));
+ assert.ok(revamp.includes('PuppyWalletCard(state)'));
+ assert.ok(revamp.includes('Next Reward ·'));
+ assert.ok(ui.includes('function PlayScreen({g,act,clock,schedule})'));
+ assert.ok(ui.includes('<PageHeader title="Play"'));
+ assert.ok(ui.includes('styles.revampedTapStage'));
+ assert.ok(ui.includes('styles.revampedTapButton'));
+ assert.ok(ui.includes('styles.revampedEnergy'));
+ assert.ok(ui.includes('styles.nextRewardCard'));
+ assert.ok(ui.includes('Next Reward · '));
+ assert.ok(ui.includes('goalsForDay(schedule,today)'));
+ assert.ok(ui.includes('progressForGoal(g,nextGoal,today)'));
+ assert.ok(ui.includes('styles.revampedAppHeader'));
+ assert.ok(ui.includes('accessibilityLabel="Notifications"'));
+ assert.ok(ui.includes('accessibilityLabel="Settings"'));
+ assert.ok(!ui.slice(ui.indexOf('function PlayScreen('),ui.indexOf('// Part 2:')).includes('<NeedPill'));
+ for(const label of ['Treats','Bones','Pup Coins','Casino Chips'])assert.ok(ui.includes("'"+label+"'"));
 });
 
 test('Care, Shop and Roster retain native filtered pages',()=>{
