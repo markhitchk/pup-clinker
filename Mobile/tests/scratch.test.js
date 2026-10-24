@@ -66,9 +66,9 @@ test('drag sampling clears continuous tracks and passes Kotlin reveal threshold'
  let cells=new Set();
  cells=markScratchTrail(cells,{x:2,y:5},{x:238,y:5},bounds,100);
  assert.ok(cells.size>=15);
- for(let row=1;row<10;row++)
-  cells=markScratchTrail(cells,{x:2,y:row*10+5},{x:238,y:row*10+5},bounds,100);
- assert.equal(SCRATCH_COLUMNS*SCRATCH_ROWS,240);
+ for(let row=1;row<SCRATCH_ROWS;row++)
+  cells=markScratchTrail(cells,{x:2,y:row*5+2.5},{x:238,y:row*5+2.5},bounds,100);
+ assert.equal(SCRATCH_COLUMNS*SCRATCH_ROWS,960);
  assert.ok(scratchCoverage(cells)>=SCRATCH_REVEAL_THRESHOLD);
  assert.ok(scratchCoverage(cells)<=1);
  assert.equal(scratchCoverage(new Set()),0);
@@ -78,7 +78,9 @@ test('guest preview visibly uses the staged original-art Scratchers screen',asyn
  const {readFileSync}=await import('node:fs');
  const {fileURLToPath}=await import('node:url');
  const app=readFileSync(fileURLToPath(new URL('../App.js',import.meta.url)),'utf8');
- assert.ok(app.includes('ScratchStage'));
- assert.ok(app.includes("type:'scratchReveal'"));
- assert.ok(app.includes('CASINO_ART.scratchers'));
+ assert.ok(app.includes('ScratchersV6'));
+ const component=readFileSync(fileURLToPath(new URL('../src/components/ScratchersV6.jsx',import.meta.url)),'utf8');
+ assert.ok(component.includes('ScratchStage'));
+ assert.ok(component.includes("type:'scratchReveal'"));
+ assert.ok(component.includes('puppy_scratch_play_border.png'));
 });
