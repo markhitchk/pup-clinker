@@ -384,14 +384,11 @@ export default function App(){
  };
  return <View style={styles.root}>
   <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
-  <View style={styles.topBar}>
-   <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:42,height:42}}/><View style={styles.topTitles}><Txt style={styles.brand}>PUPPY CLICKER</Txt><Txt muted style={styles.tiny}>REACT NATIVE · ANDROID MIGRATION</Txt></View>
-   <Txt style={styles.guestTag}>GUEST PREVIEW</Txt>
-  </View>
+
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} style={styles.scroll} contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
-   {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:<>{!secondary?<Wallet game={g}/>:null}{main()}</>}
+   {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
   {state.ready&&g.onboardingComplete?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
@@ -401,6 +398,34 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ // Kotlin V6 source: PuppyClickerV6Activity.kt and PuppyMainScreensRevamp.kt.
+ gamePage:{gap:10},
+ pageHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingBottom:2},
+ pageTitle:{fontSize:27,fontWeight:'900',letterSpacing:-0.5,color:C.text},
+ pageSubtitle:{fontSize:14,color:C.muted,marginTop:2},
+ needsRow:{flexDirection:'row',gap:6},
+ needPill:{flex:1,minWidth:0,backgroundColor:C.surface,borderRadius:100,alignItems:'center',paddingVertical:9,paddingHorizontal:2},
+ needPillLow:{backgroundColor:'#431F26'},
+ needPillText:{fontSize:12,fontWeight:'800',color:C.text},
+ tapStage:{backgroundColor:'#102027',borderRadius:30,alignItems:'center',justifyContent:'center',paddingHorizontal:12,paddingTop:12,paddingBottom:58,overflow:'hidden'},
+ puppyCircle:{backgroundColor:C.surface,alignItems:'center',justifyContent:'center',overflow:'hidden'},
+ tapLabel:{position:'absolute',bottom:14,alignSelf:'center',backgroundColor:C.surface,borderRadius:18,paddingHorizontal:14,paddingVertical:9,maxWidth:'95%'},
+ tapLabelText:{fontSize:14,fontWeight:'800',textAlign:'center',color:C.text},
+ menuShortcuts:{flexDirection:'row',gap:6,paddingTop:8},
+ quickActionRow:{flexDirection:'row',gap:6},
+ quickAction:{flex:1,minWidth:0,minHeight:74,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,borderRadius:18,paddingHorizontal:4,paddingVertical:6,justifyContent:'center',alignItems:'center',gap:3},
+ quickActionIcon:{fontSize:21},
+ quickActionTitle:{fontSize:12,color:C.text,fontWeight:'800',textAlign:'center'},
+ quickActionDescription:{fontSize:10,color:C.muted,textAlign:'center'},
+ filterRow:{flexDirection:'row',gap:6,marginVertical:3},
+ filterChip:{flex:1,minWidth:0,borderRadius:12,borderWidth:1,borderColor:C.line,backgroundColor:C.surface,paddingHorizontal:4,paddingVertical:11,alignItems:'center',justifyContent:'center'},
+ filterChipSelected:{backgroundColor:C.accentSoft,borderColor:C.accent},
+ filterText:{color:C.muted,fontWeight:'700',fontSize:12,textAlign:'center'},
+ filterTextSelected:{color:C.accent},
+ activePuppy:{flexDirection:'row',alignItems:'center',gap:12,padding:12,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line},
+ sectionTitle:{fontSize:17,fontWeight:'800',color:C.text,marginTop:6},
+ upgradeCard:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,paddingHorizontal:12,paddingVertical:16,gap:8},
+
  root:{flex:1,backgroundColor:C.bg,paddingTop:StatusBar.currentHeight||0},
  text:{fontSize:14,color:C.text},muted:{color:C.muted},small:{fontSize:12},tiny:{fontSize:10,color:C.muted},tinyCenter:{fontSize:10,color:C.muted,textAlign:'center'},
  center:{textAlign:'center',fontSize:12},heading:{fontSize:17,fontWeight:'800',letterSpacing:0.25},brand:{fontSize:17,fontWeight:'900',letterSpacing:0.8},value:{fontWeight:'800'},itemName:{fontWeight:'700',fontSize:14},
@@ -409,9 +434,11 @@ const styles=StyleSheet.create({
  scroll:{flex:1},content:{padding:14,paddingBottom:30,width:'100%',alignSelf:'center',gap:12},
  card:{backgroundColor:C.surface,borderWidth:1,borderColor:C.line,borderRadius:20,padding:15,gap:10},
  cardTitle:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
- wallet:{flexDirection:'row',flexWrap:'wrap',gap:8,justifyContent:'space-between'},
- walletCell:{width:'48.6%',backgroundColor:C.card,borderColor:C.line,borderWidth:1,borderRadius:14,padding:12,gap:4},
- walletLabel:{fontSize:12,color:C.muted},walletNumber:{fontSize:21,fontWeight:'800',color:C.text},
+ wallet:{flexDirection:'row',backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,paddingHorizontal:5,paddingVertical:12,alignItems:'center'},
+ walletCell:{flex:1,minWidth:0,alignItems:'center',justifyContent:'center',gap:4},
+ walletEmoji:{fontSize:23},
+ walletLabel:{fontSize:10,color:C.muted,textAlign:'center'},
+ walletNumber:{fontSize:16,fontWeight:'900',color:C.text,textAlign:'center'},
  bigTap:{alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft,borderRadius:26,minHeight:286,padding:12,gap:8,borderWidth:1,borderColor:'#23516A'},
  portrait:{backgroundColor:'#273843',overflow:'hidden',alignItems:'center',justifyContent:'center'},
  tapCaption:{fontSize:13,color:C.accent,fontWeight:'800',letterSpacing:0.5},
