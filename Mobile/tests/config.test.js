@@ -22,5 +22,7 @@ test('no WebView or browser host is used for Android gameplay',()=>{
 test('Android launcher icon comes from original Puppy Clicker source logo',()=>{
  const config=app();
  assert.equal(config.icon,'./assets/logos/puppy_clicker.png');
- assert.equal(config.android.adaptiveIcon.foregroundImage,'./assets/logos/puppy_clicker.png');
+ assert.equal(config.android.adaptiveIcon.foregroundImage,'./assets/generated/branding/launcher-adaptive.png');
+ // Derived from original logo by postinstall; the legacy launcher icon stays byte-identical.
+ assert.equal(readFileSync(join(root,'assets/generated/branding/launcher-adaptive.png')).subarray(0,8).toString('hex'),'89504e470d0a1a0a');
 });
