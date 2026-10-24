@@ -10,8 +10,9 @@ import {newPendingScratch,validPendingScratch} from '../engine/scratch.js';
 import {newSlotsGuestRound,validPendingSlots} from '../engine/slotsV6.js';
 import {newRouletteGuestRound,validPendingRoulette,rouletteResult} from '../engine/rouletteV6.js';
 import {newPlinkoGuestRound,validPendingPlinko,plinkoResult} from '../engine/plinkoV6.js';
+import {newWheelGuestRound,validPendingWheel,wheelResult} from '../engine/wheelV6.js';
 
-export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
+export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,wheelDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
 const validCard=n=>Number.isInteger(n)&&n>=1&&n<=13;
 function casinoRound(action){
@@ -46,7 +47,8 @@ export function transition(state,action){
   game.pendingSlots=validPendingSlots(game.pendingSlots)?game.pendingSlots:null;
   game.pendingRoulette=validPendingRoulette(game.pendingRoulette)?game.pendingRoulette:null;
   game.pendingPlinko=validPendingPlinko(game.pendingPlinko)?game.pendingPlinko:null;
-  return {...state,game,blackjack,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,ready:true};
+  game.pendingWheel=validPendingWheel(game.pendingWheel)?game.pendingWheel:null;
+  return {...state,game,blackjack,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,wheelDisplay:null,ready:true};
  }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
@@ -57,6 +59,7 @@ export function transition(state,action){
  let rouletteDisplay=state.rouletteDisplay||null;
  let plinkoDisplay=state.plinkoDisplay||null;
  let scratchDisplay=state.scratchDisplay||null;
+ let wheelDisplay=state.wheelDisplay||null;
  let gachaResult=state.gachaResult||null;
  switch(action.type){
   case 'onboardNext':
@@ -134,14 +137,14 @@ export function transition(state,action){
   case 'claimDailyGoal':if(!claimDailyGoal(g,action.goalId,state.monthlySchedule,new Date(action.now||Date.now())))return {...state,notice:'Goal incomplete or already claimed'};notice='🎯 Daily goal completed · Treats, Bone and Pup Coin credited';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
-  case 'prestige':if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round before prestiging'};if(!prestige(g,localEpochDay(new Date(action.now||Date.now()))))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
+  case 'prestige':if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round before prestiging'};if(!prestige(g,localEpochDay(new Date(action.now||Date.now()))))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
   case 'skill':if(!buyPrestigeSkill(g,action.skill))return {...state,notice:'Not enough skill points or skill at max level'};notice='⭐ Permanent skill unlocked';break;
   case 'ticket':if(!buyUpgradeTicket(g,action.rarity))return {...state,notice:'Not enough Pup Coins'};notice='🎟️ Ticket purchased';break;
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
   case 'equip':if(!g.ownedAccessories.includes(action.name))return no();g.accessory=action.name;break;
   case 'rename':{const name=String(action.name||'').trim().slice(0,18);if(!name)return no();g.puppyName=name;break;}
   case 'scratchStart':{
-   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round first'};
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
@@ -151,8 +154,27 @@ export function transition(state,action){
    notice='🎟️ Scratch your card to reveal the committed prize';
    break;
   }
+  case 'wheelStart':{
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
+   const pending=newWheelGuestRound(action.wager,action.roll,action.now||Date.now());
+   if(!pending)return {...state,notice:'Invalid wheel wager or spin'};
+   if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
+   g.pendingWheel=pending;
+   wheelDisplay=null;
+   notice='🎡 Lucky Pup Wheel wager accepted · Spin in progress';
+   break;
+  }
+  case 'wheelReveal':{
+   if(!validPendingWheel(g.pendingWheel))return {...state,notice:'No valid Lucky Pup Wheel round'};
+   const pending=g.pendingWheel;
+   casinoPayout(g,pending.payout);
+   wheelDisplay=wheelResult(pending);
+   g.pendingWheel=null;
+   notice='🎡 '+wheelDisplay.prize+' · +'+wheelDisplay.payout+' Casino Chips';
+   break;
+  }
   case 'plinkoStart':{
-   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round first'};
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
    const pending=newPlinkoGuestRound(action.wager,action.pathRight,action.bounceJitterPermille,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Plinko wager, path or bounce jitter'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
@@ -171,7 +193,7 @@ export function transition(state,action){
    break;
   }
   case 'rouletteStart':{
-   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round first'};
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
    const pending=newRouletteGuestRound(action.wager,action.bet,action.winningNumber,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Roulette wager, bet or pocket'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
@@ -190,7 +212,7 @@ export function transition(state,action){
    break;
   }
   case 'slotsStart':{
-   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round first'};
+   if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
    const pending=newSlotsGuestRound(action.wager,action.rolls,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Slots wager or rolls'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
@@ -211,9 +233,9 @@ export function transition(state,action){
   case 'casino':{
    // Slots and Scratchers must use their saved, reveal-then-settle pathways.
    // Never permit a legacy one-step casino action to bypass those ledgers.
-   if(action.gameType==='slots'||action.gameType==='roulette'||action.gameType==='plinko')return {...state,notice:'Open the dedicated game to start a saved round'};
+   if(action.gameType==='slots'||action.gameType==='roulette'||action.gameType==='plinko'||action.gameType==='wheel')return {...state,notice:'Open the dedicated game to start a saved round'};
    if(blackjack)return {...state,notice:'Finish Blackjack before another round'};
-   if(g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your pending Casino round first'};
+   if(g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your pending Casino round first'};
    if(g.pendingScratch)return {...state,notice:'Finish the current Scratchers card before another wager'};
    // Keep the existing Scratchers UI action as an alias for a staged
    // pending card. Do not settle it or grant payouts until scratchReveal.
@@ -245,7 +267,7 @@ export function transition(state,action){
    break;
   }
   case 'blackjackStart':{
-   if(g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)return {...state,notice:'Finish your current Casino round before dealing Blackjack'};
+   if(g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round before dealing Blackjack'};
    if(blackjack)return {...state,notice:'Finish your active Blackjack round'};
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let next;try{next=newRoundFromDeck(action.wager,action.deck);}catch{return {...state,notice:'Invalid wager or card deck'};}
@@ -294,5 +316,5 @@ export function transition(state,action){
  g.careProfiles[g.puppyStyle]={happiness:g.happiness,fullness:g.fullness,energy:g.energy,cleanliness:g.cleanliness,bond:g.bond};
  const granted=settleGuestAchievements(g);
  if(granted.length)notice=(notice?notice+' · ':'')+'🏆 '+granted.length+' achievement'+(granted.length===1?'':'s')+' earned (+50 XP each)';
- return {...state,game:g,ready:true,notice,blackjack,blackjackDisplay,slotsDisplay,rouletteDisplay,plinkoDisplay,scratchDisplay,gachaResult};
+ return {...state,game:g,ready:true,notice,blackjack,blackjackDisplay,slotsDisplay,rouletteDisplay,plinkoDisplay,scratchDisplay,wheelDisplay,gachaResult};
 }
