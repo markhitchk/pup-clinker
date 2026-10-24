@@ -86,18 +86,39 @@ test('Gacha machine scene replicates Kotlin 1024:1536 image layout and phase tim
  assert.ok(gacha.includes('purchasesAllowed=stage===0'));
 });
 
-test('Gacha guest does not grant code-only, developer or Discord puppies and still charges on duplicate',()=>{
+test('Gacha guest unlocks only manifest-free puppies; protected developer and Discord stay excluded',()=>{
  const eligible=eligibleGachaPuppies(ROSTER);
- assert.deepEqual(eligible.map(x=>x.id),['classic','golden','poodle','spotty']);
+ assert.deepEqual(eligible.map(x=>x.id),['classic','golden','poodle','spotty','test_v1_crash_dummy','test_v2_crash_dummy']);
  assert.ok(!gachaPool(ROSTER,[]).some(p=>p.id==='v2_discord_pup'));
  const g=freshGame();g.treats=5000;
  const first=applyGacha(g,'TREATS',0);
  assert.equal(first.success,true);
- assert.equal(first.isNewUnlock,false);
+ assert.equal(first.isNewUnlock,true);
+ assert.equal(first.puppyId,'test_v1_crash_dummy');
  assert.equal(g.treats,2500);
- assert.equal(g.unlockedPuppies.length,4);
+ assert.equal(g.unlockedPuppies.length,5);
+ assert.ok(g.unlockedPuppies.includes('test_v1_crash_dummy'));
  assert.ok(!g.unlockedPuppies.includes('dev_pup'));
  const second=applyGacha(g,'COMMON_TICKET',1);
  assert.equal(second.success,false);
  assert.equal(g.gachaPulls,1);
+});
+
+test('source free TEST puppies have original offline images and survive local guest restore',async()=>{
+ const {PUPPY_IMAGES}=await import('../src/assets/puppies.js').catch(()=>({PUPPY_IMAGES:null}));
+ // Node lacks Metro's require() for PNG; check the static declarations and bytes instead.
+ const map=readFileSync(new URL('../src/assets/puppies.js',import.meta.url),'utf8');
+ for(const [id,name] of [['test_v1_crash_dummy','v1_test_crash_dummy.png'],['test_v2_crash_dummy','v2_test_crash_dummy.png']]){
+  assert.ok(map.includes(id+':require('));
+  const image=new URL('../assets/test/'+name,import.meta.url);
+  const source=new URL('../../assets/test/'+name,import.meta.url);
+  assert.equal(statSync(image).size,statSync(source).size);
+ }
+ const game=freshGame();game.treats=2500;
+ const outcome=applyGacha(game,'TREATS',1);
+ assert.equal(outcome.isNewUnlock,true);
+ assert.equal(outcome.puppyId,'test_v2_crash_dummy');
+ const {parseGuestSave,serializeGuestSave}=await import('../src/state/guestSave.js');
+ const saved=parseGuestSave(serializeGuestSave(game));
+ assert.ok(saved.unlockedPuppies.includes('test_v2_crash_dummy'));
 });
