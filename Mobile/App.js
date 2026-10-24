@@ -333,26 +333,22 @@ function ShopScreen({g,act,onOpen}){
     </Card>:null}
    {upgrades.map(u=>{
     const o=upgradeOffer(g,u.id),rarity=u.rarity?TICKET_RARITY_PRESENTATION[u.rarity]:null;
-    const text=o.skill>0?u.rarity?u.description+' · skill bonus +'+o.skill:u.description+' · Prestige value +'+o.actualAmount:u.description;
-    return <View key={u.id} style={[styles.shopUpgradeCard,rarity&&styles.shopTicketUpgradeCard]}>
-     <View style={styles.shopUpgradeHeading}>
-      <Txt style={{fontSize:31}}>{u.emoji}</Txt>
-      <View style={styles.shopLabel}>
-       <Txt style={styles.itemName}>{u.name}</Txt>
-       <Txt muted style={styles.small}>{text}</Txt>
-       <Txt muted style={styles.small}>Owned {o.owned}</Txt>
-      </View>
-      {rarity?<Txt style={styles.shopRarity}>{rarity.emoji} {rarity.name}</Txt>:
-       <Button compact disabled={!o.canBuy}
-        onPress={()=>act({type:'purchase',upgradeId:u.id})}>{v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Button>}
+    const description=o.skill>0?u.rarity?u.description+' · '+rarity.name+' · skill bonus +'+o.skill:u.description+' · Prestige value +'+o.actualAmount:u.rarity?u.description+' · '+rarity.name:u.description;
+    const price=v6Format(o.treats,compact)+' 🍪 + '+o.bones+' 🦴'+(rarity?' + '+o.tickets+' '+rarity.emoji:'');
+    return <View key={u.id} style={styles.revampedUpgradeRow}>
+     <View style={styles.revampedUpgradeIcon}><Txt style={{fontSize:29}}>{u.emoji}</Txt></View>
+     <View style={styles.revampedUpgradeDetails}>
+      <Txt style={styles.itemName}>{u.name}</Txt>
+      <Txt muted style={styles.small}>{description}</Txt>
+      <Txt style={styles.revampedUpgradeOwned}>Owned {o.owned}</Txt>
+      <Txt style={styles.revampedUpgradePrice}>{price}</Txt>
      </View>
-     {rarity?<View style={styles.shopUpgradeFooter}>
-      <View style={styles.shopLabel}>
-       <Txt style={styles.itemName}>Need {o.tickets} · you have {g.ticketInventory[u.rarity]||0}</Txt>
-       <Txt muted style={styles.small}>+ {v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Txt>
-      </View>
-      <Button compact disabled={!o.canBuy} onPress={()=>act({type:'purchase',upgradeId:u.id})}>Upgrade</Button>
-     </View>:null}
+     <Pressable accessibilityRole="button" accessibilityLabel={'Buy '+u.name}
+      accessibilityState={{disabled:!o.canBuy}} disabled={!o.canBuy}
+      onPress={()=>act({type:'purchase',upgradeId:u.id})}
+      style={({pressed})=>[styles.revampedUpgradeBuy,!o.canBuy&&styles.buttonDisabled,pressed&&{opacity:0.7}]}>
+      <Txt style={styles.revampedUpgradeBuyText}>Buy</Txt>
+     </Pressable>
     </View>;
    })}
   </>}
@@ -1124,6 +1120,13 @@ const styles=StyleSheet.create({
  revampedCareActionTitle:{fontSize:12,fontWeight:'900',color:C.text,textAlign:'center'},
  revampedCareActionSubtitle:{fontSize:10,color:C.muted,textAlign:'center'},
  revampedShopRedeem:{minHeight:52,justifyContent:'center'},
+ revampedUpgradeRow:{flexDirection:'row',alignItems:'center',gap:12,backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:18,padding:14},
+ revampedUpgradeIcon:{width:54,height:54,borderRadius:15,backgroundColor:C.accentSoft,alignItems:'center',justifyContent:'center'},
+ revampedUpgradeDetails:{flex:1,minWidth:0,gap:3},
+ revampedUpgradeOwned:{fontSize:12,fontWeight:'800',color:C.text},
+ revampedUpgradePrice:{fontSize:12,fontWeight:'900',color:C.text},
+ revampedUpgradeBuy:{borderRadius:18,backgroundColor:C.accent,minHeight:40,minWidth:54,alignItems:'center',justifyContent:'center',paddingHorizontal:12},
+ revampedUpgradeBuyText:{fontSize:13,fontWeight:'900',color:'#FFFFFF'},
  
  // Kotlin PuppyMainScreensRevamp.kt current five-tab shell and Play stage.
  revampedAppHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14,paddingVertical:10,minHeight:64,backgroundColor:C.surface,borderBottomWidth:1,borderBottomColor:C.line},
