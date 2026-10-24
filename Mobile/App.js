@@ -312,7 +312,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
  const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
  const giftClaimed=g.lastDailyClaimDay===today;
  const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
- const giftReward=150+nextStreak*25+guestLevel(g)*10;
+ const giftReward=150+nextStreak*25+level(g)*10;
  const statuses=achievementStatuses(g);
  return <View style={styles.gamePage}>
   <PageHeader title="Rewards" subtitle="Daily goals, adventures and permanent progression."/>
