@@ -1,5 +1,7 @@
 /* Original Puppy Clicker source artwork, statically packaged by Metro for offline RN. */
 export const PUPPY_IMAGES={
+  test_v1_crash_dummy:require('../../assets/test/v1_test_crash_dummy.png'),
+  test_v2_crash_dummy:require('../../assets/test/v2_test_crash_dummy.png'),
   v2_discord_pup:require('../../assets/discord_rewards/v2_discord_pup.png'),
   aurora:require('../../assets/v1/v1_aurora.png'),
   birthday:require('../../assets/v1/v1_birthday.png'),
