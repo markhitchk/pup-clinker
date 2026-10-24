@@ -63,4 +63,4 @@ Manually run [React Native Preview APK](../.github/workflows/react-native-previe
 
 ## Artwork
 
-The original logo and four starter puppies are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Other characters currently use their original public asset URL and fall back to an emoji on load failure; protected asset packaging and full roster optimization remain migration tasks.
+The original logo and all **30 V1/V2/Discord puppy PNG portraits** are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Unlocking restricted or role-gated puppies still requires verified official entitlements; including a picture does not grant ownership. Future V3+ streamed art must be validated before native rendering.
