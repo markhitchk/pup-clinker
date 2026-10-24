@@ -124,7 +124,9 @@ test('initial natural Blackjack does not hide settled hand or re-pay on preview 
 
 test('active Blackjack round resumes on Casino open and shows a dedicated Resume button',()=>{
  const casino=ui.slice(ui.indexOf('function CasinoScreen('),ui.indexOf('function OnboardingScreen('));
- assert.ok(casino.includes("state.blackjack?'blackjack':'hub'"));
+ assert.match(casino,/state\.blackjack\?'blackjack':/);
+ assert.ok(casino.includes('Unfinished Blackjack Hand'));
+ assert.ok(casino.includes('g.pendingWheel?\'wheel\':\'hub\''));
  assert.ok(casino.includes('Unfinished Blackjack Hand'));
  assert.ok(casino.includes("onPress={()=>setPage('blackjack')}"));
  assert.ok(casino.includes('BlackjackV6Panel g={g} act={act} state={state}'));
