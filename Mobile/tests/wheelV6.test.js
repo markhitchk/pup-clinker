@@ -201,3 +201,27 @@ test('Casino page uses the dedicated wheel screen, saved resume card and no lega
   assert.ok(component.includes(t)||t==='82.5%'&&component.includes('WHEEL_V6.chipRtp'),t);
  }
 });
+
+test('all other Casino screens visibly disable wagers during a committed wheel spin',()=>{
+ const files=[
+  'SlotsV6.jsx','RouletteV6.jsx','PlinkoV6.jsx','ScratchersV6.jsx'
+ ];
+ for(const name of files){
+  const source=readFileSync(new URL('../src/components/'+name,import.meta.url),'utf8');
+  assert.ok(source.includes('game.pendingWheel'),name+' UI must block active wheel wager');
+ }
+ assert.ok(app.includes('g.pendingWheel'), 'Casino navigation restores pending wheel');
+ const s=ready(200);
+ const playing=transition(s,{type:'wheelStart',wager:20,roll:63,now:1730000000000});
+ for(const action of [
+  {type:'scratchStart',wager:20,roll:0},
+  {type:'slotsStart',wager:20,rolls:[0,0,0]},
+  {type:'rouletteStart',wager:20,bet:{type:'RED'},winningNumber:1},
+  {type:'plinkoStart',wager:20,pathRight:Array(8).fill(false),bounceJitterPermille:Array(8).fill(0)},
+  {type:'blackjackStart',wager:20,deck:[]}
+ ]){
+  const attempted=transition(playing,{...action,now:1730000000010});
+  assert.equal(attempted.game.casinoChips,180,'wheel pending debit bypass: '+action.type);
+  assert.deepEqual(attempted.game.pendingWheel,playing.game.pendingWheel);
+ }
+});
