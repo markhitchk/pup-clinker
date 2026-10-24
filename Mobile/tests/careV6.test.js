@@ -129,7 +129,9 @@ test('Kotlin daily goal source and React game screen use monthly verified schedu
  assert.ok(screen.includes('parkPreview(g,clock)'));
  assert.ok(screen.includes("type:park.ready?'parkClaim':'parkStart'"));
  assert.ok(screen.includes('disabled={park.disabled}'));
- assert.ok(!screen.includes('epochDay:today'));
+ // A real daily gift claim still passes today's epoch day; only goal definitions
+ // must come from the signed/cached monthly schedule, not an invented UI list.
+ assert.ok(screen.includes("type:'daily',epochDay:today,now:clock"));
  assert.ok(!app.includes('Every completed care action awards +1 Bone.'));
 });
 
