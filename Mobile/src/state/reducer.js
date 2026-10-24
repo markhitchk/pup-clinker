@@ -123,7 +123,7 @@ export function transition(state,action){
   case 'claimDailyGoal':if(!claimDailyGoal(g,action.goalId,state.monthlySchedule,new Date(action.now||Date.now())))return {...state,notice:'Goal incomplete or already claimed'};notice='🎯 Daily goal completed · Treats, Bone and Pup Coin credited';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
-  case 'prestige':if(blackjack||g.pendingScratch)return {...state,notice:'Finish your current Casino round before prestiging'};if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
+  case 'prestige':if(blackjack||g.pendingScratch)return {...state,notice:'Finish your current Casino round before prestiging'};if(!prestige(g,localEpochDay(new Date(action.now||Date.now()))))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
   case 'skill':if(!buyPrestigeSkill(g,action.skill))return {...state,notice:'Not enough skill points or skill at max level'};notice='⭐ Permanent skill unlocked';break;
   case 'ticket':if(!buyUpgradeTicket(g,action.rarity))return {...state,notice:'Not enough Pup Coins'};notice='🎟️ Ticket purchased';break;
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
