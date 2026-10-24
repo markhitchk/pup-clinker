@@ -83,6 +83,20 @@ function PlayScreen({g,act,onOpen,schedule,clock}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const {width,height}=useWindowDimensions();
  const tapScale=useRef(new Animated.Value(1)).current;
+ const ticketOpacity=useRef(new Animated.Value(0)).current;
+ const [ticketVisible,setTicketVisible]=useState(false);
+ useEffect(()=>{
+  if(!g.ticketDropSerial||!g.lastTicketDrop)return;
+  setTicketVisible(true);
+  ticketOpacity.stopAnimation();
+  Animated.timing(ticketOpacity,{toValue:1,duration:180,useNativeDriver:true}).start();
+  if(g.hapticsEnabled!==false)Vibration.vibrate(40);
+  const hide=setTimeout(()=>{
+   Animated.timing(ticketOpacity,{toValue:0,duration:220,useNativeDriver:true})
+    .start(({finished})=>{if(finished)setTicketVisible(false);});
+  },2750);
+  return ()=>clearTimeout(hide);
+ },[g.ticketDropSerial,g.lastTicketDrop,ticketOpacity]);
  const gain=g.clickPower+(wellness(g)>=85&&g.bond>=50?2:wellness(g)>=70?1:0);
  const portraitSize=Math.min(height<700?198:238,Math.max(150,width-110));
  const doTap=()=>{
@@ -120,6 +134,10 @@ function PlayScreen({g,act,onOpen,schedule,clock}){
    <QuickAction emoji="🎲" title="Gacha" subtitle="Puppy pulls" onPress={()=>onOpen('gacha')}/>
    <QuickAction emoji="🎰" title="Casino" subtitle="Mini games" onPress={()=>onOpen('casino')}/>
   </View>
+  {ticketVisible?<Animated.View pointerEvents="none" style={[styles.ticketOverlay,{opacity:ticketOpacity}]}>
+   <Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt>
+   <Txt style={styles.ticketOverlayDescription}>Rare reward found! Check your Shop inventory.</Txt>
+  </Animated.View>:null}
  </View>;
 }
 function CareScreen({g,act,clock,schedule}){
@@ -611,6 +629,10 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ ticketOverlay:{position:'absolute',top:138,left:12,right:12,zIndex:30,backgroundColor:'#12323B',borderColor:C.accent,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:12,alignItems:'center',elevation:8},
+ ticketOverlayTitle:{fontSize:15,fontWeight:'900',color:C.text,textAlign:'center'},
+ ticketOverlayDescription:{fontSize:11,color:C.muted,textAlign:'center',marginTop:3},
+
  casinoGameTile:{flexDirection:'row',alignItems:'center',gap:12,padding:12,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line},
  casinoTileArt:{width:80,height:80},
  casinoTileArrow:{fontSize:28,color:C.accent},
