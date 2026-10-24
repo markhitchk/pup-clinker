@@ -6,6 +6,7 @@ import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
 import {newRoundFromDeck,hit as bjHit,stand as bjStand,doubleDown as bjDouble,split as bjSplit,blackjackOutcome,validBlackjackState} from '../engine/blackjack.js';
 import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../engine/onboarding.js';
 import {fallbackSchedule,rollDailyDay,claimDailyGoal} from '../engine/monthlyRewards.js';
+import {newPendingScratch,validPendingScratch} from '../engine/scratch.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
@@ -36,6 +37,7 @@ export function transition(state,action){
   if(action.game)applyOfflineCare(game,action.now||Date.now());
   const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
   game.casinoRound=blackjack;
+  game.pendingScratch=validPendingScratch(game.pendingScratch)?game.pendingScratch:null;
   return {...state,game,blackjack,ready:true};
  }
  if(!state.ready)return state;
@@ -106,7 +108,7 @@ export function transition(state,action){
   case 'claimDailyGoal':if(!claimDailyGoal(g,action.goalId,state.monthlySchedule,new Date(action.now||Date.now())))return {...state,notice:'Goal incomplete or already claimed'};notice='🎯 Daily goal completed · Treats, Bone and Pup Coin credited';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
-  case 'prestige':if(blackjack)return {...state,notice:'Finish Blackjack before prestiging'};if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
+  case 'prestige':if(blackjack||g.pendingScratch)return {...state,notice:'Finish your current Casino round before prestiging'};if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
   case 'skill':if(!buyPrestigeSkill(g,action.skill))return {...state,notice:'Not enough skill points or skill at max level'};notice='⭐ Permanent skill unlocked';break;
   case 'ticket':if(!buyUpgradeTicket(g,action.rarity))return {...state,notice:'Not enough Pup Coins'};notice='🎟️ Ticket purchased';break;
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
@@ -114,6 +116,16 @@ export function transition(state,action){
   case 'rename':{const name=String(action.name||'').trim().slice(0,18);if(!name)return no();g.puppyName=name;break;}
   case 'casino':{
    if(blackjack)return {...state,notice:'Finish Blackjack before another round'};
+   if(g.pendingScratch)return {...state,notice:'Finish the current Scratchers card before another wager'};
+   if(action.gameType==='scratch'){
+    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
+    const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
+    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
+    if(!casinoSpend(g,action.wager))return no();
+    g.pendingScratch=pending;
+    notice='🎟️ Scratch your card to reveal the committed prize';
+    break;
+   }
    if(!Number.isSafeInteger(action.wager)||action.wager<=0||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let result;try{result=casinoRound(action);}catch{return {...state,notice:'Invalid casino bet'};}
    if(!casinoSpend(g,action.wager))return no();
@@ -121,7 +133,17 @@ export function transition(state,action){
    notice='🎰 '+action.gameType.toUpperCase()+' · '+(result.prize||result.winKind||result.color||'RESULT')+' · +'+result.payout+' Chips';
    break;
   }
+  case 'scratchReveal':{
+   if(!validPendingScratch(g.pendingScratch))return {...state,notice:'No valid Scratchers card to settle'};
+   const payout=g.pendingScratch.payout;
+   const prize=g.pendingScratch.prize;
+   casinoPayout(g,payout);
+   g.pendingScratch=null;
+   notice='🎟️ '+prize.replaceAll('_',' ')+' · +'+payout+' Casino Chips';
+   break;
+  }
   case 'blackjackStart':{
+   if(g.pendingScratch)return {...state,notice:'Finish your Scratchers card before dealing Blackjack'};
    if(blackjack)return {...state,notice:'Finish your active Blackjack round'};
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let next;try{next=newRoundFromDeck(action.wager,action.deck);}catch{return {...state,notice:'Invalid wager or card deck'};}
