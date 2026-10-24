@@ -60,6 +60,11 @@ export function transition(state,action){
   case 'onboardBirthday':
    if(!validBirthday(action.month,action.day))return {...state,notice:'Choose a valid month and day or skip'};
    g.birthdayMonth=action.month;g.birthdayDay=action.day;break;
+  case 'setPreference':
+   if(!['hapticsEnabled','animationsEnabled','compactNumbers'].includes(action.name)||typeof action.value!=='boolean')return no();
+   g[action.name]=action.value;
+   notice='⚙️ Gameplay preference updated';
+   break;
   case 'onboardNotifications':
    // Preference only, no Android permission is requested before native integration.
    g.notificationsOptIn=action.enabled===true;
