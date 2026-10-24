@@ -1,6 +1,7 @@
 // Android-derived V7 browser engine from Puppy-Clicker merge ddadb7f; provisional, not authoritative.
 // Ported from pup-clinker/Web and Android's GameViewModel: web-specific schema v1.
 import {validPendingScratch} from './scratch.js';
+import {validPendingSlots} from './slotsV6.js';
 import {localEpochDay} from './monthlyRewards.js';
 // Kotlin PuppyCasinoRewardEngine.MAX_TICKETS_PER_RARITY.
 export const MAX_TICKETS_PER_RARITY=9999;
@@ -59,7 +60,7 @@ export const freshGame=()=>({
   totalTicketsFound:0,ticketDropSerial:0,lastTicketDrop:null,
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
-  xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,
+  xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,pendingSlots:null,
   onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
   hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,cooldownUntilMs:0,
   careActions:0,totalShopPurchases:0,
@@ -107,6 +108,7 @@ export function sanitizeGame(input){
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
   if(b.lastDailyClaimDay!==null)b.lastDailyClaimDay=cap(b.lastDailyClaimDay);
   b.pendingScratch=validPendingScratch(b.pendingScratch)?b.pendingScratch:null;
+  b.pendingSlots=validPendingSlots(b.pendingSlots)?b.pendingSlots:null;
   return b;
 }
 export const level=g=>1+Math.floor(Math.sqrt(g.lifetimeTreats/100));
