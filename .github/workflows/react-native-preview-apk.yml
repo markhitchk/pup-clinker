@@ -1,9 +1,13 @@
 name: Puppy Clicker React Native Preview APK
+# Triggered on workflow changes for a safe, branch-scoped React Native debug artifact.
 on:
   workflow_dispatch:
   push:
     branches: [feat/react-native-full-android]
     paths: ['.github/workflows/react-native-preview-apk.yml']
+concurrency:
+  group: puppy-react-native-preview-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

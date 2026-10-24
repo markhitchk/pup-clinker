@@ -7,7 +7,7 @@ This is a genuine React Native / Expo Android application, **NOT a website wrapp
 ## Versions / Android identity
 
 - Expo SDK 57 + React Native 0.86 + React 19.2 (React Native new architecture).
-- Package: `com.harleytg.puppyclicker` (same as existing Android).
+- Reserved Google Play package: `com.harleytg.puppyclicker` (unchanged original identity); all normal builds default to the **separate** `com.harleytg.puppyclicker.preview`.
 - Version code: `35` (current Kotlin source code: `34`). Google Play requires monotonic increment and original upload signing key.
 - Android target SDK 36 via SDK 57 defaults.
 - No `WebView` package or browser-embedded UI.
@@ -36,8 +36,9 @@ The `app.json` reserves the future Play package ID, but **runtime configuration 
 - Care meters, per-pup care action, active dog park and daily reward.
 - Upgrade Shop with Bone/Ticket gating; ticket shop, accessory options.
 - Prestige reset and permanent skill tree.
-- Roster selection, simple rewards, Settings and guest reset.
-- Casino Chips conversion; slots, roulette, scratchers, Plinko, Lucky Wheel, basic Blackjack (Hit/Stand).
+- Roster selection, local favorites/search, nine source achievements, guest XP, Settings and guest reset.
+- Six-step guest onboarding: welcome, player setup, personalization, privacy, notifications, ready.
+- Casino Chips conversion; slots, roulette, fixed-wager scratchers, Plinko, Lucky Wheel, Blackjack with physical 52-card deck, Hit/Stand/Double/Split and persisted local round.
 
 `src/engine/` contains a **copied, traceable starting point** of the earlier web Android-derived economy. Those engines are not a full reimplementation of the giant Kotlin ViewModel, nor are they currently verified against every Android state transition.
 
@@ -51,7 +52,7 @@ The `app.json` reserves the future Play package ID, but **runtime configuration 
 
 ## Completion blockers
 
-Full parity still requires original onboarding, achievements/XP, 100% native character assets, animated casino tables with split/double/insurance, Gacha/Exchange, code redemption, Discord OAuth and role verification, server-authoritative save/device migration, PupEye anti-cheat, notifications and widget parity, and real-device tests. See [migration specification](../docs/superpowers/specs/2026-10-23-react-native-android-migration.md).
+Full parity still requires verified real-account onboarding, protected/streamed V3+ character entitlements, pixel-level casino art and animations, Exchange, Puppy Codes, Discord OAuth/role verification, server-authoritative cloud/device migration, PupEye anti-cheat, native notifications/widgets, and real-device tests. See [the detailed parity audit](PARITY.md). See [migration specification](../docs/superpowers/specs/2026-10-23-react-native-android-migration.md).
 
 ## CI
 
@@ -64,6 +65,10 @@ Manually run [React Native Preview APK](../.github/workflows/react-native-previe
 ## Artwork
 
 The original logo and all **30 V1/V2/Discord puppy PNG portraits** are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Unlocking restricted or role-gated puppies still requires verified official entitlements; including a picture does not grant ownership. Future V3+ streamed art must be validated before native rendering.
+
+## Detailed migration audit
+
+See [PARITY.md](PARITY.md) for a feature-by-feature status against the Kotlin source and the mandatory Play cutover checklist. The list is intentionally explicit about missing 1:1 behavior.
 
 ## Production release guard
 
