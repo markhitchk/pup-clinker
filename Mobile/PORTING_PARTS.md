@@ -20,7 +20,7 @@
 | **2** | **Care & Daily, five care actions, per-puppy care, Park, daily claims** | **React screens rebuilt; automated Kotlin contract tests added; Android-device visual and lifecycle verification outstanding.** Source: `V6CareAndDaily`, `V6CarePanel`, `V6DailyPanel`, `PuppyCareSystem.kt`, `PuppyClickerV6ViewModel.kt`, `PuppyMonthlyRewards.kt`; code: `Mobile/src/engine/careV6.js`, `Mobile/App.js`; tests: `Mobile/tests/careV6.test.js`. |
 | **3** | **Shop, tickets, accessories, Puppy Codes and Prestige** | **Kotlin Shop and Prestige views rebuilt in React; economy transaction guards and regression tests added; CI/device visual verification pending.** Reference: `V6Shop`, `V6CookieUpgradeCard`, `V6TicketUpgradeCard`, `V6TicketInventory`, `PuppyPupCoinShop`, `V6PrestigeCenter`, `PuppyEconomyV7`, `PuppyClickerV6ViewModel`; implementation: `Mobile/src/engine/shopV6.js`, `Mobile/src/engine/game.js`, `Mobile/App.js`; tests: `Mobile/tests/shopV6.test.js`. Puppy Code redemption is disabled in this guest preview. |
 | **4** | **Puppy Collection V1/V2, source artwork, mechanical Gacha, guest unlocks, favorites** | **Implemented in code; automated tests added; device screenshots / APK verification pending.** 29 Kotlin legacy IDs, descriptions and locks, original five PNG machine pieces, staged turn/drop/open/reveal, two free TEST-manifest Gacha puppies with original PNGs; advanced V3+ browser and favorites retained. Code: `Mobile/src/engine/rosterV6.js`, `Mobile/src/engine/gachaV6.js`, `Mobile/src/assets/gacha.js`, `Mobile/App.js`; tests: `Mobile/tests/rosterV6.test.js` and `Mobile/tests/gacha.test.js`. Restricted ownership, role unlocks, and free *future* V3+ Gacha remain unported. |
-| 5 | Six casino games as **separate subparts**: Blackjack, Slots, Roulette, Plinko, Scratchers, Wheel | Pending pixel/gesture/round-recovery validation. Scratchers guest gesture implementation exists but is not Kotlin Canvas-equivalent. |
+| **5** | **Casino: six subparts, one game at a time** | **5A Blackjack rebuilt in React code with dedicated Kotlin-style table, wager presets, color-coded responsive controls, selectable split hands, persistent active round resume, and read-only completed outcome. Regression tests added (`Mobile/tests/blackjackV6.test.js`); latest CI/APK and device screenshot parity pending.** 5B Slots, 5C Roulette, 5D Plinko, 5E Scratchers exact Canvas, 5F Wheel remain to be fully rebuilt. |
 | 6 | Settings, profile, onboarding, themes, accessibility, support, developer/admin menus | Pending. Native flows and role visibility must be verified. |
 | 7 | Discord OAuth, original Pup Account cloud save, one-device/PupEye, Exchange, notifications/widgets | Blocked on backend authority/security design and migration verification. No guest-currency imports. |
 | 8 | Final cross-feature regression, screenshot diff, signed release migration | Not started. Requires original signing key, Play internal test, original-data recovery and approval. |
@@ -78,3 +78,25 @@ The **launched** tab path is `PuppyClickerV6Activity.kt → V6TabContent → V6P
 - **Native verification still pending:** Compare Kotlin/React screenshot pixel geometry, original animated stage art, large fonts, narrow devices, loaded portrait assets, correct reset/reentry, saved unlock persistence and accessibility. GitHub Actions pending is not a passing APK or signed Play build.
 
 **Part 5 next:** rebuild the six Casino games in individual subparts, starting with Blackjack. Keep Kotlin `App/` and production data intact.
+
+## Part 5 — casino rebuild in six strictly separate subparts
+
+| Subpart | Kotlin source | React status |
+| --- | --- | --- |
+| **5A Blackjack** | `PuppyBlackjackUi.kt`, `PuppyBlackjackEngine.kt`, `PuppyBlackjackLayout.kt` | **Implemented in code, tests added; Android-device validation pending** |
+| 5B Slots | Kotlin Slots UI/engine/reels | Existing rough preview; full UI/animation/ledger parity **pending** |
+| 5C Roulette | Kotlin roulette UI/engine/wheel | Existing rough preview; physics/anim/ledger parity **pending** |
+| 5D Plinko | Kotlin peg-board/UI/engine | Existing rough preview; ball path/board fit/ledger parity **pending** |
+| 5E Scratchers | `PuppyScratchersUi.kt`, `PuppyScratchersEngine.kt` | A staged guest gesture / pending prize exists, but still not Kotlin's native 48×20 coated Canvas / scratch coin **pending** |
+| 5F Lucky Pup Wheel | Kotlin wheel UI/engine | Existing rough preview; pointer/animation/ledger parity **pending** |
+
+### 5A Blackjack completed source work
+
+- Ported the `PuppyBlackjackGameContent` visual hierarchy: dedicated `‹ Casino` back header, original `🐾 Casino Chip Wallet` label, Kotlin 1122×1402 art cropped to the 1122×1188 painted-table region, correct dealer/player card zones from `PuppyBlackjackLayout`, chip on the felt, dealer hole-card hiding, full card suits and color.
+- Native responsive dimensions: portrait table constrained by viewport height (300dp control allowance; 370dp when enlarged type), 280–500dp table height and 560dp max portrait width; wide landscape/tablet caps to 430dp. Extra-short screens remain scrollable with safe width clamps. 2×2 button grid on phones, 1×4 on wide displays (native threshold 520dp); 48dp minimum button height.
+- `BlackjackV6Panel` has Kotlin wager presets `20 / 100 / 500 / 2,500`, hands selector when split, per-hand hand-value and outcome messages, dealer caption, color-coded actions and original published rules. Only the currently active hand may perform Hit/Stand/Double/Split; view selection does not alter game logic.
+- React game reducer retains a **read-only `blackjackDisplay` snapshot** when a natural or complete Blackjack settles, mirroring Kotlin's `lastStatePayload`/last outcome reveal. The saved active round is still cleared after settlement and cannot be settled again. Completed snapshots are never uploaded or counted as an extra payout, and are reset on guest reload/new round. Unfinished guest hands continue to restore from `g.casinoRound`; the Casino hub now displays a Resume action and opens directly to the interrupted Blackjack hand.
+- The existing 52-card, split/double, ace, dealer soft-17 and payout engine is reused; the new source-contract tests `Mobile/tests/blackjackV6.test.js` cover layout, wager presets, card hiding, split selection, control gating, settled-state retention and duplicate payout refusal.
+- **Not yet certified 1:1:** real-phone screenshot comparison at 360dp/large fonts/landscape, original timed card reveal and chip animation, backend casino transaction replay/anti-cheat, and signed production APK. Do not merge into Kotlin production or call the guest economy authoritative.
+
+**Next casino subpart: 5B — Slots.** Use exact Kotlin source-art reels, lever behavior, payout table and transaction lifecycle; keep React Android work in `feat/react-native-full-android`.
