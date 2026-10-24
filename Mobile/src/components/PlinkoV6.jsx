@@ -85,7 +85,7 @@ export default function PlinkoV6({game,pending,lastResult,onAction,onBack}){
  const actionRef=useRef(onAction);actionRef.current=onAction;
  const motion=game.animationsEnabled!==false;
  const display=plinkoResult(pending)||lastResult;
- const blocked=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingScratch||game.casinoRound);
+ const blocked=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingScratch||game.pendingWheel||game.casinoRound);
  const enabled=!blocked&&validPlinkoWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
