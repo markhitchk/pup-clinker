@@ -4,7 +4,7 @@ import {WHEEL_PRIZES,wheelOutcome} from './casinoV7.js';
 export const WHEEL_V6=Object.freeze({
  wagers:[20,100,500,2500],minWager:20,maxWager:100000,increment:20,
  chipRtp:'82.5%',spinMs:2650,rotationMs:2500,reducedMotionMs:250,
- maxWheelWidth:420,artAspect:420/447,discRatio:.82,discY:.075,
+ referenceWidth:420,artAspect:420/447,discRatio:.82,discY:.075,
  pointerRatio:.12,pointerAspect:100/160,pointerY:.018,
  pointerClicks:18,pointerClickTimings:[30,38,32],pointerDelayBase:25,
  pointerDelayStep:2,turns:6,latestVersion:1
@@ -41,7 +41,7 @@ export function wheelLabelPosition(index,size){
   top:size/2+radius*Math.sin(angle)-8,width,fontSize:segment.weight<=2?7:segment.weight<=5?8:segment.weight<=10?9:10};
 }
 export function wheelFrame(width){
- const w=Math.max(1,Math.min(WHEEL_V6.maxWheelWidth,Number.isFinite(width)?width:320));
+ // Kotlin LuckyWheelBoard uses Modifier.fillMaxWidth() — the 420 reference\n // is an aspect-ratio basis, not an upper width cap.\n const w=Math.max(1,Number.isFinite(width)?width:320);
  const h=w/WHEEL_V6.artAspect,disc=w*WHEEL_V6.discRatio,ptr=w*WHEEL_V6.pointerRatio;
  return {width:w,height:h,disc:{left:(w-disc)/2,top:h*WHEEL_V6.discY,width:disc,height:disc},
   pointer:{left:(w-ptr)/2,top:h*WHEEL_V6.pointerY,width:ptr,height:ptr/WHEEL_V6.pointerAspect}};
