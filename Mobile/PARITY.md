@@ -19,7 +19,7 @@ Status vocabulary: **Implemented guest** = screens/logic usable in local preview
 | V1/V2/Discord portraits | Implemented guest | All 30 source PNGs bundled offline, but locked characters remain unclaimable without authorization |
 | Dynamic V3+ streamed art and roster manifests | Partial | `Mobile/src/engine/dynamicRoster.js`, `useRoster.js`: strict data-only GitHub roster discovery, validated manifests, cached offline metadata and category tabs; protected ownership, verified assets/hash and stream telemetry remain |
 | Gacha with free-puppy restriction, 2,500 Treats/1 Common Ticket | Implemented guest | `PuppyGacha.kt`; protected/redeem-only skins never randomly granted; source machine animation not 1:1 |
-| Slots/Roulette/Scratchers/Plinko/Wheel | Partial | Source-derived outcomes, visual game scenes and transaction authority incomplete |
+| Slots/Roulette/Scratchers/Plinko/Wheel | Partial | Source-derived outcomes and visual scenes. React Scratchers now uses the original 1426×1077 frame geometry, a drag-to-reveal surface at Kotlin's 68% threshold, deferred once-only guest payout and saved pending-round recovery. True 48×20 native coin physics, exact scene animation, and server-authoritative transactions remain incomplete |
 | Blackjack 52-card deck, natural 3:2, dealer stand 17, split/double | Implemented guest | `PuppyBlackjackEngine.kt`; up to 3 hands, no native animation/art yet |
 | Blackjack crash-safe guest wager state | Implemented guest | One persisted guest `casinoRound` with deck uniqueness validation; not server-side settlement |
 | Daily reward and park activity | Partial | Local daily gift, park, validated monthly schedules, four metric-based fallback goals, per-day counters and duplicate-safe claims now work for **guest** state; remote authoritative settlement and broader event rewards missing |
@@ -91,3 +91,10 @@ The migration preview now loads the same `assets` folder index and v2/test/disco
 ### Blackjack Kotlin scene geometry
 
 The React preview now uses the **exact** `PuppyBlackjackLayout.kt` bitmap dimensions (1122×1402), alpha-transparent crop (86/1188) and dealer/player card zones, with Kotlin-style bounded fan spacing. `Mobile/tests/blackjackLayout.test.js` verifies numerical layout equations against the Kotlin source. Android screenshot validation, card flip animations, split-hand inspection and signed casino settlement remain to be completed.
+
+## October 23 branch correction — Android source of truth
+
+- React **Android** development takes place in this repository on `feat/react-native-full-android` under `Mobile/`. The separately hosted `Puppy-Clicker` React web repository is not the Android branch, and its PRs do not update this Android app.
+- Scratchers parity fix implemented locally in `Mobile/src/engine/scratch.js`, `Mobile/src/components/ScratchStage.jsx`, the React casino screen, and guest reducer/save validation; tests in `Mobile/tests/scratch.test.js`.
+- The wager is debited when a guest round starts but the outcome is settled **only once** upon 68% scratch coverage, not immediately on card purchase. Pending rounds block other wagers and survive local guest-save rehydration; invalid pending records are discarded. Guest balance has no trusted server standing.
+- The view-tile scratch mask is deliberately not claimed to match Kotlin's 48×20 native Canvas/coin-motion implementation pixel for pixel. All other missing systems, including Discord/PupEye, Exchange, push notifications, full source animations and signing, remain migration blockers. Keep Kotlin `App/` unchanged and do not publish an unverified React replacement.
