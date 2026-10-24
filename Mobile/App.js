@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,Vibration,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
+import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useGame} from './src/state/useGame.js';
 import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
@@ -85,7 +86,7 @@ function PageHeader({title,subtitle,action}){
 function Wallet({game}){
  return <View style={styles.wallet}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
-   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{v6Format(value,game.compactNumbers!==false)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
+   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={2} style={styles.walletNumber}>{String(value??0)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
  </View>;
 }
 function NeedPill({icon,value}){
@@ -120,10 +121,13 @@ function DailyGoalCard({g,goal,act,clock}){
 }
 // Source of truth: PuppyMainScreensRevamp.kt / PuppyRevampedPlayScreen.
 // This is a Kotlin-aligned guest preview, not a trusted/cloud-save implementation.
-function PlayScreen({g,act,clock,schedule}){
+function PlayScreen({g,act,clock,schedule,availableHeight}){
  const {width,height}=useWindowDimensions();
+ // The Kotlin BoxWithConstraints receives height below the system/app/nav bars.
+ const viewport=availableHeight||Math.max(0,height-160);
+ const tiny=viewport<590,compact=viewport<700;
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const portraitSize=height<650?122:height<780?150:185;
+ const portraitSize=tiny?122:compact?150:185;
  const cooldown=v6CooldownSeconds(g,clock);
  const tired=g.energy<=10;
  const careBonus=careTapBonus(g);
@@ -162,10 +166,10 @@ function PlayScreen({g,act,clock,schedule}){
  const tapText=cooldown>0?'🐶👁️ Fair-play cooldown · '+cooldown+'s':
   tired?'😴 '+g.puppyName+' is tired · Care needed':
   '🐾 Tap '+g.puppyName+'  +'+v6Format((Number(g.clickPower)||0)+careBonus,g.compactNumbers!==false);
- return <View style={styles.revampedScreen}>
-  <PageHeader title="Play" subtitle={height<780?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
+ return <View style={[styles.revampedScreen,{gap:tiny?5:8}]}>
+  <PageHeader title="Play" subtitle={compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
   <Wallet game={g}/>
-  <View style={styles.revampedTapStage}>
+  <View style={[styles.revampedTapStage,{paddingVertical:8}]}>
    <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
     accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0}
     onPress={doTap} style={styles.revampedPortraitTouch}>
@@ -183,7 +187,7 @@ function PlayScreen({g,act,clock,schedule}){
     <Txt numberOfLines={2} style={styles.revampedTapButtonText}>{tapText}</Txt>
    </Pressable>
   </View>
-  <View style={styles.nextRewardCard}>
+  <View style={[styles.nextRewardCard,{paddingVertical:tiny?6:8}]}>
    <Txt style={{fontSize:25}}>🎁</Txt>
    <View style={{flex:1,gap:5}}>
     <View style={styles.revampedRewardTitleRow}>
@@ -209,9 +213,10 @@ function PlayScreen({g,act,clock,schedule}){
 // Part 2: direct port of the launched Kotlin V6CareAndDaily / V6CarePanel /
 // V6DailyPanel. Guest-only data; notification scheduling is not enabled yet.
 // Current Kotlin PuppyRevampedCareScreen: dedicated Care; daily claims belong on Rewards.
-function CareScreen({g,act}){
+function CareScreen({g,act,availableHeight}){
  const {height,width}=useWindowDimensions();
- const compact=height<780, tiny=height<660;
+ const viewport=availableHeight||Math.max(0,height-160);
+ const compact=viewport<700, tiny=viewport<590;
  const portraitSize=tiny?66:compact?78:92;
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const score=wellness(g),bonus=careTapBonus(g);
@@ -1038,7 +1043,9 @@ function SettingsScreen({g,act,onOpen,registry}){
  </View>;
 }
 
-export default function App(){
+function AppContent(){
+ const insets=useSafeAreaInsets();
+ const [primaryHeight,setPrimaryHeight]=useState(0);
  const {state,act}=useGame();
  const registry=useRoster();
  const {width}=useWindowDimensions();
@@ -1058,20 +1065,17 @@ export default function App(){
   if(secondary==='notifications')return <View style={styles.gamePage}><PageHeader title="Notifications" subtitle="Local guest preview"/><Card title="🔔 Notification inbox"><Txt muted>The Kotlin notification inbox and reward claims are not yet connected in this React guest preview. No official messages or rewards are shown here.</Txt></Card></View>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='settings')return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>;
-  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} availableHeight={primaryHeight}/>;
+  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} availableHeight={primaryHeight}/>;
   return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
  };
  const inGame=state.ready&&g.onboardingComplete;
  const showFixedPlay=inGame&&!secondary&&tab==='play';
- return <View style={styles.root}>
-  <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
+ return <View style={[styles.root,{paddingTop:Math.max(insets.top,StatusBar.currentHeight||0),paddingBottom:insets.bottom}]}>
+  <StatusBar barStyle="light-content" backgroundColor={C.bg} translucent={false}/>
   {inGame?<View style={styles.revampedAppHeader}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" accessibilityLabel="Puppy Clicker logo" style={styles.revampedAppLogo}/>
-   <View style={{flex:1}}>
-    <Txt style={styles.revampedBrand}>Puppy Clicker</Txt>
-    <Txt style={styles.revampedGuestLabel}>LOCAL GUEST PREVIEW · NO CLOUD SYNC</Txt>
-   </View>
+   <Txt style={[styles.revampedBrand,{flex:1}]} numberOfLines={1}>Puppy Clicker</Txt>
    <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={()=>setSecondary('notifications')} style={styles.revampedHeaderAction}>
     <Txt style={styles.revampedHeaderIcon}>🔔</Txt>
    </Pressable>
@@ -1084,10 +1088,10 @@ export default function App(){
     <Txt style={styles.small}>{state.notice}  ✕</Txt>
    </Pressable>:null}
   {showFixedPlay?
-   <View style={[styles.revampedPlayViewport,{maxWidth:width>650?670:undefined}]}>
+   <View onLayout={e=>setPrimaryHeight(Math.max(0,Math.round(e.nativeEvent.layout.height)-8))} style={[styles.revampedPlayViewport,{maxWidth:width>650?670:undefined}]}>
     <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>
    </View>:
-   <ScrollView key={secondary||tab} style={styles.scroll}
+   <ScrollView onLayout={e=>setPrimaryHeight(Math.round(e.nativeEvent.layout.height))} key={secondary||tab} style={styles.scroll}
     contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
     {secondary?<View style={styles.back}>
      <Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]||'Play'}</Button>
@@ -1096,15 +1100,18 @@ export default function App(){
      !g.onboardingComplete?<OnboardingScreen g={g} act={act}/>:
      <>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
    </ScrollView>}
-  {inGame?<View style={styles.bottomBar}>
-   {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}}
-    onPress={()=>openTab(id)} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
-    <Txt style={styles.tabEmoji}>{icon}</Txt>
-    <Txt style={[styles.tabLabel,(tab===id&&!secondary)&&styles.revampedSelectedTab]}>{label}</Txt>
+  {inGame&&!secondary?<View style={styles.bottomBar}>
+   {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id}}
+    onPress={()=>openTab(id)} style={styles.tab}>
+    <View style={[styles.revampedTabIndicator,tab===id&&styles.revampedTabIndicatorActive]}>
+     <Txt style={[styles.tabEmoji,id==='roster'&&styles.revampedRosterIcon]}>{icon}</Txt>
+    </View>
+    <Txt style={[styles.tabLabel,tab===id&&styles.revampedSelectedTab]}>{label}</Txt>
    </Pressable>)}
   </View>:null}
  </View>;
 }
+export default function App(){return <SafeAreaProvider><AppContent/></SafeAreaProvider>;}
 const styles=StyleSheet.create({
  revampedCareIdentity:{flexDirection:'row',alignItems:'center',gap:10,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.accentSoft,paddingHorizontal:12,paddingVertical:9},
  revampedCarePanel:{gap:2,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.surface,paddingHorizontal:11,paddingVertical:8},
@@ -1129,13 +1136,16 @@ const styles=StyleSheet.create({
  revampedUpgradeBuyText:{fontSize:13,fontWeight:'900',color:'#FFFFFF'},
  
  // Kotlin PuppyMainScreensRevamp.kt current five-tab shell and Play stage.
- revampedAppHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14,paddingVertical:10,minHeight:64,backgroundColor:C.surface,borderBottomWidth:1,borderBottomColor:C.line},
- revampedAppLogo:{height:34,width:34},
- revampedBrand:{fontSize:20,fontWeight:'900',color:C.text},
+ revampedAppHeader:{flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:10,height:48,backgroundColor:C.surface,elevation:3},
+ revampedAppLogo:{height:32,width:32},
+ revampedBrand:{fontSize:16,fontWeight:'900',color:C.text},
  revampedGuestLabel:{fontSize:9,fontWeight:'700',color:C.muted,letterSpacing:0.4},
- revampedHeaderAction:{width:43,height:43,borderRadius:24,borderColor:C.text,borderWidth:1,alignItems:'center',justifyContent:'center'},
- revampedHeaderIcon:{fontSize:22},
+ revampedHeaderAction:{width:40,height:40,borderRadius:22,borderColor:C.text,borderWidth:1,alignItems:'center',justifyContent:'center',marginLeft:7},
+ revampedHeaderIcon:{fontSize:18},
  revampedPlayViewport:{flex:1,width:'100%',alignSelf:'center',paddingHorizontal:14,paddingTop:4,paddingBottom:4},
+ revampedTabIndicator:{width:64,height:32,borderRadius:20,alignItems:'center',justifyContent:'center'},
+ revampedTabIndicatorActive:{backgroundColor:'#494358'},
+ revampedRosterIcon:{fontSize:26,transform:[{translateY:-5}]},
  revampedScreen:{flex:1,gap:8},
  revampedPageHeader:{gap:2,paddingVertical:2},
  revampedPageTitle:{fontSize:28,fontWeight:'900',color:C.text},
@@ -1302,7 +1312,7 @@ const styles=StyleSheet.create({
  sectionTitle:{fontSize:17,fontWeight:'800',color:C.text,marginTop:6},
  upgradeCard:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,paddingHorizontal:12,paddingVertical:16,gap:8},
 
- root:{flex:1,backgroundColor:C.bg,paddingTop:StatusBar.currentHeight||0,paddingBottom:24},
+ root:{flex:1,backgroundColor:C.bg},
  text:{fontSize:14,color:C.text},muted:{color:C.muted},small:{fontSize:12},tiny:{fontSize:10,color:C.muted},tinyCenter:{fontSize:10,color:C.muted,textAlign:'center'},
  center:{textAlign:'center',fontSize:12},heading:{fontSize:17,fontWeight:'800',letterSpacing:0.25},brand:{fontSize:17,fontWeight:'900',letterSpacing:0.8},value:{fontWeight:'800'},itemName:{fontWeight:'700',fontSize:14},
  topBar:{paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:4,backgroundColor:C.surface},
@@ -1311,10 +1321,10 @@ const styles=StyleSheet.create({
  card:{backgroundColor:C.surface,borderWidth:1,borderColor:C.line,borderRadius:20,padding:15,gap:10},
  cardTitle:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
  wallet:{flexDirection:'row',backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,paddingHorizontal:5,paddingVertical:11,alignItems:'center'},
- walletCell:{flex:1,minWidth:0,alignItems:'center',justifyContent:'center',gap:4},
+ walletCell:{flex:1,minWidth:0,alignItems:'center',justifyContent:'center',gap:0},
  walletEmoji:{fontSize:18},
  walletLabel:{fontSize:11,color:C.muted,textAlign:'center'},
- walletNumber:{fontSize:15,fontWeight:'900',color:C.text,textAlign:'center'},
+ walletNumber:{fontSize:16,fontWeight:'900',color:C.text,textAlign:'center'},
  bigTap:{alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft,borderRadius:26,minHeight:286,padding:12,gap:8,borderWidth:1,borderColor:'#23516A'},
  portrait:{backgroundColor:'#273843',overflow:'hidden',alignItems:'center',justifyContent:'center'},
  tapCaption:{fontSize:13,color:C.accent,fontWeight:'800',letterSpacing:0.5},
@@ -1331,9 +1341,9 @@ const styles=StyleSheet.create({
  rosterPup:{width:'31%',alignItems:'center',gap:4,backgroundColor:C.card,padding:7,borderRadius:13,borderWidth:1,borderColor:C.line},
  rosterSelected:{borderColor:C.accent},wager:{backgroundColor:C.card,padding:10,borderRadius:10,borderWidth:1,borderColor:C.line},wagerSelected:{borderColor:C.accent,backgroundColor:C.accentSoft},
  notice:{padding:10,paddingHorizontal:16,backgroundColor:'#234354'},
- bottomBar:{flexDirection:'row',paddingTop:8,paddingBottom:8,backgroundColor:C.surface,borderTopWidth:1,borderTopColor:C.line},
- tab:{flex:1,alignItems:'center',justifyContent:'center',paddingVertical:6,borderRadius:10,gap:3},
- tabSelected:{backgroundColor:C.accentSoft},tabEmoji:{fontSize:18},tabLabel:{fontSize:10,fontWeight:'800',color:C.muted},
+ bottomBar:{flexDirection:'row',height:80,backgroundColor:C.surface,borderTopWidth:1,borderTopColor:C.line},
+ tab:{flex:1,alignItems:'center',justifyContent:'center',gap:3},
+ tabSelected:{backgroundColor:C.accentSoft},tabEmoji:{fontSize:19},tabLabel:{fontSize:10,fontWeight:'500',color:C.muted},
  input:{borderWidth:1,borderColor:C.line,backgroundColor:C.card,borderRadius:10,padding:10,fontSize:15,color:C.text},
  back:{flexDirection:'row',alignItems:'center',gap:8,flexWrap:'wrap'}
 });
