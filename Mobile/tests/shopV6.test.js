@@ -21,27 +21,27 @@ const rn=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const shop=rn.slice(rn.indexOf('function ShopScreen('),rn.indexOf('function PrestigeScreen('));
 const prestigeScreen=rn.slice(rn.indexOf('function PrestigeScreen('),rn.indexOf('function RosterScreen('));
 
-test('Part 3 Shop ports the launched Kotlin V6 layout and three distinct price sections',()=>{
- for(const x of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins','🎫 Redeem Code','🐶 Pups']){
-  assert.ok(kotlin.includes(x));assert.ok(shop.includes(x),x);
+test('Kotlin revamped Shop uses the full-width Redeem entry and three purchase categories',()=>{
+ for(const title of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins','🎫 Redeem Code']){
+  assert.ok(coins.includes(title));assert.ok(shop.includes(title),title);
  }
- assert.ok(kotlin.includes('V6TicketInventory(state)'));
- assert.ok(kotlin.includes('V6TicketUpgradeCard'));
- assert.ok(kotlin.includes('V6CookieUpgradeCard'));
+ assert.ok(coins.includes('PuppyRevampedShopScreen'));
+ assert.ok(coins.includes('PuppyTicketInventoryCard(state)'));
+ assert.ok(coins.includes('PuppyTicketUpgradeCard'));
+ assert.ok(coins.includes('PuppyCookieUpgradeCard'));
  assert.ok(shop.includes('shopTab===\'tickets\''));
  assert.ok(shop.includes('upgradeOffer(g,u.id)'));
  assert.ok(shop.includes('ticketShopOffer(g,rarity)'));
  assert.ok(shop.includes('accessoryOffer(g,name)'));
  assert.ok(shop.includes('PageHeader withLogo title="Puppy Shop"'));
+ assert.ok(shop.includes('styles.revampedShopRedeem'));
  const buttons=['Buy 1','Upgrade','Need {o.tickets}','Ticket inventory','Owned {o.owned}'];
- for(const b of buttons)assert.ok(shop.includes(b),b);
+ for(const x of buttons)assert.ok(shop.includes(x),x);
  assert.equal(upgradesForShopTab('upgrades').length,4);
  assert.equal(upgradesForShopTab('tickets').length,6);
  assert.deepEqual(upgradesForShopTab('coins'),[]);
- assert.ok(!shop.includes('const upgrades=shopTab===\'upgrades\'?'));
  assert.ok(coins.includes('internal fun PuppyPupCoinShop('));
 });
-
 test('Kotlin ticket names, emojis, max inventory and tiered prices match',()=>{
  assert.ok(wallet.includes('COMMON("Common", "🎟️"'));
  assert.equal(TICKET_RARITY_PRESENTATION.COMMON.emoji,'🎟️');
@@ -170,7 +170,7 @@ test('Cannot prestige while a Blackjack round or pending Scratcher is active',()
 });
 
 test('Client preview never executes Puppy Code redemption without verified save migration',()=>{
- assert.ok(shop.includes('preview code redemption is disabled'));
+ assert.ok(shop.includes('redemption is disabled in this guest preview'));
  assert.ok(!shop.includes("type:'redeem'"));
  assert.ok(!shop.includes('redeemCode('));
 });
