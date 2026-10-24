@@ -12,6 +12,7 @@ import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
 import ScratchStage from './src/components/ScratchStage.jsx';
+import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -44,20 +45,30 @@ function Portrait({puppy,size=228}){
  </View>;
 }
 // Visual structure follows V6Play/V6Wallet/V6NeedPill in the Kotlin launcher.
-function PageHeader({title,subtitle,action}){
- return <View style={styles.pageHeader}><View style={{flex:1}}>
+function PageHeader({title,subtitle,action,withLogo=false}){
+ return <View style={styles.pageHeader}>
+  {withLogo?<Image source={require('./assets/logos/puppy_clicker.png')}
+    accessibilityLabel="Puppy Clicker logo" resizeMode="contain"
+    style={{width:V6_PLAY_LAYOUT.headerLogo,height:V6_PLAY_LAYOUT.headerLogo}}/>:null}
+  <View style={{flex:1}}>
    <Txt style={styles.pageTitle}>{title}</Txt><Txt muted style={styles.pageSubtitle}>{subtitle}</Txt>
   </View>{action||null}</View>;
 }
 function Wallet({game}){
  return <View style={styles.wallet}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
-   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{game.compactNumbers===false?Number(value).toLocaleString('en-US'):format(value)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
+   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{v6Format(value,game.compactNumbers!==false)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
  </View>;
 }
 function NeedPill({icon,value}){
  const safe=Math.min(100,Math.max(0,Number(value)||0));
- return <View style={[styles.needPill,safe<=10&&styles.needPillLow]}><Txt style={styles.needPillText}>{icon} {safe}%</Txt></View>;
+ return <View style={[styles.needPill,safe<=10&&styles.needPillLow]}>
+  <Txt style={styles.needPillText}>{icon} {safe}%</Txt>
+  <View accessibilityRole="progressbar" accessibilityLabel={icon+' puppy care'}
+   accessibilityValue={{min:0,max:100,now:safe}} style={styles.needMeterTrack}>
+   <View style={[styles.needMeterFill,{width:safe+'%'}]}/>
+  </View>
+ </View>;
 }
 function QuickAction({emoji,title,subtitle,onPress,disabled=false}){
  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={({pressed})=>[styles.quickAction,disabled&&styles.buttonDisabled,pressed&&{opacity:0.75}]}>
@@ -79,14 +90,27 @@ function DailyGoalCard({g,goal,act,clock}){
   </View>
  </View>;
 }
-function PlayScreen({g,act,onOpen,schedule,clock}){
- const date=new Date(clock),today=localEpochDay(date);
- const nextGoal=goalsForDay(schedule,date).find(goal=>g.dailyDay!==today||!g.claimedDailyTasks.includes(goal.id));
+function PlayScreen({g,act,clock}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const {width,height}=useWindowDimensions();
+ const {width}=useWindowDimensions();
+ const size=v6PlaySizing(width);
+ const cooldown=v6CooldownSeconds(g,clock);
  const tapScale=useRef(new Animated.Value(1)).current;
+ const idleY=useRef(new Animated.Value(0)).current;
  const ticketOpacity=useRef(new Animated.Value(0)).current;
  const [ticketVisible,setTicketVisible]=useState(false);
+
+ // Kotlin V6Play has an idle portrait bob: -3dp to +5dp, 1700ms each leg.
+ useEffect(()=>{
+  if(g.animationsEnabled===false){idleY.setValue(0);return;}
+  const loop=Animated.loop(Animated.sequence([
+   Animated.timing(idleY,{toValue:V6_PLAY_LAYOUT.idleDown,duration:V6_PLAY_LAYOUT.idleHalfCycleMs,easing:Easing.inOut(Easing.ease),useNativeDriver:true}),
+   Animated.timing(idleY,{toValue:V6_PLAY_LAYOUT.idleUp,duration:V6_PLAY_LAYOUT.idleHalfCycleMs,easing:Easing.inOut(Easing.ease),useNativeDriver:true})
+  ]));
+  loop.start();
+  return ()=>{loop.stop();idleY.setValue(0);};
+ },[g.animationsEnabled,idleY]);
+
  useEffect(()=>{
   if(!g.ticketDropSerial||!g.lastTicketDrop)return;
   setTicketVisible(true);
@@ -96,45 +120,45 @@ function PlayScreen({g,act,onOpen,schedule,clock}){
   const hide=setTimeout(()=>{
    Animated.timing(ticketOpacity,{toValue:0,duration:220,useNativeDriver:true})
     .start(({finished})=>{if(finished)setTicketVisible(false);});
-  },2750);
+  },V6_PLAY_LAYOUT.ticketVisibleMs);
   return ()=>clearTimeout(hide);
  },[g.ticketDropSerial,g.lastTicketDrop,ticketOpacity]);
- const gain=g.clickPower+(wellness(g)>=85&&g.bond>=50?2:wellness(g)>=70?1:0);
- const portraitSize=Math.min(height<700?198:238,Math.max(150,width-110));
+
  const doTap=()=>{
-  if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care before tapping again.');return;}
-  act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
+  const now=Date.now();
+  if(v6CooldownSeconds(g,now)>0||g.energy<=10)return;
+  act({type:'tap',now,randoms:[Math.random(),Math.random()]});
   if(g.hapticsEnabled!==false)Vibration.vibrate(12);
   if(g.animationsEnabled===false)return;
   tapScale.stopAnimation();
-  Animated.sequence([
-   Animated.timing(tapScale,{toValue:0.89,duration:75,useNativeDriver:true}),
-   Animated.spring(tapScale,{toValue:1,speed:20,bounciness:12,useNativeDriver:true})
-  ]).start();
+  tapScale.setValue(V6_PLAY_LAYOUT.tapPressedScale);
+  Animated.spring(tapScale,{toValue:1,friction:4,tension:95,useNativeDriver:true}).start();
  };
  return <View style={styles.gamePage}>
-  <PageHeader title="Puppy Clicker" subtitle={g.puppyName+' · '+mood(g)}/>
+  <PageHeader withLogo title="Puppy Clicker" subtitle={g.puppyName+' · '+mood(g)}/>
   <Wallet game={g}/>
-  <View style={styles.needsRow}><NeedPill icon="💖" value={g.happiness}/><NeedPill icon="🍖" value={g.fullness}/><NeedPill icon="⚡" value={g.energy}/><NeedPill icon="🫧" value={g.cleanliness}/></View>
-  <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' for Treats'} onPress={doTap} style={[styles.tapStage,{minHeight:height<700?302:365}]}>
-   <Animated.View style={[styles.puppyCircle,{width:portraitSize+18,height:portraitSize+18,borderRadius:(portraitSize+18)/2,transform:[{scale:tapScale}]}]}>
-    <Portrait puppy={pup} size={portraitSize}/>
-   </Animated.View>
-   <View style={styles.tapLabel}><Txt style={styles.tapLabelText}>Tap {g.puppyName} · +{format(gain)} 🍪</Txt></View>
-  </Pressable>
-  <View style={styles.nextRewardCard}>
-   <Txt style={{fontSize:22}}>🎁</Txt>
-   <View style={{flex:1,gap:5}}>
-    <View style={styles.pair}><Txt style={styles.itemName} numberOfLines={1}>{nextGoal?'Next Reward · '+nextGoal.title:'Today complete'}</Txt><Txt style={styles.small}>{nextGoal?Math.min(progressForGoal(g,nextGoal,date),nextGoal.target)+'/'+nextGoal.target:'✓'}</Txt></View>
-    <View style={styles.track}><View style={[styles.fill,{backgroundColor:C.accent,width:nextGoal?Math.min(100,100*progressForGoal(g,nextGoal,date)/nextGoal.target)+'%':'100%'}]}/></View>
-   </View>
-   <Txt style={styles.small}>{nextGoal?format(nextGoal.rewardTreats)+' 🍪':'All claimed'}</Txt>
+  <View style={styles.needsRow}>
+   <NeedPill icon="💖" value={g.happiness}/>
+   <NeedPill icon="🍖" value={g.fullness}/>
+   <NeedPill icon="⚡" value={g.energy}/>
+   <NeedPill icon="🫧" value={g.cleanliness}/>
   </View>
-  <View style={styles.menuShortcuts}>
-   <QuickAction emoji="🐕" title="Puppies" subtitle="Your roster" onPress={()=>onOpen('roster')}/>
-   <QuickAction emoji="🎁" title="Rewards" subtitle="Daily goals" onPress={()=>onOpen('rewards')}/>
-   <QuickAction emoji="🎲" title="Gacha" subtitle="Puppy pulls" onPress={()=>onOpen('gacha')}/>
-   <QuickAction emoji="🎰" title="Casino" subtitle="Mini games" onPress={()=>onOpen('casino')}/>
+  <View style={[styles.tapStage,{height:size.stageHeight}]}>
+   <Pressable accessibilityRole="button"
+    accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
+    accessibilityState={{disabled:cooldown>0}}
+    disabled={cooldown>0} onPress={doTap}
+    style={{alignItems:'center',justifyContent:'center'}}>
+    <Animated.View style={[styles.puppyCircle,{
+     width:size.circle,height:size.circle,borderRadius:size.circle/2,
+     transform:[{translateY:idleY},{scale:tapScale}]
+    }]}>
+     <Portrait puppy={pup} size={size.portrait}/>
+    </Animated.View>
+   </Pressable>
+   <View pointerEvents="none" style={styles.tapLabel}>
+    <Txt style={[styles.tapLabelText,cooldown>0&&{color:C.danger}]}>{v6PlayTapLabel(g,clock)}</Txt>
+   </View>
   </View>
   {ticketVisible?<Animated.View pointerEvents="none" style={[styles.ticketOverlay,{opacity:ticketOpacity}]}>
    <Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt>
@@ -142,7 +166,7 @@ function PlayScreen({g,act,onOpen,schedule,clock}){
   </Animated.View>:null}
  </View>;
 }
-function CareScreen({g,act,clock,schedule}){
+function CareScreen({g,act,clock,schedule,onOpen}){
  const [page,setPage]=useState('care');
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const parkSeconds=Math.max(0,Math.ceil((g.parkReadyAtMs-clock)/1000));
@@ -177,6 +201,7 @@ function CareScreen({g,act,clock,schedule}){
     <Button disabled={g.lastDailyClaimDay===today} onPress={()=>act({type:'daily',epochDay:today})}>{g.lastDailyClaimDay===today?'✓ Already claimed today':'🎁 Claim Daily Gift'}</Button>
    </Card>
    <Txt style={styles.sectionTitle}>Today’s goals</Txt>
+   <Button compact secondary onPress={()=>onOpen('rewards')}>🎁 Open Rewards Hub</Button>
    {goalsForDay(schedule,new Date(clock)).map(goal=><DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
    <Card title="🌳 DOG PARK" subtitle="A one-minute puppy adventure">
     <Txt muted>Spend 20 energy to take your puppy for a walk and earn a reward.</Txt>
@@ -637,8 +662,8 @@ export default function App(){
   if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>setSecondary('rewards')}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary} schedule={state.monthlySchedule} clock={clock}/>;
-  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
+  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
@@ -707,16 +732,18 @@ const styles=StyleSheet.create({
 
  // Kotlin V6 source: PuppyClickerV6Activity.kt and PuppyMainScreensRevamp.kt.
  gamePage:{gap:10},
- pageHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingBottom:2},
+ pageHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,paddingBottom:2},
  pageTitle:{fontSize:27,fontWeight:'900',letterSpacing:-0.5,color:C.text},
  pageSubtitle:{fontSize:14,color:C.muted,marginTop:2},
  needsRow:{flexDirection:'row',gap:6},
- needPill:{flex:1,minWidth:0,backgroundColor:C.surface,borderRadius:100,alignItems:'center',paddingVertical:9,paddingHorizontal:2},
+ needPill:{flex:1,minWidth:0,backgroundColor:C.surface,borderRadius:V6_PLAY_LAYOUT.needRadius,paddingVertical:5,paddingHorizontal:6,gap:2},
+ needMeterTrack:{width:'100%',height:V6_PLAY_LAYOUT.needMeterHeight,backgroundColor:C.card,borderRadius:4,overflow:'hidden'},
+ needMeterFill:{height:'100%',backgroundColor:C.accent,borderRadius:4},
  needPillLow:{backgroundColor:'#431F26'},
  needPillText:{fontSize:12,fontWeight:'800',color:C.text},
- tapStage:{backgroundColor:'#102027',borderRadius:30,alignItems:'center',justifyContent:'center',paddingHorizontal:12,paddingTop:12,paddingBottom:58,overflow:'hidden'},
+ tapStage:{backgroundColor:C.accentSoft,borderRadius:V6_PLAY_LAYOUT.stageRadius,alignItems:'center',justifyContent:'center',overflow:'hidden',position:'relative'},
  puppyCircle:{backgroundColor:C.surface,alignItems:'center',justifyContent:'center',overflow:'hidden'},
- tapLabel:{position:'absolute',bottom:14,alignSelf:'center',backgroundColor:C.surface,borderRadius:18,paddingHorizontal:14,paddingVertical:9,maxWidth:'95%'},
+ tapLabel:{position:'absolute',bottom:V6_PLAY_LAYOUT.stageBottomLabelInset,alignSelf:'center',backgroundColor:C.surface,borderRadius:18,paddingHorizontal:14,paddingVertical:8,maxWidth:'95%'},
  tapLabelText:{fontSize:14,fontWeight:'800',textAlign:'center',color:C.text},
  menuShortcuts:{flexDirection:'row',gap:6,paddingTop:8},
  quickActionRow:{flexDirection:'row',gap:6},
@@ -741,10 +768,10 @@ const styles=StyleSheet.create({
  scroll:{flex:1},content:{padding:14,paddingBottom:30,width:'100%',alignSelf:'center',gap:12},
  card:{backgroundColor:C.surface,borderWidth:1,borderColor:C.line,borderRadius:20,padding:15,gap:10},
  cardTitle:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'},
- wallet:{flexDirection:'row',backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,paddingHorizontal:5,paddingVertical:12,alignItems:'center'},
+ wallet:{flexDirection:'row',backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,paddingHorizontal:8,paddingVertical:11,alignItems:'center'},
  walletCell:{flex:1,minWidth:0,alignItems:'center',justifyContent:'center',gap:4},
- walletEmoji:{fontSize:23},
- walletLabel:{fontSize:10,color:C.muted,textAlign:'center'},
+ walletEmoji:{fontSize:18},
+ walletLabel:{fontSize:11,color:C.muted,textAlign:'center'},
  walletNumber:{fontSize:16,fontWeight:'900',color:C.text,textAlign:'center'},
  bigTap:{alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft,borderRadius:26,minHeight:286,padding:12,gap:8,borderWidth:1,borderColor:'#23516A'},
  portrait:{backgroundColor:'#273843',overflow:'hidden',alignItems:'center',justifyContent:'center'},
