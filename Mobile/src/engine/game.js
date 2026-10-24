@@ -83,7 +83,7 @@ export function sanitizeGame(input){
   b.redeemedCodeIds=Array.isArray(b.redeemedCodeIds)?b.redeemedCodeIds.filter(v=>typeof v==='string').slice(0,100):[];
   b.onboardingComplete=b.onboardingComplete===true;
   b.onboardingStep=Math.min(5,cap(b.onboardingStep,0,5));
-  b.guestName=String(b.guestName||'Guest Puppy Fan').replace(/\\s+/g,' ').trim().slice(0,24)||'Guest Puppy Fan';
+  b.guestName=String(b.guestName||'Guest Puppy Fan').replace(/\s+/g,' ').trim().slice(0,24)||'Guest Puppy Fan';
   b.birthdayMonth=cap(b.birthdayMonth,0,12);b.birthdayDay=cap(b.birthdayDay,0,31);
   b.notificationsOptIn=b.notificationsOptIn===true;
   b.autoPerSecond=0;

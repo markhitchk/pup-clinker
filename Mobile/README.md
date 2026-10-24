@@ -28,7 +28,7 @@ npx expo run:android
 npx expo prebuild --platform android
 ```
 
-The package ID matches the Play app. Use `PUPPY_NATIVE_PREVIEW=1 npx expo run:android` to install the separately named `com.harleytg.puppyclicker.preview` test app alongside the existing Play app. **Never** try to install an untrusted debug build over the Play install; original Play signing is different. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
+The `app.json` reserves the future Play package ID, but **runtime configuration defaults to the safe preview package**. Use `npx expo run:android` (or `PUPPY_NATIVE_PREVIEW=1 npx expo run:android`) to install the separately named `com.harleytg.puppyclicker.preview` test app alongside the existing Play app. **Never** try to install an untrusted debug build over the Play install; original Play signing is different. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
 
 ## Screens implemented in React Native
 
@@ -64,3 +64,7 @@ Manually run [React Native Preview APK](../.github/workflows/react-native-previe
 ## Artwork
 
 The original logo and all **30 V1/V2/Discord puppy PNG portraits** are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Unlocking restricted or role-gated puppies still requires verified official entitlements; including a picture does not grant ownership. Future V3+ streamed art must be validated before native rendering.
+
+## Production release guard
+
+`Mobile/app.config.js` always chooses `com.harleytg.puppyclicker.preview` unless **both** `PUPPY_NATIVE_PRODUCTION=1` and `PUPPY_NATIVE_RELEASE_APPROVED=1` are set, and the preview flag is absent. This is a build-time safeguard, **not proof** of parity or permission to publish. Release candidates require manual confirmation of original signing, verified Supabase/PupEye authority and Kotlin-to-RN data migration, plus signed Play internal testing. Do not set the release approval flag just to generate an APK.
