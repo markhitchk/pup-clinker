@@ -60,3 +60,7 @@ Full parity still requires original onboarding, achievements/XP, 100% native cha
 ## Test APK from GitHub Actions
 
 Manually run [React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) via GitHub Actions → Run workflow on the migration branch. It compiles and uploads a **debug-signed installable preview APK** named `puppy-clicker-react-native-preview-debug`. It uses `PUPPY_NATIVE_PREVIEW=1` and package `com.harleytg.puppyclicker.preview`, so it cannot overwrite the current signed app. The artifact is **not** the production Google Play AAB.
+
+## Artwork
+
+The original logo and four starter puppies are bundled directly from the canonical `assets/` Git blobs for immediate offline display in React Native. Other characters currently use their original public asset URL and fall back to an emoji on load failure; protected asset packaging and full roster optimization remain migration tasks.

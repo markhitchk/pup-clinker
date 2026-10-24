@@ -5,6 +5,7 @@ import {useGame} from './src/state/useGame.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 
+const LOCAL_PUPPIES={classic:require('./assets/v1/v1_classic.png'),golden:require('./assets/v1/v1_golden.png'),poodle:require('./assets/v1/v1_poodle.png'),spotty:require('./assets/v1/v1_spotty.png')};
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
 const skillNames={TAP_TRAINING:'Tap Training',AUTO_TRAINING:'Bonus Training',SMART_SHOPPER:'Smart Shopper',TICKET_SENSE:'Ticket Sense'};
 const die=()=>1+Math.floor(Math.random()*13);
@@ -27,7 +28,7 @@ function Portrait({puppy,size=228}){
  const [broken,setBroken]=useState(false);
  useEffect(()=>setBroken(false),[puppy.id]);
  return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2}]}>
-  {broken?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:<Image accessibilityLabel={puppy.name} source={{uri:puppy.image}} resizeMode="contain" onError={()=>setBroken(true)} style={{width:'100%',height:'100%'}}/>}
+  {broken?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:<Image accessibilityLabel={puppy.name} source={LOCAL_PUPPIES[puppy.id]||{uri:puppy.image}} resizeMode="contain" onError={()=>setBroken(true)} style={{width:'100%',height:'100%'}}/>}
  </View>;
 }
 function Wallet({game}){
@@ -202,7 +203,7 @@ export default function App(){
  return <View style={styles.root}>
   <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
   <View style={styles.topBar}>
-   <View style={styles.topTitles}><Txt style={styles.brand}>🐶 PUPPY CLICKER</Txt><Txt muted style={styles.tiny}>REACT NATIVE · ANDROID MIGRATION</Txt></View>
+   <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:42,height:42}}/><View style={styles.topTitles}><Txt style={styles.brand}>PUPPY CLICKER</Txt><Txt muted style={styles.tiny}>REACT NATIVE · ANDROID MIGRATION</Txt></View>
    <Txt style={styles.guestTag}>GUEST PREVIEW</Txt>
   </View>
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
