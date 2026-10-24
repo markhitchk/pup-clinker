@@ -1,5 +1,5 @@
 import {freshGame,tap,care,purchase,switchPuppy,convertTreatsToChips,casinoSpend,casinoPayout,claimDailyReward,startPark,claimPark,prestige,buyPrestigeSkill,buyUpgradeTicket,buyAccessory,handValue} from '../engine/game.js';
-import {slotsOutcome,rouletteOutcome,plinkoOutcome,wheelOutcome,scratcherOutcome} from '../engine/casinoV7.js';
+import {slotsOutcome,rouletteOutcome,plinkoOutcome,wheelOutcome} from '../engine/casinoV7.js';
 import {applyGacha} from '../engine/gacha.js';
 import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
 import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
@@ -17,7 +17,6 @@ function casinoRound(action){
   case 'roulette':return rouletteOutcome(action.wager,action.bet,action.roll);
   case 'plinko':return plinkoOutcome(action.wager,action.path);
   case 'wheel':return wheelOutcome(action.wager,action.roll,false);
-  case 'scratch':return scratcherOutcome(action.wager,action.roll);
   default:throw new RangeError('Unknown casino game');
  }
 }
