@@ -5,8 +5,9 @@ import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
 import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
 import {newRoundFromDeck,hit as bjHit,stand as bjStand,doubleDown as bjDouble,split as bjSplit,blackjackOutcome,validBlackjackState} from '../engine/blackjack.js';
 import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../engine/onboarding.js';
+import {fallbackSchedule,rollDailyDay,claimDailyGoal} from '../engine/monthlyRewards.js';
 
-export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false});
+export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
 const validCard=n=>Number.isInteger(n)&&n>=1&&n<=13;
 function casinoRound(action){
@@ -29,6 +30,7 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
+ if(action.type==='monthlySchedule')return {...state,monthlySchedule:action.schedule};
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game)applyOfflineCare(game,action.now||Date.now());
@@ -67,8 +69,10 @@ export function transition(state,action){
    g.onboardingComplete=true;
    notice='🐶 Welcome, '+g.guestName+'! Your local preview is ready.';
    break;
-  case 'resume':applyOfflineCare(g,action.now||Date.now());break;
+  case 'resume':applyOfflineCare(g,action.now||Date.now());rollDailyDay(g,new Date(action.now||Date.now()));break;
+  case 'rollDailyDay':if(!rollDailyDay(g,new Date(action.now||Date.now())))return no();break;
   case 'tap': {
+   rollDailyDay(g,new Date(action.now||Date.now()));
    let i=0;
    const ticket=tap(g,action.now,()=>action.randoms?.[i++]??0.99);
    if(g.totalTaps===state.game.totalTaps)return {...state,notice:'⚡ Your puppy needs rest'};
@@ -76,8 +80,8 @@ export function transition(state,action){
    if(ticket)notice='🎟️ '+ticket+' Upgrade Ticket found!';
    break;
   }
-  case 'care': if(!care(g,action.kind))return {...state,notice:'This care action is unavailable'};grantGuestXp(g,'CARE_ACTION');notice='💖 Puppy care complete';break;
-  case 'purchase': if(!purchase(g,action.upgrade))return {...state,notice:'Need more Treats, Bones or Tickets'};notice='🛍️ Upgrade purchased';break;
+  case 'care': rollDailyDay(g,new Date(action.now||Date.now()));if(!care(g,action.kind))return {...state,notice:'This care action is unavailable'};grantGuestXp(g,'CARE_ACTION');notice='💖 Puppy care complete';break;
+  case 'purchase': rollDailyDay(g,new Date(action.now||Date.now()));if(!purchase(g,action.upgrade))return {...state,notice:'Need more Treats, Bones or Tickets'};notice='🛍️ Upgrade purchased';break;
   case 'switch': if(!switchCareProfile(g,action.id,action.now||Date.now()))return no();break;
   case 'favorite':{
    if(!Array.isArray(g.favoritePuppies)||!g.unlockedPuppies.includes(action.id))return no();
@@ -93,7 +97,8 @@ export function transition(state,action){
   }
   case 'dismissGacha':return {...state,gachaResult:null};
   case 'exchange':if(!convertTreatsToChips(g,action.amount))return {...state,notice:'Exchange requires Treats in multiples of 10'};notice='🎰 Casino Chips credited';break;
-  case 'daily':if(!claimDailyReward(g,action.epochDay))return {...state,notice:'Daily reward already claimed'};notice='🎁 Daily reward collected';break;
+  case 'daily':rollDailyDay(g,new Date(action.now||Date.now()));if(!claimDailyReward(g,action.epochDay))return {...state,notice:'Daily reward already claimed'};notice='🎁 Daily reward collected';break;
+  case 'claimDailyGoal':if(!claimDailyGoal(g,action.goalId,state.monthlySchedule,new Date(action.now||Date.now())))return {...state,notice:'Goal incomplete or already claimed'};notice='🎯 Daily goal completed · Treats, Bone and Pup Coin credited';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
   case 'prestige':if(blackjack)return {...state,notice:'Finish Blackjack before prestiging'};if(!prestige(g))return {...state,notice:'Need at least 50,000 lifetime Treats'};notice='⭐ Prestige complete';blackjack=null;break;
@@ -142,7 +147,7 @@ export function transition(state,action){
    }else notice='🃏 '+action.type.replace('blackjack','')+' · Hand '+(blackjack.activeHandIndex+1)+' / '+blackjack.hands.length;
    break;
   }
-  case 'clearGuest':return {...initialState(),ready:true,notice:'Guest progress reset'};
+  case 'clearGuest':return {...initialState(),monthlySchedule:state.monthlySchedule,ready:true,notice:'Guest progress reset'};
   case 'dismiss':return {...state,notice:''};
   default:return no();
  }
