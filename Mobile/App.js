@@ -6,6 +6,7 @@ import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
+import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 
 const LOCAL_PUPPIES={classic:require('./assets/v1/v1_classic.png'),golden:require('./assets/v1/v1_golden.png'),poodle:require('./assets/v1/v1_poodle.png'),spotty:require('./assets/v1/v1_spotty.png')};
 const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
@@ -13,7 +14,11 @@ const skillNames={TAP_TRAINING:'Tap Training',AUTO_TRAINING:'Bonus Training',SMA
 const die=()=>1+Math.floor(Math.random()*13);
 const roll=()=>Math.floor(Math.random()*100);
 const number=()=>Math.floor(Math.random()*37);
-const numberLabel=n=>n===1?'A':n===11?'J':n===12?'Q':n===13?'K':String(n);
+const shuffledBlackjackDeck=()=>{
+ const deck=Array.from({length:52},(_,i)=>i);
+ for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+ return deck;
+};
 function Txt({children,muted=false,style={},numberOfLines}){return <Text numberOfLines={numberOfLines} style={[styles.text,muted&&styles.muted,style]}>{children}</Text>;}
 function Card({title,children,subtitle}){return <View style={styles.card}><View style={styles.cardTitle}><Txt style={styles.heading}>{title}</Txt>{subtitle?<Txt muted style={styles.tiny}>{subtitle}</Txt>:null}</View>{children}</View>;}
 function Button({children,onPress,secondary=false,disabled=false,compact=false,danger=false}){
@@ -207,13 +212,29 @@ function CasinoScreen({g,act,state,bet,setBet}){
   </Card>
   <Card title="🎰 SLOTS"><Txt muted>Three-reel weighted reels and triple-symbol prizes.</Txt><Button onPress={()=>casino('slots',{rolls:[roll(),roll(),roll()]})}>Spin Slots · {bet} Chips</Button></Card>
   <Card title="🎡 ROULETTE"><View style={styles.actions}><Button compact onPress={()=>casino('roulette',{bet:'RED',roll:number()})}>🔴 Red</Button><Button secondary compact onPress={()=>casino('roulette',{bet:'BLACK',roll:number()})}>⚫ Black</Button><Button secondary compact onPress={()=>casino('roulette',{bet:'EVEN',roll:number()})}>Even</Button></View></Card>
-  <Card title="🎟️ SCRATCHERS"><Txt muted>{SCRATCHERS.length} source-derived scratcher reward tiers. Choose a wager matching its card.</Txt><Button onPress={()=>casino('scratch',{roll:roll()})}>Scratch Ticket · {bet} Chips</Button></Card>
+  <Card title="🎟️ SCRATCHERS" subtitle={SCRATCHERS.length+' card tiers'}>
+   <Txt muted>Select the source-defined ticket. Each card has its own Chip wager and published payout table.</Txt>
+   {SCRATCHERS.map(card=><View key={card.id} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{card.emoji} {card.name}</Txt><Txt muted style={styles.small}>Fixed wager: {format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||Boolean(state.blackjack)} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll()})}>Scratch</Button></View>)}
+  </Card>
   <Card title="🔵 PLINKO"><Button onPress={()=>casino('plinko',{path:Array.from({length:8},()=>Math.random()<0.5)})}>Drop Ball · {bet} Chips</Button></Card>
   <Card title="🎠 LUCKY PUP WHEEL"><Button onPress={()=>casino('wheel',{roll:roll()})}>Spin Wheel · {bet} Chips</Button></Card>
-  <Card title="🃏 BLACKJACK">
-   {state.blackjack?<><Pair left="Dealer showing" right={numberLabel(state.blackjack.dealer[0])+' + ?'}/><Pair left="Your hand" right={state.blackjack.player.map(numberLabel).join(' · ')+' = '+handValue(state.blackjack.player)}/><View style={styles.actions}><Button onPress={()=>act({type:'blackjackHit',card:die()})}>Hit</Button><Button secondary onPress={()=>act({type:'blackjackStand',dealerCards:Array.from({length:14},die)})}>Stand</Button></View></>:<>
-    <Txt muted>Basic Hit/Stand guest gameplay. Splitting, insurance and native table animations remain to be ported.</Txt>
-    <Button onPress={()=>act({type:'blackjackStart',wager:bet,cards:[die(),die(),die(),die()]})}>Deal Blackjack · {bet} Chips</Button>
+  <Card title="🃏 BLACKJACK" subtitle="52-card deck · up to 3 player hands">
+   {state.blackjack?<>
+    <Pair left="Dealer" right={cardLabel(state.blackjack.dealerCards[0])+' · '+(state.blackjack.complete?state.blackjack.dealerCards.slice(1).map(cardLabel).join(' · '):'🂠')}/>
+    <Pair left="Current hand" right={(state.blackjack.activeHandIndex+1)+' / '+state.blackjack.hands.length}/>
+    {state.blackjack.hands.map((hand,i)=><View key={i} style={[styles.shopItem,i===state.blackjack.activeHandIndex&&{backgroundColor:C.accentSoft,padding:8,borderRadius:10}]}>
+      <View style={styles.shopLabel}><Txt style={styles.itemName}>Hand {i+1} {i===state.blackjack.activeHandIndex?'▶️':''}</Txt><Txt>{hand.cards.map(cardLabel).join(' · ')} — {handTotal(hand.cards).total}</Txt></View>
+      <Txt muted>{format(hand.wager)} Chips {hand.doubled?'· Doubled':''} {hand.fromSplit?'· Split':''}</Txt>
+     </View>)}
+    <View style={styles.actions}>
+     <Button disabled={!canHit(state.blackjack)} onPress={()=>act({type:'blackjackHit'})}>Hit</Button>
+     <Button secondary disabled={!canStand(state.blackjack)} onPress={()=>act({type:'blackjackStand'})}>Stand</Button>
+     <Button secondary disabled={!canDouble(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackDouble'})}>Double</Button>
+     <Button secondary disabled={!canSplit(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackSplit'})}>Split</Button>
+    </View>
+   </>:<>
+    <Txt muted>A single shuffled 52-card deck, natural Blackjack 3:2 payout, dealer stands on 17, up to three split hands. Chips are deducted before the round and the active game survives guest-save reloads.</Txt>
+    <Button disabled={g.casinoChips<bet} onPress={()=>act({type:'blackjackStart',wager:bet,deck:shuffledBlackjackDeck()})}>Deal Blackjack · {bet} Chips</Button>
    </>}
   </Card>
  </>;
