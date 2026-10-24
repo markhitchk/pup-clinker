@@ -25,7 +25,13 @@ test('current Kotlin revamped Play screenshot contract is present',()=>{
  assert.ok(revamp.includes('PuppyRevampedPlayScreen'));
  assert.ok(revamp.includes('PuppyWalletCard(state)'));
  assert.ok(revamp.includes('Next Reward ·'));
- assert.ok(ui.includes('function PlayScreen({g,act,clock,schedule})'));
+ assert.ok(ui.includes('function PlayScreen({g,act,clock,schedule,availableHeight})'));
+ assert.ok(ui.includes('const viewport=availableHeight||Math.max(0,height-160);'));
+ assert.ok(ui.includes('const tiny=viewport<590,compact=viewport<700;'));
+ assert.ok(ui.includes('SafeAreaProvider,useSafeAreaInsets'));
+ assert.ok(ui.includes('height:48'));
+ assert.ok(ui.includes('revampedTabIndicatorActive'));
+ assert.ok(ui.includes('inGame&&!secondary?<View style={styles.bottomBar}>'));
  assert.ok(ui.includes('<PageHeader title="Play"'));
  assert.ok(ui.includes('styles.revampedTapStage'));
  assert.ok(ui.includes('styles.revampedTapButton'));
