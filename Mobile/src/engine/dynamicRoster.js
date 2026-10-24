@@ -94,12 +94,15 @@ export function parseCachedRoster(raw){
 export function packRosterCache(remote){return JSON.stringify({schema:1,assets:validateRemoteRoster(remote)});}
 export function mergeRoster(remote=[]){
  // Remote may improve metadata, but it must not change local guest account ownership.
- const base=new Map(ROSTER.map((item,index)=>[item.id,{
-  ...item,free:false,redeemOnly:!['classic','golden','poodle','spotty'].includes(item.id),
-  groupId:item.id.startsWith('v2_')?(item.id==='v2_discord_pup'?'discord_rewards':'v2'):'v1',
-  groupTitle:item.id.startsWith('v2_')?(item.id==='v2_discord_pup'?'Discord Rewards':'V2 Puppies'):'V1 Puppies',
-  groupOrder:item.id.startsWith('v2_')?2:1,number:item.number||index+1
- }]));
+ const base=new Map(ROSTER.map((item,index)=>{
+  const knownFree=['classic','golden','poodle','spotty'].includes(item.id)||item.id.startsWith('test_');
+  const groupId=item.groupId||(item.id.startsWith('v2_')?(item.id==='v2_discord_pup'?'discord_rewards':'v2'):'v1');
+  return [item.id,{
+   ...item,free:knownFree,redeemOnly:!knownFree,
+   groupId,groupTitle:item.groupTitle||(groupId==='discord_rewards'?'Discord Rewards':groupId==='v2'?'V2 Puppies':'V1 Puppies'),
+   groupOrder:item.groupOrder||(groupId==='v2'?2:1),number:item.number||index+1
+  }];
+ }));
  for(const item of validateRemoteRoster(remote)){
   const existing=base.get(item.id);
   base.set(item.id,{...existing,...item,number:item.number||existing?.number||base.size+1});
