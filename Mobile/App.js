@@ -194,30 +194,53 @@ function PrestigeScreen({g,act}){
  </View>;
 }
 function RosterScreen({g,act}){
- const [query,setQuery]=useState('');
- const [filter,setFilter]=useState('all');
+ const [search,setSearch]=useState('');
+ const [status,setStatus]=useState('all');
+ const [favoritesOnly,setFavoritesOnly]=useState(false);
+ const [category,setCategory]=useState('all');
+ const [sort,setSort]=useState('unlocked');
+ const [inspected,setInspected]=useState(g.puppyStyle);
+ const selected=ROSTER.find(p=>p.id===inspected)||ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
+ const selectedOwned=g.unlockedPuppies.includes(selected.id);
+ const selectedFavorite=g.favoritePuppies.includes(selected.id);
  const matches=ROSTER.filter(p=>{
   const owned=g.unlockedPuppies.includes(p.id);
-  return (filter==='all'||(filter==='unlocked'&&owned)||(filter==='favorites'&&g.favoritePuppies.includes(p.id)))&&
-   (p.name.toLowerCase().includes(query.trim().toLowerCase())||p.id.includes(query.trim().toLowerCase()));
- });
- return <Card title="🐕 PUPPY ROSTER" subtitle={(g.unlockedPuppies.length)+' unlocked'}>
-   <TextInput accessibilityLabel="Search puppies" placeholder="Search puppies…" placeholderTextColor={C.muted} style={styles.input} value={query} onChangeText={setQuery}/>
-   <View style={styles.actions}>{[['all','All'],['unlocked','Unlocked'],['favorites','★ Favorites']].map(([id,label])=>
-    <Button key={id} compact secondary={filter!==id} onPress={()=>setFilter(id)}>{label}</Button>)}</View>
-   <View style={styles.roster}>{matches.map(p=>{
-     const owned=g.unlockedPuppies.includes(p.id),favorite=g.favoritePuppies.includes(p.id);
-     return <View key={p.id} style={[styles.rosterPup,g.puppyStyle===p.id&&styles.rosterSelected,!owned&&{opacity:0.58}]}>
-       <Portrait puppy={p} size={86}/>
-       <Txt numberOfLines={1} style={styles.small}>{p.name}</Txt>
-       <Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'SELECTED':owned?'UNLOCKED':'LOCKED'}</Txt>
-       {owned?<View style={{flexDirection:'row',alignItems:'center',gap:4}}>
-        <Button compact onPress={()=>act({type:'switch',id:p.id,now:Date.now()})} disabled={g.puppyStyle===p.id}>Use</Button>
-        <Button compact secondary onPress={()=>act({type:'favorite',id:p.id})}>{favorite?'★':'☆'}</Button>
-       </View>:null}
-     </View>;
-   })}</View>
- </Card>;
+  return (status==='all'||(status==='unlocked'&&owned)||(status==='locked'&&!owned))&&
+   (!favoritesOnly||g.favoritePuppies.includes(p.id))&&
+   (category==='all'||(category==='v2'?p.id.startsWith('v2_'):!p.id.startsWith('v2_')))&&
+   (p.name.toLowerCase().includes(search.toLowerCase().trim())||p.id.includes(search.toLowerCase().trim()));
+ }).sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='number'?a.number-b.number:Number(g.unlockedPuppies.includes(b.id))-Number(g.unlockedPuppies.includes(a.id)));
+ const reset=()=>{setSearch('');setStatus('all');setCategory('all');setFavoritesOnly(false);setSort('unlocked');};
+ return <View style={styles.gamePage}>
+  <PageHeader title="Puppy Roster" subtitle="Browse your available and locked puppy artwork."/>
+  <View style={styles.filterRow}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.filterChip,status===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,status===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
+  <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍 Search puppies or ID" placeholderTextColor={C.muted} style={styles.input} maxLength={64} value={search} onChangeText={setSearch}/>
+  <View style={styles.actions}>
+   <Button secondary compact onPress={()=>setSort(sort==='unlocked'?'name':sort==='name'?'number':'unlocked')}>Sort: {sort==='unlocked'?'Unlocked first':sort==='name'?'Name':'Number'}</Button>
+   <Button compact secondary={!favoritesOnly} onPress={()=>setFavoritesOnly(!favoritesOnly)}>{favoritesOnly?'★':'☆'} Favorites</Button>
+  </View>
+  <View style={styles.filterRow}>{[['all','All Categories'],['v1','V1 Puppies'],['v2','V2 & Discord']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
+  <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked</Txt>
+  <View style={styles.selectedPuppyPanel}>
+   <Portrait puppy={selected} size={108}/>
+   <View style={{flex:1,gap:7}}>
+    <Txt style={styles.heading}>{selected.name}</Txt>
+    <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'}</Txt>
+    <View style={styles.actions}>
+     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
+     <Button compact secondary onPress={()=>act({type:'favorite',id:selected.id})}>{selectedFavorite?'★':'☆'}</Button>
+    </View>
+   </View>
+  </View>
+  {matches.length?<View style={styles.roster}>{matches.map(p=>{
+   const owned=g.unlockedPuppies.includes(p.id),fav=g.favoritePuppies.includes(p.id);
+   return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+p.name} key={p.id} onPress={()=>setInspected(p.id)} style={[styles.rosterPup,inspected===p.id&&styles.rosterSelected]}>
+    <Portrait puppy={p} size={86}/>
+    <Txt numberOfLines={1} style={styles.small}>{p.name}</Txt>
+    <Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'CURRENT':owned?'UNLOCKED':'LOCKED'} {fav?'★':''}</Txt>
+   </Pressable>;
+  })}</View>:<Card title="No puppies match these filters."><Button secondary onPress={reset}>Reset filters</Button></Card>}
+ </View>;
 }
 function GachaScreen({g,act,state}){
  const rotation=useRef(new Animated.Value(0)).current;
@@ -437,6 +460,8 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ selectedPuppyPanel:{flexDirection:'row',alignItems:'center',gap:14,backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:18,padding:12},
+
  prestigeCenter:{backgroundColor:'#1B2930',borderRadius:24,padding:16,gap:11,borderWidth:1,borderColor:C.line},
  prestigeTitle:{flexDirection:'row',alignItems:'center',gap:9},
  settingsGroupTitle:{fontSize:12,fontWeight:'900',letterSpacing:1,color:C.muted,marginTop:7,marginBottom:1},
