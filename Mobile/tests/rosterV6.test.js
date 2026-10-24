@@ -105,8 +105,7 @@ test('Gacha guest unlocks only manifest-free puppies; protected developer and Di
 });
 
 test('source free TEST puppies have original offline images and survive local guest restore',async()=>{
- const {PUPPY_IMAGES}=await import('../src/assets/puppies.js').catch(()=>({PUPPY_IMAGES:null}));
- // Node lacks Metro's require() for PNG; check the static declarations and bytes instead.
+ // Node does not load Metro PNG requires; verify the static declarations and bytes.
  const map=readFileSync(new URL('../src/assets/puppies.js',import.meta.url),'utf8');
  for(const [id,name] of [['test_v1_crash_dummy','v1_test_crash_dummy.png'],['test_v2_crash_dummy','v2_test_crash_dummy.png']]){
   assert.ok(map.includes(id+':require('));
