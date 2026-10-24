@@ -33,7 +33,7 @@ test('5C follows launched Kotlin Roulette 37-pocket sequence, RTP and all seven 
  assert.equal(rouletteValidBet(bet('STRAIGHT',0)),true);
  assert.equal(rouletteValidBet(bet('STRAIGHT',36)),true);
  assert.equal(rouletteValidBet(bet('STRAIGHT',37)),false);
- assert.equal(rouletteValidBet(bet('RED',4)),false);
+ assert.equal(rouletteValidBet({type:'RED',number:4}),false);
  assert.equal(rouletteValidBet(bet('RED')),true);
  assert.equal(rouletteBetLabel(bet('STRAIGHT',0)),'Number 0');
  assert.equal(rouletteBetLabel(bet('LOW')),'1–18');
@@ -160,7 +160,7 @@ test('tampered outcome, illegal bet/pocket, insufficient balance are rejected wi
  assert.equal(parseGuestSave(serializeGuestSave({...s.game,pendingRoulette:tampered})).pendingRoulette,null);
  const denied=transition({...s,game:{...s.game,pendingRoulette:tampered}},{type:'rouletteReveal',now:1730000002600});
  assert.equal(denied.game.casinoChips,80);
- assert.equal(newRouletteGuestRound(20,bet('RED',10),1,1730000000000),null);
+ assert.equal(newRouletteGuestRound(20,{type:'RED',number:10},1,1730000000000),null);
 });
 
 test('React Roulette UI is dedicated and exposes selection, picker, RTP, rules and safe pending resume',()=>{
