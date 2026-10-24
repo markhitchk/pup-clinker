@@ -54,7 +54,7 @@ test('wedge center angle, landed rotation and narrow-label geometry match Kotlin
  assert.equal(f.disc.top,447*.075);
  assert.equal(f.pointer.width,420*.12);
  assert.equal(f.pointer.top,447*.018);
- assert.equal(wheelFrame(800).width,420);
+ assert.equal(wheelFrame(800).width,800,'Kotlin wheel fills available tablet width');
  assert.equal(wheelFrame(300).width,300);
  const normal=wheelLabelPosition(0,344.4),narrow=wheelLabelPosition(6,344.4);
  assert.ok(normal.width>narrow.width);
