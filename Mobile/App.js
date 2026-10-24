@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,Animated,Easing,Image,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
+import {Alert,Animated,Easing,Image,ImageBackground,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
@@ -342,44 +342,142 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
   </Card>
  </View>;
 }
-function CasinoScreen({g,act,state,bet,setBet}){
- const wagers=[20,50,100,500,1000].map(w=>w);
+// The scene assets below are the SAME PNG blobs used by Kotlin's Compose casino.
+const CASINO_ART={
+ slots:require('./assets/casino/puppy_slots_machine.png'),
+ slotsMascot:require('./assets/casino/puppy_slots_mascot.png'),
+ slotsLever:require('./assets/casino/puppy_slots_lever_handle.png'),
+ roulette:require('./assets/casino/puppy_roulette_wheel_base.png'),
+ rouletteRotor:require('./assets/casino/puppy_roulette_rotor.png'),
+ rouletteTable:require('./assets/casino/puppy_roulette_table.png'),
+ scratchers:require('./assets/casino/puppy_scratch_play_border.png'),
+ plinko:require('./assets/casino/puppy_plinko_frame.png'),
+ plinkoPegs:require('./assets/casino/puppy_plinko_pegs.png'),
+ plinkoBall:require('./assets/casino/puppy_plinko_ball.png'),
+ wheel:require('./assets/casino/puppy_lucky_wheel_disc.png'),
+ wheelFrame:require('./assets/casino/puppy_lucky_wheel_frame.png'),
+ wheelPointer:require('./assets/casino/puppy_lucky_wheel_pointer.png'),
+ blackjack:require('./assets/casino/puppy_blackjack_table.png'),
+ cardFront:require('./assets/casino/blank_glossy_cream_card_panel.png'),
+ cardBack:require('./assets/casino/glossy_blue_paw_print_card_back.png')
+};
+const CASINO_PAGES=[
+ ['slots','🎰','Puppy Slots','Three-reel puppy slot machine',CASINO_ART.slots],
+ ['roulette','🎡','Puppy Roulette','European roulette table and wheel',CASINO_ART.roulette],
+ ['blackjack','🃏','Puppy Blackjack','52-card deck · Hit / Stand / Double / Split',CASINO_ART.blackjack],
+ ['plinko','🔵','Puppy Plinko','Drop a ball through the peg board',CASINO_ART.plinko],
+ ['scratchers','🎟️','Puppy Scratchers','Choose a card and reveal the prize',CASINO_ART.scratchers],
+ ['wheel','🎠','Lucky Pup Wheel','Spin for simulated prizes',CASINO_ART.wheel]
+];
+function CasinoArtwork({image,ratio=1,height}){
+ return <View style={styles.casinoArtworkFrame}><Image resizeMode="contain" source={image} style={{width:'100%',height:height||undefined,aspectRatio:height?undefined:ratio}}/></View>;
+}
+function BlackjackArtworkCard({id,hidden=false}){
+ const source=hidden?CASINO_ART.cardBack:CASINO_ART.cardFront;
+ return <ImageBackground source={source} resizeMode="stretch" style={styles.blackjackArtworkCard} imageStyle={{borderRadius:5}}>
+  {!hidden?<Txt style={styles.blackjackCardLabel}>{cardLabel(id)}</Txt>:null}
+ </ImageBackground>;
+}
+function BlackjackFeltTable({round}){
+ const hand=round?.hands?.[round.activeHandIndex];
+ const player=hand?.cards||[];
+ const dealer=round?.dealerCards||[];
+ return <ImageBackground source={CASINO_ART.blackjack} resizeMode="cover" style={styles.blackjackFelt} imageStyle={{borderRadius:22}}>
+  <View style={styles.blackjackDealerArea}>
+   <Txt style={styles.blackjackFeltTitle}>DEALER {round?.complete?'· '+handTotal(dealer).total:''}</Txt>
+   <View style={styles.blackjackFan}>{dealer.length?dealer.map((id,index)=><BlackjackArtworkCard key={index} id={id} hidden={!round.complete&&index>0}/>):<Txt style={styles.blackjackFeltTitle}>Dealer</Txt>}</View>
+  </View>
+  <View style={styles.blackjackPlayerArea}>
+   <Txt style={styles.blackjackFeltTitle}>PLAYER · {round?handTotal(player).total:'CHOOSE A WAGER'}</Txt>
+   <View style={styles.blackjackFan}>{player.length?player.map((id,index)=><BlackjackArtworkCard key={index} id={id}/>):<Txt style={styles.blackjackFeltTitle}>🐾 Ready to deal</Txt>}</View>
+  </View>
+ </ImageBackground>;
+}
+function CasinoScreen({g,act,state,bet,setBet,onBack}){
+ const [page,setPage]=useState('hub');
+ const [accepted,setAccepted]=useState(false);
+ const {width}=useWindowDimensions();
+ useEffect(()=>{
+  if(!accepted)Alert.alert('Puppy Casino — Simulated Gambling',
+   'Slots, roulette, blackjack, Plinko, scratchers and the Lucky Pup Wheel use game-only chips. No real money is used and no prizes have real-world cash value.',
+   [{text:'Go Back',style:'cancel',onPress:onBack},{text:'Continue',onPress:()=>setAccepted(true)}],{cancelable:false});
+ },[accepted,onBack]);
  const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
- return <>
-  <Card title="🎰 PUPPY CASINO" subtitle={'🐾 '+format(g.casinoChips)+' Chips'}>
-   <Txt muted>Casino Chips are earned through one-way Treat conversion. No real-money betting.</Txt>
-   <View style={styles.actions}><Button secondary compact onPress={()=>act({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button secondary compact onPress={()=>act({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
-   <Txt style={styles.itemName}>Chip wager</Txt>
-   <View style={styles.actions}>{wagers.map(w=><Pressable key={w} accessibilityRole="button" onPress={()=>setBet(w)} style={[styles.wager,bet===w&&styles.wagerSelected]}><Txt>{w}</Txt></Pressable>)}</View>
-  </Card>
-  <Card title="🎰 SLOTS"><Txt muted>Three-reel weighted reels and triple-symbol prizes.</Txt><Button onPress={()=>casino('slots',{rolls:[roll(),roll(),roll()]})}>Spin Slots · {bet} Chips</Button></Card>
-  <Card title="🎡 ROULETTE"><View style={styles.actions}><Button compact onPress={()=>casino('roulette',{bet:'RED',roll:number()})}>🔴 Red</Button><Button secondary compact onPress={()=>casino('roulette',{bet:'BLACK',roll:number()})}>⚫ Black</Button><Button secondary compact onPress={()=>casino('roulette',{bet:'EVEN',roll:number()})}>Even</Button></View></Card>
-  <Card title="🎟️ SCRATCHERS" subtitle={SCRATCHERS.length+' card tiers'}>
-   <Txt muted>Select the source-defined ticket. Each card has its own Chip wager and published payout table.</Txt>
-   {SCRATCHERS.map(card=><View key={card.id} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{card.emoji} {card.name}</Txt><Txt muted style={styles.small}>Fixed wager: {format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||Boolean(state.blackjack)} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll()})}>Scratch</Button></View>)}
-  </Card>
-  <Card title="🔵 PLINKO"><Button onPress={()=>casino('plinko',{path:Array.from({length:8},()=>Math.random()<0.5)})}>Drop Ball · {bet} Chips</Button></Card>
-  <Card title="🎠 LUCKY PUP WHEEL"><Button onPress={()=>casino('wheel',{roll:roll()})}>Spin Wheel · {bet} Chips</Button></Card>
-  <Card title="🃏 BLACKJACK" subtitle="52-card deck · up to 3 player hands">
-   {state.blackjack?<>
-    <Pair left="Dealer" right={cardLabel(state.blackjack.dealerCards[0])+' · '+(state.blackjack.complete?state.blackjack.dealerCards.slice(1).map(cardLabel).join(' · '):'🂠')}/>
-    <Pair left="Current hand" right={(state.blackjack.activeHandIndex+1)+' / '+state.blackjack.hands.length}/>
-    {state.blackjack.hands.map((hand,i)=><View key={i} style={[styles.shopItem,i===state.blackjack.activeHandIndex&&{backgroundColor:C.accentSoft,padding:8,borderRadius:10}]}>
-      <View style={styles.shopLabel}><Txt style={styles.itemName}>Hand {i+1} {i===state.blackjack.activeHandIndex?'▶️':''}</Txt><Txt>{hand.cards.map(cardLabel).join(' · ')} — {handTotal(hand.cards).total}</Txt></View>
-      <Txt muted>{format(hand.wager)} Chips {hand.doubled?'· Doubled':''} {hand.fromSplit?'· Split':''}</Txt>
-     </View>)}
-    <View style={styles.actions}>
-     <Button disabled={!canHit(state.blackjack)} onPress={()=>act({type:'blackjackHit'})}>Hit</Button>
-     <Button secondary disabled={!canStand(state.blackjack)} onPress={()=>act({type:'blackjackStand'})}>Stand</Button>
-     <Button secondary disabled={!canDouble(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackDouble'})}>Double</Button>
-     <Button secondary disabled={!canSplit(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackSplit'})}>Split</Button>
+ const choices=[20,50,100,500,1000];
+ const inBlackjack=Boolean(state.blackjack);
+ const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
+ return <View style={styles.gamePage}>
+  <View style={styles.pair}>
+   <Button compact secondary onPress={()=>page==='hub'?onBack():setPage('hub')}>{page==='hub'?'‹ Rewards':'‹ Casino'}</Button>
+   <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
+  </View>
+  <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt>
+  {page==='hub'?<>
+   <View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:28}}>🐾</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Treats → Casino Chips</Txt><Txt muted style={styles.small}>10 🍪 = 1 🐾 · One-way conversion</Txt></View>
+   </View>
+   <View style={styles.actions}><Button compact secondary disabled={g.treats<100} onPress={()=>act({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button compact secondary disabled={g.treats<1000} onPress={()=>act({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
+   {CASINO_PAGES.map(([id,emoji,title,description,art])=><Pressable accessibilityRole="button" key={id} onPress={()=>setPage(id)} style={styles.casinoGameTile}>
+    <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
+   </Pressable>)}
+  </>:<>
+   <View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>
+   {page==='slots'?<>
+    <CasinoArtwork image={CASINO_ART.slots} ratio={1.17} height={Math.min(330,width*.72)}/>
+    <View style={styles.dailyGiftCard}><Image source={CASINO_ART.slotsMascot} resizeMode="contain" style={{width:72,height:70}}/><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Slots</Txt><Txt muted style={styles.small}>Triple-symbol and weighted reel payouts.</Txt></View><Image source={CASINO_ART.slotsLever} resizeMode="contain" style={{width:42,height:80}}/></View>
+    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('slots',{rolls:[roll(),roll(),roll()]})}>🎰 Pull Lever · {bet} Chips</Button>
+   </>:null}
+   {page==='roulette'?<>
+    <View style={styles.rouletteScene}><Image source={CASINO_ART.roulette} resizeMode="contain" style={styles.rouletteWheel}/><Image source={CASINO_ART.rouletteRotor} resizeMode="contain" style={styles.rouletteRotor}/></View>
+    <CasinoArtwork image={CASINO_ART.rouletteTable} ratio={2}/>
+    <Txt style={styles.sectionTitle}>Choose your bet</Txt>
+    <View style={styles.quickActionRow}>
+     <Button compact disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('roulette',{bet:'RED',roll:number()})}>🔴 Red</Button>
+     <Button compact secondary disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('roulette',{bet:'BLACK',roll:number()})}>⚫ Black</Button>
+     <Button compact secondary disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('roulette',{bet:'EVEN',roll:number()})}>Even</Button>
     </View>
-   </>:<>
-    <Txt muted>A single shuffled 52-card deck, natural Blackjack 3:2 payout, dealer stands on 17, up to three split hands. Chips are deducted before the round and the active game survives guest-save reloads.</Txt>
-    <Button disabled={g.casinoChips<bet} onPress={()=>act({type:'blackjackStart',wager:bet,deck:shuffledBlackjackDeck()})}>Deal Blackjack · {bet} Chips</Button>
-   </>}
-  </Card>
- </>;
+   </>:null}
+   {page==='plinko'?<>
+    <View style={styles.plinkoScene}>
+     <Image source={CASINO_ART.plinko} resizeMode="contain" style={styles.plinkoLayer}/>
+     <Image source={CASINO_ART.plinkoPegs} resizeMode="contain" style={styles.plinkoLayer}/>
+     <Image source={CASINO_ART.plinkoBall} resizeMode="contain" style={styles.plinkoBall}/>
+    </View>
+    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('plinko',{path:Array.from({length:8},()=>Math.random()<0.5)})}>🔵 Drop Ball · {bet} Chips</Button>
+   </>:null}
+   {page==='scratchers'?<>
+    <CasinoArtwork image={CASINO_ART.scratchers} ratio={1.45}/>
+    <Txt style={styles.sectionTitle}>Puppy Scratchers</Txt>
+    {SCRATCHERS.map(card=><View key={card.id} style={styles.casinoGameTile}><Txt style={{fontSize:26}}>{card.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{card.name}</Txt><Txt muted style={styles.small}>{format(card.wager)} Chips</Txt></View><Button compact disabled={g.casinoChips<card.wager||inBlackjack} onPress={()=>act({type:'casino',gameType:'scratch',wager:card.wager,roll:roll()})}>Scratch</Button></View>)}
+   </>:null}
+   {page==='wheel'?<>
+    <View style={styles.wheelScene}>
+     <Image source={CASINO_ART.wheelFrame} resizeMode="contain" style={styles.wheelLayer}/>
+     <Image source={CASINO_ART.wheel} resizeMode="contain" style={styles.wheelLayer}/>
+     <Image source={CASINO_ART.wheelPointer} resizeMode="contain" style={styles.wheelPointer}/>
+    </View>
+    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('wheel',{roll:roll()})}>🎠 Spin Lucky Pup Wheel · {bet} Chips</Button>
+   </>:null}
+   {page==='blackjack'?<>
+    <BlackjackFeltTable round={state.blackjack}/>
+    {state.blackjack?<>
+     <Txt muted>Current hand {state.blackjack.activeHandIndex+1} / {state.blackjack.hands.length}</Txt>
+     {state.blackjack.hands.map((hand,index)=><View key={index} style={styles.dailyGiftCard}><View style={{flex:1}}><Txt style={styles.itemName}>Hand {index+1} · {handTotal(hand.cards).total} {index===state.blackjack.activeHandIndex?'▶':''}</Txt><Txt muted style={styles.small}>{format(hand.wager)} Chips {hand.doubled?'· Doubled':''} {hand.fromSplit?'· Split':''}</Txt></View></View>)}
+     <View style={styles.quickActionRow}>
+      <Button disabled={!canHit(state.blackjack)} onPress={()=>act({type:'blackjackHit'})}>🐾 HIT</Button>
+      <Button secondary disabled={!canStand(state.blackjack)} onPress={()=>act({type:'blackjackStand'})}>STAND</Button>
+     </View>
+     <View style={styles.quickActionRow}>
+      <Button secondary disabled={!canDouble(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackDouble'})}>2× DOUBLE</Button>
+      <Button secondary disabled={!canSplit(state.blackjack)||g.casinoChips<state.blackjack.hands[state.blackjack.activeHandIndex].wager} onPress={()=>act({type:'blackjackSplit'})}>⇄ SPLIT</Button>
+     </View>
+    </>:<>
+     <Txt muted style={styles.small}>One 52-card deck · Blackjack 3:2 · Dealer stands on 17 · Up to three hands. Unfinished local guest rounds are restored after restart.</Txt>
+     <Button disabled={g.casinoChips<bet} onPress={()=>act({type:'blackjackStart',wager:bet,deck:shuffledBlackjackDeck()})}>🃏 Deal Blackjack · {bet} Chips</Button>
+    </>}
+   </>:null}
+  </>}
+ </View>;
 }
 function OnboardingScreen({g,act}){
  const step=g.onboardingStep;
@@ -478,7 +576,7 @@ export default function App(){
   if(secondary==='roster')return <RosterScreen g={g} act={act}/>;
   if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
-  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state}/>;
+  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>setSecondary('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary} schedule={state.monthlySchedule} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
@@ -501,6 +599,27 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ casinoGameTile:{flexDirection:'row',alignItems:'center',gap:12,padding:12,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line},
+ casinoTileArt:{width:80,height:80},
+ casinoTileArrow:{fontSize:28,color:C.accent},
+ casinoArtworkFrame:{backgroundColor:C.surface,borderRadius:20,overflow:'hidden',alignItems:'center',justifyContent:'center'},
+ rouletteScene:{height:265,alignItems:'center',justifyContent:'center'},
+ rouletteWheel:{height:260,width:260},
+ rouletteRotor:{height:188,width:188,position:'absolute'},
+ plinkoScene:{height:330,alignItems:'center',justifyContent:'center'},
+ plinkoLayer:{height:330,width:'100%',position:'absolute'},
+ plinkoBall:{height:27,width:27,position:'absolute',top:37},
+ wheelScene:{height:320,alignItems:'center',justifyContent:'center'},
+ wheelLayer:{height:310,width:310,position:'absolute'},
+ wheelPointer:{height:80,width:55,position:'absolute',top:0},
+ blackjackFelt:{width:'100%',aspectRatio:1122/1188,borderRadius:22,overflow:'hidden',justifyContent:'space-between',paddingVertical:'16%'},
+ blackjackDealerArea:{alignItems:'center',gap:5,minHeight:95},
+ blackjackPlayerArea:{alignItems:'center',gap:5,minHeight:105},
+ blackjackFeltTitle:{color:'#FCFAE9',fontWeight:'900',fontSize:12,textShadowColor:'#1E392C',textShadowRadius:4},
+ blackjackFan:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:3,minHeight:68},
+ blackjackArtworkCard:{height:66,width:47,justifyContent:'center',alignItems:'center'},
+ blackjackCardLabel:{fontSize:15,fontWeight:'900',color:'#1C2424'},
+
  dailyGoalCard:{flexDirection:'row',gap:12,padding:14,borderRadius:18,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,alignItems:'flex-start'},
  nextRewardCard:{flexDirection:'row',alignItems:'center',gap:10,padding:12,backgroundColor:'#1B2930',borderColor:C.line,borderWidth:1,borderRadius:14},
  dailyGiftCard:{flexDirection:'row',gap:10,alignItems:'center',padding:14,borderRadius:19,backgroundColor:'#1B2930',borderColor:C.line,borderWidth:1},
