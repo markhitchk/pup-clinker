@@ -157,6 +157,9 @@ test('tampering, invalid bounce jitter and competing rounds cannot mint Casino C
  assert.equal(forged.game.casinoChips,100);
  const roulette=transition(s,{type:'rouletteStart',wager:20,bet:{type:'RED'},winningNumber:1,now:1730000000100});
  assert.equal(roulette.game.casinoChips,100);
+ const slots=transition(s,{type:'slotsStart',wager:20,rolls:[0,0,0],now:1730000000100});
+ assert.equal(slots.game.casinoChips,100);
+ assert.equal(slots.game.pendingSlots,null);
  const blackjack=transition(s,{type:'blackjackStart',wager:20,deck:[],now:1730000000100});
  assert.equal(blackjack.game.casinoChips,100);
  const prestige=transition(s,{type:'prestige',now:1730000000100});
