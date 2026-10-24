@@ -17,7 +17,7 @@
 | Part | Target | Status / source |
 | --- | --- | --- |
 | **1** | **Launcher Play: V6Header, V6Wallet, V6NeedPill, V6Play** | **Code rebuilt; automated tests added; phone screenshots and Android device interaction review still required.** Source: `PuppyClickerV6Activity.kt`. JS contract: `Mobile/src/engine/playV6.js`; view: `Mobile/App.js`; tests: `Mobile/tests/playV6.test.js`. |
-| 2 | Care & Daily, five care actions, per-puppy care, Park, daily claims | Next. `V6CareAndDaily`, `PuppyCareSystem.kt`, `PuppyMonthlyRewards.kt`. |
+| **2** | **Care & Daily, five care actions, per-puppy care, Park, daily claims** | **React screens rebuilt; automated Kotlin contract tests added; Android-device visual and lifecycle verification outstanding.** Source: `V6CareAndDaily`, `V6CarePanel`, `V6DailyPanel`, `PuppyCareSystem.kt`, `PuppyClickerV6ViewModel.kt`, `PuppyMonthlyRewards.kt`; code: `Mobile/src/engine/careV6.js`, `Mobile/App.js`; tests: `Mobile/tests/careV6.test.js`. |
 | 3 | Shop, tickets, accessories, Puppy Codes and Prestige | Pending. `V6Shop`, `PuppyEconomyV7.kt`, V6 Prestige. Codes cannot grant protected rewards without server verification. |
 | 4 | Puppy Roster, art V1/V2/V3+, Gacha and official role unlocks | Pending. Original art, `PuppyRosterScreen.kt`, `PuppyGacha.kt`. Secure entitlements must remain server-only. |
 | 5 | Six casino games as **separate subparts**: Blackjack, Slots, Roulette, Plinko, Scratchers, Wheel | Pending pixel/gesture/round-recovery validation. Scratchers guest gesture implementation exists but is not Kotlin Canvas-equivalent. |
@@ -44,3 +44,14 @@ The **launched** tab path is `PuppyClickerV6Activity.kt → V6TabContent → V6P
 - Verify final APK's bundled JS and actual device launch. Passing source or unit tests does **not** imply pixel-perfect 1:1 parity.
 
 **Next step:** Rebuild and test **Part 2 — Care & Daily** from `V6CareAndDaily`. No automatic production merge.
+
+## Part 2 — Care & Daily evidence and remaining differences
+
+- The launched Kotlin screen is `V6CareAndDaily` (not a reconstructed generic Care menu). React uses the original 50dp logo header, Care/Daily selector, 125dp active portrait, five 6dp meters, action layout **Feed + Play / Rest + Groom / Cuddle**, plus a care-information panel.
+- Action guards and values follow `PuppyClickerV6ViewModel`: Feed costs 20 Treats, Play costs 1 Bone and 12 energy, Groom costs 10 Treats, Rest and Cuddle are free. The **Kotlin UI text claims every care action awards one Bone, but Kotlin's actual care methods do not credit Bones**. React follows transaction behavior and does not advertise a false Bone payout; this textual difference requires an explicit upstream Kotlin UI reconciliation before declaring strict pixel-level parity.
+- React daily screen has the source-inspired streak banner, next daily gift amount using `level` and streak formula, validated monthly goals with claim safety, and a 60-second / 20-energy Dog Park adventure with exactly-once guest claim. Kotlin's `V6DailyPanel` currently shows four hard-coded daily task descriptions while its ViewModel settles against `PuppyMonthlyRewards`; React renders the **validated schedule actually used for settlement** instead of showing potentially wrong tasks.
+- Daily gift day is resolved inside the reducer from the action timestamp, like Kotlin resolving `LocalDate.now()`, rather than accepting a UI-supplied epoch day. This prevents simple repeated-claim spoofing by supplying a different `epochDay` parameter. It is not cryptographically secure; the preview is guest-only.
+- Per-puppy local care decay/restore already exists in `Mobile/src/engine/careDecay.js`; it remains the same isolated guest approximation of `PuppyCareSystem` and is covered by `Mobile/tests/careDecay.test.js`. It does not make the original encrypted Kotlin save accessible.
+- Android native Dog Park push notification, AFK inbox, Supabase/PupEye secure accounts, and real-device visual/interaction comparison are **not completed**. The temporary `Preview · Rewards Hub` entry under Daily retains access to other guest preview content absent from the launched Kotlin Care tab.
+
+**Part 3 next:** Shop, Tickets, Pup Coins, and Prestige. Never grant protected Puppy Codes from client-side guest logic.
