@@ -41,7 +41,9 @@ export function wheelLabelPosition(index,size){
   top:size/2+radius*Math.sin(angle)-8,width,fontSize:segment.weight<=2?7:segment.weight<=5?8:segment.weight<=10?9:10};
 }
 export function wheelFrame(width){
- // Kotlin LuckyWheelBoard uses Modifier.fillMaxWidth() — the 420 reference\n // is an aspect-ratio basis, not an upper width cap.\n const w=Math.max(1,Number.isFinite(width)?width:320);
+ // Kotlin LuckyWheelBoard uses Modifier.fillMaxWidth().
+ // The 420 reference is an aspect ratio, not an upper width cap.
+ const w=Math.max(1,Number.isFinite(width)?width:320);
  const h=w/WHEEL_V6.artAspect,disc=w*WHEEL_V6.discRatio,ptr=w*WHEEL_V6.pointerRatio;
  return {width:w,height:h,disc:{left:(w-disc)/2,top:h*WHEEL_V6.discY,width:disc,height:disc},
   pointer:{left:(w-ptr)/2,top:h*WHEEL_V6.pointerY,width:ptr,height:ptr/WHEEL_V6.pointerAspect}};
