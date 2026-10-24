@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,Animated,Easing,Image,ImageBackground,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,Vibration,View,useWindowDimensions} from 'react-native';
+import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,Vibration,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {useRoster} from './src/state/useRoster.js';
@@ -511,41 +511,158 @@ function RosterScreen({g,act,registry}){
   })}</View>:<Card title="No puppies match these filters."><Button secondary onPress={reset}>Reset filters</Button></Card>}
  </View>;
 }
-function GachaScreen({g,act,state}){
- const rotation=useRef(new Animated.Value(0)).current;
- const [revealed,setRevealed]=useState(false);
+// Part 4: source-matched mechanical Gacha stages 0 idle / 1 turn+drop /
+// 2 ready to open / 3 opening / 4 reveal. Local guest-only settlement.
+function GachaScreen({g,act,state,registry,onBack}){
+ const [stage,setStage]=useState(0);
+ const [showInfo,setShowInfo]=useState(false);
+ const [message,setMessage]=useState('');
+ const turn=useRef(new Animated.Value(0)).current;
+ const drop=useRef(new Animated.Value(GACHA_MACHINE.dropOffset)).current;
+ const opening=useRef(new Animated.Value(0)).current;
+ const revealTimer=useRef(null);
  const result=state.gachaResult;
- useEffect(()=>{
-  rotation.stopAnimation();rotation.setValue(0);setRevealed(false);
-  if(!result?.success)return;
-  const animation=Animated.timing(rotation,{toValue:1,duration:780,easing:Easing.out(Easing.cubic),useNativeDriver:true});
-  animation.start(({finished})=>{if(finished)setRevealed(true);});
-  return ()=>animation.stop();
- },[result,rotation]);
+ const {width}=useWindowDimensions();
+ const frame=gachaMachineFrame(Math.max(0,Math.min(width-44,560)));
+ const selected=registry.items.find(p=>p.id===result?.puppyId)
+  ||ROSTER.find(p=>p.id===result?.puppyId);
  const pool=gachaPool(ROSTER,g.unlockedPuppies);
- return <>
-  <Card title="🎲 PUPPY GACHA" subtitle="Source-matched capsule machine">
-   <Pair left="🍪 Treats" right={format(g.treats)}/>
-   <Pair left="🎟️ Common Tickets" right={String(g.ticketInventory.COMMON||0)}/>
-   <Pair left="Total pulls" right={String(g.gachaPulls||0)}/>
-   <Txt muted>Random Gacha only includes free/unrestricted puppies. Developer, Discord, special-code and event puppies cannot be granted by this machine.</Txt>
-   <View style={styles.bigTap}>
-    {result?.success?<Animated.View style={{transform:[{rotate:rotation.interpolate({inputRange:[0,1],outputRange:['0deg','360deg']})}]}}><Txt style={{fontSize:78}}>🎁</Txt></Animated.View>:<Txt style={{fontSize:88}}>🎰</Txt>}
-    <Txt style={styles.tapCaption}>{result?revealed?'CAPSULE OPENED':'OPENING CAPSULE…':'PULL A PUPPY CAPSULE'}</Txt>
+ const missing=pool.filter(p=>!g.unlockedPuppies.includes(p.id));
+ const purchasesAllowed=stage===0&&!result?.success&&pool.length>0;
+ useEffect(()=>{
+  if(!result?.success){
+   setStage(0);return;
+  }
+  setMessage('');
+  setStage(1);
+  turn.setValue(0);drop.setValue(GACHA_MACHINE.dropOffset);opening.setValue(0);
+  const motion=Animated.sequence([
+   Animated.timing(turn,{toValue:1,duration:GACHA_MACHINE.knobTurnMs,useNativeDriver:true}),
+   Animated.spring(drop,{toValue:0,friction:5,tension:90,useNativeDriver:true})
+  ]);
+  motion.start(({finished})=>{if(finished)setStage(2);});
+  return ()=>{motion.stop();if(revealTimer.current)clearTimeout(revealTimer.current);};
+ },[result,turn,drop,opening]);
+ const openCapsule=()=>{
+  if(stage!==2||!result?.success)return;
+  setStage(3);
+  opening.setValue(0);
+  Animated.timing(opening,{toValue:1,duration:GACHA_MACHINE.capsuleOpenMs,
+   easing:Easing.inOut(Easing.ease),useNativeDriver:true}).start(({finished})=>{
+   if(finished)revealTimer.current=setTimeout(()=>setStage(4),GACHA_MACHINE.revealDelayMs);
+  });
+ };
+ const reset=()=>{setStage(0);setMessage('');act({type:'dismissGacha'});};
+ const pull=payment=>{
+  if(!purchasesAllowed)return;
+  const affordable=payment==='TREATS'?g.treats>=GACHA_TREAT_COST:(g.ticketInventory.COMMON||0)>=1;
+  if(!affordable){setMessage(payment==='TREATS'?'You need 2500 Treats.':'You need 1 Common Ticket.');return;}
+  setMessage('');
+  act({type:'gacha',payment,roll:Math.floor(Math.random()*0x7fffffff)});
+ };
+ const turnDegrees=turn.interpolate({inputRange:[0,1],outputRange:['0deg','360deg']});
+ const tiltOpacity=opening.interpolate({inputRange:[0,0.12,0.62,1],outputRange:[0,1,1,0]});
+ const openOpacity=opening.interpolate({inputRange:[0,0.42,1],outputRange:[0,0,1]});
+ return <View style={styles.gamePage}>
+  <View style={styles.gachaHeader}>
+   <Button compact secondary onPress={onBack}>← Back</Button>
+   <View style={{flex:1}}>
+    <Txt style={styles.heading}>Puppy Gacha</Txt>
+    <Txt muted style={styles.small}>Turn · Drop · Open · Reveal!</Txt>
    </View>
-   {result?.success?revealed?<View style={styles.card}>
-      <Txt style={{fontSize:22,fontWeight:'800',textAlign:'center'}}>{result.isNewUnlock?'🐶 NEW PUPPY!':'🐶 DUPLICATE PUPPY'}</Txt>
-      <Txt style={{textAlign:'center',fontWeight:'700'}}>{result.puppyName}</Txt>
-      <View style={styles.actions}><Button compact disabled={!result.isNewUnlock} onPress={()=>{act({type:'switch',id:result.puppyId,now:Date.now()});act({type:'dismissGacha'});}}>Use Puppy</Button><Button compact secondary onPress={()=>act({type:'dismissGacha'})}>Pull Again</Button></View>
-     </View>:null:<>
-      {pool.length&&pool.every(p=>g.unlockedPuppies.includes(p.id))?<Txt style={styles.small} muted>All available free puppies are already owned. Another pull awards a duplicate but still costs currency, just as in the Android rules.</Txt>:null}
-      <View style={styles.actions}>
-       <Button disabled={g.treats<GACHA_TREAT_COST||!pool.length} onPress={()=>act({type:'gacha',payment:'TREATS',roll:Math.floor(Math.random()*0x7fffffff)})}>🍪 {format(GACHA_TREAT_COST)} Treats</Button>
-       <Button secondary disabled={(g.ticketInventory.COMMON||0)<1||!pool.length} onPress={()=>act({type:'gacha',payment:'COMMON_TICKET',roll:Math.floor(Math.random()*0x7fffffff)})}>🎟️ 1 Common Ticket</Button>
-      </View>
-     </>}
-  </Card>
- </>;
+   <Button compact secondary onPress={()=>setShowInfo(true)}>ⓘ Info</Button>
+  </View>
+  <View style={styles.gachaWallet}>
+   <View style={styles.gachaWalletCell}>
+    <Txt style={styles.gachaWalletLabel}>🍪 Treats</Txt>
+    <Txt style={styles.gachaWalletValue}>{v6Format(g.treats,g.compactNumbers!==false)}</Txt>
+   </View>
+   <View style={styles.gachaWalletDivider}/>
+   <View style={styles.gachaWalletCell}>
+    <Txt style={styles.gachaWalletLabel}>🎟️ Common Tickets</Txt>
+    <Txt style={styles.gachaWalletValue}>{g.ticketInventory.COMMON||0}</Txt>
+   </View>
+  </View>
+  <View style={[styles.gachaMachine,{width:frame.width,height:frame.height}]}>
+   <Image resizeMode="contain" accessibilityLabel="Original Puppy Gacha machine"
+    source={GACHA_ART.machine} style={{position:'absolute',width:frame.width,height:frame.height}}/>
+   <Animated.Image source={GACHA_ART.knob} resizeMode="contain"
+    accessibilityLabel="Gacha turning knob"
+    style={{position:'absolute',...frame.knob,transform:[{rotate:turnDegrees}]}}/>
+   {(stage===1||stage===2)?<Animated.Image source={GACHA_ART.capsuleClosed}
+    resizeMode="contain" accessibilityLabel="Closed puppy Gacha capsule"
+    style={{position:'absolute',...frame.capsule,
+     transform:[{translateY:drop}]}}/>:null}
+   {stage===3||stage===4?<View style={{position:'absolute',...frame.open}}>
+    <Animated.Image source={GACHA_ART.capsuleOpenTilt} resizeMode="contain"
+     style={{width:'100%',height:'100%',opacity:tiltOpacity}}/>
+    <Animated.Image source={GACHA_ART.capsuleOpen} resizeMode="contain"
+     style={{position:'absolute',width:'100%',height:'100%',opacity:openOpacity}}/>
+   </View>:null}
+   {stage===2?<View style={styles.gachaOpenButton}>
+    <Button onPress={openCapsule}>Open Capsule</Button>
+   </View>:null}
+  </View>
+  <View style={styles.gachaPurchaseRow}>
+   <Pressable accessibilityRole="button"
+    disabled={!purchasesAllowed||g.treats<GACHA_TREAT_COST}
+    onPress={()=>pull('TREATS')}
+    style={[styles.gachaPurchaseButton,{backgroundColor:'#FFB51B',borderColor:'#D89500'},
+     (!purchasesAllowed||g.treats<GACHA_TREAT_COST)&&styles.buttonDisabled]}>
+    <Txt style={styles.gachaPurchaseTitle}>🍪 Pull with Treats</Txt>
+    <Txt style={styles.gachaPurchaseSubtitle}>2,500 Treats</Txt>
+   </Pressable>
+   <Pressable accessibilityRole="button"
+    disabled={!purchasesAllowed||(g.ticketInventory.COMMON||0)<1}
+    onPress={()=>pull('COMMON_TICKET')}
+    style={[styles.gachaPurchaseButton,{backgroundColor:'#7C3AED',borderColor:'#5B21B6'},
+     (!purchasesAllowed||(g.ticketInventory.COMMON||0)<1)&&styles.buttonDisabled]}>
+    <Txt style={styles.gachaPurchaseTitle}>🎟️ Use Common Ticket</Txt>
+    <Txt style={styles.gachaPurchaseSubtitle}>1 Ticket</Txt>
+   </Pressable>
+  </View>
+  {message?<Txt style={styles.gachaFailure}>{message}</Txt>:null}
+  <Txt muted style={[styles.small,{textAlign:'center'}]}>
+   {pool.length===0?'No puppies are currently eligible for Gacha.':
+    missing.length===0?'Collection complete · no unowned Gacha puppies remain.':
+    missing.length===1?'1 new puppy remains · new puppies are guaranteed first.':
+    missing.length+' new puppies remain · new puppies are guaranteed first.'}
+  </Txt>
+  <Txt muted style={[styles.tiny,{textAlign:'center'}]}>
+   Redeem-only and special locked puppies are excluded. Uses earned Treats or Common Upgrade Tickets only; no real money or cash-out.
+  </Txt>
+  <Txt muted style={[styles.tiny,{textAlign:'center'}]}>
+   React guest preview: offline rewards are not official PupEye-verified entitlements.
+  </Txt>
+  <Modal visible={stage===4&&Boolean(result?.success)} transparent
+   animationType="fade" onRequestClose={reset}>
+   <View style={styles.gachaModalScreen}>
+    <View style={styles.gachaRevealCard}>
+     <Txt style={styles.gachaRevealHeading}>✨ CAPSULE OPENED! ✨</Txt>
+     <Txt style={[styles.itemName,{color:C.accent}]}>{result?.isNewUnlock?'NEW PUPPY!':'PUPPY REVEALED!'}</Txt>
+     <View style={styles.gachaRevealPortrait}>
+      {selected?<Portrait puppy={selected} size={188} unlocked/>:null}
+     </View>
+     <Txt style={styles.heading}>{selected?.emoji||'🐶'} {result?.puppyName||'Puppy'}</Txt>
+     <Txt muted>{result?.isNewUnlock?'Added to your Puppy Roster.':'Already in your Puppy Roster.'}</Txt>
+     <Button onPress={()=>{act({type:'switch',id:result.puppyId,now:Date.now()});reset();}}>Use Puppy</Button>
+     <Button secondary onPress={reset}>Another Capsule</Button>
+     <Button secondary compact onPress={reset}>Close</Button>
+    </View>
+   </View>
+  </Modal>
+  <Modal visible={showInfo} transparent animationType="fade"
+   onRequestClose={()=>setShowInfo(false)}>
+   <View style={styles.gachaModalScreen}>
+    <View style={styles.gachaRevealCard}>
+     <Txt style={styles.heading}>ⓘ Gacha Info</Txt>
+     <Txt muted>Turn the machine with Treats or a Common Upgrade Ticket, then open your capsule. New unrestricted puppies are awarded before duplicates.</Txt>
+     <Txt muted>Special event, developer, Discord-role and Puppy Code puppies are excluded. This is a local guest preview, not a verified cloud account.</Txt>
+     <Button onPress={()=>setShowInfo(false)}>Got it</Button>
+    </View>
+   </View>
+  </Modal>
+ </View>;
 }
 function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
  const date=new Date(clock),today=localEpochDay(date),goals=goalsForDay(schedule,date);
@@ -852,7 +969,7 @@ export default function App(){
  const main=()=>{
   if(secondary==='roster')return <RosterScreen g={g} act={act} registry={registry}/>;
   if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
-  if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state}/>;
+  if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>setSecondary('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>setSecondary('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
@@ -922,6 +1039,24 @@ const styles=StyleSheet.create({
  settingsChevron:{fontSize:22,fontWeight:'700',color:C.muted},
  previewPill:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:'#352B13',paddingHorizontal:8,paddingVertical:6,borderRadius:10,overflow:'hidden'},
 
+ // Kotlin PuppyGacha.kt machine 1024×1536 + original 5 separate PNG layers.
+ gachaHeader:{flexDirection:'row',alignItems:'center',gap:10},
+ gachaWallet:{flexDirection:'row',alignItems:'center',borderRadius:28,backgroundColor:'#8ADFF7',paddingHorizontal:14,paddingVertical:10,borderWidth:2,borderColor:'#FFFFFF'},
+ gachaWalletCell:{flex:1,paddingHorizontal:8,gap:2},
+ gachaWalletDivider:{height:42,width:2,backgroundColor:'#FFFFFF'},
+ gachaWalletLabel:{fontSize:12,fontWeight:'900',color:'#102331'},
+ gachaWalletValue:{fontSize:21,fontWeight:'900',color:'#081923'},
+ gachaMachine:{alignSelf:'center',position:'relative',overflow:'hidden'},
+ gachaOpenButton:{position:'absolute',bottom:GACHA_MACHINE.openButtonBottom,alignSelf:'center'},
+ gachaPurchaseRow:{flexDirection:'row',gap:10},
+ gachaPurchaseButton:{flex:1,height:64,borderRadius:28,borderWidth:2,justifyContent:'center',alignItems:'center',paddingHorizontal:5},
+ gachaPurchaseTitle:{fontSize:11,fontWeight:'900',color:'#FFFFFF',textAlign:'center'},
+ gachaPurchaseSubtitle:{fontSize:12,fontWeight:'800',color:'#FFFFFF',textAlign:'center'},
+ gachaFailure:{color:'#FFE9E9',fontWeight:'800',textAlign:'center',padding:10,backgroundColor:'#6C2828',borderRadius:14},
+ gachaModalScreen:{flex:1,backgroundColor:'rgba(0,0,0,0.70)',justifyContent:'center',paddingHorizontal:20},
+ gachaRevealCard:{backgroundColor:C.surface,borderRadius:28,padding:18,gap:12,alignItems:'center',borderWidth:2,borderColor:C.accent},
+ gachaRevealHeading:{fontSize:20,fontWeight:'900',color:C.text,textAlign:'center'},
+ gachaRevealPortrait:{width:'100%',paddingVertical:10,alignItems:'center',borderRadius:24,backgroundColor:C.accentSoft},
  // Kotlin V6Pups portrait, 86dp horizontal entries and locked scrim.
  portraitBadge:{position:'absolute',backgroundColor:'rgba(19,28,32,0.86)',borderRadius:999,padding:3},
  portraitAccessory:{position:'absolute',alignSelf:'center'},
