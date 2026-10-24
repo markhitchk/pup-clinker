@@ -886,7 +886,7 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
  },[accepted,onBack]);
  const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
  const choices=[20,50,100,500,1000];
- const inBlackjack=Boolean(state.blackjack);
+ const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingScratch);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'?<><View style={styles.pair}>
@@ -1069,7 +1069,7 @@ export default function App(){
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch)}/>;
+  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette)}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
  };
  return <View style={styles.root}>
