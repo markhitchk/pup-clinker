@@ -133,6 +133,16 @@ export function transition(state,action){
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
   case 'equip':if(!g.ownedAccessories.includes(action.name))return no();g.accessory=action.name;break;
   case 'rename':{const name=String(action.name||'').trim().slice(0,18);if(!name)return no();g.puppyName=name;break;}
+  case 'scratchStart':{
+   if(blackjack||g.pendingScratch||g.pendingSlots)return {...state,notice:'Finish your current Casino round first'};
+   if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
+   const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
+   if(!pending)return {...state,notice:'Invalid Scratchers wager'};
+   if(!casinoSpend(g,action.wager))return no();
+   g.pendingScratch=pending;
+   notice='🎟️ Scratch your card to reveal the committed prize';
+   break;
+  }
   case 'slotsStart':{
    if(blackjack||g.pendingScratch||g.pendingSlots)return {...state,notice:'Finish your current Casino round first'};
    const pending=newSlotsGuestRound(action.wager,action.rolls,action.now||Date.now());
@@ -153,18 +163,13 @@ export function transition(state,action){
    break;
   }
   case 'casino':{
+   // Slots and Scratchers must use their saved, reveal-then-settle pathways.
+   // Never permit a legacy one-step casino action to bypass those ledgers.
+   if(action.gameType==='slots'||action.gameType==='scratch')return {...state,notice:'Open the dedicated game to start a saved round'};
    if(blackjack)return {...state,notice:'Finish Blackjack before another round'};
    if(g.pendingSlots)return {...state,notice:'Finish Slots before another round'};
    if(g.pendingScratch)return {...state,notice:'Finish the current Scratchers card before another wager'};
-   if(action.gameType==='scratch'){
-    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
-    const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
-    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
-    if(!casinoSpend(g,action.wager))return no();
-    g.pendingScratch=pending;
-    notice='🎟️ Scratch your card to reveal the committed prize';
-    break;
-   }
+   // Scratchers starts through the dedicated saved card pathway.
    if(!Number.isSafeInteger(action.wager)||action.wager<=0||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let result;try{result=casinoRound(action);}catch{return {...state,notice:'Invalid casino bet'};}
    if(!casinoSpend(g,action.wager))return no();
