@@ -58,9 +58,13 @@ Full parity still requires verified real-account onboarding, protected/streamed 
 
 `react-native-android.yml` runs Node economy/state tests and attempts an Android Metro export and native prebuild on GitHub-hosted CI. These checks do not prove Google Play signing or user-data migration. Use the signed original-key AAB and Google Play internal test track for actual replacement, only after migration gates pass.
 
-## Test APK from GitHub Actions
+## Installable standalone preview APK from GitHub Actions
 
-Manually run [React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) via GitHub Actions → Run workflow on the migration branch. It compiles and uploads a **debug-signed installable preview APK** named `puppy-clicker-react-native-preview-debug`. It uses `PUPPY_NATIVE_PREVIEW=1` and package `com.harleytg.puppyclicker.preview`, so it cannot overwrite the current signed app. The artifact is **not** the production Google Play AAB.
+Use [Puppy Clicker React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) in GitHub Actions → **Run workflow** and select the `feat/react-native-full-android` branch, or take the latest successful automatic run after a change to `Mobile/**`. Download the `puppy-clicker-react-native-preview-standalone-apk` artifact and install the APK on an Android device.
+
+The workflow runs Gradle **`assembleRelease`** (signed with the template's **debug key**, **not** the owner's Google Play signing key), so **`assets/index.android.bundle` is embedded** in the APK. No Metro server, computer, or USB connection is required to open the standalone preview. CI verifies that the bundle exists inside the APK, that the package ID is `com.harleytg.puppyclicker.preview`, and that the APK signature is valid. **Do not use `assembleDebug` APKs for standalone installation**: those expect Metro and show the red "Unable to load script" screen when it is unavailable.
+
+The preview remains separately installed from the Kotlin Google Play app (`com.harleytg.puppyclicker`). **Never uninstall the production game to troubleshoot the preview**, as the native game and its authoritative cloud data must be preserved. If Android reports "App not installed" due to a different signing certificate, remove **only** the `Puppy Clicker Preview` test app before installing the latest preview APK. Removing the preview deletes its guest-only local test data. It is **not** a production-ready Play AAB or a verified feature-complete migration.
 
 ## Artwork
 
