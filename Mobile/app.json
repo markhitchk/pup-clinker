@@ -15,7 +15,7 @@
       ],
       "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logos/puppy_clicker.png",
+        "foregroundImage": "./assets/generated/branding/launcher-adaptive.png",
         "backgroundColor": "#0C0F12"
       }
     },
