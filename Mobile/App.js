@@ -15,6 +15,7 @@ import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/m
 import ScratchStage from './src/components/ScratchStage.jsx';
 import SlotsV6 from './src/components/SlotsV6.jsx';
 import RouletteV6 from './src/components/RouletteV6.jsx';
+import PlinkoV6 from './src/components/PlinkoV6.jsx';
 import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
@@ -876,7 +877,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
- const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':'hub');
+ const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':g.pendingPlinko?'plinko':'hub');
  const [accepted,setAccepted]=useState(false);
  const {width}=useWindowDimensions();
  useEffect(()=>{
@@ -886,15 +887,21 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
  },[accepted,onBack]);
  const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
  const choices=[20,50,100,500,1000];
- const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingScratch);
+ const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
-  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'?<><View style={styles.pair}>
+  {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'?<><View style={styles.pair}>
    <Button compact secondary onPress={()=>page==='hub'?onBack():setPage('hub')}>{page==='hub'?'‹ Rewards':'‹ Casino'}</Button>
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
   {page==='hub'?<>
+   {g.pendingPlinko?<View style={styles.dailyGiftCard}>
+    <Txt style={{fontSize:26}}>🔵</Txt>
+    <View style={{flex:1}}><Txt style={styles.itemName}>Unfinished Plinko Drop</Txt>
+     <Txt muted style={styles.small}>Your path, nine-bin landing and payout are saved. Resume the ball drop to settle once.</Txt></View>
+    <Button compact onPress={()=>setPage('plinko')}>Resume</Button>
+   </View>:null}
    {g.pendingRoulette?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🎡</Txt><View style={{flex:1}}>
      <Txt style={styles.itemName}>Unfinished Roulette Spin</Txt>
@@ -927,19 +934,13 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
-   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
+   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
    {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
     lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<RouletteV6 game={g} pending={g.pendingRoulette}
     lastResult={state.rouletteDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
-   {page==='plinko'?<>
-    <View style={styles.plinkoScene}>
-     <Image source={CASINO_ART.plinko} resizeMode="contain" style={styles.plinkoLayer}/>
-     <Image source={CASINO_ART.plinkoPegs} resizeMode="contain" style={styles.plinkoLayer}/>
-     <Image source={CASINO_ART.plinkoBall} resizeMode="contain" style={styles.plinkoBall}/>
-    </View>
-    <Button disabled={g.casinoChips<bet||inBlackjack} onPress={()=>casino('plinko',{path:Array.from({length:8},()=>Math.random()<0.5)})}>🔵 Drop Ball · {bet} Chips</Button>
-   </>:null}
+   {page==='plinko'?<PlinkoV6 game={g} pending={g.pendingPlinko}
+    lastResult={state.plinkoDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
    {page==='scratchers'?<>
     <Txt style={styles.sectionTitle}>Puppy Scratchers</Txt>
     {g.pendingScratch?<ScratchStage key={g.pendingScratch.createdAt} round={g.pendingScratch}
@@ -1069,7 +1070,7 @@ export default function App(){
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette)}/>;
+  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko)}/>;
   return <SettingsScreen g={g} act={act} onOpen={setSecondary} registry={registry}/>;
  };
  return <View style={styles.root}>
