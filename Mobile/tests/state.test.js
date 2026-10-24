@@ -7,7 +7,8 @@ import {parseGuestSave,serializeGuestSave} from '../src/state/guestSave.js';
 test('batched tap actions apply sequentially without stale closures',()=>{
  let state={game:freshGame(),notice:'',ready:true};
  for(let n=0;n<25;n++)state=transition(state,{type:'tap',now:1000+n*1100,randoms:[0.99,0.99]});
- assert.equal(state.game.totalTaps,25);assert.equal(state.game.treats,50); // healthy-care bonus remains activeassert.equal(state.game.bones,1);
+ assert.equal(state.game.totalTaps,25);assert.equal(state.game.treats,50); // healthy-care bonus remains active
+ assert.equal(state.game.bones,1);
 });
 test('insufficient casino chips never debit balance or pay prize',()=>{
  const game=freshGame();

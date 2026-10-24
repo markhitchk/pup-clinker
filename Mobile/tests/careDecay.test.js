@@ -25,5 +25,5 @@ test('switching to an inactive puppy applies only that puppy stored care decay',
  g.careUpdatedAtByPuppy={golden:1_000};
  const ok=switchCareProfile(g,'golden',1_000+120*60000);
  assert.equal(ok,true);assert.equal(g.energy,70);assert.equal(g.fullness,40);assert.equal(g.bond,17);
- assert.equal(g.careProfiles.classic.happiness,100);
+ assert.equal(g.careProfiles.classic.happiness,60); // outgoing puppy also decays independently
 });

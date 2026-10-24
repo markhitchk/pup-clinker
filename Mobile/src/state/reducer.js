@@ -1,5 +1,8 @@
 import {freshGame,tap,care,purchase,switchPuppy,convertTreatsToChips,casinoSpend,casinoPayout,claimDailyReward,startPark,claimPark,prestige,buyPrestigeSkill,buyUpgradeTicket,buyAccessory,handValue} from '../engine/game.js';
 import {slotsOutcome,rouletteOutcome,plinkoOutcome,wheelOutcome,scratcherOutcome} from '../engine/casinoV7.js';
+import {applyGacha} from '../engine/gacha.js';
+import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
+import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false});
 const clone=game=>JSON.parse(JSON.stringify(game));
@@ -24,22 +27,42 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
- if(action.type==='hydrate')return {...state,game:action.game?clone(action.game):freshGame(),ready:true};
+ if(action.type==='hydrate'){
+  const game=action.game?clone(action.game):freshGame();
+  if(action.game)applyOfflineCare(game,action.now||Date.now());
+  return {...state,game,ready:true};
+ }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
  let notice='';
  let blackjack=state.blackjack;
+ let gachaResult=state.gachaResult||null;
  switch(action.type){
+  case 'resume':applyOfflineCare(g,action.now||Date.now());break;
   case 'tap': {
    let i=0;
    const ticket=tap(g,action.now,()=>action.randoms?.[i++]??0.99);
    if(g.totalTaps===state.game.totalTaps)return {...state,notice:'⚡ Your puppy needs rest'};
+   grantGuestXp(g,'MANUAL_TAP');
    if(ticket)notice='🎟️ '+ticket+' Upgrade Ticket found!';
    break;
   }
-  case 'care': if(!care(g,action.kind))return {...state,notice:'This care action is unavailable'};notice='💖 Puppy care complete';break;
+  case 'care': if(!care(g,action.kind))return {...state,notice:'This care action is unavailable'};grantGuestXp(g,'CARE_ACTION');notice='💖 Puppy care complete';break;
   case 'purchase': if(!purchase(g,action.upgrade))return {...state,notice:'Need more Treats, Bones or Tickets'};notice='🛍️ Upgrade purchased';break;
-  case 'switch': if(!switchPuppy(g,action.id))return no();break;
+  case 'switch': if(!switchCareProfile(g,action.id,action.now||Date.now()))return no();break;
+  case 'favorite':{
+   if(!Array.isArray(g.favoritePuppies)||!g.unlockedPuppies.includes(action.id))return no();
+   g.favoritePuppies=g.favoritePuppies.includes(action.id)?g.favoritePuppies.filter(id=>id!==action.id):[...g.favoritePuppies,action.id];
+   break;
+  }
+  case 'gacha':{
+   const result=applyGacha(g,action.payment,action.roll);
+   if(!result.success)return {...state,notice:'Gacha unavailable: '+result.failure};
+   if(result.isNewUnlock)grantGuestXp(g,'NEW_PUPPY');
+   gachaResult=result;notice=result.isNewUnlock?'🐶 NEW PUPPY: '+result.puppyName:'🐶 Duplicate capsule: '+result.puppyName;
+   break;
+  }
+  case 'dismissGacha':return {...state,gachaResult:null};
   case 'exchange':if(!convertTreatsToChips(g,action.amount))return {...state,notice:'Exchange requires Treats in multiples of 10'};notice='🎰 Casino Chips credited';break;
   case 'daily':if(!claimDailyReward(g,action.epochDay))return {...state,notice:'Daily reward already claimed'};notice='🎁 Daily reward collected';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
@@ -94,6 +117,13 @@ export function transition(state,action){
   case 'dismiss':return {...state,notice:''};
   default:return no();
  }
- g.lastActiveAt=action.now||Date.now();
- return {game:g,ready:true,notice,blackjack};
+ const now=action.now||Date.now();
+ g.lastActiveAt=now;
+ if(!g.careUpdatedAtByPuppy||typeof g.careUpdatedAtByPuppy!=='object')g.careUpdatedAtByPuppy={};
+ g.careUpdatedAtByPuppy[g.puppyStyle]=now;
+ if(!g.careProfiles||typeof g.careProfiles!=='object')g.careProfiles={};
+ g.careProfiles[g.puppyStyle]={happiness:g.happiness,fullness:g.fullness,energy:g.energy,cleanliness:g.cleanliness,bond:g.bond};
+ const granted=settleGuestAchievements(g);
+ if(granted.length)notice=(notice?notice+' · ':'')+'🏆 '+granted.length+' achievement'+(granted.length===1?'':'s')+' earned (+50 XP each)';
+ return {game:g,ready:true,notice,blackjack,gachaResult};
 }
