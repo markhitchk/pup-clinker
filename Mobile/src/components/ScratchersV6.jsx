@@ -14,7 +14,7 @@ export default function ScratchersV6({game,pending,lastResult,onAction,onBack}){
  const selected=cards.find(x=>x.wager===wager)||cards[0];
  const active=cards.find(x=>x.wager===pending?.wager)||selected;
  const display=lastResult||pending;
- const blocking=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingPlinko||game.casinoRound);
+ const blocking=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingPlinko||game.pendingWheel||game.casinoRound);
  const canBuy=!blocking&&game.casinoChips>=wager;
  const start=()=>{
   if(!canBuy){setMessage('Finish the current Casino round or choose a card you can afford.');return;}
