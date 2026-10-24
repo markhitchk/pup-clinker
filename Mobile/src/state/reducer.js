@@ -34,6 +34,9 @@ export function transition(state,action){
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game)applyOfflineCare(game,action.now||Date.now());
+  // Kotlin normalizes the active LocalDate on load. Daily progress must not
+  // display the previous day's counters until the first minute timer fires.
+  rollDailyDay(game,new Date(action.now||Date.now()));
   const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
   game.casinoRound=blackjack;
   game.pendingScratch=validPendingScratch(game.pendingScratch)?game.pendingScratch:null;
