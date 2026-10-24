@@ -128,7 +128,7 @@ test('Kotlin skill descriptions and prestige controls reset only run-specific pr
  assert.ok(kotlin.includes('V6PrestigeCenter(state, vm'));
  assert.ok(prestigeScreen.includes('PRESTIGE_SKILL_PRESENTATION[skill]'));
  assert.ok(prestigeScreen.includes('prestigeOffer(g,activeCasinoRound)'));
- assert.ok(prestigeScreen.includes('permanent'));
+ assert.ok(prestigeScreen.includes('Permanent skill tree'));
  assert.equal(PRESTIGE_SKILL_PRESENTATION.AUTO_TRAINING.title,'Active Training');
  for(const skill of ['TAP_TRAINING','AUTO_TRAINING','SMART_SHOPPER','TICKET_SENSE']){
   assert.ok(PRESTIGE_SKILL_PRESENTATION[skill]);
