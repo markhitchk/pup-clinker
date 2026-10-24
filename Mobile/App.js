@@ -8,6 +8,7 @@ import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
+import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
 import {ONBOARDING_STEPS,validBirthday} from './src/engine/onboarding.js';
 import {goalsForDay,progressForGoal,localEpochDay,monthKey} from './src/engine/monthlyRewards.js';
 
@@ -394,26 +395,47 @@ const CASINO_PAGES=[
 function CasinoArtwork({image,ratio=1,height}){
  return <View style={styles.casinoArtworkFrame}><Image resizeMode="contain" source={image} style={{width:'100%',height:height||undefined,aspectRatio:height?undefined:ratio}}/></View>;
 }
-function BlackjackArtworkCard({id,hidden=false}){
+function BlackjackArtworkCard({id,hidden=false,width=47,height=66}){
  const source=hidden?CASINO_ART.cardBack:CASINO_ART.cardFront;
- return <ImageBackground source={source} resizeMode="stretch" style={styles.blackjackArtworkCard} imageStyle={{borderRadius:5}}>
-  {!hidden?<Txt style={styles.blackjackCardLabel}>{cardLabel(id)}</Txt>:null}
+ return <ImageBackground source={source} resizeMode="stretch" style={[styles.blackjackArtworkCard,{width,height}]} imageStyle={{borderRadius:5}}>
+  {!hidden?<Txt style={[styles.blackjackCardLabel,{fontSize:Math.max(9,width*.29)}]}>{cardLabel(id)}</Txt>:null}
  </ImageBackground>;
 }
+function BlackjackCardFan({cards=[],hideAfterFirst=false,zone,cardWidth}){
+ const fan=blackjackFan(zone.width,cardWidth,cards.length);
+ const h=Math.min(fan.cardWidth*1.4,zone.height);
+ const left=(zone.width-fan.width)/2;
+ return <View style={{position:'absolute',left:zone.left,top:zone.top,width:zone.width,height:zone.height}} pointerEvents="none">
+  {cards.map((id,index)=><View key={index} style={{position:'absolute',left:left+index*fan.step,top:(zone.height-h)/2}}>
+   <BlackjackArtworkCard id={id} hidden={hideAfterFirst&&index>0} width={fan.cardWidth} height={h}/>
+  </View>)}
+ </View>;
+}
 function BlackjackFeltTable({round}){
- const hand=round?.hands?.[round.activeHandIndex];
- const player=hand?.cards||[];
+ const window=useWindowDimensions();
+ const [measuredWidth,setMeasuredWidth]=useState(0);
+ const width=measuredWidth||Math.min(window.width-32,430);
+ const metrics=blackjackTable(width);
  const dealer=round?.dealerCards||[];
- return <ImageBackground source={CASINO_ART.blackjack} resizeMode="cover" style={styles.blackjackFelt} imageStyle={{borderRadius:22}}>
-  <View style={styles.blackjackDealerArea}>
-   <Txt style={styles.blackjackFeltTitle}>DEALER {round?.complete?'· '+handTotal(dealer).total:''}</Txt>
-   <View style={styles.blackjackFan}>{dealer.length?dealer.map((id,index)=><BlackjackArtworkCard key={index} id={id} hidden={!round.complete&&index>0}/>):<Txt style={styles.blackjackFeltTitle}>Dealer</Txt>}</View>
+ const player=round?.hands?.[round.activeHandIndex]?.cards||[];
+ const shared=blackjackSharedCardWidth(metrics,dealer.length,player.length);
+ return <View style={{gap:8}}>
+  <View style={{width:'100%'}} onLayout={event=>{
+   const next=Math.round(event.nativeEvent.layout.width);
+   if(next>0&&Math.abs(next-measuredWidth)>1)setMeasuredWidth(next);
+  }}>
+   <View style={{height:metrics.height,borderRadius:22,overflow:'hidden',backgroundColor:'#0B3026'}}>
+    <Image source={CASINO_ART.blackjack} resizeMode="stretch" style={{
+     position:'absolute',left:0,top:-metrics.artworkTop,width:metrics.width,height:metrics.artworkHeight
+    }}/>
+    <BlackjackCardFan cards={dealer} hideAfterFirst={Boolean(round&&!round.complete)} zone={metrics.dealer} cardWidth={shared}/>
+    <BlackjackCardFan cards={player} zone={metrics.player} cardWidth={shared}/>
+   </View>
   </View>
-  <View style={styles.blackjackPlayerArea}>
-   <Txt style={styles.blackjackFeltTitle}>PLAYER · {round?handTotal(player).total:'CHOOSE A WAGER'}</Txt>
-   <View style={styles.blackjackFan}>{player.length?player.map((id,index)=><BlackjackArtworkCard key={index} id={id}/>):<Txt style={styles.blackjackFeltTitle}>🐾 Ready to deal</Txt>}</View>
-  </View>
- </ImageBackground>;
+  <Txt muted style={styles.small}>{!round?'Choose a wager to deal.':round.complete?
+   'Dealer · '+handTotal(dealer).total+' points':
+   'Dealer · '+(dealer.length?cardLabel(dealer[0]):'Waiting')+' showing · hole card hidden'}</Txt>
+ </View>;
 }
 function CasinoScreen({g,act,state,bet,setBet,onBack}){
  const [page,setPage]=useState('hub');

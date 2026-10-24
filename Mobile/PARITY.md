@@ -87,3 +87,7 @@ The original Kotlin `App/` is **read-only authoritative reference** during the m
 ## Kotlin DynamicPuppyRoster read-only port
 
 The migration preview now loads the same `assets` folder index and v2/test/discord_rewards/v3+ manifests the Kotlin app uses, validates path/ID/size constraints, and caches trusted data separately from guest progression. **This discovery grants no puppy ownership**: newly streamed images appear locked unless the authoritative user account separately verifies an entitlement. `Mobile/tests/dynamicRoster.test.js` checks known Kotlin manifests and malicious path cases. The original cloud-save and account-grant endpoints are not called by this feature.
+
+### Blackjack Kotlin scene geometry
+
+The React preview now uses the **exact** `PuppyBlackjackLayout.kt` bitmap dimensions (1122×1402), alpha-transparent crop (86/1188) and dealer/player card zones, with Kotlin-style bounded fan spacing. `Mobile/tests/blackjackLayout.test.js` verifies numerical layout equations against the Kotlin source. Android screenshot validation, card flip animations, split-hand inspection and signed casino settlement remain to be completed.
