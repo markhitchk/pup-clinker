@@ -15,6 +15,7 @@ const backgrounds={
 };
 export default function ScratchStage({round,borderImage,onReveal,lastResult,cardId='pup_scratch'}){
  const [scratched,setScratched]=useState(()=>new Set());
+ const [coatingBounds,setCoatingBounds]=useState({width:0,height:0});
  const [coin,setCoin]=useState(null);
  const cells=useRef(new Set()),bounds=useRef({width:0,height:0});
  const last=useRef(null),coinRef=useRef(null),triggered=useRef(false),paintAt=useRef(0);
@@ -75,9 +76,9 @@ export default function ScratchStage({round,borderImage,onReveal,lastResult,card
  const progress=Math.min(100,Math.floor(scratchCoverage(scratched)*100));
  const bg=backgrounds[cardId]||'#FFF8E7';
  const symbols=shown?.symbols||['?','?','?'];
- const diameter=Math.min(SCRATCH_COIN_DIAMETER,Math.max(24,Math.min(bounds.current.width,bounds.current.height)*.8||56));
+ const diameter=Math.min(SCRATCH_COIN_DIAMETER,Math.max(24,Math.min(coatingBounds.width,coatingBounds.height)*.8||56));
  const coinWidth=diameter*SCRATCH_COIN_ASPECT;
- const resting=coin||{x:bounds.current.width*.5,y:bounds.current.height*.82,rotation:0};
+ const resting=coin||{x:coatingBounds.width*.5,y:coatingBounds.height*.82,rotation:0};
  return <View style={{gap:7}}>
   <View style={{width:'100%',aspectRatio:SCRATCH_FRAME.width/SCRATCH_FRAME.height,position:'relative'}} testID="scratch_card_stage">
    <View style={{
@@ -102,7 +103,8 @@ export default function ScratchStage({round,borderImage,onReveal,lastResult,card
       accessibilityHint="Drag the Scratch Token to remove 68 percent of coating. TalkBack users can use the increment action to clear more coating."
       accessibilityActions={[{name:'increment',label:'Scratch more coating'}]}
       onAccessibilityAction={event=>{if(event.nativeEvent.actionName==='increment')accessibilityStep();}}
-      onLayout={e=>{bounds.current={width:e.nativeEvent.layout.width,height:e.nativeEvent.layout.height};}}
+      onLayout={e=>{const b={width:e.nativeEvent.layout.width,height:e.nativeEvent.layout.height};
+        bounds.current=b;setCoatingBounds(old=>old.width===b.width&&old.height===b.height?old:b);}}
       style={{position:'absolute',left:0,right:0,top:0,bottom:0,borderRadius:12,overflow:'hidden'}}
      >
       <View pointerEvents="none" style={{position:'absolute',left:0,right:0,top:0,bottom:0,opacity:.95}}>
@@ -121,7 +123,7 @@ export default function ScratchStage({round,borderImage,onReveal,lastResult,card
        <Text style={{fontSize:18,fontWeight:'900',fontStyle:'italic',color:'#58616AA6',textAlign:'center'}}>Here!</Text>
       </View>:null}
      </View>:null}
-    {pending&&bounds.current.width>0?<Image pointerEvents="none"
+    {pending&&coatingBounds.width>0?<Image pointerEvents="none"
       source={TOKEN} resizeMode="contain" accessibilityLabel="Scratch Token"
       style={{position:'absolute',width:coinWidth,height:diameter,
        left:Math.max(0,resting.x-coinWidth/2),top:Math.max(0,resting.y-diameter/2),
