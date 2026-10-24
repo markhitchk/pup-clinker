@@ -18,3 +18,9 @@ test('no WebView or browser host is used for Android gameplay',()=>{
  assert.equal(source.includes('WebView'),false);
  assert.match(source,/Play/);assert.match(source,/Care/);assert.match(source,/Prestige/);
 });
+
+test('Android launcher icon comes from original Puppy Clicker source logo',()=>{
+ const config=app();
+ assert.equal(config.icon,'./assets/logos/puppy_clicker.png');
+ assert.equal(config.android.adaptiveIcon.foregroundImage,'./assets/logos/puppy_clicker.png');
+});
