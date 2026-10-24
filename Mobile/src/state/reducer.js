@@ -5,7 +5,7 @@ import {grantGuestXp,settleGuestAchievements} from '../engine/progression.js';
 import {applyOfflineCare,switchCareProfile} from '../engine/careDecay.js';
 import {newRoundFromDeck,hit as bjHit,stand as bjStand,doubleDown as bjDouble,split as bjSplit,blackjackOutcome,validBlackjackState} from '../engine/blackjack.js';
 import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../engine/onboarding.js';
-import {fallbackSchedule,rollDailyDay,claimDailyGoal} from '../engine/monthlyRewards.js';
+import {fallbackSchedule,rollDailyDay,claimDailyGoal,localEpochDay} from '../engine/monthlyRewards.js';
 import {newPendingScratch,validPendingScratch} from '../engine/scratch.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
@@ -104,7 +104,13 @@ export function transition(state,action){
   }
   case 'dismissGacha':return {...state,gachaResult:null};
   case 'exchange':if(!convertTreatsToChips(g,action.amount))return {...state,notice:'Exchange requires Treats in multiples of 10'};notice='🎰 Casino Chips credited';break;
-  case 'daily':rollDailyDay(g,new Date(action.now||Date.now()));if(!claimDailyReward(g,action.epochDay))return {...state,notice:'Daily reward already claimed'};notice='🎁 Daily reward collected';break;
+  case 'daily':{
+   // Kotlin resolves LocalDate.now() inside claimDailyReward, not from a UI-supplied day.
+   const date=new Date(action.now||Date.now());
+   rollDailyDay(g,date);
+   if(!claimDailyReward(g,localEpochDay(date)))return {...state,notice:'Daily reward already claimed'};
+   notice='🎁 Daily reward collected';break;
+  }
   case 'claimDailyGoal':if(!claimDailyGoal(g,action.goalId,state.monthlySchedule,new Date(action.now||Date.now())))return {...state,notice:'Goal incomplete or already claimed'};notice='🎯 Daily goal completed · Treats, Bone and Pup Coin credited';break;
   case 'parkStart':if(!startPark(g,action.now))return {...state,notice:'Need 20 energy, or a walk is already active'};notice='🌳 Walk started';break;
   case 'parkClaim':if(!claimPark(g,action.now))return {...state,notice:'Walk is not finished'};notice='🌳 Park reward collected';break;
