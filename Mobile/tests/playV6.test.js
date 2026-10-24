@@ -11,32 +11,22 @@ const react=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const launchedPlay=kotlin.slice(kotlin.indexOf('private fun V6Play('),kotlin.indexOf('private fun V6CareAndDaily('));
 const reactPlay=react.slice(react.indexOf('function PlayScreen('),react.indexOf('function CareScreen('));
 
-test('Part 1 matches launched V6Play instead of unused RevampedPlayScreen',()=>{
- assert.ok(launchedPlay.includes('V6Header("Puppy Clicker"'));
- assert.ok(launchedPlay.includes('V6Wallet(state)'));
- assert.ok(launchedPlay.includes('V6NeedPill("💖"'));
- assert.ok(launchedPlay.includes('V6NeedPill("🍖"'));
- assert.ok(launchedPlay.includes('V6NeedPill("⚡"'));
- assert.ok(launchedPlay.includes('V6NeedPill("🫧"'));
- assert.ok(launchedPlay.includes('height(365.dp)'));
- assert.ok(launchedPlay.includes('.size(258.dp)'));
- assert.ok(launchedPlay.includes('238.dp'));
- assert.equal(V6_PLAY_LAYOUT.stageHeight,365);
- assert.equal(V6_PLAY_LAYOUT.circleSize,258);
- assert.equal(V6_PLAY_LAYOUT.portraitSize,238);
- assert.equal(V6_PLAY_LAYOUT.headerLogo,50);
- assert.equal(V6_PLAY_LAYOUT.needMeterHeight,3);
- assert.ok(reactPlay.includes('<PageHeader withLogo'));
+const revamp=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyMainScreensRevamp.kt',import.meta.url),'utf8');
+const revampPlay=revamp.slice(revamp.indexOf('internal fun PuppyRevampedPlayScreen('),revamp.indexOf('internal fun PuppyRevampedCareScreen('));
+
+test('Play follows the currently shipping Kotlin revamp geometry and reward strip',()=>{
+ assert.ok(revampPlay.includes('PuppyMainPageHeader('));
+ assert.ok(revampPlay.includes('PuppyWalletCard(state)'));
+ assert.ok(revampPlay.includes('"Next Reward · ${it.title}"'));
+ assert.ok(revampPlay.includes('"🐾 Tap "'));
+ assert.ok(reactPlay.includes('<PageHeader title="Play"'));
  assert.ok(reactPlay.includes('<Wallet game={g}/>'));
- assert.ok(reactPlay.includes('<NeedPill icon="💖"'));
- assert.ok(reactPlay.includes('styles.tapStage'));
- assert.ok(reactPlay.includes('v6PlayTapLabel(g,clock)'));
- assert.ok(react.includes('style={styles.needMeterTrack}'));
- assert.ok(react.includes('needMeterTrack:'));
- // The original V6Play has no reward card or quick-action grid on this page.
- assert.ok(!reactPlay.includes('styles.nextRewardCard'));
- assert.ok(!reactPlay.includes('<QuickAction'));
- assert.ok(react.includes("onPress={()=>onOpen('rewards')}"),'Rewards must remain accessible outside Play');
+ assert.ok(reactPlay.includes('styles.revampedTapStage'));
+ assert.ok(reactPlay.includes('styles.revampedTapButton'));
+ assert.ok(reactPlay.includes('styles.nextRewardCard'));
+ assert.ok(reactPlay.includes('goalsForDay(schedule,today)'));
+ assert.ok(!reactPlay.includes('<NeedPill'));
+ assert.ok(!reactPlay.includes('styles.puppyCircle'));
 });
 
 test('Kotlin V6 native density uses fixed 365dp stage with safe narrow-device circle',()=>{
@@ -56,6 +46,12 @@ test('Play wallet and label use Kotlin formatV6 thresholds and precision',()=>{
  assert.equal(v6Format(1234567,false),'1,234,567');
  assert.equal(v6Format(1000000000,true),'1.00B');
  assert.equal(v6Format(1000000000000,true),'1.00T');
+ assert.equal(v6Format('9000000000000000015',false),'9,000,000,000,000,000,015');
+ assert.equal(v6Format(9_000_000_000_000_000_015n,false),'9,000,000,000,000,000,015');
+ assert.equal(v6Format('9000000000000000015',true),'9000000.00T');
+ assert.equal(v6Format('not-a-balance',false),'0');
+ assert.equal(v6Format('9223372036854775807',false),'9,223,372,036,854,775,807');
+
  const g=freshGame();g.clickPower=1500;
  assert.equal(v6PlayTapLabel(g,1000),'Tap Buddy · +1.5K 🍪');
  g.compactNumbers=false;
@@ -82,13 +78,20 @@ test('time-bound Kotlin cooldown prevents taps and survives guest save',()=>{
  assert.equal(sanitizeGame({...g,cooldownUntilMs:-999}).cooldownUntilMs,0);
 });
 
-test('Only the portrait is tappable and Play idle motion honors animation preference',()=>{
- assert.ok(reactPlay.includes('<View style={[styles.tapStage'));
- assert.ok(reactPlay.includes('<Pressable accessibilityRole="button"'));
- assert.ok(reactPlay.indexOf('<View style={[styles.tapStage')<reactPlay.indexOf('<Pressable accessibilityRole="button"'));
+test('Kotlin revamped Play supports both puppy portrait and full-width tap button',()=>{
+ assert.ok(reactPlay.includes('styles.revampedPortraitTouch'));
+ assert.ok(reactPlay.includes('styles.revampedTapButton'));
  assert.ok(reactPlay.includes('onPress={doTap}'));
- assert.ok(!reactPlay.includes('onOpen('));
  assert.ok(reactPlay.includes('g.animationsEnabled===false'));
- assert.ok(reactPlay.includes('Animated.loop('));
  assert.ok(reactPlay.includes('disabled={cooldown>0}'));
+ assert.ok(reactPlay.includes('careTapBonus(g)'));
+ assert.ok(reactPlay.includes('<View style={[styles.revampedTapStage,{paddingVertical:8}]}>'));
+ assert.ok(react.includes("revampedTapStage:{flex:1"));
+ assert.ok(react.includes("const showFixedPlay=inGame&&!secondary&&tab==='play'"));
+ assert.ok(react.includes("onLayout={e=>setPrimaryHeight("));
+ assert.ok(react.includes("style={[styles.revampedPlayViewport"));
+ assert.ok(!reactPlay.includes('stageHeight'));
+ assert.ok(react.includes("borderRadius:size/2,overflow:\'hidden\'"));
+ assert.ok(react.includes("const ratio=0.96;"));
+ assert.ok(react.includes("!transparent&&puppy.emoji"));
 });

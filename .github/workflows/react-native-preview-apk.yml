@@ -3,6 +3,9 @@ name: Puppy Clicker React Native Preview APK
 # isolated preview package. This is NEVER a Play Store production release.
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [feat/react-native-full-android]
+    paths: ['Mobile/**', '.github/workflows/react-native-preview-apk.yml']
   push:
     branches: [feat/react-native-full-android]
     paths:

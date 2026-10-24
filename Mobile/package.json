@@ -8,13 +8,20 @@
     "start": "expo start",
     "android": "expo run:android",
     "test": "node --test tests/*.test.js",
-    "check": "npm test && expo export --platform android"
+    "check": "npm test && expo export --platform android",
+    "prepare:art": "node scripts/prepare-legacy-puppies.mjs",
+    "postinstall": "npm run prepare:art",
+    "prestart": "npm run prepare:art",
+    "preandroid": "npm run prepare:art",
+    "pretest": "npm run prepare:art"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~57.0.23",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {}
 }

@@ -3,7 +3,7 @@
 **Audit state:** NOT CERTIFIED. A screen being source-ported or unit-tested does NOT imply 100% screenshot or runtime parity.
 
 **Production reference:** `App/` Kotlin Android, actual launcher functions and UI test captures.
-**React target:** `Mobile/` on `feat/react-native-full-android`, installed side-by-side as `com.harleytg.puppyclicker.preview`.
+**React target:** `Mobile/` on existing `fix/react-android-kotlin-revamp-ui-20261023` (PR #74, targeting `feat/react-native-full-android`), installed side-by-side as `com.harleytg.puppyclicker.preview`.
 **Never:** merge the preview into production, rename its package, migrate guest currencies or mark parity 100% without an on-device Kotlin/React comparison.
 
 ## Screen-by-screen evidence
@@ -29,6 +29,21 @@
 | Lucky Pup Wheel | Part 5F seven source-weighted slices, segmented labels, independent 18-click pointer, committed spin + once-only payout. 2% protected PUP reward intentionally refunded in guest mode; no trusted entitlement integration | 3 byte-identical Kotlin wheel PNGs | **Missing** | **Not 100% verified** |
 | Settings / profile / dialogs / notifications / admin | Incomplete; native auth and settings parity pending | Partial | **Missing** | **Not 100% verified** |
 
+## October 23 user-supplied Android UI mismatch: revamp vs old V6 preview
+
+A screenshot of the installed React preview was compared with a screenshot of the installed Kotlin app on the user's Android phone. **They are not synchronized game-state screenshots**: the guest React app shows Buddy and zero currency, while Kotlin shows an owned Dev Pup and progressed currencies. This is a genuine *structural* mismatch, but these captures cannot establish pixel metrics or save parity.
+
+| Observed difference | Kotlin production screenshot | Corrective React PR |
+| --- | --- | --- |
+| Main navigation | Play · Care · Roster · Shop · Rewards | Switch five tabs to the same order; Settings/Prestige are internal |
+| Top toolbar | Brand logo/title with bell and settings | Shared header with notification/settings routes; preview identity remains visible |
+| Play heading | Play + short tagline | Current page header instead of Buddy/mood brand banner |
+| Wallet | Horizontal 4 currency summary | Preserve horizontal wallet; compact big values to avoid uncontrolled wrapping |
+| Tap area | Centered art, energy and care bonus, full-width cyan tap button | Replace old rounded circle + inset tap badge and move care needs to Care page |
+| Next reward | Goal summary, progress bar, gift icon | Add date-driven next unclaimed goal and reward strip |
+
+**Remaining parity blockers:** React still uses a local guest state with different portraits/entitlements than Kotlin. Settings, notifications, roster and all other screens are still incompletely ported; original animation/spacing and responsive behavior have not been visually verified. The current change corrects major structural discrepancies but **does not certify the complete app UI or a successful APK build**.
+
 ## Minimum evidence to mark EACH screen 100%
 
 1. Start the same feature state with the **same actual Kotlin original assets** in both APKs. Use identical Android device, density, system fontScale, theme, locale and orientation. Record the native status/navigation bar and safe-area offsets.
@@ -39,3 +54,7 @@
 6. Treat any **deliberate deviation** (extra preview browser, guest-only login, generated source fallback) as non-parity until an explicit scoped exception is agreed upon. Keep Supabase/Discord/PupEye identity and transaction security blocked until the verified production migration stage.
 
 **Current conclusion:** All six Casino source ports are committed, but **none** of the listed screens has the device screenshot/video evidence required for 100% parity. A Preview APK build at commit `76c118ad` ([run 40068347188](https://github.com/markhitchk/pup-clinker/actions/runs/40068347188)) failed 8/147 tests (139 passed), including a Wheel ReferenceError and outdated source-contract assertions. Subsequent Part 6 commits correct those eight detected causes, but require a fresh passing CI run before the tests or APK can be called verified. The next task is **Part 6: green APK build and side-by-side Android screenshot/video captures**; see [PART_6_DEVICE_QA.md](PART_6_DEVICE_QA.md).
+
+## October 24 correct-branch follow-up
+
+The earlier work on `markhitchk/Puppy-Clicker` was in a separate repository and **did not update this app**. Kotlin UI parity changes now target this repository's existing React preview branch (`fix/react-android-kotlin-revamp-ui-20261023`) and PR #74. The React preview uses Kotlin's 48dp toolbar, 40dp action buttons, 80dp bottom navigation, indicator pills, Android safe-area insets, and available-height breakpoints (590/700dp) for Play/Care. The guest disclaimer remains in Settings rather than changing the Kotlin header height. Kotlin production remains unchanged. Full device screenshot matching, protected asset transparency, authoritative Supabase data and remaining UI screens are still unverified.

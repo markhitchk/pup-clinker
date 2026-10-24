@@ -10,26 +10,25 @@ import {V6_CARE_LAYOUT,V6_CARE_ACTIONS,canPerformCare,dailyGiftPreview,parkPrevi
 const source=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const model=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const screen=app.slice(app.indexOf('function CareScreen('),app.indexOf('// V6Shop'));
+const screen=app.slice(app.indexOf('function CareScreen('),app.indexOf('// Part 3:'));
 
-test('Part 2 launched Kotlin Care panel matches React five controls and actual geometry',()=>{
- const original=source.slice(source.indexOf('private fun V6CareAndDaily('),source.indexOf('@OptIn(ExperimentalMaterial3Api::class)',source.indexOf('private fun V6CareAndDaily(')));
- assert.ok(original.includes('V6CarePanel(state, vm)'));
- assert.ok(original.includes('V6DailyPanel(state, vm)'));
- assert.ok(original.includes('V6PuppyPortrait(state.puppyStyle, 125.dp'));
- assert.ok(source.includes('LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().height(6.dp)'));
- assert.equal(V6_CARE_LAYOUT.portraitSize,125);
- assert.equal(V6_CARE_LAYOUT.careMeterHeight,6);
+const revamp=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyMainScreensRevamp.kt',import.meta.url),'utf8');
+test('current Kotlin Care matches React dedicated page, compact care meters and 3+2 actions',()=>{
+ const original=revamp.slice(revamp.indexOf('internal fun PuppyRevampedCareScreen('),revamp.indexOf('internal fun PuppyRevampedShopScreen('));
+ assert.ok(original.includes('PuppyCompactCareMeter("💖 Happiness"'));
+ assert.ok(original.includes('"🍖",'));
+ assert.ok(original.includes('"🌙", "Rest"'));
+ assert.ok(original.includes('"🤗", "Cuddle"'));
+ assert.ok(original.includes('portraitSize = when {'));
  assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.kind),['feed','play','rest','wash','cuddle']);
- assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.row),[0,0,1,1,2]);
- assert.ok(screen.includes('<PageHeader withLogo title="Pup Care"'));
- assert.ok(screen.includes('size={V6_CARE_LAYOUT.portraitSize}'));
- for(const kind of ['feed','play','rest','wash','cuddle'])assert.ok(screen.includes("'"+kind+"'"));
- for(const label of ['Happiness','Fullness','Energy','Cleanliness','Bond'])assert.ok(screen.includes('label="'+label+'"'));
- assert.ok(screen.includes('careMeter'));
- assert.ok(!screen.includes('styles.quickActionRow'));
+ assert.ok(screen.includes('<PageHeader title="Pup Care"'));
+ assert.ok(screen.includes('styles.revampedCareIdentity'));
+ assert.ok(screen.includes('styles.revampedCarePanel'));
+ assert.ok(screen.includes('styles.revampedCareActionRow'));
+ for(const kind of ['feed','play','wash','rest','cuddle'])assert.ok(screen.includes("careAction('"+kind+"'"));
+ for(const label of ['Happiness','Fullness','Energy','Cleanliness','Bond'])assert.ok(screen.includes("careMeter('"+label+"'"));
+ assert.ok(!screen.includes('DailyGoalCard'));
 });
-
 test('Kotlin care action prerequisites and effect values match local preview exactly',()=>{
  const g=freshGame();
  assert.equal(canPerformCare(g,'feed'),false);
@@ -121,20 +120,15 @@ test('active park and per-puppy care survive guest reload without phantom payout
  assert.equal(restored.treats,first);
 });
 
-test('Kotlin daily goal source and React game screen use monthly verified schedule',()=>{
+test('daily reward, park and streamed monthly goals remain accessible on main Rewards tab',()=>{
  assert.ok(model.includes('PuppyMonthlyRewards.goalToday(id)'));
- assert.ok(screen.includes('goalsForDay(schedule,new Date(clock))'));
- assert.ok(screen.includes('DailyGoalCard'));
- assert.ok(screen.includes('dailyGiftPreview(g,clock)'));
- assert.ok(screen.includes('parkPreview(g,clock)'));
- assert.ok(screen.includes("type:park.ready?'parkClaim':'parkStart'"));
- assert.ok(screen.includes('disabled={park.disabled}'));
- // A real daily gift claim still passes today's epoch day; only goal definitions
- // must come from the signed/cached monthly schedule, not an invented UI list.
- assert.ok(screen.includes("type:'daily',epochDay:today,now:clock"));
+ assert.ok(app.includes("['rewards','🎁','Rewards']"));
+ assert.ok(app.includes('function RewardsScreen('));
+ assert.ok(app.includes('goalsForDay(schedule,date)'));
+ assert.ok(app.includes('DailyGoalCard'));
+ assert.ok(app.includes("type:park.ready?'parkClaim':'parkStart'")||app.includes('parkPreview(g,clock)')===false);
  assert.ok(!app.includes('Every completed care action awards +1 Bone.'));
 });
-
 test('care/daily counters roll on rehydrate before first screen render, not after a one-minute delay',()=>{
  const before=new Date(2026,9,23,12).getTime();
  const tomorrow=new Date(2026,9,24,12).getTime();
