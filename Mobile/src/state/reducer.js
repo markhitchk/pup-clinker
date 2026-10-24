@@ -8,7 +8,7 @@ import {ONBOARDING_STEPS,validBirthday,normalizeLocalGuestName} from '../engine/
 import {fallbackSchedule,rollDailyDay,claimDailyGoal,localEpochDay} from '../engine/monthlyRewards.js';
 import {newPendingScratch,validPendingScratch} from '../engine/scratch.js';
 
-export const initialState=()=>({game:freshGame(),blackjack:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
+export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
 const validCard=n=>Number.isInteger(n)&&n>=1&&n<=13;
 function casinoRound(action){
@@ -40,12 +40,13 @@ export function transition(state,action){
   const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
   game.casinoRound=blackjack;
   game.pendingScratch=validPendingScratch(game.pendingScratch)?game.pendingScratch:null;
-  return {...state,game,blackjack,ready:true};
+  return {...state,game,blackjack,blackjackDisplay:null,ready:true};
  }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
  let notice='';
  let blackjack=state.blackjack;
+ let blackjackDisplay=state.blackjackDisplay||null;
  let gachaResult=state.gachaResult||null;
  switch(action.type){
   case 'onboardNext':
@@ -163,8 +164,10 @@ export function transition(state,action){
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let next;try{next=newRoundFromDeck(action.wager,action.deck);}catch{return {...state,notice:'Invalid wager or card deck'};}
    if(!casinoSpend(g,action.wager))return no();
+   blackjackDisplay=null;
    if(next.complete){
     const result=blackjackOutcome(next);casinoPayout(g,result.totalPayout);
+    blackjackDisplay={state:next,outcome:result};
     notice='🃏 Natural Blackjack settled · +'+result.totalPayout+' Chips';blackjack=null;
    }else{blackjack=next;notice='🃏 Deal complete · Hit, Stand, Double or Split';}
    break;
@@ -184,6 +187,9 @@ export function transition(state,action){
    if(blackjack.complete){
     const outcome=blackjackOutcome(blackjack);
     casinoPayout(g,outcome.totalPayout);
+    // Keep the finished table visible, just like Kotlin's lastStatePayload.
+    // This is display-only and never re-settles the casino wallet.
+    blackjackDisplay={state:blackjack,outcome};
     notice='🃏 '+outcome.hands.map(h=>h.result).join(' / ')+' · +'+outcome.totalPayout+' Chips';
     blackjack=null;
    }else notice='🃏 '+action.type.replace('blackjack','')+' · Hand '+(blackjack.activeHandIndex+1)+' / '+blackjack.hands.length;
@@ -202,5 +208,5 @@ export function transition(state,action){
  g.careProfiles[g.puppyStyle]={happiness:g.happiness,fullness:g.fullness,energy:g.energy,cleanliness:g.cleanliness,bond:g.bond};
  const granted=settleGuestAchievements(g);
  if(granted.length)notice=(notice?notice+' · ':'')+'🏆 '+granted.length+' achievement'+(granted.length===1?'':'s')+' earned (+50 XP each)';
- return {...state,game:g,ready:true,notice,blackjack,gachaResult};
+ return {...state,game:g,ready:true,notice,blackjack,blackjackDisplay,gachaResult};
 }
