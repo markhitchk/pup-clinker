@@ -1,3 +1,13 @@
+## Correction: follow the shipped Kotlin build, preserve approved screens
+
+The source launcher file is an input to a build-time patch pipeline, not the final UI. `App/tools/seasonal.gradle.kts` applies `patch_roster_navigation.py`, `patch_main_ui_revamp.py`, and final viewport patches. The shipped primary destinations are **Play, Care, Roster, Shop, Rewards**, as defined in `PuppyNavigationModel.kt`. Settings and Prestige are internal destinations; the primary bar is hidden while an internal destination is open. **Do not restore the raw V6 Play/Care/Shop/Prestige/Settings tab list.**
+
+The shipped Play surface is `PuppyRevampedPlayScreen` in `PuppyMainScreensRevamp.kt`: height-sensitive 122/150/185dp portrait, transparent unmasked stage, energy/care-bonus note, tap button, and live Next Reward card. The fixed app bar is 48dp high. The older 365dp stage, 258dp circle, care-pill row and duplicate Puppy Clicker header belong to the replaced V6 screen. Historical audit notes below that call this revamped screen unused are superseded by this correction.
+
+Preserve the screens the user has approved when correcting another feature. This change restores navigation/Play and source settings density; Care, Shop and casino layouts are retained. The original `LegacyPuppyTransparency.kt` removes edge-connected near-black matte only from opaque legacy V1/V2 PNGs. `scripts/prepare-portraits.cjs` applies the same deterministic algorithm into ignored `assets/rendered/`; source artwork is untouched and true-alpha PNGs are copied without alteration. Run `npm run prepare:portraits` after artwork updates; installation and test/start scripts do this automatically.
+
+Regression coverage now renders the app and clicks Roster, Rewards and Settings; it also verifies Back returns to the prior tab, the Next Reward advances after claims, height breakpoints, and matte cleanup preserving enclosed dark details. These tests do not establish pixel-perfect installed Android parity.
+
 ## October 24 — settings and hardware pointer restoration
 
 - Restored source accordion categories with functional local appearance controls: Light/Dark/Follow System, eight source accents/custom HEX, high contrast, Compact/Default/Large scale, reduced motion and performance presets. Existing UI style dictionaries update when appearance changes; source casino scenes retain an explicit dark surface for their fixed artwork/text palette.

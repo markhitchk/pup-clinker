@@ -16,7 +16,7 @@ test('all 32 V1/V2, Discord and original Kotlin test puppy portraits are bundled
   assert.equal(existsSync(path),true,'Missing '+p.id);
   const png=readFileSync(path);
   assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a',p.id+' must be valid PNG');
-  assert.ok(map.includes(p.id+":require('../../assets/"+file+"')"),'No static Metro require for '+p.id);
+  assert.ok(map.includes(p.id+":require('../../assets/"+(/^(v1|v2)\//.test(file)?'rendered/':'')+file+"')"),'No static Metro require for '+p.id);
  }
 });
 test('React Native portraits reference bundled map, not fetch each remote image',()=>{

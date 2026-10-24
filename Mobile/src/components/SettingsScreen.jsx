@@ -28,14 +28,14 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
  const confirm=(title,message,label,callback)=>Alert.alert(title,message,[{text:'Cancel',style:'cancel'},{text:label,style:'destructive',onPress:callback}]);
  const pending=<T muted>Available after the original linked account and protected services are migrated. This preview has local guest progress.</T>;
  return <View style={s.page}>
-  <T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T>
+  <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
   <View style={s.identity}>
    <Image source={PUPPY_IMAGES[g.puppyStyle]||PUPPY_IMAGES.classic} resizeMode="contain" style={s.avatar}/>
-   <View style={{flex:1,gap:8}}><T style={s.identityName}>{g.guestName}</T><View style={s.choices}><T style={s.badge}>Lv {guestLevel(g)}</T><T style={s.badge}>{g.xp} XP</T></View></View>
-  </View><T muted style={s.small}>Guest · Level {guestLevel(g)} · Saved on this device</T>
+   <View style={{flex:1,gap:8}}><T numberOfLines={1} style={s.identityName}>{g.guestName}</T><View style={s.choices}><T style={s.badge}>Lv {guestLevel(g)}</T><T style={s.badge}>{g.xp} XP</T></View></View>
+  </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={!name.trim()} onPress={()=>act({type:'onboardPlayer',name})}>Save Display Name</Action>
+   <T muted>Guest · Level {guestLevel(g)} · Saved on this device</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={!name.trim()} onPress={()=>act({type:'onboardPlayer',name})}>Save Display Name</Action>
    <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
    <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={!validBirthday(Number(month),Number(day))} onPress={()=>act({type:'onboardBirthday',month:Number(month),day:Number(day)})}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
@@ -106,9 +106,9 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
  </View>;
 }
 const s=themedStyles(()=>({
- page:{gap:9},text:{color:C.text,fontSize:14},muted:{color:C.muted},small:{fontSize:12},bold:{fontWeight:'700'},
- title:{fontSize:28,fontWeight:'900',color:C.text},description:{fontSize:16,lineHeight:22},
- identity:{marginTop:8,backgroundColor:'#5B4CDA',borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:16,minHeight:110},avatar:{width:76,height:76},identityName:{fontSize:23,fontWeight:'900',color:'#FFFFFF'},badge:{fontSize:15,fontWeight:'800',color:'#FFFFFF',backgroundColor:'#7568E4',borderRadius:22,paddingHorizontal:10,paddingVertical:6,overflow:'hidden'},
- group:{fontSize:12,fontWeight:'900',color:C.accentInk,marginTop:10,marginBottom:1},section:{backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:19,overflow:'hidden'},sectionHead:{flexDirection:'row',alignItems:'center',padding:13,gap:11,minHeight:70},sectionTitle:{fontSize:18,fontWeight:'800'},subtitle:{fontSize:13,lineHeight:18},iconBox:{width:44,height:44,borderRadius:13,backgroundColor:C.dark?'#494457':'#E7E1EF',alignItems:'center',justifyContent:'center'},icon:{fontSize:25},chevron:{fontSize:26,fontWeight:'800',color:C.accentInk},body:{padding:14,paddingTop:5,gap:12},
+ page:{gap:0},text:{color:C.text,fontSize:14},muted:{color:C.muted},small:{fontSize:12},bold:{fontWeight:'700'},
+ title:{fontSize:28,fontWeight:'900',color:C.text},description:{fontSize:14,lineHeight:21},
+ identity:{marginTop:14,marginBottom:16,backgroundColor:'#5B4FE0',borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:14,minHeight:108},avatar:{width:76,height:76},identityName:{fontSize:22,fontWeight:'900',color:'#FFFFFF'},badge:{fontSize:14,fontWeight:'800',color:'#FFFFFF',backgroundColor:'#7568E4',borderRadius:22,paddingHorizontal:10,paddingVertical:4,overflow:'hidden'},
+ group:{fontSize:12,fontWeight:'900',color:C.accentInk,marginTop:7,marginBottom:7},section:{marginBottom:9,backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,overflow:'hidden'},sectionHead:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:12,gap:11,minHeight:68},sectionTitle:{fontSize:16,fontWeight:'800'},subtitle:{fontSize:12,lineHeight:17},iconBox:{width:42,height:42,borderRadius:12,backgroundColor:C.dark?'#494457':'#E7E1EF',alignItems:'center',justifyContent:'center'},icon:{fontSize:21},chevron:{fontSize:26,fontWeight:'800',color:C.accentInk},body:{padding:14,paddingTop:5,gap:12},
  action:{padding:12,borderRadius:20,borderWidth:1,borderColor:C.line,minHeight:44,justifyContent:'center'},toggle:{flexDirection:'row',alignItems:'center',gap:9,paddingVertical:5},choices:{flexDirection:'row',flexWrap:'wrap',gap:7},choice:{borderRadius:16,padding:9,borderWidth:1,borderColor:C.line},selected:{borderColor:C.accentInk,backgroundColor:C.accentSoft},input:{color:C.text,fontSize:15,borderRadius:12,padding:11,borderColor:C.line,borderWidth:1,backgroundColor:C.card},swatch:{width:42,height:42,borderRadius:21,borderWidth:2,alignItems:'center',justifyContent:'center'},preview:{backgroundColor:C.card,padding:14,borderRadius:18,gap:9},aboutLogo:{width:96,height:96,alignSelf:'center'}
 }));

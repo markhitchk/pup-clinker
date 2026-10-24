@@ -1,3 +1,4 @@
+import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
 import {effectiveMotion} from './src/engine/settings.js';
@@ -8,11 +9,11 @@ import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
 import {themedStyles} from './src/theme.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,useColorScheme,useWindowDimensions} from 'react-native';
+import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,BackHandler,useColorScheme,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {useRoster} from './src/state/useRoster.js';
-import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
+import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
@@ -34,7 +35,7 @@ import {GACHA_ART} from './src/assets/gacha.js';
 import {GACHA_MACHINE,gachaMachineFrame} from './src/engine/gachaV6.js';
 
 import {PUPPY_IMAGES} from './src/assets/puppies.js';
-const TABS=[['play','🐾','Play'],['care','💖','Care'],['shop','🛍️','Shop'],['prestige','⭐','Prestige'],['settings','⚙️','Settings']];
+const TABS=MAIN_TABS;
 const skillNames={TAP_TRAINING:'Tap Training',AUTO_TRAINING:'Bonus Training',SMART_SHOPPER:'Smart Shopper',TICKET_SENSE:'Ticket Sense'};
 const die=()=>1+Math.floor(Math.random()*13);
 const roll=()=>Math.floor(Math.random()*100);
@@ -70,9 +71,9 @@ function Portrait({puppy,size=228,unlocked=true,accessory='None'}){
  const [broken,setBroken]=useState(false);
  useEffect(()=>setBroken(false),[puppy.id,puppy.image]);
  const v2=puppy.id.startsWith('v2_');
- const ratio=v2?0.96:0.90;
+ const ratio=0.96;
  const asset=PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
- return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2,overflow:'hidden'}]}>
+ return <View style={[styles.portrait,{width:size,height:size}]}>
   {broken||!asset?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:
    <Image accessibilityLabel={puppy.name} source={asset} resizeMode="contain"
     onError={()=>setBroken(true)} style={{width:size*ratio,height:size*ratio}}/>}
@@ -132,81 +133,55 @@ function DailyGoalCard({g,goal,act,clock}){
   </View>
  </View>;
 }
-function PlayScreen({g,act,clock}){
+function PlayScreen({g,act,clock,schedule,viewportHeight}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const {width}=useWindowDimensions();
- const size=v6PlaySizing(width);
- const cooldown=v6CooldownSeconds(g,clock);
+ const layout=revampedPlayLayout(viewportHeight);
+ const next=nextPlayReward(g,schedule,clock),cooldown=v6CooldownSeconds(g,clock),bonus=careTapBonus(g);
+ const animate=g.animatedUi!==false&&g.tapAnimationsEnabled!==false;
  const tapScale=useRef(new Animated.Value(1)).current;
- const idleY=useRef(new Animated.Value(0)).current;
- const ticketOpacity=useRef(new Animated.Value(0)).current;
+ const rotation=useRef(new Animated.Value(0)).current;
+ const lift=useRef(new Animated.Value(0)).current;
  const [ticketVisible,setTicketVisible]=useState(false);
-
- // Kotlin V6Play has an idle portrait bob: -3dp to +5dp, 1700ms each leg.
  useEffect(()=>{
-  if(g.idleAnimationsEnabled===false){idleY.setValue(0);return;}
-  const loop=Animated.loop(Animated.sequence([
-   Animated.timing(idleY,{toValue:V6_PLAY_LAYOUT.idleDown,duration:V6_PLAY_LAYOUT.idleHalfCycleMs,easing:Easing.inOut(Easing.ease),useNativeDriver:true}),
-   Animated.timing(idleY,{toValue:V6_PLAY_LAYOUT.idleUp,duration:V6_PLAY_LAYOUT.idleHalfCycleMs,easing:Easing.inOut(Easing.ease),useNativeDriver:true})
-  ]));
-  loop.start();
-  return ()=>{loop.stop();idleY.setValue(0);};
- },[g.idleAnimationsEnabled,idleY]);
-
+  if(!animate){for(const [value,target] of [[tapScale,1],[rotation,0],[lift,0]]){value.stopAnimation();value.setValue(target);}}
+ },[animate,tapScale,rotation,lift]);
  useEffect(()=>{
   if(!g.ticketDropSerial||!g.lastTicketDrop)return;
-  setTicketVisible(true);
-  ticketOpacity.stopAnimation();
-  Animated.timing(ticketOpacity,{toValue:1,duration:g.reducedMotion?0:180,useNativeDriver:true}).start();
-  if(g.hapticsEnabled!==false)Vibration.vibrate(40);
-  const hide=setTimeout(()=>{
-   Animated.timing(ticketOpacity,{toValue:0,duration:g.reducedMotion?0:220,useNativeDriver:true})
-    .start(({finished})=>{if(finished)setTicketVisible(false);});
-  },V6_PLAY_LAYOUT.ticketVisibleMs);
-  return ()=>clearTimeout(hide);
- },[g.ticketDropSerial,g.lastTicketDrop,ticketOpacity,g.reducedMotion]);
-
- useEffect(()=>{if(g.tapAnimationsEnabled===false){tapScale.stopAnimation();tapScale.setValue(1);}},[g.tapAnimationsEnabled,tapScale]);
+  setTicketVisible(true);if(g.hapticsEnabled)Vibration.vibrate(40);
+  const timer=setTimeout(()=>setTicketVisible(false),2750);return ()=>clearTimeout(timer);
+ },[g.ticketDropSerial,g.lastTicketDrop]);
  const doTap=()=>{
-  const now=Date.now();
-  if(v6CooldownSeconds(g,now)>0||g.energy<=10)return;
-  act({type:'tap',now,randoms:[Math.random(),Math.random()]});
-  if(g.hapticsEnabled!==false)Vibration.vibrate(12);
-  if(g.tapAnimationsEnabled===false)return;
-  tapScale.stopAnimation();
-  tapScale.setValue(V6_PLAY_LAYOUT.tapPressedScale);
-  Animated.spring(tapScale,{toValue:1,friction:4,tension:95,useNativeDriver:true}).start();
+  if(v6CooldownSeconds(g,Date.now()))return;
+  if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care to keep playing.');return;}
+  act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
+  if(g.hapticsEnabled)Vibration.vibrate(12);
+  if(!animate)return;
+  tapScale.stopAnimation();rotation.stopAnimation();lift.stopAnimation();
+  tapScale.setValue(.92);rotation.setValue(-4);lift.setValue(7);
+  Animated.parallel([
+   Animated.sequence([Animated.spring(tapScale,{toValue:1.08,friction:4,tension:100,useNativeDriver:true}),Animated.spring(tapScale,{toValue:1,friction:6,tension:90,useNativeDriver:true})]),
+   Animated.sequence([Animated.spring(rotation,{toValue:4,friction:5,tension:90,useNativeDriver:true}),Animated.spring(rotation,{toValue:0,friction:6,tension:80,useNativeDriver:true})]),
+   Animated.sequence([Animated.spring(lift,{toValue:-5,friction:5,tension:95,useNativeDriver:true}),Animated.spring(lift,{toValue:0,friction:6,tension:85,useNativeDriver:true})])
+  ]).start();
  };
- return <View style={styles.gamePage}>
-  <PageHeader withLogo title="Puppy Clicker" subtitle={g.puppyName+' · '+mood(g)}/>
+ const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
+ const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
+ return <View style={[styles.restoredPlay,{height:Math.max(420,viewportHeight),gap:layout.gap}]}>
+  <PageHeader title="Play" subtitle={layout.compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
   <Wallet game={g}/>
-  <View style={styles.needsRow}>
-   <NeedPill icon="💖" value={g.happiness}/>
-   <NeedPill icon="🍖" value={g.fullness}/>
-   <NeedPill icon="⚡" value={g.energy}/>
-   <NeedPill icon="🫧" value={g.cleanliness}/>
-  </View>
-  <View style={[styles.tapStage,{height:size.stageHeight}]}>
-   <Pressable accessibilityRole="button"
-    accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
-    accessibilityState={{disabled:cooldown>0}}
-    disabled={cooldown>0} onPress={doTap}
-    style={{alignItems:'center',justifyContent:'center'}}>
-    <Animated.View style={[styles.puppyCircle,{
-     width:size.circle,height:size.circle,borderRadius:size.circle/2,
-     transform:[{translateY:idleY},{scale:tapScale}]
-    }]}>
-     <Portrait puppy={pup} size={size.portrait}/>
+  <View style={[styles.restoredStage,{backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
+   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
+    <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
+     <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
     </Animated.View>
    </Pressable>
-   <View pointerEvents="none" style={styles.tapLabel}>
-    <Txt style={[styles.tapLabelText,cooldown>0&&{color:C.danger}]}>{v6PlayTapLabel(g,clock)}</Txt>
-   </View>
+   <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
+   <Pressable accessibilityRole="button" disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
   </View>
-  {ticketVisible?<Animated.View pointerEvents="none" style={[styles.ticketOverlay,{opacity:ticketOpacity}]}>
-   <Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt>
-   <Txt style={styles.ticketOverlayDescription}>Rare reward found! Check your Shop inventory.</Txt>
-  </Animated.View>:null}
+  <View style={styles.restoredNextReward}>
+   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
+  </View>
+  {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
  </View>;
 }
 // Part 2: direct port of the launched Kotlin V6CareAndDaily / V6CarePanel /
@@ -425,7 +400,7 @@ function PrestigeScreen({g,act,activeCasinoRound=false}){
   })}
  </View>;
 }
-function RosterScreen({g,act,registry}){
+function RosterScreen({g,act,registry,onUse}){
  const [search,setSearch]=useState('');
  const [status,setStatus]=useState('all');
  const [favoritesOnly,setFavoritesOnly]=useState(false);
@@ -433,7 +408,7 @@ function RosterScreen({g,act,registry}){
  const available=registry.items;
  const [sort,setSort]=useState('unlocked');
  const [inspected,setInspected]=useState(g.puppyStyle);
- const [view,setView]=useState('collection');
+ const [view,setView]=useState('browser');
  const [renameOpen,setRenameOpen]=useState(false);
  const [editing,setEditing]=useState(g.puppyName);
  const sections=legacyRosterSections(registry.items);
@@ -460,7 +435,7 @@ function RosterScreen({g,act,registry}){
     return <Pressable key={p.id} disabled={!owned}
      accessibilityRole="button" accessibilityState={{disabled:!owned,selected}}
      accessibilityLabel={p.name+(owned?', unlocked':', locked')}
-     onPress={()=>act({type:'switch',id:p.id,now:Date.now()})}
+     onPress={()=>onUse?onUse(p.id):act({type:'switch',id:p.id,now:Date.now()})}
      style={[styles.rosterCollectionRow,selected&&styles.rosterSelected]}>
      <Portrait puppy={p} size={86} unlocked={owned}
       accessory={selected?g.accessory:'None'}/>
@@ -515,7 +490,7 @@ function RosterScreen({g,act,registry}){
     <Txt style={styles.heading}>{selected.name}</Txt>
     <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'} · {selected.groupTitle}</Txt>
     <View style={styles.actions}>
-     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
+     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>onUse?onUse(selected.id):act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
      <Button compact secondary onPress={()=>act({type:'favorite',id:selected.id})}>{selectedFavorite?'★':'☆'}</Button>
     </View>
    </View>
@@ -1017,6 +992,8 @@ function PuppyApp(){
  const [secondary,setSecondary]=useState(null);
  const [bet,setBet]=useState(20);
  const [clock,setClock]=useState(Date.now());
+ const [contentHeight,setContentHeight]=useState(600);
+ useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!secondary)return false;setSecondary(null);return true;});return ()=>sub.remove();},[secondary]);
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
  const saved=state.game;
  applyAppearance(saved,systemDark);
@@ -1025,34 +1002,36 @@ function PuppyApp(){
  const [inboxOpen,setInboxOpen]=useState(false);
  const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete,act,onOpen:()=>setInboxOpen(true)});
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
- const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else setSecondary(id);};
+ const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
+ const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
-  if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
-  if(secondary==='roster')return <RosterScreen g={g} act={act} registry={registry}/>;
-  if(secondary==='rewards')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary} onPrestige={()=>{setTab('prestige');setSecondary(null);}}/>;
-  if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>setSecondary('rewards')}/>;
-  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>setSecondary('rewards')}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock}/>;
-  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={setSecondary}/>;
-  if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
-  if(tab==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
-  return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics}/>;
+  if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
+  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics}/>;
+  if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
+  if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
+  if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
+  if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
+  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>;
+  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen}/>;
+  if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
+  return null;
  };
  return <PuppyPointer enabled={saved.puppyPointerEnabled} style={[styles.root,{paddingTop:insets.top,paddingBottom:insets.bottom}]}>
   <StatusBar barStyle={C.dark?'light-content':'dark-content'} backgroundColor={C.bg}/>
   {state.ready&&saved.onboardingComplete?<View style={styles.topBar}>
-   <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:30,height:30}}/>
+   <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
    <Pressable accessibilityRole="button" accessibilityLabel={'Notifications, '+saved.notificationInbox.filter(n=>!n.read).length+' unread'} onPress={()=>{notifications.check();setInboxOpen(true);}} style={styles.headerButton}><Txt style={{fontSize:23}}>🔔</Txt>{saved.notificationInbox.some(n=>!n.read)?<View style={styles.unreadDot}/>:null}</Pressable>
-   <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>{setTab('settings');setSecondary(null);}} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
+   <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} style={styles.scroll} contentContainerStyle={[styles.content,{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
+  <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||tab==='play'&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
+   {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
-  {state.ready&&g.onboardingComplete?<View style={styles.bottomBar}>
+  {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
@@ -1061,7 +1040,13 @@ function PuppyApp(){
  </PuppyPointer>;
 }
 const styles=themedStyles(()=>({
- headerButton:{width:42,height:42,borderRadius:21,borderColor:C.text,borderWidth:1,alignItems:'center',justifyContent:'center',marginLeft:4},unreadDot:{position:'absolute',right:1,top:0,width:9,height:9,borderRadius:5,backgroundColor:'#FFB4AB'},
+ restoredPlay:{width:'100%',position:'relative'},
+ restoredStage:{flex:1,minHeight:180,borderRadius:22,borderWidth:1,paddingHorizontal:12,paddingVertical:8,alignItems:'center',justifyContent:'center',gap:4},
+ restoredEnergy:{fontSize:12,color:C.muted,fontWeight:'700',textAlign:'center',marginVertical:4},
+ restoredTap:{width:'100%',borderRadius:18,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',paddingHorizontal:8},
+ restoredNextReward:{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:11,paddingVertical:8,borderRadius:14,backgroundColor:C.accentSoft,borderColor:C.line,borderWidth:1},
+
+ headerButton:{width:40,height:40,borderRadius:21,borderColor:C.text,borderWidth:1,alignItems:'center',justifyContent:'center',marginLeft:4},unreadDot:{position:'absolute',right:1,top:0,width:9,height:9,borderRadius:5,backgroundColor:'#FFB4AB'},
  ticketOverlay:{position:'absolute',top:138,left:12,right:12,zIndex:30,backgroundColor:C.surface,borderColor:C.accent,borderWidth:1,borderRadius:18,paddingHorizontal:12,paddingVertical:12,alignItems:'center',elevation:8},
  ticketOverlayTitle:{fontSize:15,fontWeight:'900',color:C.text,textAlign:'center'},
  ticketOverlayDescription:{fontSize:11,color:C.muted,textAlign:'center',marginTop:3},
@@ -1214,7 +1199,7 @@ const styles=themedStyles(()=>({
  root:{flex:1,backgroundColor:C.bg,paddingTop:StatusBar.currentHeight||0},
  text:{fontSize:14,color:C.text},muted:{color:C.muted},small:{fontSize:12},tiny:{fontSize:10,color:C.muted},tinyCenter:{fontSize:10,color:C.muted,textAlign:'center'},
  center:{textAlign:'center',fontSize:12},heading:{fontSize:17,fontWeight:'800',letterSpacing:0.25},brand:{fontSize:17,fontWeight:'900',letterSpacing:0.8},value:{fontWeight:'800'},itemName:{fontWeight:'700',fontSize:14},
- topBar:{paddingHorizontal:16,paddingVertical:12,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:4,backgroundColor:C.surface},
+ topBar:{height:48,paddingHorizontal:10,flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:4,backgroundColor:C.surface},
  topTitles:{flex:1,gap:2},guestTag:{fontSize:10,fontWeight:'800',color:C.gold,backgroundColor:C.dark?'#352B13':'#FFF0C7',paddingVertical:6,paddingHorizontal:8,borderRadius:8,overflow:'hidden'},
  scroll:{flex:1},content:{padding:14,paddingBottom:30,width:'100%',alignSelf:'center',gap:12},
  card:{backgroundColor:C.surface,borderWidth:1,borderColor:C.line,borderRadius:20,padding:15,gap:10},
@@ -1225,7 +1210,7 @@ const styles=themedStyles(()=>({
  walletLabel:{fontSize:11,color:C.muted,textAlign:'center'},
  walletNumber:{fontSize:16,fontWeight:'900',color:C.text,textAlign:'center'},
  bigTap:{alignItems:'center',justifyContent:'center',backgroundColor:C.accentSoft,borderRadius:26,minHeight:286,padding:12,gap:8,borderWidth:1,borderColor:'#23516A'},
- portrait:{backgroundColor:C.card,overflow:'hidden',alignItems:'center',justifyContent:'center'},
+ portrait:{backgroundColor:'transparent',alignItems:'center',justifyContent:'center'},
  tapCaption:{fontSize:13,color:C.accentInk,fontWeight:'800',letterSpacing:0.5},
  statsRow:{flexDirection:'row',justifyContent:'space-between'},
  meter:{gap:4},meters:{gap:10},

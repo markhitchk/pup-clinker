@@ -8,7 +8,12 @@
     "start": "expo start",
     "android": "expo run:android",
     "test": "node --test tests/*.test.js",
-    "check": "npm test && expo export --platform android"
+    "check": "npm test && expo export --platform android",
+    "prepare:portraits": "node scripts/prepare-portraits.cjs",
+    "postinstall": "npm run prepare:portraits",
+    "pretest": "npm run prepare:portraits",
+    "prestart": "npm run prepare:portraits",
+    "preandroid": "npm run prepare:portraits"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -23,6 +28,7 @@
     "@babel/core": "^7.29.7",
     "@babel/plugin-transform-modules-commonjs": "^7.29.7",
     "@babel/plugin-transform-react-jsx": "^7.29.7",
+    "pngjs": "^7.0.0",
     "react-test-renderer": "19.2.3"
   }
 }
