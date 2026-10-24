@@ -132,3 +132,26 @@ test('Kotlin daily goal source and React game screen use monthly verified schedu
  assert.ok(!screen.includes('epochDay:today'));
  assert.ok(!app.includes('Every completed care action awards +1 Bone.'));
 });
+
+test('care/daily counters roll on rehydrate before first screen render, not after a one-minute delay',()=>{
+ const before=new Date(2026,9,23,12).getTime();
+ const tomorrow=new Date(2026,9,24,12).getTime();
+ const g=freshGame();
+ g.dailyDay=localEpochDay(new Date(before));
+ g.claimedDailyTasks=['tap_time'];
+ g.totalTaps=123;
+ g.careActions=6;
+ g.totalShopPurchases=4;
+ g.dailyTapStart=100;
+ g.dailyCareStart=3;
+ g.dailyShopStart=2;
+ const restored=transition(initialState(),{type:'hydrate',game:parseGuestSave(serializeGuestSave(g)),now:tomorrow});
+ assert.equal(restored.game.dailyDay,localEpochDay(new Date(tomorrow)));
+ assert.deepEqual(restored.game.claimedDailyTasks,[]);
+ assert.equal(restored.game.dailyTapStart,123);
+ assert.equal(restored.game.dailyCareStart,6);
+ assert.equal(restored.game.dailyShopStart,4);
+ const sameDay=transition(initialState(),{type:'hydrate',game:restored.game,now:tomorrow+1000});
+ assert.equal(sameDay.game.dailyDay,restored.game.dailyDay);
+ assert.equal(sameDay.game.dailyTapStart,123);
+});
