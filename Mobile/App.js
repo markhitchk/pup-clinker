@@ -94,43 +94,77 @@ function PlayScreen({g,act,onOpen}){
  </View>;
 }
 function CareScreen({g,act,clock}){
+ const [page,setPage]=useState('care');
+ const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const parkSeconds=Math.max(0,Math.ceil((g.parkReadyAtMs-clock)/1000));
- return <>
-  <Card title="💖 PUPPY CARE" subtitle={'Wellness '+wellness(g)+'% · Bond '+g.bond+'/100'}>
-   <View style={styles.meters}><Meter label="Happiness" icon="💖" value={g.happiness}/><Meter label="Fullness" icon="🍖" value={g.fullness}/><Meter label="Energy" icon="⚡" value={g.energy}/><Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/></View>
-   <View style={styles.actionGrid}>
-    {[
-      ['🍖 Feed','feed','20 Treats'],['🎾 Play','play','1 Bone'],['🧼 Wash','wash','10 Treats'],
-      ['💤 Rest','rest','Free'],['🤗 Cuddle','cuddle','Free']
-    ].map(([label,kind,price])=><View key={kind} style={styles.half}><Button onPress={()=>act({type:'care',kind})} secondary>{label}</Button><Txt muted style={styles.tinyCenter}>{price}</Txt></View>)}
+ const today=Math.floor(clock/86400000);
+ return <View style={styles.gamePage}>
+  <PageHeader title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
+  <View style={styles.filterRow}>
+   {[['care','💖 Care'],['daily','📅 Daily']].map(([id,label])=><Pressable accessibilityRole="tab" accessibilityState={{selected:page===id}} key={id} onPress={()=>setPage(id)} style={[styles.filterChip,page===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,page===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}
+  </View>
+  {page==='care'?<>
+   <View style={styles.activePuppy}>
+    <Portrait puppy={pup} size={78}/>
+    <View style={{flex:1,gap:4}}><Txt style={styles.itemName}>{g.puppyName}</Txt><Txt muted style={styles.small}>{mood(g)} · Wellness {wellness(g)}% · Bond {g.bond}%</Txt></View>
    </View>
-  </Card>
-  <Card title="🌳 DOG PARK" subtitle="A one-minute activity">
-   <Txt muted>Spend 20 energy to take your puppy for a walk and earn a reward.</Txt>
-   <Button disabled={g.parkActive&&parkSeconds>0} onPress={()=>act({type:g.parkActive?'parkClaim':'parkStart',now:clock})}>{g.parkActive?parkSeconds>0?'Walk finishes in '+parkSeconds+'s':'Claim Park Reward':'Start Park Walk'}</Button>
-  </Card>
-  <Card title="🎁 DAILY REWARD">
-   <Txt muted>Collect Treats, Bones and Pup Coins once per calendar day.</Txt>
-   <Button onPress={()=>act({type:'daily',epochDay:Math.floor(clock/86400000)})} disabled={g.lastDailyClaimDay===Math.floor(clock/86400000)}>Claim Daily · Streak {g.dailyStreak} days</Button>
-  </Card>
- </>;
+   <Card title="Puppy Needs">
+    <View style={styles.meters}><Meter label="Happiness" icon="💖" value={g.happiness}/><Meter label="Fullness" icon="🍖" value={g.fullness}/><Meter label="Energy" icon="⚡" value={g.energy}/><Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/><Meter label="Bond" icon="🤝" value={g.bond}/></View>
+    <Txt muted style={styles.small}>{g.energy<=10?'😴 Too tired to earn Treats on Play. Rest to restore energy.':wellness(g)>=85&&g.bond>=50?'✨ Thriving care bonus: +2 Treats on every tap.':wellness(g)>=70?'✨ Healthy care bonus: +1 Treat on every tap.':'Keep wellness at 70%+ to unlock a Treat bonus on Play.'}</Txt>
+   </Card>
+   <Txt style={styles.sectionTitle}>Care actions</Txt>
+   <View style={styles.quickActionRow}>
+    <QuickAction emoji="🍖" title="Feed" subtitle="-20 🍪" disabled={g.treats<20||g.fullness>=100} onPress={()=>act({type:'care',kind:'feed'})}/>
+    <QuickAction emoji="🎾" title="Play" subtitle="-1 🦴 · -12 ⚡" disabled={g.bones<1||g.energy<12||(g.happiness===100&&g.bond===100)} onPress={()=>act({type:'care',kind:'play'})}/>
+    <QuickAction emoji="🫧" title="Clean" subtitle="-10 🍪" disabled={g.treats<10||g.cleanliness>=100} onPress={()=>act({type:'care',kind:'wash'})}/>
+   </View>
+   <View style={styles.quickActionRow}>
+    <QuickAction emoji="🌙" title="Rest" subtitle="Free · +30 ⚡" disabled={g.energy>=100} onPress={()=>act({type:'care',kind:'rest'})}/>
+    <QuickAction emoji="🤗" title="Cuddle" subtitle="Free · Bond" disabled={g.happiness===100&&g.bond===100} onPress={()=>act({type:'care',kind:'cuddle'})}/>
+   </View>
+  </>:<>
+   <Card title="🎁 DAILY PUPPY GIFT" subtitle={'Claim streak · '+g.dailyStreak+' days'}>
+    <Txt muted>Collect Treats, Bones and Pup Coins once per calendar day.</Txt>
+    <Button disabled={g.lastDailyClaimDay===today} onPress={()=>act({type:'daily',epochDay:today})}>{g.lastDailyClaimDay===today?'✓ Already claimed today':'🎁 Claim Daily Gift'}</Button>
+   </Card>
+   <Card title="🌳 DOG PARK" subtitle="A one-minute puppy adventure">
+    <Txt muted>Spend 20 energy to take your puppy for a walk and earn a reward.</Txt>
+    <Button disabled={g.parkActive&&parkSeconds>0} onPress={()=>act({type:g.parkActive?'parkClaim':'parkStart',now:clock})}>{g.parkActive?parkSeconds>0?'Walk finishes in '+parkSeconds+'s':'Claim Park Reward':'Start Park Walk'}</Button>
+   </Card>
+  </>}
+ </View>;
 }
-function ShopScreen({g,act}){
- return <>
-  <Card title="🛍️ TREAT UPGRADES" subtitle="Tap boosts and 10-tap active bonuses">
-   {UPGRADES.map(u=><View key={u.id} style={styles.shopItem}>
-     <View style={styles.shopLabel}><Txt style={styles.itemName}>{u.emoji} {u.name}  Lv.{g.upgrades[u.id]||0}</Txt><Txt muted style={styles.small}>{u.description}</Txt>
-      {u.rarity?<Txt style={styles.tiny}>{u.rarity} · {ticketCost(g,u)} matching tickets</Txt>:null}</View>
-     <Button compact onPress={()=>act({type:'purchase',upgrade:u})} disabled={g.treats<cost(g,u)||g.bones<boneCost(u)||(u.rarity&&(g.ticketInventory[u.rarity]||0)<ticketCost(g,u))}>{format(cost(g,u))} 🍪 + {boneCost(u)} 🦴</Button>
+// V6Shop's 3 material filter sections; the guest preview does not redeem trusted codes.
+function ShopScreen({g,act,onOpen}){
+ const [shopTab,setShopTab]=useState('upgrades');
+ const upgrades=shopTab==='upgrades'?UPGRADES.filter(u=>!u.rarity):UPGRADES.filter(u=>u.rarity);
+ return <View style={styles.gamePage}>
+  <PageHeader title="Puppy Shop" subtitle="Active upgrades, rare tickets, Pup Coins and Puppy Codes."/>
+  <Wallet game={g}/>
+  <View style={styles.actions}>
+   <Button secondary onPress={()=>Alert.alert('Puppy Codes','Code redemption requires a linked, verified Puppy Account and is not enabled in this guest preview.')}>🎫 Redeem Code</Button>
+   <Button secondary onPress={()=>onOpen('roster')}>🐶 Pups</Button>
+  </View>
+  <View style={styles.filterRow}>
+   {[['upgrades','🍪 Upgrades'],['tickets','🎟️ Tickets'],['coins','🪙 Pup Coins']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:shopTab===id}} style={[styles.filterChip,shopTab===id&&styles.filterChipSelected]} onPress={()=>setShopTab(id)}><Txt style={[styles.filterText,shopTab===id&&styles.filterTextSelected]} numberOfLines={1}>{label}</Txt></Pressable>)}
+  </View>
+  {shopTab==='coins'?<>
+   <Card title="🪙 PUP COIN SHOP"><Txt muted>Use earned Pup Coins for tickets and accessories.</Txt>
+    {RARITIES.map(r=><View key={r} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{r} Ticket</Txt><Txt muted style={styles.small}>Owned: {g.ticketInventory[r]||0}</Txt></View><Button secondary compact disabled={g.pupCoins<ticketShopCost(r,g.ticketShopPurchases[r]||0)} onPress={()=>act({type:'ticket',rarity:r})}>{format(ticketShopCost(r,g.ticketShopPurchases[r]||0))} 🪙</Button></View>)}
+   </Card>
+   <Card title="🎀 PUPPY ACCESSORIES">
+    {['None',...Object.keys(accessoryPrices)].map(name=><View key={name} style={styles.shopItem}><Txt style={styles.itemName}>{name} {g.accessory===name?'✓':''}</Txt><Button secondary compact onPress={()=>act({type:g.ownedAccessories.includes(name)?'equip':'accessory',name})}>{g.ownedAccessories.includes(name)?'Equip':format(accessoryPrices[name])+' 🪙'}</Button></View>)}
+   </Card>
+  </>:<>
+   {shopTab==='tickets'?<Card title="🎟️ TICKET INVENTORY">
+     {RARITIES.map(r=><Pair key={r} left={r} right={g.ticketInventory[r]||0}/>)}
+    </Card>:null}
+   {upgrades.map(u=><View key={u.id} style={styles.upgradeCard}>
+    <View style={styles.shopLabel}><Txt style={styles.itemName}>{u.emoji} {u.name}</Txt><Txt muted style={styles.small}>{u.description}</Txt><Txt muted style={styles.small}>Level {g.upgrades[u.id]||0}{u.rarity?' · '+u.rarity+' · '+ticketCost(g,u)+' tickets':''}</Txt></View>
+    <Button compact disabled={g.treats<cost(g,u)||g.bones<boneCost(u)||(u.rarity&&(g.ticketInventory[u.rarity]||0)<ticketCost(g,u))} onPress={()=>act({type:'purchase',upgrade:u})}>{format(cost(g,u))} 🍪 + {boneCost(u)} 🦴</Button>
    </View>)}
-  </Card>
-  <Card title="🎟️ UPGRADE TICKETS" subtitle={'Pup Coins: '+format(g.pupCoins)}>
-   {RARITIES.map(r=><View key={r} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{r}</Txt><Txt muted style={styles.small}>Owned: {g.ticketInventory[r]||0}</Txt></View><Button secondary compact disabled={g.pupCoins<ticketShopCost(r,g.ticketShopPurchases[r]||0)} onPress={()=>act({type:'ticket',rarity:r})}>{format(ticketShopCost(r,g.ticketShopPurchases[r]||0))} 🪙</Button></View>)}
-  </Card>
-  <Card title="🎀 PUPPY ACCESSORIES">
-   {['None',...Object.keys(accessoryPrices)].map(name=><View key={name} style={styles.shopItem}><Txt>{name} {g.accessory===name?'✓':''}</Txt><Button secondary compact onPress={()=>act({type:g.ownedAccessories.includes(name)?'equip':'accessory',name})}>{g.ownedAccessories.includes(name)?'Equip':format(accessoryPrices[name])+' 🪙'}</Button></View>)}
-  </Card>
- </>;
+  </>}
+ </View>;
 }
 function PrestigeScreen({g,act}){
  const points=prestigePointsAvailable(g);
@@ -344,7 +378,7 @@ export default function App(){
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='care')return <CareScreen g={g} act={act} clock={clock}/>;
-  if(tab==='shop')return <ShopScreen g={g} act={act}/>;
+  if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={setSecondary}/>;
   if(tab==='prestige')return <PrestigeScreen g={g} act={act}/>;
   return <SettingsScreen g={g} act={act}/>;
  };
