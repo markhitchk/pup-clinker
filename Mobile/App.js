@@ -63,7 +63,7 @@ function Portrait({puppy,size=228,unlocked=true,accessory='None',transparent=fal
  const ratio=0.96;
  // Derived edge-matte PNGs are generated before Metro bundles the Android APK.
  const asset=MATTE_FREE_PUPPY_IMAGES[puppy.id]||PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:null);
- return <View style={[styles.portrait,{width:size,height:size,borderRadius:transparent?0:size/2,overflow:transparent?'visible':'hidden'},transparent&&{backgroundColor:'transparent'}]}>
+ return <View style={[styles.portrait,{width:size,height:size,borderRadius:size/2,overflow:'hidden'},transparent&&{backgroundColor:'transparent'}]}>
   {broken||!asset?<Txt style={{fontSize:size*0.36}}>🐶</Txt>:
    <Image accessibilityLabel={puppy.name} source={asset} resizeMode="contain"
     onError={()=>setBroken(true)} style={{width:size*ratio,height:size*ratio}}/>}
