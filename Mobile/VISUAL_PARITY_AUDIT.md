@@ -24,7 +24,7 @@
 | Blackjack | Part 5A layout/card gameplay ported | Byte-exact PNGs | **Missing** | **Not 100% verified** |
 | Slots | Part 5B layout/reel/lever and saved round ported | Original 10 PNGs (4 main + 6 reel icons) | **Missing** | **Not 100% verified** |
 | Roulette | Part 5C source UI/ledger port: 37 pockets, full selectable table, 2.6s reveal and saved round; animations and pixel layout unverified | Four original Kotlin PNGs | **Missing** | **Not 100% verified** |
-| Plinko | Rough React preview; Kotlin peg/ball travel pending | Some original art | **Missing** | **Not 100% verified** |
+| Plinko | Part 5D board layer/peg/ball source port and validated saved 8-bounce guest round; actual Android timing and clipping unverified | Seven byte-exact Kotlin PNGs | **Missing** | **Not 100% verified** |
 | Scratchers | Guest scratch gesture; Kotlin mask/coin physics pending | Original frame | **Missing** | **Not 100% verified** |
 | Lucky Pup Wheel | Rough React preview; Kotlin wheel/pointer sequence pending | Some original art | **Missing** | **Not 100% verified** |
 | Settings / profile / dialogs / notifications / admin | Incomplete; native auth and settings parity pending | Partial | **Missing** | **Not 100% verified** |
