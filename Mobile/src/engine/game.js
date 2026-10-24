@@ -46,7 +46,8 @@ export const freshGame=()=>({
   ticketShopPurchases:Object.fromEntries(RARITIES.map(r=>[r,0])),
   totalTicketsFound:0,ticketDropSerial:0,lastTicketDrop:null,
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
-  ...freshProfile(),careProfiles:{},
+  ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
+  xp:0,achievementRewardedIds:[],gachaPulls:0,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
@@ -59,7 +60,7 @@ export function sanitizeGame(input){
   const b=freshGame();
   if(!input||typeof input!=='object'||Array.isArray(input))return b;
   for(const key of Object.keys(b))if(Object.hasOwn(input,key))b[key]=input[key];
-  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
+  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
@@ -75,6 +76,8 @@ export function sanitizeGame(input){
   b.ownedAccessories=[...new Set(['None',...(Array.isArray(b.ownedAccessories)?b.ownedAccessories:[]).filter(s=>['Bandana','Bow','Crown'].includes(s))])];
   if(!b.ownedAccessories.includes(b.accessory))b.accessory='None';
   b.careProfiles=Object.fromEntries(Object.entries(b.careProfiles&&typeof b.careProfiles==='object'?b.careProfiles:{}).filter(([id])=>ids.has(id)).map(([id,p])=>[id,Object.fromEntries(careFields.map(k=>[k,cap(p?.[k],0,100)]))]));
+  b.achievementRewardedIds=Array.isArray(b.achievementRewardedIds)?[...new Set(b.achievementRewardedIds.filter(id=>typeof id==='string'&&id.length<60))].slice(0,50):[];
+  b.careUpdatedAtByPuppy=Object.fromEntries(Object.entries(b.careUpdatedAtByPuppy&&typeof b.careUpdatedAtByPuppy==='object'?b.careUpdatedAtByPuppy:{}).filter(([id])=>ids.has(id)).map(([id,at])=>[id,cap(at)]));
   b.claimedDailyTasks=Array.isArray(b.claimedDailyTasks)?b.claimedDailyTasks.filter(v=>typeof v==='string').slice(0,50):[];
   b.redeemedCodeIds=Array.isArray(b.redeemedCodeIds)?b.redeemedCodeIds.filter(v=>typeof v==='string').slice(0,100):[];
   b.autoPerSecond=0;
