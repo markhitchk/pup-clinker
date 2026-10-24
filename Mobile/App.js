@@ -3,7 +3,7 @@ import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,S
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {useRoster} from './src/state/useRoster.js';
-import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
+import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
@@ -127,7 +127,7 @@ function PlayScreen({g,act,clock,schedule}){
  const stageHeight=Math.max(295,Math.min(455,height-375));
  const cooldown=v6CooldownSeconds(g,clock);
  const tired=g.energy<=10;
- const careBonus=Number(g.careTapBonus)||0;
+ const careBonus=careTapBonus(g);
  const tapScale=useRef(new Animated.Value(1)).current;
  const ticketOpacity=useRef(new Animated.Value(0)).current;
  const [ticketVisible,setTicketVisible]=useState(false);
@@ -209,90 +209,69 @@ function PlayScreen({g,act,clock,schedule}){
 }
 // Part 2: direct port of the launched Kotlin V6CareAndDaily / V6CarePanel /
 // V6DailyPanel. Guest-only data; notification scheduling is not enabled yet.
-function CareScreen({g,act,clock,schedule,onOpen}){
- const [page,setPage]=useState('care');
+// Current Kotlin PuppyRevampedCareScreen: dedicated Care; daily claims belong on Rewards.
+function CareScreen({g,act}){
+ const {height,width}=useWindowDimensions();
+ const compact=height<780, tiny=height<660;
+ const portraitSize=tiny?66:compact?78:92;
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const gift=dailyGiftPreview(g,clock);
- const park=parkPreview(g,clock);
- const careAction=(kind,text)=>(
-  <Button disabled={!canPerformCare(g,kind)}
-   onPress={()=>act({type:'care',kind,now:Date.now()})}>{text}</Button>
+ const score=wellness(g),bonus=careTapBonus(g);
+ const tired=g.energy<=10;
+ const careAction=(kind,icon,title,subtitle)=>(
+  <Pressable key={kind} accessibilityRole="button"
+   accessibilityLabel={title+', '+subtitle}
+   accessibilityState={{disabled:!canPerformCare(g,kind)}}
+   disabled={!canPerformCare(g,kind)}
+   onPress={()=>act({type:'care',kind,now:Date.now()})}
+   style={({pressed})=>[styles.revampedCareAction,!canPerformCare(g,kind)&&styles.buttonDisabled,pressed&&{opacity:0.7}]}>
+   <Txt style={{fontSize:22}}>{icon}</Txt>
+   <Txt numberOfLines={1} style={styles.revampedCareActionTitle}>{title}</Txt>
+   <Txt numberOfLines={2} style={styles.revampedCareActionSubtitle}>{subtitle}</Txt>
+  </Pressable>
  );
- return <View style={styles.gamePage}>
-  <PageHeader withLogo title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
-  <View style={styles.filterRow}>
-   {[['care','💖 Care'],['daily','📅 Daily']].map(([id,label])=>
-    <Pressable accessibilityRole="tab" accessibilityState={{selected:page===id}}
-     key={id} onPress={()=>setPage(id)}
-     style={[styles.filterChip,page===id&&styles.filterChipSelected]}>
-     <Txt style={[styles.filterText,page===id&&styles.filterTextSelected]}>{label}</Txt>
-    </Pressable>)}
+ const careMeter=(name,icon,value)=>(
+  <View key={name} style={styles.revampedCareMeter}>
+   <Txt numberOfLines={1} style={styles.revampedCareMeterLabel}>{icon} {name}</Txt>
+   <View accessibilityRole="progressbar" accessibilityLabel={name}
+    accessibilityValue={{min:0,max:100,now:value}} style={styles.revampedCareMeterTrack}>
+    <View style={[styles.revampedCareMeterFill,{width:Math.min(100,Math.max(0,value))+'%'}]}/>
+   </View>
+   <Txt style={styles.revampedCareMeterValue}>{value}%</Txt>
   </View>
-  {page==='care'?<>
-   <View style={styles.careIdentity}>
-    <Portrait puppy={pup} size={V6_CARE_LAYOUT.portraitSize}/>
-    <View style={{flex:1,gap:5}}>
-     <Txt style={styles.pageTitle} numberOfLines={2}>{g.puppyName}</Txt>
-     <Txt muted style={styles.small}>{mood(g)} · wellness {wellness(g)}%</Txt>
-     <Txt style={styles.careBond}>🤝 Bond {g.bond}%</Txt>
-    </View>
+ );
+ const tip=tired?
+  '😴 Too tired to earn Treats on Play. Rest above 10% energy.':
+  bonus>=2?'✨ Thriving care bonus: +2 Treats on every normal puppy tap.':
+  bonus===1?'✨ Healthy care bonus: +1 Treat on every normal puppy tap.':
+  'Keep wellness at 70%+ to unlock a Treat bonus on Play.';
+ return <View style={styles.gamePage}>
+  <PageHeader title="Pup Care" subtitle={compact?'Care is separate for each puppy.':'Care for your active puppy. Every puppy keeps its own needs and bond.'}/>
+  <View style={styles.revampedCareIdentity}>
+   <Portrait puppy={pup} size={Math.min(portraitSize,width*0.24)} transparent accessory={g.accessory}/>
+   <View style={{flex:1,gap:3}}>
+    <Txt style={styles.itemName}>{g.puppyName}</Txt>
+    <Txt muted style={styles.small}>{mood(g)} · Wellness {score}% · Bond {g.bond}%</Txt>
    </View>
-   <View style={styles.careMeters}>
-    <Meter label="Happiness" icon="💖" value={g.happiness}/>
-    <Meter label="Fullness" icon="🍖" value={g.fullness}/>
-    <Meter label="Energy" icon="⚡" value={g.energy}/>
-    <Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/>
-    <Meter label="Bond" icon="🤝" value={g.bond}/>
-   </View>
-   <Txt style={styles.sectionTitle}>Care actions</Txt>
-   <View style={styles.careActionRow}>
-    {careAction('feed','🍖 Feed')}
-    {careAction('play','🎾 Play')}
-   </View>
-   <View style={styles.careActionRow}>
-    {careAction('rest','💤 Rest')}
-    {careAction('wash','🫧 Groom')}
-   </View>
-   <Button secondary disabled={!canPerformCare(g,'cuddle')}
-    onPress={()=>act({type:'care',kind:'cuddle',now:Date.now()})}>🤗 Cuddle · build bond</Button>
-   <View style={styles.careRewardNote}>
-    <Txt style={styles.itemName}>Active care rewards</Txt>
-    <Txt muted style={styles.small}>Care actions improve your puppy’s needs and bond.</Txt>
-    <Txt muted style={styles.small}>AFK Treats are claimable from the notification inbox in the original Kotlin app; that inbox has not been ported to this preview.</Txt>
-   </View>
-  </>:<>
-   <View style={styles.careStreakBanner}>
-    <Txt style={{fontSize:36}}>🔥</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.careStreakTitle}>{g.dailyStreak} day streak</Txt>
-     <Txt muted style={styles.small}>Daily rewards grant Treats, Bones and Pup Coins — never automatic Upgrade Tickets.</Txt>
-    </View>
-   </View>
-   <View style={styles.careDailyGift}>
-    <Txt style={{fontSize:34}}>🎁</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.itemName}>Daily Puppy Gift</Txt>
-     <Txt muted style={styles.small}>{v6Format(gift.rewardTreats,g.compactNumbers!==false)} Treats + 2 Bones + 3 Pup Coins</Txt>
-    </View>
-    <Button compact disabled={gift.claimed}
-     onPress={()=>act({type:'daily',now:Date.now()})}>{gift.claimed?'Claimed':'Claim'}</Button>
-   </View>
-   <Txt style={styles.sectionTitle}>Today’s goals</Txt>
-   {goalsForDay(schedule,new Date(clock)).map(goal=>
-    <DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
-   <View style={styles.careParkCard}>
-    <Txt style={{fontSize:32}}>🌳</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.itemName}>Dog Park Adventure</Txt>
-     <Txt muted style={styles.small}>{park.detail}</Txt>
-    </View>
-    <Button compact disabled={park.disabled}
-     onPress={()=>act({type:park.ready?'parkClaim':'parkStart',now:Date.now()})}>{park.label}</Button>
-   </View>
-   <View style={{marginTop:8}}>
-    <Button compact secondary onPress={()=>onOpen('rewards')}>Preview · Rewards Hub</Button>
-   </View>
-  </>}
+  </View>
+  <View style={styles.revampedCarePanel}>
+   {careMeter('Happiness','💖',g.happiness)}
+   {careMeter('Fullness','🍖',g.fullness)}
+   {careMeter('Energy','⚡',g.energy)}
+   {careMeter('Cleanliness','🫧',g.cleanliness)}
+   {careMeter('Bond','🤝',g.bond)}
+   <View style={styles.revampedCareDivider}/>
+   <Txt style={[styles.revampedCareHint,tired&&{color:C.danger}]}>{tip}</Txt>
+  </View>
+  <Txt style={styles.sectionTitle}>Care actions</Txt>
+  <View style={styles.revampedCareActionRow}>
+   {careAction('feed','🍖','Feed','-20 🍪')}
+   {careAction('play','🎾','Play','-1 🦴 · -12 ⚡')}
+   {careAction('wash','🫧','Clean','-10 🍪')}
+  </View>
+  <View style={styles.revampedCareActionRow}>
+   {careAction('rest','🌙','Rest','Free · +30 ⚡')}
+   {careAction('cuddle','🤗','Cuddle','Free · Happy / Bond')}
+  </View>
  </View>;
 }
 // Part 3: actual launched Kotlin V6Shop / V6Prestige, not a generic store.
@@ -303,9 +282,8 @@ function ShopScreen({g,act,onOpen}){
  return <View style={styles.gamePage}>
   <PageHeader withLogo title="Puppy Shop" subtitle="Active upgrades, rare tickets, Pup Coins and Puppy Codes."/>
   <Wallet game={g}/>
-  <View style={styles.shopTopActions}>
-   <Button secondary onPress={()=>Alert.alert('🎫 Redeem Puppy Code','Kotlin has local Puppy Codes, but preview code redemption is disabled until original save, account and entitlement behavior can be verified. No protected rewards will be simulated.')}>🎫 Redeem Code</Button>
-   <Button secondary onPress={()=>onOpen('roster')}>🐶 Pups</Button>
+  <View style={styles.revampedShopRedeem}>
+   <Button secondary onPress={()=>Alert.alert('🎫 Redeem Puppy Code','Kotlin has Puppy Codes, but redemption is disabled in this guest preview until account verification and authorized rewards are connected.')}>🎫 Redeem Code</Button>
   </View>
   <View style={styles.filterRow}>
    {[['upgrades','🍪 Upgrades'],['tickets','🎟️ Tickets'],['coins','🪙 Pup Coins']].map(([id,label])=>
@@ -1122,6 +1100,21 @@ export default function App(){
  </View>;
 }
 const styles=StyleSheet.create({
+ revampedCareIdentity:{flexDirection:'row',alignItems:'center',gap:10,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.accentSoft,paddingHorizontal:12,paddingVertical:9},
+ revampedCarePanel:{gap:2,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.surface,paddingHorizontal:11,paddingVertical:8},
+ revampedCareMeter:{flexDirection:'row',alignItems:'center',gap:8,minHeight:27},
+ revampedCareMeterLabel:{width:96,fontSize:11,fontWeight:'800',color:C.text},
+ revampedCareMeterTrack:{flex:1,height:5,borderRadius:5,overflow:'hidden',backgroundColor:C.line},
+ revampedCareMeterFill:{height:'100%',backgroundColor:C.accent,borderRadius:5},
+ revampedCareMeterValue:{width:39,fontSize:11,fontWeight:'900',color:C.text,textAlign:'right'},
+ revampedCareDivider:{height:1,backgroundColor:C.line,marginVertical:5},
+ revampedCareHint:{fontSize:12,fontWeight:'700',color:C.muted},
+ revampedCareActionRow:{flexDirection:'row',gap:6},
+ revampedCareAction:{flex:1,minWidth:0,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,minHeight:75,paddingHorizontal:5,paddingVertical:7,justifyContent:'center',alignItems:'center',gap:2},
+ revampedCareActionTitle:{fontSize:12,fontWeight:'900',color:C.text,textAlign:'center'},
+ revampedCareActionSubtitle:{fontSize:10,color:C.muted,textAlign:'center'},
+ revampedShopRedeem:{minHeight:52,justifyContent:'center'},
+ 
  // Kotlin PuppyMainScreensRevamp.kt current five-tab shell and Play stage.
  revampedAppHeader:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:14,paddingVertical:10,minHeight:64,backgroundColor:C.surface,borderBottomWidth:1,borderBottomColor:C.line},
  revampedAppLogo:{height:34,width:34},
