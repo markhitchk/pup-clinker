@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,Animated,Easing,Image,ImageBackground,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
+import {Alert,Animated,Easing,Image,ImageBackground,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,Vibration,View,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
@@ -49,7 +49,7 @@ function PageHeader({title,subtitle,action}){
 function Wallet({game}){
  return <View style={styles.wallet}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
-   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{format(value)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
+   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{game.compactNumbers===false?Number(value).toLocaleString('en-US'):format(value)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
  </View>;
 }
 function NeedPill({icon,value}){
@@ -87,6 +87,8 @@ function PlayScreen({g,act,onOpen,schedule,clock}){
  const doTap=()=>{
   if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care before tapping again.');return;}
   act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
+  if(g.hapticsEnabled!==false)Vibration.vibrate(12);
+  if(g.animationsEnabled===false)return;
   tapScale.stopAnimation();
   Animated.sequence([
    Animated.timing(tapScale,{toValue:0.89,duration:75,useNativeDriver:true}),
@@ -544,7 +546,14 @@ function SettingsScreen({g,act,onOpen}){
   {section('notifications','🔔','Notifications','In-game alerts, updates and notification permissions',<Txt muted>Notifications are not active. Onboarding only saves a local preference; no Android permission or push delivery is configured.</Txt>)}
   {section('privacy','🛡','Privacy & Data','Diagnostics, crash reporting, network use and PupEye privacy',<Txt muted>Guest game data is device-local. No production Discord identity, Supabase save or PupEye attestation is active.</Txt>)}
   <Txt style={styles.settingsGroupTitle}>GAME</Txt>
-  {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<><Pair left="Puppy" right={g.puppyName}/><Pair left="Tap power" right={format(g.clickPower)}/><Pair left="Total taps" right={format(g.totalTaps)}/></>)}
+  {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
+   <Pair left="Puppy" right={g.puppyName}/>
+   <Pair left="Tap power" right={format(g.clickPower)}/>
+   <Pair left="Total taps" right={format(g.totalTaps)}/>
+   <View style={styles.pair}><Txt>Tap haptics</Txt><Button secondary compact onPress={()=>act({type:'setPreference',name:'hapticsEnabled',value:g.hapticsEnabled===false})}>{g.hapticsEnabled===false?'OFF':'ON'}</Button></View>
+   <View style={styles.pair}><Txt>Tap animation</Txt><Button secondary compact onPress={()=>act({type:'setPreference',name:'animationsEnabled',value:g.animationsEnabled===false})}>{g.animationsEnabled===false?'OFF':'ON'}</Button></View>
+   <View style={styles.pair}><Txt>Compact wallet numbers</Txt><Button secondary compact onPress={()=>act({type:'setPreference',name:'compactNumbers',value:g.compactNumbers===false})}>{g.compactNumbers===false?'OFF':'ON'}</Button></View>
+  </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
    <Txt muted>LOCAL GUEST SAVE ONLY. This does not access your original Kotlin progress, Supabase saves or Google Play account.</Txt>
    <Button danger secondary onPress={()=>Alert.alert('Reset Local Guest','Delete only this React Native guest progress? This cannot affect the original Kotlin app.',[{text:'Cancel',style:'cancel'},{text:'Reset guest',style:'destructive',onPress:()=>act({type:'clearGuest'})}])}>Reset Local Guest Progress</Button>
