@@ -101,7 +101,7 @@ export default function RouletteV6({game,pending,lastResult,onAction,onBack}){
  const onActionRef=useRef(onAction);onActionRef.current=onAction;
  const motion=game.animationsEnabled!==false;
  const display=rouletteResult(pending)||lastResult;
- const canSpin=!pending&&!game.pendingSlots&&!game.pendingScratch&&!game.pendingPlinko&&!game.casinoRound&&
+ const canSpin=!pending&&!game.pendingSlots&&!game.pendingScratch&&!game.pendingPlinko&&!game.pendingWheel&&!game.casinoRound&&
   rouletteValidWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
