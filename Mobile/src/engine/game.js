@@ -50,7 +50,7 @@ export const freshGame=()=>({
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
   xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,
   onboardingComplete:false,onboardingStep:0,guestName:'Guest Puppy Fan',birthdayMonth:0,birthdayDay:0,notificationsOptIn:false,
-  hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,
+  hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,cooldownUntilMs:0,
   careActions:0,totalShopPurchases:0,
   dailyStreak:0,lastDailyClaimDay:null,claimedDailyTasks:[],
   dailyDay:null,dailyTapStart:0,dailyCareStart:0,dailyShopStart:0,
@@ -63,7 +63,7 @@ export function sanitizeGame(input){
   const b=freshGame();
   if(!input||typeof input!=='object'||Array.isArray(input))return b;
   for(const key of Object.keys(b))if(Object.hasOwn(input,key))b[key]=input[key];
-  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
+  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','cooldownUntilMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
@@ -106,7 +106,7 @@ export const format=n=>new Intl.NumberFormat('en-US',{notation:Math.abs(n)>=1000
 export function withGain(g,amount){const gain=cap(amount);g.treats=cap(g.treats+gain);g.lifetimeTreats=cap(g.lifetimeTreats+gain);}
 export function tap(g,now=Date.now(),rng=Math.random){
   // Android refuses tired-puppy taps. Browser fair play is not PupEye attestation.
-  if(g.energy<=10)return null;
+  if(g.energy<=10||now<(g.cooldownUntilMs||0))return null;
   const next=++g.totalTaps;g.legitimateTaps++;
   g.combo=now-g.lastTapMs<=900?Math.min(50,g.combo+1):1;
   g.bestCombo=Math.max(g.bestCombo,g.combo);g.lastTapMs=now;
@@ -251,7 +251,7 @@ export function prestige(g){
   for(const field of ['happiness','fullness','energy','cleanliness'])g[field]=100;
   g.careProfiles[g.puppyStyle]={happiness:100,fullness:100,energy:100,cleanliness:100,bond:g.bond};
   g.careActions=0;g.totalTaps=0;g.combo=0;g.bestCombo=0;g.lastTapMs=0;
-  g.parkActive=false;g.parkReadyAtMs=0;g.lastDailyClaimDay=null;g.dailyStreak=0;
+  g.parkActive=false;g.parkReadyAtMs=0;g.lastDailyClaimDay=null;g.dailyStreak=0;g.cooldownUntilMs=0;
   g.dailyTapStart=0;g.dailyCareStart=0;g.dailyShopStart=0;g.claimedDailyTasks=[];
   g.prestigeCount++;g.skillPoints=cap(g.skillPoints+points);
   g.totalPrestigePointsEarned=cap(g.totalPrestigePointsEarned+points);
