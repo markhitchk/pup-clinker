@@ -60,7 +60,7 @@ Full parity still requires verified real-account onboarding, protected/streamed 
 
 ## Installable standalone preview APK from GitHub Actions
 
-Use [Puppy Clicker React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) in GitHub Actions → **Run workflow** and select the `feat/react-native-full-android` branch, or take the latest successful automatic run after a change to `Mobile/**`. Download the `puppy-clicker-react-native-preview-standalone-apk` artifact and install the APK on an Android device.
+Use [Puppy Clicker React Native Preview APK](../.github/workflows/react-native-preview-apk.yml) in GitHub Actions → **Run workflow** and select the `main` branch (or the migration feature branch while it remains available), or take the latest successful automatic run after a change to `Mobile/**`. Download the `puppy-clicker-react-native-preview-standalone-apk` artifact and install the APK on an Android device.
 
 The workflow runs Gradle **`assembleRelease`** (signed with the template's **debug key**, **not** the owner's Google Play signing key), so **`assets/index.android.bundle` is embedded** in the APK. No Metro server, computer, or USB connection is required to open the standalone preview. CI verifies that the bundle exists inside the APK, that the package ID is `com.harleytg.puppyclicker.preview`, and that the APK signature is valid. **Do not use `assembleDebug` APKs for standalone installation**: those expect Metro and show the red "Unable to load script" screen when it is unavailable.
 

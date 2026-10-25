@@ -3,8 +3,11 @@ name: Android Build
 on:
   push:
     branches: [main]
+    # Kotlin reference CI must not build/upload Play bundles for React-only commits.
+    paths: ['App/**', 'assets/**', '.env', '.github/workflows/android.yml']
   pull_request:
     branches: [main]
+    paths: ['App/**', 'assets/**', '.env', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
