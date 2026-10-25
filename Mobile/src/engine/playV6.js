@@ -1,0 +1,41 @@
+// Part 1: Kotlin launcher V6Play/V6Header/V6Wallet/V6NeedPill contract.
+// Source: App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt
+// Guest-only preview; PupEye/server enforcement remains out of scope.
+export const V6_PLAY_LAYOUT=Object.freeze({
+ headerLogo:50,
+ stageHeight:365,
+ stageRadius:30,
+ circleSize:258,
+ portraitSize:238,
+ needRadius:14,
+ needMeterHeight:3,
+ stageBottomLabelInset:14,
+ idleDown:5,
+ idleUp:-3,
+ idleHalfCycleMs:1700,
+ tapPressedScale:0.89,
+ ticketVisibleMs:2750
+});
+export function v6PlaySizing(windowWidth){
+ const width=Number.isFinite(windowWidth)?Math.max(0,windowWidth):360;
+ const circle=Math.min(V6_PLAY_LAYOUT.circleSize,Math.max(0,width-32));
+ return {circle,portrait:Math.max(0,circle-20),stageHeight:V6_PLAY_LAYOUT.stageHeight};
+}
+export function v6Format(value,compact=true){
+ const n=Number.isFinite(value)?Math.trunc(value):0;
+ if(!compact)return n.toLocaleString('en-US');
+ if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(2)+'T';
+ if(n>=1_000_000_000)return (n/1_000_000_000).toFixed(2)+'B';
+ if(n>=1_000_000)return (n/1_000_000).toFixed(2)+'M';
+ if(n>=1_000)return (n/1_000).toFixed(1)+'K';
+ return String(n);
+}
+export function v6CooldownSeconds(game,now=Date.now()){
+ const until=Number(game?.cooldownUntilMs)||0;
+ return Number.isFinite(until)?Math.max(0,Math.ceil((until-now)/1000)):0;
+}
+export function v6PlayTapLabel(game,now=Date.now()){
+ const remaining=v6CooldownSeconds(game,now);
+ if(remaining)return '🐶👁️ Fair-play cooldown · '+remaining+'s';
+ return 'Tap '+game.puppyName+' · +'+v6Format(game.clickPower,game.compactNumbers!==false)+' 🍪';
+}

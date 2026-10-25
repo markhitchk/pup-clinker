@@ -6,7 +6,8 @@ Puppy Clicker is organized as a multi-platform project. The existing native Andr
 
 | Folder | Purpose |
 | --- | --- |
-| [`App/`](App/) | Native Android project, Gradle configuration, source code, build tools, and signing documentation. |
+| [`App/`](App/) | Existing signed Kotlin/Compose Android production app and its Play release pipeline. |
+| [`Mobile/`](Mobile/) | **Primary React Native Android development source** (Expo SDK 57), currently a separate preview; no production account or Play cutover yet. |
 | [`Website/`](Website/) | Website and browser edition. No website implementation is included yet. |
 | [`assets/`](assets/) | Existing shared artwork and versioned puppy assets. Keep this path stable for all platforms. |
 | [`Desktop/`](Desktop/) | Future desktop edition, installers, and platform-specific packaging. No desktop implementation is included yet. |
@@ -14,6 +15,10 @@ Puppy Clicker is organized as a multi-platform project. The existing native Andr
 The root `.github/` directory contains repository automation. The root `.gitignore` and this README apply to the entire repository and are not separate products.
 
 ## Android
+
+**Development direction:** React Native in [`Mobile/`](Mobile/) is the main-branch Android migration target. The original Kotlin/Compose source remains in `App/` as the shipping reference until Play migration gates are verified. The immutable Kotlin snapshot is in [`archive/kotlin-android-2026-10-24`](https://github.com/markhitchk/pup-clinker/tree/archive/kotlin-android-2026-10-24). Merging React source into `main` does not change the Google Play package, identity, signing, or existing players' save data. React preview builds use `com.harleytg.puppyclicker.preview` and MUST NOT be uploaded to Google Play as production.
+
+React local Android notifications now follow the original two-hour recurring AFK attention cadence, using the selected puppy's latest known care state. The in-app notification inbox and Android channels are local guest features, not authenticated system broadcasts. Kotlin server messages, PupEye enforcement, Supabase save authority, device binding, Discord OAuth, and secure existing-user migration remain required before production.
 
 The existing Android project is now in `App/`. Open that directory in Android Studio, or build from the repository root:
 

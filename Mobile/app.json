@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Puppy Clicker",
+    "slug": "puppy-clicker-native",
+    "version": "1.8.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "puppyclicker",
+    "android": {
+      "package": "com.harleytg.puppyclicker",
+      "versionCode": 35,
+      "permissions": [
+        "INTERNET",
+        "VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logos/puppy_clicker.png",
+        "backgroundColor": "#0C0F12"
+      }
+    },
+    "extra": {
+      "migrationStatus": "guest-preview-not-production",
+      "productionReplacementApproved": false
+    },
+    "icon": "./assets/logos/puppy_clicker.png",
+    "plugins": [
+      "./plugins/withPuppyPointer.cjs",
+      "expo-notifications"
+    ]
+  }
+}
