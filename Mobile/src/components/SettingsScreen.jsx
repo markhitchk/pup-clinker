@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import DangerHoldDialog from './DangerHoldDialog.jsx';
 import {Alert,BackHandler,Image,Linking,Pressable,ScrollView,Share,Switch,Text,TextInput,Vibration,View} from 'react-native';
 import {colors as C,themedStyles} from '../theme.js';
 import {ACCENT_PRESETS} from '../engine/settings.js';
@@ -11,7 +12,7 @@ function Action({children,onPress,disabled=false,danger=false}){return <Pressabl
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
 export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics}){
- const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false);
+ const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
  const [hex,setHex]=useState(g.accentHex),[custom,setCustom]=useState(false),[report,setReport]=useState(''),[category,setCategory]=useState('Bug');
@@ -25,7 +26,6 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </Pressable>{expanded===id?<View style={s.body}>{children}</View>:null}
  </View>;
  const group=title=><T style={s.group}>{title}</T>;
- const confirm=(title,message,label,callback)=>Alert.alert(title,message,[{text:'Cancel',style:'cancel'},{text:label,style:'destructive',onPress:callback}]);
  const pending=<T muted>Available after the original linked account and protected services are migrated. This preview has local guest progress.</T>;
  return <View style={s.page}>
   <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
@@ -84,9 +84,9 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
    <T style={s.bold}>CURRENT SAVE</T><T muted>Local guest save. Your original Kotlin app and cloud progress are separate.</T>
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
-    <Action danger onPress={()=>confirm('Reset Settings','Reset interface preferences while keeping your game progress?','Reset Settings',()=>act({type:'resetSettings'}))}>Reset Settings</Action>
-    <Action danger onPress={()=>confirm('Reset Game Progress','Erase React preview progress on this device?','Reset Progress',()=>act({type:'resetGuestProgress'}))}>Reset Game Progress</Action>
-    <Action danger onPress={()=>confirm('Delete Local Save Data','Delete this preview save and return to setup?','Delete Local Save',()=>act({type:'clearGuest'}))}>Delete Local Save Data</Action>
+    <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
+    <Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action>
+    <Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action>
    </>:null}
   </>)}
   {group('SUPPORT')}
@@ -103,6 +103,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </>)}
   {section('release-hub','↻','Release Hub',"What's New, installed build and app updates",<><T style={s.bold}>React Native preview 1.8.0</T><T muted>Settings controls, local notification inbox and original hardware pointer artwork.</T><Action onPress={()=>Linking.openURL('https://github.com/markhitchk/pup-clinker/actions/workflows/react-native-preview-apk.yml')}>View Preview Builds</Action></>)}
   {section('about','ⓘ','About Puppy Clicker','Version, links, development and legal information',<><Image source={require('../../assets/logos/puppy_clicker.png')} resizeMode="contain" style={s.aboutLogo}/><T style={s.bold}>Puppy Clicker · 1.8.0 Preview</T><T>Built by Harley’s Studios</T><T muted>React Native Android · com.harleytg.puppyclicker.preview</T><T muted>Production account migration and Google Play release validation are still required.</T></>)}
+  {dangerAction?<DangerHoldDialog action={dangerAction} g={g} onDismiss={()=>setDangerAction(null)} onConfirmed={()=>{const type={settings:'resetSettings',progress:'resetGuestProgress',delete:'clearGuest'}[dangerAction];setDangerAction(null);act({type});}}/>:null}
  </View>;
 }
 const s=themedStyles(()=>({

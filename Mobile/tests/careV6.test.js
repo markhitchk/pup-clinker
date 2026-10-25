@@ -1,34 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {freshGame,care,claimDailyReward,startPark,claimPark,level} from '../src/engine/game.js';
 import {transition,initialState} from '../src/state/reducer.js';
 import {parseGuestSave,serializeGuestSave} from '../src/state/guestSave.js';
 import {localEpochDay} from '../src/engine/monthlyRewards.js';
-import {V6_CARE_LAYOUT,V6_CARE_ACTIONS,canPerformCare,dailyGiftPreview,parkPreview} from '../src/engine/careV6.js';
-
-const source=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
-const model=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6ViewModel.kt',import.meta.url),'utf8');
-const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const screen=app.slice(app.indexOf('function CareScreen('),app.indexOf('// V6Shop'));
-
-test('Part 2 launched Kotlin Care panel matches React five controls and actual geometry',()=>{
- const original=source.slice(source.indexOf('private fun V6CareAndDaily('),source.indexOf('@OptIn(ExperimentalMaterial3Api::class)',source.indexOf('private fun V6CareAndDaily(')));
- assert.ok(original.includes('V6CarePanel(state, vm)'));
- assert.ok(original.includes('V6DailyPanel(state, vm)'));
- assert.ok(original.includes('V6PuppyPortrait(state.puppyStyle, 125.dp'));
- assert.ok(source.includes('LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().height(6.dp)'));
- assert.equal(V6_CARE_LAYOUT.portraitSize,125);
- assert.equal(V6_CARE_LAYOUT.careMeterHeight,6);
- assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.kind),['feed','play','rest','wash','cuddle']);
- assert.deepEqual(V6_CARE_ACTIONS.map(x=>x.row),[0,0,1,1,2]);
- assert.ok(screen.includes('<PageHeader withLogo title="Pup Care"'));
- assert.ok(screen.includes('size={V6_CARE_LAYOUT.portraitSize}'));
- for(const kind of ['feed','play','rest','wash','cuddle'])assert.ok(screen.includes("'"+kind+"'"));
- for(const label of ['Happiness','Fullness','Energy','Cleanliness','Bond'])assert.ok(screen.includes('label="'+label+'"'));
- assert.ok(screen.includes('careMeter'));
- assert.ok(!screen.includes('styles.quickActionRow'));
-});
+import {canPerformCare,dailyGiftPreview,parkPreview} from '../src/engine/careV6.js';
 
 test('Kotlin care action prerequisites and effect values match local preview exactly',()=>{
  const g=freshGame();
@@ -119,20 +95,6 @@ test('active park and per-puppy care survive guest reload without phantom payout
  const first=restored.treats;
  assert.equal(claimPark(restored,now+120_000),false);
  assert.equal(restored.treats,first);
-});
-
-test('Kotlin daily goal source and React game screen use monthly verified schedule',()=>{
- assert.ok(model.includes('PuppyMonthlyRewards.goalToday(id)'));
- assert.ok(screen.includes('goalsForDay(schedule,new Date(clock))'));
- assert.ok(screen.includes('DailyGoalCard'));
- assert.ok(screen.includes('dailyGiftPreview(g,clock)'));
- assert.ok(screen.includes('parkPreview(g,clock)'));
- assert.ok(screen.includes("type:park.ready?'parkClaim':'parkStart'"));
- assert.ok(screen.includes('disabled={park.disabled}'));
- // A real daily gift claim still passes today's epoch day; only goal definitions
- // must come from the signed/cached monthly schedule, not an invented UI list.
- assert.ok(screen.includes("type:'daily',epochDay:today,now:clock"));
- assert.ok(!app.includes('Every completed care action awards +1 Bone.'));
 });
 
 test('care/daily counters roll on rehydrate before first screen render, not after a one-minute delay',()=>{

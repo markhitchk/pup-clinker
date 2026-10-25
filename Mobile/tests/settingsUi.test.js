@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test,{mock} from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import {act,create} from 'react-test-renderer';
@@ -11,15 +11,20 @@ import * as theme from '../src/theme.js';
 import {freshGame} from '../src/engine/game.js';
 import {transition} from '../src/state/reducer.js';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
-const callbacks=new Set();
+const callbacks=new Set(),appCallbacks=new Set();
+class Value{constructor(v){this.value=v;}setValue(v){this.value=v;}interpolate(){return 0;}}
+
 const native=Object.fromEntries(['View','Text','Pressable','ScrollView','Image','TextInput','Switch','Modal'].map(x=>[x,x]));
 native.BackHandler={addEventListener:(_name,fn)=>{callbacks.add(fn);return {remove:()=>callbacks.delete(fn)};}};
+native.AppState={currentState:'active',addEventListener:(_name,fn)=>{appCallbacks.add(fn);return {remove:()=>appCallbacks.delete(fn)};}};
+native.Animated={Value,View:'View',loop:()=>({start(){},stop(){}}),timing:()=>({start(){},stop(){}})};
+native.Easing={linear:x=>x};native.useWindowDimensions=()=>({width:393,height:852});
 native.Alert={alert:()=>{}};native.Share={share:async()=>{}};native.Linking={openURL:()=>{}};native.Vibration={vibrate:()=>{}};
 function load(relative){
  const file=new URL(relative,import.meta.url),require=createRequire(file);
  const compiled=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
  const module={exports:{}};
- const mocked=id=>id==='react-native'?native:id==='../theme.js'?theme:id.includes('/assets/puppies')?{PUPPY_IMAGES:{classic:1}}:id.endsWith('.png')?1:id==='./PuppyPointer.jsx'?{default:'PuppyPointer',__esModule:true}:require(id);
+ const mocked=id=>id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:id==='react-native'?native:id==='../theme.js'?theme:id.includes('/assets/puppies')?{PUPPY_IMAGES:{classic:1}}:id.endsWith('.png')?1:id==='./PuppyPointer.jsx'?{default:'PuppyPointer',__esModule:true}:id.endsWith('.jsx')?{default:load(new URL(id,file).href),__esModule:true}:require(id);
  new Function('require','module','exports',compiled)(mocked,module,module.exports);return module.exports.default;
 }
 const Settings=load('../src/components/SettingsScreen.jsx');
@@ -61,4 +66,75 @@ test('inbox filtering, marking and clearing operate on real reducer state',async
  await act(()=>labelButton('Mark All Read').props.onPress());assert.equal(state.game.notificationInbox[0].read,true);
  await act(()=>labelButton('Clear Read').props.onPress());assert.equal(state.game.notificationInbox.length,0);
  await act(()=>renderer.unmount());
+});
+
+const contents=root=>root.findAllByType('Text').flatMap(t=>t.props.children).join(' ');
+const buttonWith=(root,label)=>root.findAllByType('Pressable').find(p=>p.props.accessibilityLabel===label||p.findAllByType('Text').some(t=>[t.props.children].flat().join('')===label));
+test('all Settings destructive routes open the original hold confirmation without changing data',async()=>{
+ const ui=await settings();
+ try{
+  await ui.press('Data Management');await act(()=>buttonWith(ui.renderer.root,'Danger Zone ⌄').props.onPress());
+  for(const [label,hold] of [['Reset Settings','Hold to Reset Settings'],['Reset Game Progress','Hold to Reset Progress'],['Delete Local Save Data','Hold to Delete Local Data']]){
+   const before=JSON.stringify(ui.state().game);
+   await act(()=>buttonWith(ui.renderer.root,label).props.onPress());
+   assert.match(contents(ui.renderer.root),/DANGER ZONE/,'Plain Android alert still replaces the original danger modal');
+   assert.ok(ui.renderer.root.findAllByProps({accessibilityLabel:hold}).length);
+   assert.equal(JSON.stringify(ui.state().game),before);
+   await act(()=>buttonWith(ui.renderer.root,'Cancel').props.onPress());
+   assert.equal(JSON.stringify(ui.state().game),before);
+  }
+ }finally{await act(()=>ui.renderer.unmount());}
+});
+
+async function holdUi(action='delete'){
+ const Dialog=load('../src/components/DangerHoldDialog.jsx');
+ let confirmed=0,dismissed=0,renderer;
+ await act(()=>{renderer=create(React.createElement(Dialog,{action,g:freshGame(),onDismiss:()=>dismissed++,onConfirmed:()=>confirmed++}));});
+ const button=()=>renderer.root.findAllByType('View').find(v=>v.props.onResponderGrant);
+ await act(()=>button().props.onLayout({nativeEvent:{layout:{width:300,height:68}}}));
+ const touch=(x=20,y=20,count=1)=>({nativeEvent:{locationX:x,locationY:y,touches:Array.from({length:count},(_,i)=>({identifier:i}))}});
+ return {renderer,button,touch,confirmed:()=>confirmed,dismissed:()=>dismissed};
+}
+test('a danger hold confirms once after ten uninterrupted seconds and a tap cannot confirm',async()=>{
+ let now=0;mock.method(performance,'now',()=>now);mock.timers.enable({apis:['setInterval']});
+ const ui=await holdUi();
+ try{
+  await act(()=>ui.button().props.onResponderGrant(ui.touch()));now=9900;await act(()=>mock.timers.tick(9900));assert.equal(ui.confirmed(),0);
+  await act(()=>ui.button().props.onResponderRelease());now=10000;await act(()=>mock.timers.tick(100));assert.equal(ui.confirmed(),0);
+  await act(()=>ui.button().props.onResponderGrant(ui.touch()));now=19999;await act(()=>mock.timers.tick(9999));assert.equal(ui.confirmed(),0);
+  now=20000;await act(()=>mock.timers.tick(50));assert.equal(ui.confirmed(),1);
+  now=40000;await act(()=>mock.timers.tick(20000));assert.equal(ui.confirmed(),1);
+ }finally{await act(()=>ui.renderer.unmount());mock.restoreAll();mock.timers.reset();}
+});
+test('moving off, multitouch, losing app focus and unmount cancel without resuming a danger hold',async()=>{
+ let now=0;mock.method(performance,'now',()=>now);mock.timers.enable({apis:['setInterval']});
+ const ui=await holdUi('settings');
+ try{
+  for(const cancel of [()=>ui.button().props.onResponderMove(ui.touch(301)),()=>ui.button().props.onResponderStart(ui.touch(20,20,2)),()=>{native.AppState.currentState='background';for(const cb of appCallbacks)cb('background');},()=>ui.button().props.onResponderTerminate()]){
+   native.AppState.currentState='active';await act(()=>ui.button().props.onResponderGrant(ui.touch()));now+=9000;await act(()=>mock.timers.tick(9000));
+   await act(cancel);native.AppState.currentState='active';for(const cb of appCallbacks)cb('active');now+=11000;await act(()=>mock.timers.tick(11000));assert.equal(ui.confirmed(),0);
+  }
+  await act(()=>ui.button().props.onResponderGrant(ui.touch()));await act(()=>ui.renderer.unmount());now+=10000;await act(()=>mock.timers.tick(10000));assert.equal(ui.confirmed(),0);
+ }finally{await act(()=>ui.renderer.unmount());mock.restoreAll();mock.timers.reset();native.AppState.currentState='active';}
+});
+test('closing a held danger dialog cancels the timer before it can dispatch',async()=>{
+ let now=0;mock.method(performance,'now',()=>now);mock.timers.enable({apis:['setInterval']});
+ const ui=await holdUi('progress');
+ try{
+  await act(()=>ui.button().props.onResponderGrant(ui.touch()));now=9900;await act(()=>mock.timers.tick(9900));
+  await act(()=>ui.renderer.root.findByType('Modal').props.onRequestClose());
+  now=25000;await act(()=>mock.timers.tick(15100));assert.equal(ui.confirmed(),0);assert.equal(ui.dismissed(),1);
+ }finally{await act(()=>ui.renderer.unmount());mock.restoreAll();mock.timers.reset();}
+});
+test('a stale inbox Claim press cannot credit the same local reward twice',async()=>{
+ let state={game:freshGame(),ready:true,notice:''},renderer;
+ state=transition(state,{type:'checkNotifications',now:Date.now()});
+ const render=()=>React.createElement(Inbox,{visible:true,g:state.game,act:action=>{state=transition(state,action);renderer.update(render());},onClose:()=>{}});
+ await act(()=>{renderer=create(render());});
+ try{
+  const claim=renderer.root.findAllByType('Pressable').find(p=>String(p.props.accessibilityLabel).startsWith('Claim ')).props.onPress;
+  await act(claim);const balance=state.game.treats;assert.ok(balance>0);
+  await act(claim);assert.equal(state.game.treats,balance);
+  assert.equal(renderer.root.findAllByType('Pressable').filter(p=>String(p.props.accessibilityLabel).startsWith('Claim ')).length,0);
+ }finally{await act(()=>renderer.unmount());}
 });

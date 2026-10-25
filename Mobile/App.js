@@ -184,92 +184,41 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
   {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
  </View>;
 }
-// Part 2: direct port of the launched Kotlin V6CareAndDaily / V6CarePanel /
-// V6DailyPanel. Guest-only data; notification scheduling is not enabled yet.
-function CareScreen({g,act,clock,schedule,onOpen}){
- const [page,setPage]=useState('care');
+// Shipped PuppyRevampedCareScreen, preserving the existing care reducer effects.
+function CareScreen({g,act,viewportHeight}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const gift=dailyGiftPreview(g,clock);
- const park=parkPreview(g,clock);
- const careAction=(kind,text)=>(
-  <Button disabled={!canPerformCare(g,kind)}
-   onPress={()=>act({type:'care',kind,now:Date.now()})}>{text}</Button>
- );
- return <View style={styles.gamePage}>
-  <PageHeader withLogo title="Pup Care" subtitle="Care, bond, daily rewards and adventures."/>
-  <View style={styles.filterRow}>
-   {[['care','💖 Care'],['daily','📅 Daily']].map(([id,label])=>
-    <Pressable accessibilityRole="tab" accessibilityState={{selected:page===id}}
-     key={id} onPress={()=>setPage(id)}
-     style={[styles.filterChip,page===id&&styles.filterChipSelected]}>
-     <Txt style={[styles.filterText,page===id&&styles.filterTextSelected]}>{label}</Txt>
-    </Pressable>)}
+ const tiny=viewportHeight<590,compact=viewportHeight<700;
+ const portraitSize=tiny?66:compact?78:92;
+ const bonus=careTapBonus(g);
+ const note=g.energy<=10?'😴 Too tired to earn Treats on Play. Rest above 10% energy.':bonus===2?'✨ Thriving care bonus: +2 Treats on every normal puppy tap.':bonus===1?'✨ Healthy care bonus: +1 Treat on every normal puppy tap.':'Keep wellness at 70%+ to unlock a Treat bonus on Play.';
+ const meter=(label,icon,value)=><View key={label} style={styles.compactCareMeter}>
+  <Txt style={styles.compactCareLabel}>{icon} {label}</Txt>
+  <View accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{min:0,max:100,now:value}} style={styles.compactCareTrack}><View style={[styles.compactCareFill,{width:Math.max(0,Math.min(100,value))+'%'}]}/></View>
+  <Txt style={styles.compactCareValue}>{value}%</Txt>
+ </View>;
+ const action=(kind,icon,title,detail,label)=><Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:!canPerformCare(g,kind)}} disabled={!canPerformCare(g,kind)} onPress={()=>act({type:'care',kind,now:Date.now()})} style={[styles.restoredCareAction,!canPerformCare(g,kind)&&{opacity:.45}]}>
+  <Txt style={{fontSize:22}}>{icon}</Txt><Txt style={styles.restoredCareActionTitle}>{title}</Txt><Txt muted style={styles.restoredCareActionDetail}>{detail}</Txt>
+ </Pressable>;
+ return <View style={[styles.restoredCare,{gap:tiny?5:8}]}>
+  <PageHeader title="Pup Care" subtitle={compact?'Care is separate for each puppy.':'Care for your active puppy. Every puppy keeps its own needs and bond.'}/>
+  <View style={[styles.restoredCareIdentity,{paddingVertical:tiny?7:9}]}>
+   <Portrait puppy={pup} size={portraitSize} accessory={g.accessory}/>
+   <View style={{flex:1,gap:4}}><Txt style={{fontSize:16,fontWeight:'900'}}>{g.puppyName}</Txt><Txt muted style={{fontSize:12}}>{mood(g)} · Wellness {wellness(g)}% · Bond {g.bond}%</Txt></View>
   </View>
-  {page==='care'?<>
-   <View style={styles.careIdentity}>
-    <Portrait puppy={pup} size={V6_CARE_LAYOUT.portraitSize}/>
-    <View style={{flex:1,gap:5}}>
-     <Txt style={styles.pageTitle} numberOfLines={2}>{g.puppyName}</Txt>
-     <Txt muted style={styles.small}>{mood(g)} · wellness {wellness(g)}%</Txt>
-     <Txt style={styles.careBond}>🤝 Bond {g.bond}%</Txt>
-    </View>
-   </View>
-   <View style={styles.careMeters}>
-    <Meter label="Happiness" icon="💖" value={g.happiness}/>
-    <Meter label="Fullness" icon="🍖" value={g.fullness}/>
-    <Meter label="Energy" icon="⚡" value={g.energy}/>
-    <Meter label="Cleanliness" icon="🫧" value={g.cleanliness}/>
-    <Meter label="Bond" icon="🤝" value={g.bond}/>
-   </View>
-   <Txt style={styles.sectionTitle}>Care actions</Txt>
-   <View style={styles.careActionRow}>
-    {careAction('feed','🍖 Feed')}
-    {careAction('play','🎾 Play')}
-   </View>
-   <View style={styles.careActionRow}>
-    {careAction('rest','💤 Rest')}
-    {careAction('wash','🫧 Groom')}
-   </View>
-   <Button secondary disabled={!canPerformCare(g,'cuddle')}
-    onPress={()=>act({type:'care',kind:'cuddle',now:Date.now()})}>🤗 Cuddle · build bond</Button>
-   <View style={styles.careRewardNote}>
-    <Txt style={styles.itemName}>Active care rewards</Txt>
-    <Txt muted style={styles.small}>Care actions improve your puppy’s needs and bond.</Txt>
-    <Txt muted style={styles.small}>Your local reward reminders are available from the notification bell.</Txt>
-   </View>
-  </>:<>
-   <View style={styles.careStreakBanner}>
-    <Txt style={{fontSize:36}}>🔥</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.careStreakTitle}>{g.dailyStreak} day streak</Txt>
-     <Txt muted style={styles.small}>Daily rewards grant Treats, Bones and Pup Coins — never automatic Upgrade Tickets.</Txt>
-    </View>
-   </View>
-   <View style={styles.careDailyGift}>
-    <Txt style={{fontSize:34}}>🎁</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.itemName}>Daily Puppy Gift</Txt>
-     <Txt muted style={styles.small}>{v6Format(gift.rewardTreats,g.compactNumbers!==false)} Treats + 2 Bones + 3 Pup Coins</Txt>
-    </View>
-    <Button compact disabled={gift.claimed}
-     onPress={()=>act({type:'daily',now:Date.now()})}>{gift.claimed?'Claimed':'Claim'}</Button>
-   </View>
-   <Txt style={styles.sectionTitle}>Today’s goals</Txt>
-   {goalsForDay(schedule,new Date(clock)).map(goal=>
-    <DailyGoalCard key={goal.id} g={g} act={act} goal={goal} clock={clock}/>)}
-   <View style={styles.careParkCard}>
-    <Txt style={{fontSize:32}}>🌳</Txt>
-    <View style={{flex:1,gap:4}}>
-     <Txt style={styles.itemName}>Dog Park Adventure</Txt>
-     <Txt muted style={styles.small}>{park.detail}</Txt>
-    </View>
-    <Button compact disabled={park.disabled}
-     onPress={()=>act({type:park.ready?'parkClaim':'parkStart',now:Date.now()})}>{park.label}</Button>
-   </View>
-   <View style={{marginTop:8}}>
-    <Button compact secondary onPress={()=>onOpen('rewards')}>Preview · Rewards Hub</Button>
-   </View>
-  </>}
+  <View style={[styles.restoredCarePanel,{paddingVertical:tiny?6:8}]}>
+   {[['Happiness','💖',g.happiness],['Fullness','🍖',g.fullness],['Energy','⚡',g.energy],['Cleanliness','🫧',g.cleanliness],['Bond','🤝',g.bond]].map(([label,icon,value])=>meter(label,icon,value))}
+   <View style={styles.restoredCareDivider}/><Txt muted style={{fontSize:12,fontWeight:'700',color:g.energy<=10?C.danger:C.muted}}>{note}</Txt>
+  </View>
+  <Txt style={{fontSize:14,fontWeight:'900'}}>Care actions</Txt>
+  <View style={styles.restoredCareRow}>
+   {action('feed','🍖','Feed','-20 🍪','Feed, costs 20 Treats')}
+   {action('play','🎾','Play','-1 🦴 · -12 ⚡','Play, costs 1 Bone and 12 energy')}
+   {action('wash','🫧','Clean','-10 🍪','Clean, costs 10 Treats')}
+  </View>
+  <View style={styles.restoredCareRow}>
+   {action('rest','🌙','Rest','Free · +30 ⚡','Rest, free, restores 30 energy')}
+   {action('cuddle','🤗','Cuddle','Free · +Happy / Bond','Cuddle, free, improves happiness and bond')}
+  </View>
  </View>;
 }
 // Part 3: actual launched Kotlin V6Shop / V6Prestige, not a generic store.
@@ -401,6 +350,7 @@ function PrestigeScreen({g,act,activeCasinoRound=false}){
  </View>;
 }
 function RosterScreen({g,act,registry,onUse}){
+ const [gridWidth,setGridWidth]=useState(0);
  const [search,setSearch]=useState('');
  const [status,setStatus]=useState('all');
  const [favoritesOnly,setFavoritesOnly]=useState(false);
@@ -411,6 +361,12 @@ function RosterScreen({g,act,registry,onUse}){
  const [view,setView]=useState('browser');
  const [renameOpen,setRenameOpen]=useState(false);
  const [editing,setEditing]=useState(g.puppyName);
+ const [accessoriesOpen,setAccessoriesOpen]=useState(false),[sortOpen,setSortOpen]=useState(false),[retries,setRetries]=useState({});
+ const nativeId=p=>p.assetId||(p.groupId==='v1'?'v1_'+p.id:p.id);
+ const puppyName=p=>LEGACY_V6_PUPPIES.find(legacy=>legacy.id===p.id)?.name||p.name;
+ const displayName=p=>p.id===g.puppyStyle?g.puppyName:puppyName(p);
+ const retry=id=>setRetries(current=>({...current,[id]:(current[id]||0)+1}));
+ const sorts=[['unlocked','Unlocked First'],['name','Name A–Z'],['name-desc','Name Z–A'],['newest','Newest Added'],['number','Oldest Added'],['category','Category']];
  const sections=legacyRosterSections(registry.items);
  useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
 
@@ -422,8 +378,8 @@ function RosterScreen({g,act,registry,onUse}){
   return (status==='all'||(status==='unlocked'&&owned)||(status==='locked'&&!owned))&&
    (!favoritesOnly||g.favoritePuppies.includes(p.id))&&
    (category==='all'||p.groupId===category)&&
-   (p.name.toLowerCase().includes(search.toLowerCase().trim())||p.id.includes(search.toLowerCase().trim()));
- }).sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):sort==='number'?a.number-b.number:Number(g.unlockedPuppies.includes(b.id))-Number(g.unlockedPuppies.includes(a.id)));
+   (puppyName(p).toLowerCase().includes(search.toLowerCase().trim())||nativeId(p).toLowerCase().includes(search.toLowerCase().trim())||p.id.includes(search.toLowerCase().trim()));
+ }).sort((a,b)=>sort==='name'?puppyName(a).localeCompare(puppyName(b)):sort==='name-desc'?puppyName(b).localeCompare(puppyName(a)):sort==='newest'?b.number-a.number:sort==='number'?a.number-b.number:sort==='category'?a.groupOrder-b.groupOrder||puppyName(a).localeCompare(puppyName(b)):Number(g.unlockedPuppies.includes(b.id))-Number(g.unlockedPuppies.includes(a.id)));
  const reset=()=>{setSearch('');setStatus('all');setCategory('all');setFavoritesOnly(false);setSort('unlocked');};
  if(view==='collection')return <View style={styles.gamePage}>
   <PageHeader withLogo title="Puppy Collection" subtitle="V1 classics and V2 puppies in one collection."/>
@@ -473,36 +429,42 @@ function RosterScreen({g,act,registry,onUse}){
   <Button compact secondary onPress={()=>setView('browser')}>Browse online V3+ and advanced filters</Button>
   <Txt muted style={styles.small}>Guest preview collection; original Puppy Code and Discord entitlements are not connected.</Txt>
  </View>;
- return <View style={styles.gamePage}>
-  <Button compact secondary onPress={()=>setView('collection')}>← Kotlin Puppy Collection</Button>
-  <PageHeader title="Puppy Roster" subtitle="Browse the original Kotlin puppy roster and streamed artwork."/>
-  <View style={styles.filterRow}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.filterChip,status===id&&styles.filterChipSelected]}><Txt style={[styles.filterText,status===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</View>
-  <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍 Search puppies or ID" placeholderTextColor={C.muted} style={styles.input} maxLength={64} value={search} onChangeText={setSearch}/>
-  <View style={styles.actions}>
-   <Button secondary compact onPress={()=>setSort(sort==='unlocked'?'name':sort==='name'?'number':'unlocked')}>Sort: {sort==='unlocked'?'Unlocked first':sort==='name'?'Name':'Number'}</Button>
-   <Button compact secondary={!favoritesOnly} onPress={()=>setFavoritesOnly(!favoritesOnly)}>{favoritesOnly?'★':'☆'} Favorites</Button>
+ return <View style={styles.restoredRoster}>
+  <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={()=>Alert.alert('Puppy Exchange','Puppy Exchange requires the linked account and protected trading service. These are not connected in the local guest preview.')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
+  <View style={styles.restoredRosterFilters}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.rosterStatus,status===id&&styles.rosterStatusSelected]}><Txt style={[styles.rosterControlText,status===id&&styles.rosterSelectedText]}>{label}</Txt></Pressable>)}</View>
+  <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍  Search puppies or ID" placeholderTextColor={C.muted} style={styles.rosterSearch} maxLength={64} value={search} onChangeText={setSearch}/>
+  <View style={styles.restoredRosterFilters}>
+   <Pressable accessibilityRole="button" accessibilityLabel="Sort puppies" accessibilityState={{expanded:sortOpen}} onPress={()=>setSortOpen(!sortOpen)} style={[styles.rosterOutline,{flex:1,alignItems:'flex-start'}]}><Txt style={styles.rosterControlText}>Sort: {sorts.find(([id])=>id===sort)?.[1]}</Txt></Pressable>
+   <Pressable accessibilityRole="button" accessibilityLabel="Show favorites only" accessibilityState={{selected:favoritesOnly}} onPress={()=>setFavoritesOnly(!favoritesOnly)} style={[styles.rosterOutline,favoritesOnly&&styles.rosterStatusSelected]}><Txt style={[styles.rosterControlText,favoritesOnly&&styles.rosterSelectedText]}>♡ Favorites</Txt></Pressable>
   </View>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:6,paddingVertical:4}}>{[['all','All Categories'],...registry.categories.map(group=>[group.id,group.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.filterChip,{flex:0,minWidth:108,paddingHorizontal:12},category===id&&styles.filterChipSelected]}><Txt numberOfLines={1} style={[styles.filterText,category===id&&styles.filterTextSelected]}>{label}</Txt></Pressable>)}</ScrollView>
-  <Txt muted style={styles.small}>{matches.length} shown · {g.unlockedPuppies.length} unlocked · {registry.source==='live'?'Live roster':registry.source==='cached'?'Cached roster':'Bundled roster'}</Txt>
-  <View style={styles.selectedPuppyPanel}>
-   <Portrait puppy={selected} size={108}/>
-   <View style={{flex:1,gap:7}}>
-    <Txt style={styles.heading}>{selected.name}</Txt>
-    <Txt muted style={styles.small}>{selected.id} · {selectedOwned?'Unlocked':'Locked'} · {selected.groupTitle}</Txt>
-    <View style={styles.actions}>
-     <Button compact disabled={!selectedOwned||selected.id===g.puppyStyle} onPress={()=>onUse?onUse(selected.id):act({type:'switch',id:selected.id,now:Date.now()})}>Use</Button>
-     <Button compact secondary onPress={()=>act({type:'favorite',id:selected.id})}>{selectedFavorite?'★':'☆'}</Button>
+  {sortOpen?<View style={styles.rosterOptions}>{sorts.map(([id,label])=><Pressable accessibilityRole="radio" accessibilityState={{checked:sort===id}} key={id} onPress={()=>{setSort(id);setSortOpen(false);}} style={styles.rosterOption}><Txt>{label}{sort===id?' ✓':''}</Txt></Pressable>)}</View>:null}
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:5}}>{[['all','All Categories'],...registry.categories.map(group=>[group.id,group.title])].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:category===id}} onPress={()=>setCategory(id)} style={[styles.rosterCategory,category===id&&styles.rosterStatusSelected]}><Txt numberOfLines={1} style={[styles.rosterControlText,category===id&&styles.rosterSelectedText]}>{label}</Txt></Pressable>)}</ScrollView>
+  <Txt muted style={styles.small}>{matches.length} shown · {available.filter(p=>g.unlockedPuppies.includes(p.id)).length} unlocked</Txt>
+  <View style={styles.restoredSelectedPanel}>
+   <View style={styles.restoredSelectedRow}>
+    <Portrait key={selected.id+':'+(retries[selected.id]||0)} puppy={selected} size={52} unlocked={selectedOwned} accessory={selected.id===g.puppyStyle?g.accessory:'None'}/>
+    <View style={{flex:1,gap:2,minWidth:0}}><Txt numberOfLines={1} style={styles.rosterSelectedName}>{displayName(selected)}</Txt><Txt numberOfLines={1} style={styles.rosterMeta}>{nativeId(selected)} · {selected.groupTitle}</Txt>
+     {selected.id===g.puppyStyle?<Txt style={styles.rosterCurrent}>Current Puppy</Txt>:selectedOwned?<Pressable accessibilityRole="button" accessibilityLabel={'Use '+puppyName(selected)} onPress={()=>onUse?onUse(selected.id):act({type:'switch',id:selected.id,now:Date.now()})}><Txt style={styles.rosterCurrent}>Use Puppy</Txt></Pressable>:<Txt style={styles.rosterMeta}>Locked</Txt>}
     </View>
+    <Pressable accessibilityRole="button" accessibilityLabel={(selectedFavorite?'Remove ':'Add ')+displayName(selected)+(selectedFavorite?' from favorites':' to favorites')} disabled={!selectedOwned} onPress={()=>act({type:'favorite',id:selected.id})} style={styles.rosterHeart}><Txt style={[styles.rosterHeartText,selectedFavorite&&{color:'#FF646B'}]}>{selectedFavorite?'♥':'♡'}</Txt></Pressable>
    </View>
+   {selected.id===g.puppyStyle?<View style={styles.restoredRosterFilters}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Rename current puppy" onPress={()=>setRenameOpen(true)} style={[styles.rosterOutline,{minHeight:30,paddingVertical:3}]}><Txt style={styles.rosterActionText}>Rename</Txt></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Choose accessory" accessibilityState={{expanded:accessoriesOpen}} onPress={()=>setAccessoriesOpen(!accessoriesOpen)} style={[styles.rosterOutline,{minHeight:30,paddingVertical:3,flex:1}]}><Txt style={styles.rosterActionText}>Accessory: {g.accessory}</Txt></Pressable>
+   </View>:null}
+   {accessoriesOpen&&selected.id===g.puppyStyle?<View style={styles.rosterOptions}>{['None','Bandana','Bow','Crown'].map(name=><Pressable accessibilityRole="button" accessibilityLabel={'Equip '+name} accessibilityState={{disabled:!g.ownedAccessories.includes(name),selected:g.accessory===name}} disabled={!g.ownedAccessories.includes(name)} key={name} onPress={()=>{act({type:'equip',name});setAccessoriesOpen(false);}} style={styles.rosterOption}><Txt>{name}{g.ownedAccessories.includes(name)?g.accessory===name?' ✓':'':' 🔒'}</Txt></Pressable>)}</View>:null}
+   {renameOpen&&selected.id===g.puppyStyle?<View style={styles.rosterRename}><TextInput value={editing} onChangeText={setEditing} maxLength={18} accessibilityLabel="Rename puppy" placeholder="Puppy name" placeholderTextColor={C.muted} style={styles.input}/><View style={styles.actions}><Pressable accessibilityRole="button" accessibilityLabel="Save puppy name" disabled={!editing.trim()} onPress={()=>{act({type:'rename',name:editing});setRenameOpen(false);}} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>Save</Txt></Pressable><Pressable accessibilityRole="button" onPress={()=>{setEditing(g.puppyName);setRenameOpen(false);}} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>Cancel</Txt></Pressable></View></View>:null}
   </View>
-  {matches.length?<View style={styles.roster}>{matches.map(p=>{
+  {matches.length?<View style={styles.restoredRosterGrid} onLayout={event=>setGridWidth(event.nativeEvent.layout.width)}>{matches.map(p=>{
    const owned=g.unlockedPuppies.includes(p.id),fav=g.favoritePuppies.includes(p.id);
-   return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+p.name} key={p.id} onPress={()=>setInspected(p.id)} style={[styles.rosterPup,inspected===p.id&&styles.rosterSelected]}>
-    <Portrait puppy={p} size={86}/>
-    <Txt numberOfLines={1} style={styles.small}>{p.name}</Txt>
-    <Txt muted style={styles.tiny}>{g.puppyStyle===p.id?'CURRENT':owned?'UNLOCKED':'LOCKED'} {fav?'★':''}</Txt>
+   return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+puppyName(p)} key={p.id} onPress={()=>setInspected(p.id)} style={[styles.restoredRosterTile,{width:gridWidth>0?(gridWidth-14)/3:'31%'},inspected===p.id&&{borderColor:C.accent}]}>
+    <Portrait key={p.id+':'+(retries[p.id]||0)} puppy={p} size={66} unlocked={owned}/>
+    <Txt numberOfLines={1} style={styles.rosterTileName}>{displayName(p)}</Txt><Txt numberOfLines={1} style={styles.rosterMeta}>{nativeId(p)}</Txt><View style={styles.rosterGroupBadge}><Txt numberOfLines={1} style={styles.rosterMeta}>{p.groupTitle}</Txt></View><Txt style={styles.rosterMeta}>{p.id===g.puppyStyle?'Current':owned?'Unlocked':'🔒 Locked'}</Txt>
+    <Pressable accessibilityRole="button" accessibilityLabel={(fav?'Remove ':'Add ')+displayName(p)+(fav?' from favorites':' to favorites')} disabled={!owned} onPress={e=>{e.stopPropagation?.();act({type:'favorite',id:p.id});}} style={[styles.rosterHeart,{position:'absolute',right:0,top:0}]}><Txt style={[styles.rosterHeartText,fav&&{color:'#FF646B'}]}>{fav?'♥':'♡'}</Txt></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={'Retry artwork for '+puppyName(p)} onPress={e=>{e.stopPropagation?.();retry(p.id);}} style={styles.rosterRetry}><Txt style={styles.rosterMeta}>↻</Txt></Pressable>
    </Pressable>;
   })}</View>:<Card title="No puppies match these filters."><Button secondary onPress={reset}>Reset filters</Button></Card>}
+  <Pressable accessibilityRole="button" onPress={()=>setView('collection')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>Puppy Collection</Txt></Pressable>
  </View>;
 }
 // Part 4: source-matched mechanical Gacha stages 0 idle / 1 turn+drop /
@@ -668,6 +630,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
  const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
  const giftReward=150+nextStreak*25+level(g)*10;
  const statuses=achievementStatuses(g);
+ const park=parkPreview(g,clock);
  return <View style={styles.gamePage}>
   <PageHeader title="Rewards" subtitle="Daily goals, adventures and permanent progression."/>
   <View style={styles.streakCard}>
@@ -687,6 +650,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
    {giftClaimed?<View style={styles.claimedCard}><Txt>🎁</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Daily Puppy Gift</Txt><Txt muted style={styles.small}>Treats + 2 Bones + 3 Pup Coins</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>:null}
    {completed.map(goal=><View style={styles.claimedCard} key={goal.id}><Txt style={{fontSize:22}}>{goal.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{goal.title}</Txt><Txt muted style={styles.small}>{goal.rewardTreats} Treats + 1 Bone + 1 Pup Coin</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>)}
   </>:null}
+  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🌳</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Dog Park Adventure</Txt><Txt muted style={styles.small}>{park.detail}</Txt></View><Button compact disabled={park.disabled} onPress={()=>act({type:park.ready?'parkClaim':'parkStart',now:Date.now()})}>{park.label}</Button></View>
   <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎲</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Gacha</Txt><Txt muted style={styles.small}>Earn and unlock eligible puppies</Txt></View><Button compact secondary onPress={()=>onOpen('gacha')}>Open</Button></View>
   <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎰</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Casino</Txt><Txt muted style={styles.small}>Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel</Txt></View><Button compact secondary onPress={()=>onOpen('casino')}>Open</Button></View>
   <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Prestige</Txt><Txt muted style={styles.small}>{g.prestigeCount} prestiges · {g.skillPoints} skill points</Txt></View><Button compact secondary onPress={onPrestige}>Open</Button></View>
@@ -1013,7 +977,7 @@ function PuppyApp(){
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>;
-  if(tab==='care')return <CareScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen}/>;
+  if(tab==='care')return <CareScreen g={g} act={act} viewportHeight={contentHeight-6}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
@@ -1027,7 +991,7 @@ function PuppyApp(){
   </View>:null}
 
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||tab==='play'&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
+  <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
@@ -1040,6 +1004,15 @@ function PuppyApp(){
  </PuppyPointer>;
 }
 const styles=themedStyles(()=>({
+ restoredRoster:{gap:5,width:'100%'},restoredRosterHeader:{flexDirection:'row',alignItems:'center',gap:6,marginBottom:5},restoredRosterFilters:{flexDirection:'row',gap:6},
+ rosterOutline:{minHeight:34,borderRadius:18,borderWidth:1,borderColor:C.muted,paddingHorizontal:10,paddingVertical:5,alignItems:'center',justifyContent:'center'},rosterControlText:{fontSize:12,fontWeight:'700',color:C.muted},rosterActionText:{fontSize:12,fontWeight:'700',color:C.accentInk},rosterSelectedText:{color:C.text},rosterStatus:{flex:1,minHeight:34,borderRadius:7,borderWidth:1,borderColor:C.muted,paddingHorizontal:14,justifyContent:'center'},rosterStatusSelected:{backgroundColor:C.dark?'#494457':'#E7E1EF',borderColor:'transparent'},rosterCategory:{minHeight:34,paddingHorizontal:15,borderRadius:7,borderWidth:1,borderColor:C.muted,justifyContent:'center'},rosterSearch:{minHeight:56,borderRadius:22,borderWidth:1,borderColor:C.muted,color:C.text,paddingHorizontal:14,fontSize:16},
+ restoredSelectedPanel:{backgroundColor:C.accentSoft,borderRadius:14,padding:6,gap:3,marginVertical:3},restoredSelectedRow:{flexDirection:'row',gap:7,alignItems:'center'},rosterSelectedName:{fontSize:14,fontWeight:'900'},rosterMeta:{fontSize:11,color:C.text,fontWeight:'600'},rosterCurrent:{fontSize:11,color:C.accentInk,fontWeight:'900'},rosterHeart:{width:32,height:32,alignItems:'center',justifyContent:'center'},rosterHeartText:{fontSize:25,color:C.muted},rosterOptions:{backgroundColor:C.surface,borderRadius:12,borderColor:C.line,borderWidth:1},rosterOption:{minHeight:36,padding:8},
+ restoredRosterGrid:{flexDirection:'row',flexWrap:'wrap',gap:7},restoredRosterTile:{width:'31.8%',minWidth:0,alignItems:'center',paddingHorizontal:5,paddingVertical:8,gap:3,borderRadius:18,borderWidth:2,borderColor:'transparent',backgroundColor:C.surface},rosterTileName:{fontSize:16,fontWeight:'900',textAlign:'center',maxWidth:'100%'},rosterGroupBadge:{maxWidth:'100%',borderRadius:14,backgroundColor:C.dark?'#494457':'#E7E1EF',paddingHorizontal:5,paddingVertical:2},rosterRetry:{position:'absolute',right:0,bottom:0,width:28,height:28,justifyContent:'center',alignItems:'center'},
+
+ restoredCare:{width:'100%'},restoredCareIdentity:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:12,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.accentSoft},
+ restoredCarePanel:{paddingHorizontal:11,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.surface},compactCareMeter:{flexDirection:'row',alignItems:'center',paddingVertical:3},compactCareLabel:{width:92,fontSize:12,fontWeight:'700'},compactCareTrack:{flex:1,height:5,borderRadius:9,backgroundColor:C.dark?'#494457':'#E7E1EF',overflow:'hidden'},compactCareFill:{height:'100%',backgroundColor:C.accent,borderRadius:9},compactCareValue:{width:38,marginLeft:8,fontSize:12,fontWeight:'900'},restoredCareDivider:{height:1,backgroundColor:C.line,marginVertical:5},
+ restoredCareRow:{flexDirection:'row',gap:6},restoredCareAction:{flex:1,minWidth:0,minHeight:74,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,paddingVertical:6,paddingHorizontal:4,alignItems:'center',justifyContent:'center',gap:2},restoredCareActionTitle:{fontSize:14,fontWeight:'900',textAlign:'center'},restoredCareActionDetail:{fontSize:11,fontWeight:'700',textAlign:'center'},
+
  restoredPlay:{width:'100%',position:'relative'},
  restoredStage:{flex:1,minHeight:180,borderRadius:22,borderWidth:1,paddingHorizontal:12,paddingVertical:8,alignItems:'center',justifyContent:'center',gap:4},
  restoredEnergy:{fontSize:12,color:C.muted,fontWeight:'700',textAlign:'center',marginVertical:4},

@@ -18,12 +18,9 @@ test('React navigation matches the shipped Kotlin destination model and build pa
  assert.ok(!ui.includes('<WebView'));
 });
 
-test('Care, Shop and Roster retain native filtered pages',()=>{
- assert.ok(kotlin.includes('FilterChip(selected = page == 0'));
- for(const title of ['💖 Care','📅 Daily','🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins'])
+test('Shop and Roster retain native filtered pages',()=>{
+ for(const title of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins'])
   assert.ok(ui.includes(title),title);
- assert.ok(ui.includes("careAction('feed'"));
- assert.ok(ui.includes("careAction('wash'"));
  assert.ok(ui.includes("type:'care',kind,now:Date.now()"));
  for(const option of ['Unlocked','Locked','All Categories'])assert.ok(ui.includes(option),option);
 });
