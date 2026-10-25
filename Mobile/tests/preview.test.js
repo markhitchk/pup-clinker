@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import configPlugin from '../app.config.js';
 const base=JSON.parse(readFileSync(new URL('../app.json',import.meta.url),'utf8')).expo;
-const vars=['PUPPY_NATIVE_BETA','PUPPY_NATIVE_PREVIEW','PUPPY_NATIVE_PRODUCTION','PUPPY_NATIVE_RELEASE_APPROVED'];
+const vars=['PUPPY_NATIVE_BETA','PUPPY_NATIVE_PREVIEW','PUPPY_NATIVE_PRODUCTION','PUPPY_NATIVE_RELEASE_APPROVED','PUPPY_BETA_VERSION_CODE'];
 function withEnv(overrides,fn){
  const old=Object.fromEntries(vars.map(k=>[k,process.env[k]]));
  try{
