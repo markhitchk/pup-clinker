@@ -95,7 +95,9 @@ export function transition(state,action){
   case 'onboardNotifications':
    g.notificationsOptIn=action.enabled===true;
    for(const name of ['dailyRewardNotifications','gameEventNotifications','updateNotifications'])g[name]=g.notificationsOptIn;
-   if(!g.notificationsOptIn)g.puppyAttentionNotifications=false;
+   // The original Kotlin AFK preference defaults on when notifications are enabled.
+   // Onboarding is the only place this default is set; Settings may override it later.
+   g.puppyAttentionNotifications=g.notificationsOptIn;
    break;
   case 'onboardFinish':
    if(g.onboardingComplete||g.onboardingStep!==ONBOARDING_STEPS.length-1)return state;

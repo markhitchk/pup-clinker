@@ -50,7 +50,12 @@ export function useNotifications({game,ready,act,onOpen}){
   queue.current=queue.current.catch(()=>{}).then(async()=>{
    await channels();
    for(const id of ['puppy-daily','puppy-park','puppy-attention'])await Notifications.cancelScheduledNotificationAsync(id);
-   for(const item of plan)await Notifications.scheduleNotificationAsync({identifier:item.id,content:{title:item.title,body:item.body,data:{category:item.category}},trigger:{type:Notifications.SchedulableTriggerInputTypes.DATE,date:new Date(item.at),channelId:item.category}});
+   for(const item of plan){
+    const trigger=item.repeatSeconds
+     ?{type:Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,seconds:item.repeatSeconds,repeats:true,channelId:item.category}
+     :{type:Notifications.SchedulableTriggerInputTypes.DATE,date:new Date(item.at),channelId:item.category};
+    await Notifications.scheduleNotificationAsync({identifier:item.id,content:{title:item.title,body:item.body,data:{category:item.category}},trigger});
+   }
   }).catch(e=>setError('Notification scheduling failed. '+e.message));
  },[ready,permission,awayAt,game.dailyRewardNotifications,game.gameEventNotifications,game.puppyAttentionNotifications,game.parkActive,game.parkReadyAtMs,game.lastDailyClaimDay,channels]);
  const sendTest=useCallback(async()=>{

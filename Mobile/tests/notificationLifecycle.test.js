@@ -14,7 +14,7 @@ const listeners=new Set(),scheduled=new Map();
 const platform={OS:'android'};
 const native={Platform:platform,Linking:{openSettings:()=>{}},AppState:{currentState:'active',addEventListener:(_name,fn)=>{listeners.add(fn);return {remove:()=>listeners.delete(fn)};}}};
 const notifications={
- AndroidImportance:{DEFAULT:3},SchedulableTriggerInputTypes:{DATE:'date',DAILY:'daily'},
+ AndroidImportance:{DEFAULT:3},SchedulableTriggerInputTypes:{DATE:'date',DAILY:'daily',TIME_INTERVAL:'timeInterval'},
  getPermissionsAsync:async()=>({granted:true,canAskAgain:true}),setNotificationChannelAsync:async()=>{},
  requestPermissionsAsync:async()=>({granted:true,canAskAgain:true}),setNotificationHandler:()=>{},
  addNotificationReceivedListener:()=>({remove:()=>{}}),addNotificationResponseReceivedListener:()=>({remove:()=>{}}),
@@ -36,7 +36,10 @@ test('daily schedule honors tomorrow after a morning claim; background attention
   const daily=scheduled.get('puppy-daily');assert.ok(daily);
   assert.equal(daily.trigger.type,'date');assert.equal(daily.trigger.date.getDate(),25);assert.equal(daily.trigger.date.getHours(),10);
   assert.equal(scheduled.has('puppy-attention'),false);
-  await act(async()=>{for(const fn of listeners)fn('background');await flush();});assert.equal(scheduled.has('puppy-attention'),true);
+  await act(async()=>{for(const fn of listeners)fn('background');await flush();});
+  const attention=scheduled.get('puppy-attention');assert.ok(attention);
+  assert.equal(attention.trigger.type,'timeInterval');assert.equal(attention.trigger.seconds,7200);
+  assert.equal(attention.trigger.repeats,true);assert.equal(attention.trigger.channelId,'pup');
   await act(async()=>{for(const fn of listeners)fn('active');await flush();});assert.equal(scheduled.has('puppy-attention'),false);
   await act(async()=>{renderer.update(React.createElement(Harness,{game,ready:false}));await flush();});assert.equal(scheduled.size,0);
  }finally{Date.now=originalNow;if(renderer)await act(()=>renderer.unmount());}

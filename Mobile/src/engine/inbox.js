@@ -1,4 +1,5 @@
 import {localEpochDay} from './monthlyRewards.js';
+import {ATTENTION_INTERVAL_MS,attentionMessage} from './attention.js';
 export const INBOX_LIMIT=100;
 const categories=['reward','pup','system'];
 export function sanitizeInbox(input){
@@ -31,6 +32,9 @@ export function reminderPlan(g,now){
  const plan=[];
  if(g.dailyRewardNotifications){const day=localEpochDay(new Date(now));const next=new Date(now);next.setHours(10,0,0,0);if(next.getTime()<=now||g.lastDailyClaimDay===day)next.setDate(next.getDate()+1);plan.push({id:'puppy-daily',category:'reward',title:'Daily Puppy Reward',body:'Check your daily Puppy Clicker reward.',at:next.getTime()});}
  if(g.gameEventNotifications&&g.parkActive&&g.parkReadyAtMs>now)plan.push({id:'puppy-park',category:'pup',title:'Dog Park Adventure complete',body:'Your puppy is ready to come home. Open Rewards.',at:g.parkReadyAtMs});
- if(g.puppyAttentionNotifications)plan.push({id:'puppy-attention',category:'pup',title:'Your puppy misses you!',body:'Come back to care for your puppy.',at:now+4*60*60*1000});
+ if(g.puppyAttentionNotifications){
+  const message=attentionMessage(g,now);
+  plan.push({id:'puppy-attention',category:'pup',...message,at:now+ATTENTION_INTERVAL_MS,repeatSeconds:ATTENTION_INTERVAL_MS/1000});
+ }
  return plan;
 }

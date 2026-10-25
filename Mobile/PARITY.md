@@ -126,3 +126,9 @@ The React preview now uses the **exact** `PuppyBlackjackLayout.kt` bitmap dimens
 - Scratchers parity fix implemented locally in `Mobile/src/engine/scratch.js`, `Mobile/src/components/ScratchStage.jsx`, the React casino screen, and guest reducer/save validation; tests in `Mobile/tests/scratch.test.js`.
 - The wager is debited when a guest round starts but the outcome is settled **only once** upon 68% scratch coverage, not immediately on card purchase. Pending rounds block other wagers and survive local guest-save rehydration; invalid pending records are discarded. Guest balance has no trusted server standing.
 - The view-tile scratch mask is deliberately not claimed to match Kotlin's 48×20 native Canvas/coin-motion implementation pixel for pixel. All other missing systems, including Discord/PupEye, Exchange, push notifications, full source animations and signing, remain migration blockers. Keep Kotlin `App/` unchanged and do not publish an unverified React replacement.
+
+## October 24 — Kotlin attention notification behavior
+
+- React local Android attention reminders now follow the Kotlin two-hour recurring AFK cadence, cancel when active, and use the selected puppy's known care status for the alert text.
+- Notification onboarding enables the attention category when the user opts in; Settings still allows turning it off.
+- Android schedule + in-app reminders are **not** equivalent to the Kotlin authenticated developer/system inbox. Server-authenticated announcements, cloud-synced read state, existing native notification history, and account/device/PupEye integration are still blocked; no live production release is implied.
