@@ -1,4 +1,5 @@
 import {sanitizeInbox} from './inbox.js';
+import {sanitizeCasinoTicketLedger} from './casinoTicketRewards.js';
 // Android-derived V7 browser engine from Puppy-Clicker merge ddadb7f; provisional, not authoritative.
 // Ported from pup-clinker/Web and Android's GameViewModel: web-specific schema v1.
 import {validPendingScratch} from './scratch.js';
@@ -63,6 +64,7 @@ export const freshGame=()=>({
   ticketInventory:Object.fromEntries(RARITIES.map(r=>[r,0])),
   ticketShopPurchases:Object.fromEntries(RARITIES.map(r=>[r,0])),
   totalTicketsFound:0,ticketDropSerial:0,lastTicketDrop:null,
+  casinoRoundSerial:0,casinoTicketLedger:{evaluatedRoundIds:[],dailyEpochDay:null,dailyTicketAwards:0},
   totalTaps:0,combo:0,bestCombo:0,lastTapMs:0,
   ...freshProfile(),careProfiles:{},careUpdatedAtByPuppy:{},
   xp:0,achievementRewardedIds:[],gachaPulls:0,casinoRound:null,pendingScratch:null,pendingSlots:null,pendingRoulette:null,pendingPlinko:null,pendingWheel:null,
@@ -80,7 +82,7 @@ export function sanitizeGame(input){
   const b=freshGame();
   if(!input||typeof input!=='object'||Array.isArray(input))return b;
   for(const key of Object.keys(b))if(Object.hasOwn(input,key))b[key]=input[key];
-  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','cooldownUntilMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
+  const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','casinoRoundSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','cooldownUntilMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
@@ -126,6 +128,7 @@ export function sanitizeGame(input){
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
   if(b.lastDailyClaimDay!==null)b.lastDailyClaimDay=cap(b.lastDailyClaimDay);
+  b.casinoTicketLedger=sanitizeCasinoTicketLedger(b.casinoTicketLedger);
   b.pendingScratch=validPendingScratch(b.pendingScratch)?b.pendingScratch:null;
   b.pendingSlots=validPendingSlots(b.pendingSlots)?b.pendingSlots:null;
   b.pendingRoulette=validPendingRoulette(b.pendingRoulette)?b.pendingRoulette:null;
