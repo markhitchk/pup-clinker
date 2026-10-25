@@ -20,7 +20,7 @@ test('default installable Android build uses requested beta identity',()=>{
   const app=configPlugin({config:base});
   assert.equal(app.name,'Puppy Clicker [Beta]');
   assert.equal(app.android.package,'com.harleytg.puppyclicker.beta');
-  assert.equal(app.android.versionCode,1);
+  assert.equal(app.android.versionCode,1000);
   assert.equal(app.extra.migrationStatus,'beta-account-migration-locked');
  });
 });
@@ -40,5 +40,20 @@ test('production identity requires explicit post-parity release approval',()=>{
   assert.equal(app.android.package,'com.harleytg.puppyclicker');
   assert.equal(app.name,'Puppy Clicker');
   assert.equal(app.android.versionCode,35);
+ });
+});
+
+test('beta Android versionCode is monotonic and rejects invalid values',()=>{
+ withEnv({PUPPY_NATIVE_BETA:'1'},()=>{
+  const old=process.env.PUPPY_BETA_VERSION_CODE;
+  try{
+   process.env.PUPPY_BETA_VERSION_CODE='30000000';
+   assert.equal(configPlugin({config:base}).android.versionCode,30000000);
+   process.env.PUPPY_BETA_VERSION_CODE='1';
+   assert.throws(()=>configPlugin({config:base}),/Invalid Puppy Clicker beta versionCode/);
+  }finally{
+   if(old===undefined)delete process.env.PUPPY_BETA_VERSION_CODE;
+   else process.env.PUPPY_BETA_VERSION_CODE=old;
+  }
  });
 });
