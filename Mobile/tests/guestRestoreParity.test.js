@@ -35,3 +35,12 @@ test('restored prestige run keeps skill levels but removes old upgrade power',()
  assert.equal(restored.clickPower,1);
  assert.equal(restored.prestigeCount,1);
 });
+
+test('Kotlin starter roster remains unlocked after incomplete guest saves',()=>{
+ const game=freshGame();
+ game.unlockedPuppies=['classic'];
+ const restored=parseGuestSave(JSON.stringify({kind:'guest-only',schema:1,game}));
+ for(const id of ['classic','golden','poodle','spotty']){
+  assert.ok(restored.unlockedPuppies.includes(id),id+' should be unlocked');
+ }
+});
