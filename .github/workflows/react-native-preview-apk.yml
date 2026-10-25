@@ -72,6 +72,27 @@ jobs:
             exit 1
           }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+      # An APK that verifies its signature can still fail PackageManager installation.
+      # Exercise a real Android PackageManager install + launch before publishing.
+      - name: Smoke-test APK install and launch on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          working-directory: Mobile
+          script: |
+            set -e
+            adb install -r android/app/build/outputs/apk/release/app-release.apk
+            adb shell pm path com.harleytg.puppyclicker.beta
+            adb shell monkey -p com.harleytg.puppyclicker.beta -c android.intent.category.LAUNCHER 1
+            sleep 8
+            adb shell pidof com.harleytg.puppyclicker.beta || {
+              adb logcat -d -t 500 '*:E' AndroidRuntime:E ActivityManager:E || true
+              echo "::error::Beta app crashed before its locked migration entry could display"
+              exit 1
+            }
       - name: Upload beta APK (not Play signed)
         uses: actions/upload-artifact@v4
         with:
