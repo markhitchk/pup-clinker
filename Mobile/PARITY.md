@@ -5,6 +5,7 @@
 - `Mobile/src/engine/game.js` persists the guest-only bonus ledger and round sequence without touching Supabase, protected puppy unlocks, Puppy Codes or production casino state.
 - `Mobile/tests/casinoTicketRewards.test.js` checks SHA-256 output against Node crypto, Kotlin golden IDs, chance bands, replay prevention, daily and inventory limits, save recovery and six-game round records.
 - This is offline preview parity only, **not** a substitute for Kotlin's signed casino transaction ledger or PupEye; Android scene animation and signed install testing remain outstanding.
+- Added Kotlin foreground ticker parity: a one-second combo check clears combo after 1,600 ms; every 120 foreground ticks subtracts 1 happiness, 2 fullness, 1 energy and 1 cleanliness from the active puppy only. Saves are updated without touching inactive puppies, and resume clears stale combos. Regression coverage: `Mobile/tests/foregroundGameplayParity.test.js`.
 
 ## October 25 — local guest recovery corrections (review branch)
 
