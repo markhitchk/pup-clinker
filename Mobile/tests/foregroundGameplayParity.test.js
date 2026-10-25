@@ -48,7 +48,7 @@ test('foreground decay touches the selected puppy only',()=>{
 test('app resume expires stale combo and applies the per-puppy offline care clock',()=>{
  const g=freshGame();g.combo=5;g.lastTapMs=1000;
  g.lastActiveAt=1000;g.careUpdatedAtByPuppy.classic=1000;
- const s=transition(ready(g),{type:'resume',now:120000+1000});
+ const s=transition(ready(g),{type:'resume',now:120*60000+1000});
  assert.equal(s.game.combo,0);
  assert.equal(s.game.happiness,100-40);
  assert.equal(s.game.fullness,100-60);
