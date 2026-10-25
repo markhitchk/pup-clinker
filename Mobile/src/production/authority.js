@@ -9,7 +9,7 @@ export function classifyOriginalInstall(probe){
   return {status:'NATIVE_UNAVAILABLE',canPlay:false,message:'The native PupEye integration is missing.'};
  if(probe.packageName!==KOTLIN_PACKAGE)
   return {status:'SIGNED_UPGRADE_REQUIRED',canPlay:false,
-   message:'This is a separate migration QA build. Only an official signed in-place upgrade can access the existing Kotlin app data.'};
+   message:'This beta installs beside the Play app and cannot read its private data. Do not uninstall Kotlin; existing accounts require an authorized device transfer or a correctly signed Play upgrade.'};
  if(!probe.hasOriginalSave||!probe.hasSealedSave)
   return {status:'ORIGINAL_SAVE_MISSING',canPlay:false,
    message:'Original verified Kotlin progression was not found. Nothing has been created or overwritten.'};
