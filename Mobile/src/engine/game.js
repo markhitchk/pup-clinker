@@ -84,8 +84,9 @@ export function sanitizeGame(input){
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
-  b.unlockedPuppies=[...new Set(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>ids.has(id)):[])];
-  if(!b.unlockedPuppies.includes('classic'))b.unlockedPuppies.unshift('classic');
+  // Kotlin loadState unions saved entitlements with DEFAULT_V6_PUPPIES.
+  // A malformed/older guest save must never lock the four starter puppies.
+  b.unlockedPuppies=[...new Set(['classic','golden','poodle','spotty',...(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>ids.has(id)):[])])];
   b.favoritePuppies=[...new Set(Array.isArray(b.favoritePuppies)?b.favoritePuppies.filter(id=>ids.has(id)):[])];
   if(!b.unlockedPuppies.includes(b.puppyStyle))b.puppyStyle='classic';
   b.puppyName=String(b.puppyName||'Buddy').trim().replace(/\n/g,' ').slice(0,18).trim()||'Buddy';
