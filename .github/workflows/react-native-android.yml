@@ -26,3 +26,12 @@ jobs:
         run: npx expo export --platform android --output-dir dist
       - name: Verify native Android project can be generated
         run: npx expo prebuild --platform android --no-install
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Verify Kotlin native modules compile
+        run: cd android && chmod +x gradlew && ./gradlew :app:compileDebugKotlin --no-daemon
