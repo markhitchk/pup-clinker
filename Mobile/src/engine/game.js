@@ -55,7 +55,7 @@ const cap=(value,min=0,max=Number.MAX_SAFE_INTEGER)=>Math.max(min,Math.min(max,N
 const careFields=['happiness','fullness','energy','cleanliness','bond'];
 export const freshProfile=()=>({happiness:100,fullness:100,energy:100,cleanliness:100,bond:10});
 export const freshGame=()=>({
-  puppyName:'Buddy',puppyStyle:'classic',unlockedPuppies:['classic','golden','poodle','spotty'],
+  puppyName:'Buddy',puppyNames:{},puppyStyle:'classic',unlockedPuppies:['classic','golden','poodle','spotty'],
   favoritePuppies:[],accessory:'None',ownedAccessories:['None'],
   treats:0,lifetimeTreats:0,bones:0,pupCoins:0,casinoChips:0,
   clickPower:1,activeBonus:0,autoPerSecond:0,legitimateTaps:0,
@@ -88,7 +88,13 @@ export function sanitizeGame(input){
   if(!b.unlockedPuppies.includes('classic'))b.unlockedPuppies.unshift('classic');
   b.favoritePuppies=[...new Set(Array.isArray(b.favoritePuppies)?b.favoritePuppies.filter(id=>ids.has(id)):[])];
   if(!b.unlockedPuppies.includes(b.puppyStyle))b.puppyStyle='classic';
-  b.puppyName=String(b.puppyName||'Buddy').slice(0,18);
+  b.puppyName=String(b.puppyName||'Buddy').trim().replace(/\n/g,' ').slice(0,18).trim()||'Buddy';
+  // Kotlin persists puppy_name_for_<styleId>. Preserve names independently;
+  // older guest saves contain only puppyName for the currently selected puppy.
+  const names=b.puppyNames&&typeof b.puppyNames==='object'&&!Array.isArray(b.puppyNames)?b.puppyNames:{};
+  b.puppyNames=Object.fromEntries(Object.entries(names).filter(([id,name])=>ids.has(id)&&typeof name==='string').map(([id,name])=>[id,name.trim().replace(/\n/g,' ').slice(0,18).trim()]).filter(([,name])=>name));
+  if(!b.puppyNames[b.puppyStyle])b.puppyNames[b.puppyStyle]=b.puppyName;
+  b.puppyName=b.puppyNames[b.puppyStyle];
   b.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,cap(b.upgrades?.[u.id],0,1000)]));
   b.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketInventory?.[r],0,MAX_TICKETS_PER_RARITY)]));
   b.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketShopPurchases?.[r])]));
@@ -218,7 +224,9 @@ export function switchPuppy(g,id){
   g.careProfiles[g.puppyStyle]=Object.fromEntries(careFields.map(k=>[k,g[k]]));
   const profile=g.careProfiles[id]||freshProfile();
   for(const key of careFields)g[key]=profile[key];
-  g.puppyStyle=id;g.puppyName=ROSTER.find(p=>p.id===id).name.split(' / ')[0];
+  if(!g.puppyNames||typeof g.puppyNames!=='object')g.puppyNames={};
+  g.puppyNames[g.puppyStyle]=g.puppyName;
+  g.puppyStyle=id;g.puppyName=g.puppyNames[id]||ROSTER.find(p=>p.id===id).name.split(' / ')[0];
   return true;
 }
 export function convertTreatsToChips(g,amount){
