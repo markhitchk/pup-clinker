@@ -1,6 +1,6 @@
-name: Puppy Clicker Migration QA APK
+name: Puppy Clicker Beta APK
 # Creates an offline-launchable, debug-key-signed release-variant APK for the
-# isolated migration-QA package. This is NEVER a Play Store production release.
+# isolated beta package. This is NEVER a Play Store production release.
 on:
   workflow_dispatch:
   push:
@@ -24,7 +24,7 @@ jobs:
       run:
         working-directory: Mobile
     env:
-      PUPPY_NATIVE_PREVIEW: '1'
+      PUPPY_NATIVE_BETA: '1'
       CI: '1'
     steps:
       - uses: actions/checkout@v4
@@ -41,37 +41,41 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Install Expo dependencies
         run: npm ci --no-audit --no-fund
-      - name: Ensure preview package cannot replace the production installation
+      - name: Ensure beta package and launcher label cannot replace production
         run: |
-          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; if(c({config:a.expo}).android.package!=='com.harleytg.puppyclicker.preview')process.exit(1)"
+          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; const x=c({config:a.expo}); if(x.android.package!=='com.harleytg.puppyclicker.beta'||x.name!=='Puppy Clicker [Beta]')process.exit(1)"
       - name: Test migration guard and Kotlin parity fixtures
         run: npm test
-      - name: Generate isolated migration-QA Android project
+      - name: Generate isolated beta Android project
         run: npx expo prebuild --platform android --no-install
       # assembleDebug omits the JS bundle and requires a running Metro server.
-      # assembleRelease embeds index.android.bundle so the preview starts offline.
+      # assembleRelease embeds index.android.bundle so the beta starts offline.
       # Expo's generated release variant is signed with the *debug* keystore;
-      # keep the .preview package ID and do not publish this artifact to Play.
-      - name: Build standalone migration-QA APK with bundled JavaScript
+      # keep the .beta package ID and do not publish this artifact to Play.
+      - name: Build standalone beta APK with bundled JavaScript
         run: cd android && chmod +x gradlew && ./gradlew :app:assembleRelease --no-daemon
-      - name: Verify standalone APK bundle, identity and signature
+      - name: Verify standalone APK bundle, package, launcher label and signature
         run: |
           set -euo pipefail
           APK="android/app/build/outputs/apk/release/app-release.apk"
-          test -s "$APK" || { echo "::error::Preview release APK was not generated"; exit 1; }
+          test -s "$APK" || { echo "::error::Beta release APK was not generated"; exit 1; }
           unzip -Z1 "$APK" | grep -Fx 'assets/index.android.bundle' > /dev/null || {
             echo "::error::index.android.bundle missing from APK; it will crash without Metro"
             exit 1
           }
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "package: name='com.harleytg.puppyclicker.preview'" > /dev/null || {
-            echo "::error::Unexpected package ID; refusing to publish preview artifact"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "package: name='com.harleytg.puppyclicker.beta'" > /dev/null || {
+            echo "::error::Unexpected package ID; refusing to publish beta artifact"
+            exit 1
+          }
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "application-label:'Puppy Clicker [Beta]'" > /dev/null || {
+            echo "::error::Unexpected launcher label"
             exit 1
           }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-      - name: Upload migration QA APK (not Play signed)
+      - name: Upload beta APK (not Play signed)
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-react-native-migration-qa-apk
+          name: puppy-clicker-react-native-beta-apk
           path: Mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
