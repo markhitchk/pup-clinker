@@ -23,9 +23,9 @@ test('production root cannot launch guest gameplay or use AsyncStorage state',()
  assert.equal(mayEnterGameplay(),false);
 });
 
-test('production bridge refuses separate QA package and missing legacy saves',()=>{
+test('production bridge refuses separate beta package and missing legacy saves',()=>{
  assert.equal(classifyOriginalInstall(null).status,'NATIVE_UNAVAILABLE');
- assert.equal(classifyOriginalInstall(probe({packageName:'com.harleytg.puppyclicker.preview'})).status,'SIGNED_UPGRADE_REQUIRED');
+ assert.equal(classifyOriginalInstall(probe({packageName:'com.harleytg.puppyclicker.beta'})).status,'SIGNED_UPGRADE_REQUIRED');
  assert.equal(classifyOriginalInstall(probe({hasOriginalSave:false})).status,'ORIGINAL_SAVE_MISSING');
  assert.equal(classifyOriginalInstall(probe({hasSealedSave:false})).status,'ORIGINAL_SAVE_MISSING');
  assert.equal(classifyOriginalInstall(probe({hasOriginalSigningKey:false})).status,'PUPEYE_IDENTITY_INCOMPLETE');
