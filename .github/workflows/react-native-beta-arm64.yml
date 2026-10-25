@@ -1,0 +1,75 @@
+name: Puppy Clicker Beta ARM64 APK
+# Smaller, separately installable beta APK for modern ARM64 phones (including
+# Samsung Galaxy A17 5G). This is NOT the production Kotlin Play update.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Mobile/**'
+      - '!Mobile/**/*.md'
+      - '!Mobile/**/*.py'
+      - '!Mobile/.gitignore'
+      - '.github/workflows/react-native-beta-arm64.yml'
+concurrency:
+  group: puppy-beta-arm64-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build-arm64:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mobile
+    env:
+      PUPPY_NATIVE_BETA: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify Kotlin parity contracts and beta identity
+        run: |
+          npm test
+          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'};const x=c({config:a.expo});if(x.android.package!=='com.harleytg.puppyclicker.beta'||x.name!=='Puppy Clicker [Beta]')process.exit(1)"
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build ARM64-only standalone APK
+        run: cd android && chmod +x gradlew && ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+      - name: Verify ARM64-only native libraries, bundle and APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          unzip -Z1 "$APK" | grep -Fx 'assets/index.android.bundle' > /dev/null
+          unzip -Z1 "$APK" | grep -q '^lib/arm64-v8a/'
+          if unzip -Z1 "$APK" | grep -Eq '^lib/(armeabi-v7a|x86|x86_64)/'; then
+            echo "::error::Non-ARM64 native libraries in device-specific APK"
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "package: name='com.harleytg.puppyclicker.beta'"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "application-label:'Puppy Clicker [Beta]'"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+      - name: Stage phone-specific beta APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk release/Puppy-Clicker-Beta-ARM64.apk
+      - name: Upload ARM64 beta APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-beta-arm64-apk
+          path: Mobile/release/Puppy-Clicker-Beta-ARM64.apk
+          if-no-files-found: error
+          retention-days: 14
