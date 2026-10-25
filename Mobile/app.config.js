@@ -2,6 +2,11 @@
 // correctly signed in-place upgrade so no existing Kotlin player data is lost.
 // PUPPY_NATIVE_PREVIEW is retained only as an alias for older CI invocations.
 export default ({config})=>{
+ // The beta package can be installed alongside Play, but must not downgrade
+ // an earlier beta. CI supplies a monotonic UTC-minute Android versionCode.
+ const requestedBetaCode=Number(process.env.PUPPY_BETA_VERSION_CODE||1000);
+ if(!Number.isSafeInteger(requestedBetaCode)||requestedBetaCode<1000||requestedBetaCode>2100000000)
+  throw new Error('Invalid Puppy Clicker beta versionCode');
  const beta=process.env.PUPPY_NATIVE_BETA==='1'||
   process.env.PUPPY_NATIVE_PREVIEW==='1'||process.env.PUPPY_NATIVE_PRODUCTION!=='1';
  if(!beta&&process.env.PUPPY_NATIVE_RELEASE_APPROVED!=='1'){
@@ -13,7 +18,7 @@ export default ({config})=>{
   android:{
    ...config.android,
    package:beta?'com.harleytg.puppyclicker.beta':config.android.package,
-   versionCode:beta?1:config.android.versionCode
+   versionCode:beta?requestedBetaCode:config.android.versionCode
   },
   extra:{...config.extra,migrationStatus:beta?'beta-account-migration-locked':'production-authentication-required'}
  };
