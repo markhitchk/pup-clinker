@@ -60,7 +60,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('dailyRewardNotifications','Daily Rewards','Daily gifts and claimable reward reminders.')}
    {toggle('gameEventNotifications','Game Events','Dog Park Adventure completion alerts.')}
    {toggle('updateNotifications','App Updates','Keep update notices in the notification inbox when available.')}
-   {toggle('puppyAttentionNotifications','Puppy Attention','Every two hours while away, using your puppy's care status when scheduled.')}
+   {toggle('puppyAttentionNotifications','Puppy Attention',"Every two hours while away, using your puppy's care status when scheduled.")}
    <T muted>Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.</T>
    {notifications.error?<T style={{color:C.danger}}>{notifications.error}</T>:null}
    <Action onPress={()=>{notifications.check();onOpen('notifications');}}>Check Notifications Now</Action><Action onPress={notifications.sendTest}>Send Test Notification</Action>

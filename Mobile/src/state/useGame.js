@@ -23,10 +23,12 @@ export function useGame(){
    }).catch(()=>{if(alive)dispatch({type:'hydrate',now:Date.now()});});
    return ()=>{alive=false;};
  },[]);
+ // Kotlin saveState() persists accepted taps immediately. Do not leave a
+ // 400 ms crash window after a tap, purchase or pending-casino mutation.
+ // The existing promise queue serializes AsyncStorage writes in state order.
  useEffect(()=>{
    if(!state.ready)return;
-   const timeout=setTimeout(()=>{write();},400);
-   return ()=>clearTimeout(timeout);
+   write();
  },[state.game,state.ready,write]);
  // Kotlin MonthlyRewards: cache one validated month, refresh every 15 minutes,
  // never accept executable content or trust guest rewards as server-authoritative.

@@ -154,7 +154,7 @@ export function transition(state,action){
   case 'ticket':if(!buyUpgradeTicket(g,action.rarity))return {...state,notice:'Not enough Pup Coins'};notice='🎟️ Ticket purchased';break;
   case 'accessory':if(!buyAccessory(g,action.name))return {...state,notice:'Not enough Pup Coins'};g.accessory=action.name;break;
   case 'equip':if(!g.ownedAccessories.includes(action.name))return no();g.accessory=action.name;break;
-  case 'rename':{const name=String(action.name||'').trim().slice(0,18);if(!name)return no();g.puppyName=name;break;}
+  case 'rename':{const name=String(action.name||'').trim().replace(/\n/g,' ').slice(0,18).trim();if(!name)return no();g.puppyName=name;g.puppyNames[g.puppyStyle]=name;break;}
   case 'scratchStart':{
    if(blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)return {...state,notice:'Finish your current Casino round first'};
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};

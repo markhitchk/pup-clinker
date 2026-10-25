@@ -55,7 +55,7 @@ const cap=(value,min=0,max=Number.MAX_SAFE_INTEGER)=>Math.max(min,Math.min(max,N
 const careFields=['happiness','fullness','energy','cleanliness','bond'];
 export const freshProfile=()=>({happiness:100,fullness:100,energy:100,cleanliness:100,bond:10});
 export const freshGame=()=>({
-  puppyName:'Buddy',puppyStyle:'classic',unlockedPuppies:['classic','golden','poodle','spotty'],
+  puppyName:'Buddy',puppyNames:{},puppyStyle:'classic',unlockedPuppies:['classic','golden','poodle','spotty'],
   favoritePuppies:[],accessory:'None',ownedAccessories:['None'],
   treats:0,lifetimeTreats:0,bones:0,pupCoins:0,casinoChips:0,
   clickPower:1,activeBonus:0,autoPerSecond:0,legitimateTaps:0,
@@ -84,11 +84,18 @@ export function sanitizeGame(input){
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
-  b.unlockedPuppies=[...new Set(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>ids.has(id)):[])];
-  if(!b.unlockedPuppies.includes('classic'))b.unlockedPuppies.unshift('classic');
+  // Kotlin loadState unions saved entitlements with DEFAULT_V6_PUPPIES.
+  // A malformed/older guest save must never lock the four starter puppies.
+  b.unlockedPuppies=[...new Set(['classic','golden','poodle','spotty',...(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>ids.has(id)):[])])];
   b.favoritePuppies=[...new Set(Array.isArray(b.favoritePuppies)?b.favoritePuppies.filter(id=>ids.has(id)):[])];
   if(!b.unlockedPuppies.includes(b.puppyStyle))b.puppyStyle='classic';
-  b.puppyName=String(b.puppyName||'Buddy').slice(0,18);
+  b.puppyName=String(b.puppyName||'Buddy').trim().replace(/\n/g,' ').slice(0,18).trim()||'Buddy';
+  // Kotlin persists puppy_name_for_<styleId>. Preserve names independently;
+  // older guest saves contain only puppyName for the currently selected puppy.
+  const names=b.puppyNames&&typeof b.puppyNames==='object'&&!Array.isArray(b.puppyNames)?b.puppyNames:{};
+  b.puppyNames=Object.fromEntries(Object.entries(names).filter(([id,name])=>ids.has(id)&&typeof name==='string').map(([id,name])=>[id,name.trim().replace(/\n/g,' ').slice(0,18).trim()]).filter(([,name])=>name));
+  if(!b.puppyNames[b.puppyStyle])b.puppyNames[b.puppyStyle]=b.puppyName;
+  b.puppyName=b.puppyNames[b.puppyStyle];
   b.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,cap(b.upgrades?.[u.id],0,1000)]));
   b.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketInventory?.[r],0,MAX_TICKETS_PER_RARITY)]));
   b.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketShopPurchases?.[r])]));
@@ -112,6 +119,10 @@ export function sanitizeGame(input){
   b.notificationInbox=sanitizeInbox(b.notificationInbox);
   b.notificationSeenIds=Array.isArray(b.notificationSeenIds)?[...new Set(b.notificationSeenIds.filter(id=>typeof id==='string'&&id.length<=100))].slice(0,500):[];
   b.autoPerSecond=0;
+  // Kotlin PuppyClickerV6ViewModel.loadState derives tap strength from the
+  // purchased CLICK upgrades and permanent TAP_TRAINING skill, never a stored
+  // clickPower field. Rebuild it on every guest load as Kotlin does.
+  b.clickPower=1+UPGRADES.filter(u=>u.effect==='CLICK').reduce((n,u)=>n+(u.amount+b.prestigeSkills.TAP_TRAINING)*b.upgrades[u.id],0);
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
   if(b.lastDailyClaimDay!==null)b.lastDailyClaimDay=cap(b.lastDailyClaimDay);
@@ -214,7 +225,9 @@ export function switchPuppy(g,id){
   g.careProfiles[g.puppyStyle]=Object.fromEntries(careFields.map(k=>[k,g[k]]));
   const profile=g.careProfiles[id]||freshProfile();
   for(const key of careFields)g[key]=profile[key];
-  g.puppyStyle=id;g.puppyName=ROSTER.find(p=>p.id===id).name.split(' / ')[0];
+  if(!g.puppyNames||typeof g.puppyNames!=='object')g.puppyNames={};
+  g.puppyNames[g.puppyStyle]=g.puppyName;
+  g.puppyStyle=id;g.puppyName=g.puppyNames[id]||ROSTER.find(p=>p.id===id).name.split(' / ')[0];
   return true;
 }
 export function convertTreatsToChips(g,amount){
