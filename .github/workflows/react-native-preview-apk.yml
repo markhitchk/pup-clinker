@@ -39,6 +39,8 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Set monotonic beta Android versionCode
+        run: echo "PUPPY_BETA_VERSION_CODE=$(( $(date -u +%s) / 60 ))" >> "$GITHUB_ENV"
       - name: Install Expo dependencies
         run: npm ci --no-audit --no-fund
       - name: Ensure beta package and launcher label cannot replace production
