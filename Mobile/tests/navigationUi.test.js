@@ -28,6 +28,7 @@ new Function('require','module','exports',source)(id=>{
  if(id==='react-native')return native;
  if(id==='react-native-safe-area-context')return {SafeAreaProvider:({children})=>children,useSafeAreaInsets:()=>({top:24,bottom:24})};
  if(id.endsWith('/theme.js'))return theme;
+ if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
  if(id==='./src/state/useGame.js')return {useGame};
  if(id==='./src/state/useRoster.js')return {useRoster:()=>({items:mergeRoster(),source:'bundled',categories:categoriesForRoster(mergeRoster()),refresh(){},clearCache(){}})};
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
@@ -40,7 +41,8 @@ new Function('require','module','exports',source)(id=>{
  if(id.startsWith('./src/components/'))return {__esModule:true,default:()=>null};
  return require(id);
 },module,module.exports);
-const App=module.exports.default;
+// Explicitly test the archived UI component without mounting it as the app root.
+const App=module.exports.PuppyApp;
 const text=root=>root.findAllByType('Text').map(t=>t.props.children).flat().join(' ');
 async function render(values={}){fixture=values;let renderer;await act(()=>{renderer=create(React.createElement(App));});return renderer;}
 test('primary navigation preserves Play, Care, Roster, Shop and Rewards with working routes',async()=>{

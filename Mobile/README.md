@@ -1,3 +1,15 @@
+## October 25 production migration directive — supersedes the old guest-preview instructions
+
+The React Native app's default root now opens **Pup Account migration verification**. It does **not** run the legacy guest preview or permit unverified gameplay. The Kotlin-derived gameplay components remain in the repository as fixture/reference code only until signed, authoritative transactions are connected.
+
+The Android native `PuppyProductionAuthority` module uses the original Kotlin Keystore aliases, AES-GCM encrypted PupEye files and server-signed `account-status` request. It can confirm an existing account/cloud revision **read-only** on a valid signed in-place upgrade. A separate Migration QA APK cannot access the production app's data sandbox. The device session is never surfaced to JavaScript; the original saved progression is never replaced.
+
+To enable live account verification for a correctly signed build, configure `EXPO_PUBLIC_PUPPY_SUPABASE_KEY` with the **publishable** key for the existing Puppy Clicker Supabase project. Never embed a secret/service-role key. Missing configuration, incomplete original state or failed server verification intentionally blocks access.
+
+**This is not yet a releasable production replacement.** Existing-player conversion, device transfer, Discord PKCE login, PupEye transaction enforcement, signed cloud-save restore, original Play upload key verification, and installed-device tests remain mandatory. Do not uninstall the Kotlin app or flip release approval flags to bypass this process. Historical guest-preview implementation notes below are retained for audit but do not describe the current runtime behavior.
+
+---
+
 # Puppy Clicker — React Native Android Migration
 
 This is a genuine React Native / Expo Android application, **NOT a website wrapper**. Its React components draw Android UI with React Native views and native touch handling.

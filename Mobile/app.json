@@ -19,12 +19,13 @@
       }
     },
     "extra": {
-      "migrationStatus": "guest-preview-not-production",
+      "migrationStatus": "production-authority-handoff-required",
       "productionReplacementApproved": false
     },
     "icon": "./assets/logos/puppy_clicker.png",
     "plugins": [
       "./plugins/withPuppyPointer.cjs",
+      "./plugins/withPuppyProductionAuthority.cjs",
       "expo-notifications"
     ]
   }
