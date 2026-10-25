@@ -13,7 +13,7 @@ export default function NotificationInbox({visible,g,act,onClose}){
  const today=dayStart(Date.now()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
  const groups=[['Today',items.filter(n=>n.createdAt>=today)],['Yesterday',items.filter(n=>n.createdAt>=yesterday.getTime()&&n.createdAt<today)],['Earlier',items.filter(n=>n.createdAt<yesterday.getTime())]];
  const unread=g.notificationInbox.filter(n=>!n.read).length;
- return <Modal visible={visible} transparent animationType={g.reducedMotion||!g.animatedUi?'none':'fade'} onRequestClose={onClose}>
+ return <Modal visible={visible} transparent statusBarTranslucent navigationBarTranslucent animationType={g.reducedMotion||!g.animatedUi?'none':'fade'} onRequestClose={onClose}>
   <PuppyPointer enabled={g.puppyPointerEnabled} style={[s.scrim,{paddingTop:insets.top+18,paddingBottom:insets.bottom+18}]}>
    <View accessibilityViewIsModal style={[s.panel,{height:short?'96%':'90%'}]}>
     <View style={s.header}><Image source={require('../../assets/logos/puppy_clicker.png')} resizeMode="contain" style={s.logo}/><Text style={s.heading}>Notifications</Text><Pressable accessibilityRole="button" accessibilityLabel="Close notifications" onPress={onClose} style={s.close}><Text style={s.closeText}>×</Text></Pressable></View>

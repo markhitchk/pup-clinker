@@ -54,3 +54,6 @@ test('only permitted assets directories can be fetched',()=>{
  assert.equal(utf8WithinLimit('🐾',4),true);
  assert.equal(utf8WithinLimit('🐾',3),false);
 });
+test('bundled roster categories keep V1 and V2 before Discord and Test, including offline startup',()=>{
+ assert.deepEqual(categoriesForRoster(mergeRoster()).map(p=>p.id),['v1','v2','discord_rewards','test']);
+});

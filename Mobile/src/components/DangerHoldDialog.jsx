@@ -54,7 +54,7 @@ export default function DangerHoldDialog({action,g,onDismiss,onConfirmed}){
   },50);
  };
  if(!definition)return null;
- return <Modal transparent visible animationType="none" onRequestClose={dismiss}>
+ return <Modal transparent visible statusBarTranslucent navigationBarTranslucent animationType="none" onRequestClose={dismiss}>
   <PuppyPointer enabled={g.puppyPointerEnabled} style={s.overlay}>
    <View accessibilityViewIsModal style={{flex:1,paddingTop:insets.top,paddingBottom:insets.bottom}}>
     <View style={{flex:1}}>

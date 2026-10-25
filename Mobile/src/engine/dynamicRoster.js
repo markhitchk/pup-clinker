@@ -100,7 +100,7 @@ export function mergeRoster(remote=[]){
   return [item.id,{
    ...item,free:knownFree,redeemOnly:!knownFree,
    groupId,groupTitle:item.groupTitle||(groupId==='discord_rewards'?'Discord Rewards':groupId==='v2'?'V2 Puppies':'V1 Puppies'),
-   groupOrder:item.groupOrder||(groupId==='v2'?2:1),number:item.number||index+1
+   groupOrder:item.groupOrder||groupOrder(groupId),number:item.number||index+1
   }];
  }));
  for(const item of validateRemoteRoster(remote)){

@@ -138,3 +138,14 @@ test('a stale inbox Claim press cannot credit the same local reward twice',async
   assert.equal(renderer.root.findAllByType('Pressable').filter(p=>String(p.props.accessibilityLabel).startsWith('Claim ')).length,0);
  }finally{await act(()=>renderer.unmount());}
 });
+test('inbox and danger windows explicitly draw edge to edge before applying safe insets',async()=>{
+ const ui=await holdUi();let inbox;
+ try{
+  await act(()=>{inbox=create(React.createElement(Inbox,{visible:true,g:freshGame(),act(){},onClose(){}}));});
+  for(const renderer of [ui.renderer,inbox]){
+   const modal=renderer.root.findByType('Modal');
+   assert.equal(modal.props.statusBarTranslucent,true,'Native Modal must not add a second status-bar inset');
+   assert.equal(modal.props.navigationBarTranslucent,true,'The modal must share the full-window safe-area coordinate system');
+  }
+ }finally{await act(()=>{ui.renderer.unmount();inbox?.unmount();});}
+});
