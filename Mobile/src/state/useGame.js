@@ -30,6 +30,20 @@ export function useGame(){
    if(!state.ready)return;
    write();
  },[state.game,state.ready,write]);
+ // Source: PuppyClickerV6ViewModel's one-second coroutine. A 1600 ms
+ // expired combo disappears from Play, and care decays once every 120 ticks
+ // only while the app is in the foreground. No background care loop runs.
+ useEffect(()=>{
+  let ticks=0;
+  const timer=setInterval(()=>{
+   const now=Date.now();
+   dispatch({type:'comboTimeout',now});
+   ticks++;
+   if(ticks%120===0&&AppState.currentState==='active')
+    dispatch({type:'foregroundCareTick',now});
+  },1000);
+  return ()=>clearInterval(timer);
+ },[]);
  // Kotlin MonthlyRewards: cache one validated month, refresh every 15 minutes,
  // never accept executable content or trust guest rewards as server-authoritative.
  useEffect(()=>{
