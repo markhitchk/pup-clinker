@@ -1,3 +1,10 @@
+## October 25 — local guest recovery corrections (review branch)
+
+- Fixed a reload mismatch in `Mobile/src/engine/game.js`: Kotlin `PuppyClickerV6ViewModel.loadState` calculates CLICK power from owned upgrades and permanent `TAP_TRAINING`. The React guest sanitizer now reconstructs `clickPower` by that rule, rather than trusting a stale save field. The existing AUTO calculation is retained.
+- Removed the 400 ms guest-save debounce in `Mobile/src/state/useGame.js`. The existing serialized AsyncStorage writer now starts after each changed game state. This narrows the crash-loss window but does not make an asynchronous storage operation crash-proof.
+- Fixed per-puppy rename persistence with `puppyNames` in `Mobile/src/engine/game.js` and `Mobile/src/state/reducer.js`, including schema-1 local guest save compatibility. Kotlin already saves `puppy_name_for_<styleId>` separately.
+- Added `Mobile/tests/guestRestoreParity.test.js` and `Mobile/tests/puppyNamesParity.test.js` for those precise Kotlin-derived contracts. Device runtime testing, CI and every unrelated parity item remain outstanding.
+
 ## October 24 — remaining screenshot corrections
 
 - Restored the shipped compact Care view from `PuppyRevampedCareScreen`: active portrait, one five-meter panel, live tired/bonus note, and Feed/Play/Clean above Rest/Cuddle, with existing reducer costs/effects. Daily gifts/goals remain in Rewards; Dog Park access is retained there.
