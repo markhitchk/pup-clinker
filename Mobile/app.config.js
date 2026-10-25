@@ -9,7 +9,7 @@ export default ({config})=>{
  const preview=!production;
  return {
   ...config,
-  name:preview?'Puppy Clicker Preview':config.name,
+  name:preview?'Puppy Clicker Migration QA':config.name,
   android:{
    ...config.android,
    package:preview?'com.harleytg.puppyclicker.preview':config.android.package,
