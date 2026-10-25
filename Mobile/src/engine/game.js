@@ -145,7 +145,7 @@ export function withGain(g,amount){const gain=cap(amount);g.treats=cap(g.treats+
 export function tap(g,now=Date.now(),rng=Math.random){
   // Android refuses tired-puppy taps. Browser fair play is not PupEye attestation.
   if(g.energy<=10||now<(g.cooldownUntilMs||0))return null;
-  const next=++g.totalTaps;g.legitimateTaps++;
+  const next=g.totalTaps=cap(g.totalTaps+1);g.legitimateTaps=cap(g.legitimateTaps+1);
   g.combo=now-g.lastTapMs<=900?Math.min(50,g.combo+1):1;
   g.bestCombo=Math.max(g.bestCombo,g.combo);g.lastTapMs=now;
   const bonus=g.legitimateTaps%10===0?g.activeBonus:0;
@@ -157,8 +157,9 @@ export function tap(g,now=Date.now(),rng=Math.random){
   if(Math.floor(rng()*500)===0){
     const roll=Math.floor(rng()*10000);
     const rarity=roll<7800?'COMMON':roll<9350?'UNCOMMON':roll<9850?'RARE':roll<9980?'EPIC':'LEGENDARY';
-    g.ticketInventory[rarity]=cap(g.ticketInventory[rarity]+1);
-    g.totalTicketsFound++;g.ticketDropSerial++;g.lastTicketDrop=rarity;
+    g.ticketInventory[rarity]=cap(g.ticketInventory[rarity]+1,0,MAX_TICKETS_PER_RARITY);
+    g.totalTicketsFound=cap(g.totalTicketsFound+1);
+    g.ticketDropSerial=cap(g.ticketDropSerial+1);g.lastTicketDrop=rarity;
     return rarity;
   }
   return null;
@@ -166,15 +167,21 @@ export function tap(g,now=Date.now(),rng=Math.random){
 export function passive(g,_seconds){g.autoPerSecond=0;g.lastActiveAt=Date.now();}
 // Integer-only V7 cost growth (ceil at each purchase level).
 export function cost(g,u){
-  let price=u.base;
-  const multiplier=u.rarity?135:155;
+  // PuppyEconomyV7.growCost uses 64-bit integer ceil at each owned level.
+  // Double-precision multiplication diverges from Kotlin for high shop tiers.
+  // BigInt keeps the exact Long semantics with no additional Expo dependency.
+  const LONG_MAX=(1n<<63n)-1n;
+  const rate=BigInt(u.rarity?135:155);
+  let grown=BigInt(Math.max(1,Math.trunc(u.base)));
   for(let i=0;i<cap(g.upgrades[u.id],0,1000);i++){
-    // Kotlin saturates its Long cost math instead of allowing Infinity.
-    if(price>Number.MAX_SAFE_INTEGER/multiplier*100)return Number.MAX_SAFE_INTEGER;
-    price=Math.ceil(price*multiplier/100);
+    if(grown>(LONG_MAX-99n)/rate){grown=LONG_MAX;break;}
+    grown=(grown*rate+99n)/100n;
   }
-  const discount=100-5*cap(g.prestigeSkills?.SMART_SHOPPER,0,5);
-  return Math.max(1,Math.floor(price*discount/100));
+  const discount=BigInt(100-5*cap(g.prestigeSkills?.SMART_SHOPPER,0,5));
+  const adjusted=grown>LONG_MAX/discount?LONG_MAX:grown*discount/100n;
+  // The React guest wallet can hold only safe JS integers. An unpurchasable
+  // Kotlin Long price may be approximated for display, but never charged.
+  return Number(adjusted>0n?adjusted:1n);
 }
 export const boneCost=u=>(u.amount>=100?12:u.amount>=25?7:u.amount>=5?3:1)*(u.rarity?2:1);
 export function ticketCost(g,u){
@@ -220,7 +227,7 @@ export function care(g,kind){
     if(g.happiness>=100&&g.bond>=100)return false;
     g.happiness=Math.min(100,g.happiness+8);g.bond=Math.min(100,g.bond+2);
   }
-  g.careActions++;
+  g.careActions=cap(g.careActions+1);
   return true;
 }
 export function switchPuppy(g,id){
@@ -264,7 +271,7 @@ export function claimDailyReward(g,epochDay=Math.floor(Date.now()/86400000)){
   if(g.lastDailyClaimDay===epochDay)return false;
   const streak=g.lastDailyClaimDay===epochDay-1?Math.min(365,g.dailyStreak+1):1;
   const reward=150+streak*25+level(g)*10;
-  withGain(g,reward);g.bones+=2;g.pupCoins+=3;
+  withGain(g,reward);g.bones=cap(g.bones+2);g.pupCoins=cap(g.pupCoins+3);
   g.lastDailyClaimDay=epochDay;g.dailyStreak=streak;g.happiness=Math.min(100,g.happiness+8);g.bond=Math.min(100,g.bond+1);
   return true;
 }
@@ -303,7 +310,7 @@ export function prestige(g,epochDay=localEpochDay(new Date())){
   g.dailyTapStart=0;g.dailyCareStart=0;g.dailyShopStart=0;g.claimedDailyTasks=[];
   // Kotlin prestige starts a clean daily baseline for LocalDate.now().
   g.dailyDay=epochDay;
-  g.prestigeCount++;g.skillPoints=cap(g.skillPoints+points);
+  g.prestigeCount=cap(g.prestigeCount+1);g.skillPoints=cap(g.skillPoints+points);
   g.totalPrestigePointsEarned=cap(g.totalPrestigePointsEarned+points);
   // Pup Coins, Casino Chips, accessories, unlocked puppies and permanent skills survive.
   return true;

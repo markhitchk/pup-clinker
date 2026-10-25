@@ -1,3 +1,10 @@
+## October 25 — exact V7 integer shop economy
+
+- Ported `PuppyEconomyV7.growCost` and `mulDivFloor` as BigInt operations in the React guest `cost` calculation; high-tier price growth is now mathematically identical to Kotlin's repeated integer ceiling, including Long overflow saturation and Smart Shopper's integer discount. Prices above JavaScript's safe wallet integer range cannot be purchased and are only approximated when displayed.
+- Tap-generated Upgrade Tickets now respect Kotlin's per-rarity 9,999 inventory cap. Guest counters for tap events, care actions, daily Bones/Pup Coins, and prestige count are kept within safe local integers.
+- Added `Mobile/tests/economyIntegerParity.test.js` with official Kotlin price examples, independent 64-bit price fixture calculations, high-tier purchase rejection and ticket-cap verification.
+- This does not bypass protected inventories or implement Supabase/PupEye server validation; `Mobile` remains an offline guest preview.
+
 ## October 25 — Kotlin casino bonus-ticket guest parity
 
 - Added `Mobile/src/engine/casinoTicketRewards.js`: policy-v2 SHA-256 deterministic ticket rewards for profitable rounds, Kotlin rarity weights (60/25/10/4/1), payout bands (25/50/100/200/500 basis points), 1 daily bonus cap, 9,999 rarity inventory cap and 512-round replay history.
