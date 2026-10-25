@@ -1,3 +1,4 @@
+import ProductionEntry from './src/production/ProductionEntry.jsx';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
@@ -945,8 +946,10 @@ function OnboardingScreen({g,act,notifications}){
   </View>
  </Card>;
 }
-export default function App(){return <SafeAreaProvider><PuppyApp/></SafeAreaProvider>;}
-function PuppyApp(){
+// The shipped root is an authoritative Pup Account handoff, never the old guest engine.
+export default function App(){return <SafeAreaProvider><ProductionEntry/></SafeAreaProvider>;}
+// Retained for Kotlin UI parity fixtures. Not mounted by the production entry point.
+export function PuppyApp(){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
  const {state,act}=useGame();
