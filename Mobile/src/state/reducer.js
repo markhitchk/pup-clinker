@@ -13,10 +13,13 @@ import {newSlotsGuestRound,validPendingSlots} from '../engine/slotsV6.js';
 import {newRouletteGuestRound,validPendingRoulette,rouletteResult} from '../engine/rouletteV6.js';
 import {newPlinkoGuestRound,validPendingPlinko,plinkoResult} from '../engine/plinkoV6.js';
 import {newWheelGuestRound,validPendingWheel,wheelResult} from '../engine/wheelV6.js';
+import {nextGuestCasinoRoundId,guestRoundId,applyGuestCasinoTicketReward} from '../engine/casinoTicketRewards.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,wheelDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
 const clone=game=>JSON.parse(JSON.stringify(game));
 const validCard=n=>Number.isInteger(n)&&n>=1&&n<=13;
+const ticketBonusText=reward=>reward?.status==='AWARDED'?' · 🎟️ '+reward.rarity+' Upgrade Ticket found!':'';
+const awardCasinoTicket=(game,round,now)=>applyGuestCasinoTicketReward(game,round,localEpochDay(new Date(now||Date.now())));
 function casinoRound(action){
  switch(action.gameType){
   case 'slots':return slotsOutcome(action.wager,action.rolls);
@@ -44,6 +47,7 @@ export function transition(state,action){
   // display the previous day's counters until the first minute timer fires.
   rollDailyDay(game,new Date(action.now||Date.now()));
   const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
+  if(blackjack&&!guestRoundId(blackjack))blackjack.roundId=nextGuestCasinoRoundId(game);
   game.casinoRound=blackjack;
   game.pendingScratch=validPendingScratch(game.pendingScratch)?game.pendingScratch:null;
   game.pendingSlots=validPendingSlots(game.pendingSlots)?game.pendingSlots:null;
@@ -161,7 +165,7 @@ export function transition(state,action){
    const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Scratchers wager'};
    if(!casinoSpend(g,action.wager))return no();
-   g.pendingScratch=pending;
+   g.pendingScratch={...pending,roundId:nextGuestCasinoRoundId(g)};
    scratchDisplay=null;
    notice='🎟️ Scratch your card to reveal the committed prize';
    break;
@@ -171,7 +175,7 @@ export function transition(state,action){
    const pending=newWheelGuestRound(action.wager,action.roll,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid wheel wager or spin'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
-   g.pendingWheel=pending;
+   g.pendingWheel={...pending,roundId:nextGuestCasinoRoundId(g)};
    wheelDisplay=null;
    notice='🎡 Lucky Pup Wheel wager accepted · Spin in progress';
    break;
@@ -182,7 +186,7 @@ export function transition(state,action){
    casinoPayout(g,pending.payout);
    wheelDisplay=wheelResult(pending);
    g.pendingWheel=null;
-   notice='🎡 '+wheelDisplay.prize+' · +'+wheelDisplay.payout+' Casino Chips';
+   notice='🎡 '+wheelDisplay.prize+' · +'+wheelDisplay.payout+' Casino Chips'+ticketBonusText(awardCasinoTicket(g,pending,action.now));
    break;
   }
   case 'plinkoStart':{
@@ -190,7 +194,7 @@ export function transition(state,action){
    const pending=newPlinkoGuestRound(action.wager,action.pathRight,action.bounceJitterPermille,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Plinko wager, path or bounce jitter'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
-   g.pendingPlinko=pending;
+   g.pendingPlinko={...pending,roundId:nextGuestCasinoRoundId(g)};
    plinkoDisplay=null;
    notice='🔵 Plinko wager accepted · Ball dropping';
    break;
@@ -201,7 +205,7 @@ export function transition(state,action){
    casinoPayout(g,pending.payout);
    plinkoDisplay=plinkoResult(pending);
    g.pendingPlinko=null;
-   notice='🔵 Plinko bin '+plinkoDisplay.binIndex+' · '+plinkoDisplay.payout+' Casino Chips returned';
+   notice='🔵 Plinko bin '+plinkoDisplay.binIndex+' · '+plinkoDisplay.payout+' Casino Chips returned'+ticketBonusText(awardCasinoTicket(g,pending,action.now));
    break;
   }
   case 'rouletteStart':{
@@ -209,7 +213,7 @@ export function transition(state,action){
    const pending=newRouletteGuestRound(action.wager,action.bet,action.winningNumber,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Roulette wager, bet or pocket'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
-   g.pendingRoulette=pending;
+   g.pendingRoulette={...pending,roundId:nextGuestCasinoRoundId(g)};
    rouletteDisplay=null;
    notice='🎡 Roulette wager accepted · Wheel spinning';
    break;
@@ -220,7 +224,7 @@ export function transition(state,action){
    casinoPayout(g,pending.payout);
    rouletteDisplay=rouletteResult(pending);
    g.pendingRoulette=null;
-   notice='🎡 '+rouletteDisplay.winningNumber+' '+rouletteDisplay.color+' · +'+rouletteDisplay.payout+' Casino Chips';
+   notice='🎡 '+rouletteDisplay.winningNumber+' '+rouletteDisplay.color+' · +'+rouletteDisplay.payout+' Casino Chips'+ticketBonusText(awardCasinoTicket(g,pending,action.now));
    break;
   }
   case 'slotsStart':{
@@ -228,7 +232,7 @@ export function transition(state,action){
    const pending=newSlotsGuestRound(action.wager,action.rolls,action.now||Date.now());
    if(!pending)return {...state,notice:'Invalid Slots wager or rolls'};
    if(!casinoSpend(g,action.wager))return {...state,notice:'Not enough Casino Chips'};
-   g.pendingSlots=pending;
+   g.pendingSlots={...pending,roundId:nextGuestCasinoRoundId(g)};
    slotsDisplay=null;
    notice='🎰 Slots wager accepted · Spin and reveal';
    break;
@@ -239,7 +243,7 @@ export function transition(state,action){
    casinoPayout(g,pending.payout);
    slotsDisplay={symbols:pending.symbols,winKind:pending.winKind,payout:pending.payout,wager:pending.wager};
    g.pendingSlots=null;
-   notice='🎰 '+slotsDisplay.winKind+' · +'+slotsDisplay.payout+' Casino Chips';
+   notice='🎰 '+slotsDisplay.winKind+' · +'+slotsDisplay.payout+' Casino Chips'+ticketBonusText(awardCasinoTicket(g,pending,action.now));
    break;
   }
   case 'casino':{
@@ -256,7 +260,7 @@ export function transition(state,action){
     const pending=newPendingScratch(action.wager,action.roll,action.now||Date.now());
     if(!pending)return {...state,notice:'Invalid Scratchers wager'};
     if(!casinoSpend(g,action.wager))return no();
-    g.pendingScratch=pending;
+    g.pendingScratch={...pending,roundId:nextGuestCasinoRoundId(g)};
     scratchDisplay=null;
     notice='🎟️ Scratch your card to reveal the committed prize';
     break;
@@ -275,7 +279,7 @@ export function transition(state,action){
    scratchDisplay={...g.pendingScratch};
    casinoPayout(g,payout);
    g.pendingScratch=null;
-   notice='🎟️ '+prize.replaceAll('_',' ')+' · +'+payout+' Casino Chips';
+   notice='🎟️ '+prize.replaceAll('_',' ')+' · +'+payout+' Casino Chips'+ticketBonusText(awardCasinoTicket(g,scratchDisplay,action.now));
    break;
   }
   case 'blackjackStart':{
@@ -284,11 +288,12 @@ export function transition(state,action){
    if(!Number.isSafeInteger(action.wager)||g.casinoChips<action.wager)return {...state,notice:'Not enough Casino Chips'};
    let next;try{next=newRoundFromDeck(action.wager,action.deck);}catch{return {...state,notice:'Invalid wager or card deck'};}
    if(!casinoSpend(g,action.wager))return no();
+   next={...next,roundId:nextGuestCasinoRoundId(g)};
    blackjackDisplay=null;
    if(next.complete){
     const result=blackjackOutcome(next);casinoPayout(g,result.totalPayout);
     blackjackDisplay={state:next,outcome:result};
-    notice='🃏 Natural Blackjack settled · +'+result.totalPayout+' Chips';blackjack=null;
+    notice='🃏 Natural Blackjack settled · +'+result.totalPayout+' Chips'+ticketBonusText(awardCasinoTicket(g,{roundId:next.roundId,wager:action.wager,payout:result.totalPayout},action.now));blackjack=null;
    }else{blackjack=next;notice='🃏 Deal complete · Hit, Stand, Double or Split';}
    break;
   }
@@ -310,7 +315,7 @@ export function transition(state,action){
     // Keep the finished table visible, just like Kotlin's lastStatePayload.
     // This is display-only and never re-settles the casino wallet.
     blackjackDisplay={state:blackjack,outcome};
-    notice='🃏 '+outcome.hands.map(h=>h.result).join(' / ')+' · +'+outcome.totalPayout+' Chips';
+    notice='🃏 '+outcome.hands.map(h=>h.result).join(' / ')+' · +'+outcome.totalPayout+' Chips'+ticketBonusText(awardCasinoTicket(g,{roundId:blackjack.roundId,wager:blackjack.hands.reduce((n,h)=>n+h.wager,0),payout:outcome.totalPayout},action.now));
     blackjack=null;
    }else notice='🃏 '+action.type.replace('blackjack','')+' · Hand '+(blackjack.activeHandIndex+1)+' / '+blackjack.hands.length;
    break;
