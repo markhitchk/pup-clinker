@@ -2,7 +2,7 @@ name: React Native Android Migration
 on:
   push:
     paths: ['Mobile/**', '.github/workflows/react-native-android.yml', 'docs/superpowers/**']
-    branches: ['feat/react-native-full-android', 'main']
+    branches: ['feat/react-native-full-android', 'feat/react-play-legacy-compatibility', 'main']
   pull_request:
     paths: ['Mobile/**', '.github/workflows/react-native-android.yml', 'docs/superpowers/**']
 permissions:

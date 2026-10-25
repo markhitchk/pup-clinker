@@ -15,10 +15,11 @@ test('React-native migration bridge refers to the original Kotlin app encryption
 });
 
 test('legacy bridge is read-only and never generates keys, wipes save data or returns tokens',()=>{
- assert.doesNotMatch(native,/generateKeyPair\\(|generateKey\\(|\\.delete\\(|\\.edit\\(|\.clear\\(|putString\\("sessionToken"/);
- assert.match(native,/productionPackage \\|\\| legacyData/);
+ for(const forbidden of ['generateKeyPair(','generateKey(','.delete(','.edit(','.clear(', 'putString("sessionToken"'])
+  assert.ok(!native.includes(forbidden),'Forbidden native operation: '+forbidden);
+ assert.ok(native.includes('productionPackage || legacyData'));
  assert.match(native,/legacy-integrity-review-required/);
- assert.match(native,/cloudSavePreserved/);
+ assert.match(native,/inspectIsReadOnly/);
 });
 
 test('Expo prebuild installs the Android compatibility package',()=>{

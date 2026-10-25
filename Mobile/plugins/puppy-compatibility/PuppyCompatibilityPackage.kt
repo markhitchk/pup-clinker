@@ -102,7 +102,7 @@ class PuppyCompatibilityModule(
                 putBoolean("hasEncryptedCloudSession", session.isFile)
                 putBoolean("discordPreviouslyConnected", legacyDiscord)
                 putBoolean("isProductionPackage", productionPackage)
-                putBoolean("cloudSavePreserved", true)
+                putBoolean("inspectIsReadOnly", true)
                 // Do not expose installation IDs, signing keys, save content,
                 // session tokens or Discord OAuth secrets across the JS bridge.
             }
