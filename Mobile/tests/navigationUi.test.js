@@ -31,6 +31,7 @@ new Function('require','module','exports',source)(id=>{
  if(id==='./src/state/useGame.js')return {useGame};
  if(id==='./src/state/useRoster.js')return {useRoster:()=>({items:mergeRoster(),source:'bundled',categories:categoriesForRoster(mergeRoster()),refresh(){},clearCache(){}})};
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
+ if(id==='./src/state/useLegacyCompatibility.js')return {useLegacyCompatibility:()=>({loading:false,status:'preview-fresh-install',requiresMigration:false,legacyDataDetected:false})};
  if(id==='./src/state/useLocalDiagnostics.js')return {useLocalDiagnostics:()=>({summary:'',clear(){}})};
  if(id==='./src/assets/puppies.js')return {PUPPY_IMAGES:Object.fromEntries(ROSTER.map(p=>[p.id,1]))};
  if(id==='./src/assets/gacha.js')return {GACHA_ART:{}};

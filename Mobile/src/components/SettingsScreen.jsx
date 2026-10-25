@@ -11,7 +11,7 @@ const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
-export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics}){
+export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,compatibility}){
  const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
@@ -60,7 +60,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('dailyRewardNotifications','Daily Rewards','Daily gifts and claimable reward reminders.')}
    {toggle('gameEventNotifications','Game Events','Dog Park Adventure completion alerts.')}
    {toggle('updateNotifications','App Updates','Keep update notices in the notification inbox when available.')}
-   {toggle('puppyAttentionNotifications','Puppy Attention','Every two hours while away, using your puppy's care status when scheduled.')}
+   {toggle('puppyAttentionNotifications','Puppy Attention',"Every two hours while away, using your puppy's latest care status.")}
    <T muted>Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.</T>
    {notifications.error?<T style={{color:C.danger}}>{notifications.error}</T>:null}
    <Action onPress={()=>{notifications.check();onOpen('notifications');}}>Check Notifications Now</Action><Action onPress={notifications.sendTest}>Send Test Notification</Action>
@@ -97,7 +97,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   {group('ADVANCED')}
   {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<T muted>Open the items below when you need them.</T>)}
   {section('roster','🐶','Puppy Roster','Manage streamed puppy roster content and refresh assets',<><Action onPress={()=>onOpen('roster')}>Open Puppy Roster</Action><Action disabled={registry.refreshing} onPress={registry.refresh}>Refresh Puppy Assets</Action></>)}
-  {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',pending)}
+  {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',<><T style={s.bold}>Kotlin → React device migration</T><T muted>Read-only original Android storage check: {compatibility?.status||'not checked'}.</T><T muted>{compatibility?.legacyDataDetected?'Existing Kotlin game data detected. The app will not overwrite it before verified cloud reconciliation.':'No original Kotlin data was found in this separately installed preview.'}</T><T muted>Discord, cloud saves and PupEye enforcement must be connected to the original device-bound account before Google Play replacement.</T></>)}
   {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<>
    <T>Roster source: {registry.source}</T><T>Visible puppies: {registry.items.length}</T><T muted>{registry.status}</T><Action disabled={registry.refreshing} onPress={registry.refresh}>{registry.refreshing?'Refreshing…':'Refresh Assets'}</Action><Action disabled={registry.refreshing} onPress={registry.clearCache}>Clear Asset Cache</Action>
   </>)}

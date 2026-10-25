@@ -76,6 +76,14 @@ The original logo and all **32 V1/V2/Discord and Kotlin test puppy PNG portraits
 
 See [PARITY.md](PARITY.md) for a feature-by-feature status against the Kotlin source and the mandatory Play cutover checklist. The list is intentionally explicit about missing 1:1 behavior.
 
+## Google Play replacement — legacy native bridge (work in progress)
+
+The React source is the intended long-term **replacement** for Kotlin on Google Play, using the original `com.harleytg.puppyclicker` identity when migration is ready. This is not permission to distribute a production replacement yet.
+
+`plugins/withPuppyCompatibility.cjs` adds a read-only Android module that detects the original app's SharedPreferences, Discord linkage, encrypted PupEye authority state and saved server session in the same package sandbox. It verifies the original AES-GCM PCE1 authority file and existing Android Keystore signing alias **without generating new keys, mutating player data, exposing tokens or writing cloud saves**. React shows a fail-closed migration screen instead of overwriting legacy progress when old data or the production app identity is found. The installed Kotlin app's package, signature and files must remain in place across upgrades.
+
+Next requirements before an actual Play replacement: authenticated server reuse of the existing device key/session, Discord PKCE login callback, secure restore of the original Supabase cloud schema, conflict/revision reconciliation, one-device PupEye enforcement, server system notifications, legacy-settings data mapping and signed AAB + Android device tests. Releasing a local guest APK over an installed player's data is forbidden.
+
 ## Production release guard
 
 `Mobile/app.config.js` always chooses `com.harleytg.puppyclicker.preview` unless **both** `PUPPY_NATIVE_PRODUCTION=1` and `PUPPY_NATIVE_RELEASE_APPROVED=1` are set, and the preview flag is absent. This is a build-time safeguard, **not proof** of parity or permission to publish. Release candidates require manual confirmation of original signing, verified Supabase/PupEye authority and Kotlin-to-RN data migration, plus signed Play internal testing. Do not set the release approval flag just to generate an APK.
