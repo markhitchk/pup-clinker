@@ -1,6 +1,6 @@
-name: Puppy Clicker React Native Preview APK
+name: Puppy Clicker Migration QA APK
 # Creates an offline-launchable, debug-key-signed release-variant APK for the
-# isolated preview package. This is NEVER a Play Store production release.
+# isolated migration-QA package. This is NEVER a Play Store production release.
 on:
   workflow_dispatch:
   push:
@@ -44,15 +44,15 @@ jobs:
       - name: Ensure preview package cannot replace the production installation
         run: |
           node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; if(c({config:a.expo}).android.package!=='com.harleytg.puppyclicker.preview')process.exit(1)"
-      - name: Test game logic
+      - name: Test migration guard and Kotlin parity fixtures
         run: npm test
-      - name: Generate safe Android preview project
+      - name: Generate isolated migration-QA Android project
         run: npx expo prebuild --platform android --no-install
       # assembleDebug omits the JS bundle and requires a running Metro server.
       # assembleRelease embeds index.android.bundle so the preview starts offline.
       # Expo's generated release variant is signed with the *debug* keystore;
       # keep the .preview package ID and do not publish this artifact to Play.
-      - name: Build standalone preview APK with bundled JavaScript
+      - name: Build standalone migration-QA APK with bundled JavaScript
         run: cd android && chmod +x gradlew && ./gradlew :app:assembleRelease --no-daemon
       - name: Verify standalone APK bundle, identity and signature
         run: |
@@ -68,10 +68,10 @@ jobs:
             exit 1
           }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-      - name: Upload standalone preview APK (not Play signed)
+      - name: Upload migration QA APK (not Play signed)
         uses: actions/upload-artifact@v4
         with:
-          name: puppy-clicker-react-native-preview-standalone-apk
+          name: puppy-clicker-react-native-migration-qa-apk
           path: Mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
