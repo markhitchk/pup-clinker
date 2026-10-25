@@ -39,7 +39,30 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
- if(action.type==='monthlySchedule')return {...state,monthlySchedule:action.schedule};
+ // Kotlin V6 ViewModel's 1-second loop expires combos after 1600 ms.
+ // This transient UI update must never reset the puppy's care clock.
+ if(action.type==='comboTimeout'){
+  if(!state.ready||state.game.combo<=0||!Number.isFinite(action.now)||
+   action.now-state.game.lastTapMs<=1600)return state;
+  return {...state,game:{...state.game,combo:0}};
+ }
+ // Kotlin decayNeeds() fires every 120 coroutine seconds while foreground:
+ // -1 happiness, -2 fullness, -1 energy, -1 cleanliness, bond unchanged.
+ // Persist only the active puppy's care snapshot and updated timestamp.
+ if(action.type==='foregroundCareTick'){
+  if(!state.ready||!Number.isFinite(action.now)||action.now<=0)return state;
+  const game=clone(state.game),now=action.now,id=game.puppyStyle;
+  game.happiness=Math.max(0,game.happiness-1);
+  game.fullness=Math.max(0,game.fullness-2);
+  game.energy=Math.max(0,game.energy-1);
+  game.cleanliness=Math.max(0,game.cleanliness-1);
+  game.careProfiles[id]={happiness:game.happiness,fullness:game.fullness,
+   energy:game.energy,cleanliness:game.cleanliness,bond:game.bond};
+  game.careUpdatedAtByPuppy[id]=now;
+  game.lastActiveAt=now;
+  return {...state,game};
+ }
+ if(action.type==='monthlySchedule'return {...state,monthlySchedule:action.schedule};
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game)applyOfflineCare(game,action.now||Date.now());
@@ -108,7 +131,7 @@ export function transition(state,action){
    g.onboardingComplete=true;
    notice='🐶 Welcome, '+g.guestName+'! Your local preview is ready.';
    break;
-  case 'resume':applyOfflineCare(g,action.now||Date.now());rollDailyDay(g,new Date(action.now||Date.now()));break;
+  case 'resume':applyOfflineCare(g,action.now||Date.now());if(g.combo>0&&(action.now||Date.now())-g.lastTapMs>1600)g.combo=0;rollDailyDay(g,new Date(action.now||Date.now()));break;
   case 'rollDailyDay':if(!rollDailyDay(g,new Date(action.now||Date.now())))return no();break;
   case 'tap': {
    if((action.now||Date.now())<(g.cooldownUntilMs||0))return {...state,notice:'🐶👁️ Fair-play cooldown active'};
