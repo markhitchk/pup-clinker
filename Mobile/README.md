@@ -1,3 +1,10 @@
+## October 25 — separately installable Puppy Clicker [Beta] APK
+
+- Android beta identity: `com.harleytg.puppyclicker.beta`; launcher name: **Puppy Clicker [Beta]**. This is an isolated, debug-key-signed standalone release APK with bundled JavaScript, not a Google Play update or the production signing certificate.
+- The GitHub Actions **Puppy Clicker Beta APK** workflow verifies the package, launcher label, JS bundle and Android signature, then uploads `puppy-clicker-react-native-beta-apk`. An EAS `beta` profile uses the same package.
+- **Known blocker:** a separate beta package cannot access Kotlin's Android Keystore or save sandbox, and the verified Discord OAuth/device-register/device-transfer flow has not been ported. The beta is not an authenticated playable replacement; gameplay remains fail-closed. No guest save is used, and existing signed Kotlin installations must not be uninstalled.
+- The original `com.harleytg.puppyclicker` remains reserved for a later fully validated, original-key-signed, data-preserving Play upgrade. Historical `.preview` references in older porting notes describe former builds, not the current APK.
+
 ## October 25 production migration directive — supersedes the old guest-preview instructions
 
 The React Native app's default root now opens **Pup Account migration verification**. It does **not** run the legacy guest preview or permit unverified gameplay. The Kotlin-derived gameplay components remain in the repository as fixture/reference code only until signed, authoritative transactions are connected.
@@ -19,7 +26,7 @@ This is a genuine React Native / Expo Android application, **NOT a website wrapp
 ## Versions / Android identity
 
 - Expo SDK 57 + React Native 0.86 + React 19.2 (React Native new architecture).
-- Reserved Google Play package: `com.harleytg.puppyclicker` (unchanged original identity); all normal builds default to the **separate** `com.harleytg.puppyclicker.preview`.
+- Reserved Google Play package: `com.harleytg.puppyclicker` (unchanged original identity); all normal builds default to the **separate** `com.harleytg.puppyclicker.beta`.
 - Version code: `35` (current Kotlin source code: `34`). Google Play requires monotonic increment and original upload signing key.
 - Android target SDK 36 via SDK 57 defaults.
 - No `WebView` package or browser-embedded UI.
@@ -40,7 +47,7 @@ npx expo run:android
 npx expo prebuild --platform android
 ```
 
-The `app.json` reserves the future Play package ID, but **runtime configuration defaults to the safe preview package**. Use `npx expo run:android` (or `PUPPY_NATIVE_PREVIEW=1 npx expo run:android`) to install the separately named `com.harleytg.puppyclicker.preview` test app alongside the existing Play app. **Never** try to install an untrusted debug build over the Play install; original Play signing is different. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
+The `app.json` reserves the future Play package ID, but **runtime configuration defaults to the safe beta package**. Use `npx expo run:android` (or `PUPPY_NATIVE_BETA=1 npx expo run:android`) to install the separately named `com.harleytg.puppyclicker.beta` test app alongside the existing Play app. **Never** try to install an untrusted debug build over the Play install; original Play signing is different. Do not uninstall production to test without securely backing up and verifying original native cloud data; use a separate emulator/test profile instead.
 
 ## Screens implemented in React Native
 
