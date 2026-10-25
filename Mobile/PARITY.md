@@ -1,3 +1,10 @@
+## October 25 — separately installable Puppy Clicker [Beta] APK
+
+- Android beta identity: `com.harleytg.puppyclicker.beta`; launcher name: **Puppy Clicker [Beta]**. This is an isolated, debug-key-signed standalone release APK with bundled JavaScript, not a Google Play update or the production signing certificate.
+- The GitHub Actions **Puppy Clicker Beta APK** workflow verifies the package, launcher label, JS bundle and Android signature, then uploads `puppy-clicker-react-native-beta-apk`. An EAS `beta` profile uses the same package.
+- **Known blocker:** a separate beta package cannot access Kotlin's Android Keystore or save sandbox, and the verified Discord OAuth/device-register/device-transfer flow has not been ported. The beta is not an authenticated playable replacement; gameplay remains fail-closed. No guest save is used, and existing signed Kotlin installations must not be uninstalled.
+- The original `com.harleytg.puppyclicker` remains reserved for a later fully validated, original-key-signed, data-preserving Play upgrade. Historical `.preview` references in older porting notes describe former builds, not the current APK.
+
 ## October 25 — production-account-first entry and Kotlin identity handoff
 
 - **Guest gameplay is no longer the launched app:** `Mobile/App.js` mounts `ProductionEntry`; `PuppyApp` remains exported only for the Kotlin visual/gameplay regression fixtures. The production entry does not call `useGame`, create guest accounts, or write AsyncStorage progression.
