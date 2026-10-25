@@ -62,7 +62,7 @@ export function transition(state,action){
   game.lastActiveAt=now;
   return {...state,game};
  }
- if(action.type==='monthlySchedule'return {...state,monthlySchedule:action.schedule};
+ if(action.type==='monthlySchedule')return {...state,monthlySchedule:action.schedule};
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game)applyOfflineCare(game,action.now||Date.now());
