@@ -112,6 +112,10 @@ export function sanitizeGame(input){
   b.notificationInbox=sanitizeInbox(b.notificationInbox);
   b.notificationSeenIds=Array.isArray(b.notificationSeenIds)?[...new Set(b.notificationSeenIds.filter(id=>typeof id==='string'&&id.length<=100))].slice(0,500):[];
   b.autoPerSecond=0;
+  // Kotlin PuppyClickerV6ViewModel.loadState derives tap strength from the
+  // purchased CLICK upgrades and permanent TAP_TRAINING skill, never a stored
+  // clickPower field. Rebuild it on every guest load as Kotlin does.
+  b.clickPower=1+UPGRADES.filter(u=>u.effect==='CLICK').reduce((n,u)=>n+(u.amount+b.prestigeSkills.TAP_TRAINING)*b.upgrades[u.id],0);
   b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
   if(b.lastDailyClaimDay!==null)b.lastDailyClaimDay=cap(b.lastDailyClaimDay);
