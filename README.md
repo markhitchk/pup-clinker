@@ -1,41 +1,26 @@
-# Puppy Clicker
+# Puppy Clicker — Kotlin Android Archive
 
-Puppy Clicker is organized as a multi-platform project. The existing native Android game and shared artwork are preserved; the website and desktop areas are reserved for their own implementations.
+Archived on: 2026-10-24
+Original source repository: https://github.com/markhitchk/pup-clinker
+Original source branch: main
+Original source commit: 4d01e469aecf62e927aa7674ebf7a75c258f66e1
 
-## Project folders
+This branch is a preservation snapshot of Puppy Clicker's original native **Kotlin / Jetpack Compose Android application**, not the React Native replacement.
 
-| Folder | Purpose |
-| --- | --- |
-| [`App/`](App/) | Native Android project, Gradle configuration, source code, build tools, and signing documentation. |
-| [`Website/`](Website/) | Website and browser edition. No website implementation is included yet. |
-| [`assets/`](assets/) | Existing shared artwork and versioned puppy assets. Keep this path stable for all platforms. |
-| [`Desktop/`](Desktop/) | Future desktop edition, installers, and platform-specific packaging. No desktop implementation is included yet. |
+Included:
+- `App/` — unchanged Kotlin Android Gradle project, source, UI, resources, minigames, artwork, documentation, and tools
+- `assets/` — shared artwork and resources referenced by the native build
+- `.env` — the already-public app configuration from the original source commit (not Android signing credentials)
+- `.gitignore` — original project ignore rules
+- `.github/` — original CI workflows and helper scripts
 
-The root `.github/` directory contains repository automation. The root `.gitignore` and this README apply to the entire repository and are not separate products.
+Build locally:
+1. Open the `App/` folder in Android Studio.
+2. Use Java 17, Android SDK 36 and a compatible Gradle installation.
+3. Run `gradle :app:assembleDebug` from the `App/` folder.
+4. For Google Play release signing, supply the existing upload key through your secure CI environment; **private signing keys are not in this archive**.
 
-## Android
+The application ID is `com.harleytg.puppyclicker`.
+The archive is intended as a backup/reference for verifying one-to-one parity while migrating to React Native.
 
-The existing Android project is now in `App/`. Open that directory in Android Studio, or build from the repository root:
-
-```bash
-cd App
-gradle :app:assembleRelease
-```
-
-The Android application ID, existing source, game data compatibility, version configuration, and permanent signing setup are unchanged. Build output is under `App/app/build/outputs/apk/`. See [`App/README.md`](App/README.md) and [`App/SIGNING.md`](App/SIGNING.md).
-
-## Shared assets
-
-Use the existing [`assets/`](assets/) directory as the single source of shared artwork. Preserve its existing file names, character IDs, and V1/V2 organization. Platform implementations may generate or package their own optimized copies without altering the source assets. Do not create a second root-level assets folder or replace the original character art with placeholders.
-
-## Website and desktop
-
-The website and desktop folders have README files so Git tracks them. They are not claims that a playable browser or desktop version already exists. Their implementations can be added independently while reusing the shared assets and established Puppy Clicker game design.
-
-## Repository history
-
-This organization preserves the prior Android files and assets in Git history. Older commits and releases remain available. Paths in scripts or external documentation that referenced the old Android root must use `App/` for the current branch.
-
-## Rights
-
-Puppy Clicker is based on the original HarleyTG-O Puppy Clicker project. All rights reserved by the project owner; this repository does not declare the game open source.
+This archive does not remove or change source files on `main` or `feat/react-native-full-android`.
