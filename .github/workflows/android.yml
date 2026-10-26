@@ -22,16 +22,16 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: App
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python for SVG compilation
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -39,7 +39,7 @@ jobs:
         run: python3 -m unittest tools.test_patch_puppy_exchange tools.test_patch_android_1_0_runner tools.test_png_integrity
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -143,7 +143,7 @@ jobs:
 
       - name: Upload Google Play production bundle
         if: steps.signing.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: puppy-clicker-play-upload-bundle
           path: App/app/build/outputs/bundle/release/*.aab
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload unsigned AAB compile artifact
         if: steps.signing.outputs.ready != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: puppy-clicker-unsigned-play-bundle
           path: App/app/build/outputs/bundle/release/*.aab

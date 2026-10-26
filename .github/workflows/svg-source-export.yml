@@ -8,9 +8,9 @@ permissions:
   contents: read
 jobs:
   export:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           path: project
@@ -26,7 +26,7 @@ jobs:
           git -C project rev-parse HEAD > snapshot/commit.txt
           git -C project ls-tree -r --name-only HEAD > snapshot/tracked-files.txt
           find snapshot/project -type f -print0 | sort -z | xargs -0 sha256sum > snapshot/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: puppy-svg-source-snapshot
           path: snapshot/

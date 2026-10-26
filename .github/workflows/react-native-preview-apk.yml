@@ -19,7 +19,7 @@ permissions:
   contents: read
 jobs:
   build-safe-preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: Mobile
@@ -27,16 +27,16 @@ jobs:
       PUPPY_NATIVE_BETA: '1'
       CI: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       # Dependencies are pinned in Mobile/package-lock.json.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Set monotonic beta Android versionCode
@@ -47,6 +47,7 @@ jobs:
         run: |
           node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; const x=c({config:a.expo}); if(x.android.package!=='com.harleytg.puppyclicker.beta'||x.name!=='Puppy Clicker [Beta]')process.exit(1)"
       - name: Test migration guard and Kotlin parity fixtures
+        shell: bash
         run: npm test
       - name: Generate isolated beta Android project
         run: npx expo prebuild --platform android --no-install
@@ -79,7 +80,7 @@ jobs:
       # infrastructure reasons (ADB broken pipe), which must not delete an
       # otherwise valid installable artifact.
       - name: Upload beta APK (not Play signed)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: puppy-clicker-react-native-beta-apk
           path: Mobile/android/app/build/outputs/apk/release/*.apk
@@ -95,7 +96,10 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_6
-          disable-animations: true
+          # Avoid adb shell settings during emulator initialization; this command
+          # intermittently fails with broken pipe on hosted runners.
+          disable-animations: false
+          emulator-boot-timeout: 900
           working-directory: Mobile
           script: |
             set -e

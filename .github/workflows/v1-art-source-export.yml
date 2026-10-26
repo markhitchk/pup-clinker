@@ -11,15 +11,15 @@ permissions:
 
 jobs:
   export:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout current project history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           path: project
       - name: Checkout original Puppy Clicker image source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: HarleyTG-O/Puppy-Clicker
           ref: ab844c9f5fd09f5f17b9bf577e75524f0b6edcd1
@@ -51,7 +51,7 @@ jobs:
           print('Exported', len(result), 'source files')
           PY
       - name: Upload source-only audit bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: puppy-v1-original-source-audit
           path: audit/

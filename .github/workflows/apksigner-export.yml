@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   export:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Export Android apksigner tool
@@ -26,7 +26,7 @@ jobs:
           chmod +x "$TOOL_DIR/apksigner"
 
       - name: Upload Android apksigner tool
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: android-apksigner-tool
           path: ${{ runner.temp }}/apksigner-tool
