@@ -12,7 +12,8 @@ const BETA_LIVE_ACTIONS=new Set([
  'tap','care','purchase','ticket','accessory','equip','exchange','skill','daily',
  'claimDailyGoal','parkStart','parkClaim',
  'slotsStart','slotsReveal','rouletteStart','rouletteReveal','plinkoStart','plinkoReveal',
- 'scratchStart','scratchReveal','wheelStart','wheelReveal'
+ 'scratchStart','scratchReveal','wheelStart','wheelReveal',
+ 'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit'
 ]);
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
