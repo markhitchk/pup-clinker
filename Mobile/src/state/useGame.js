@@ -10,7 +10,7 @@ import {MONTHLY_REWARDS_URL,MONTHLY_REWARDS_CACHE_KEY,MONTHLY_REWARDS_REFRESH_MS
 const PUBLISHABLE_KEY=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
 const BETA_LIVE_ACTIONS=new Set([
  'tap','care','purchase','ticket','accessory','equip','exchange','skill','daily',
- 'claimDailyGoal','parkStart','parkClaim',
+ 'claimDailyGoal','parkStart','parkClaim','prestige',
  'slotsStart','slotsReveal','rouletteStart','rouletteReveal','plinkoStart','plinkoReveal',
  'scratchStart','scratchReveal','wheelStart','wheelReveal',
  'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit'
