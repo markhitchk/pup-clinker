@@ -64,104 +64,145 @@ function cloudSaveValue(payload: Record<string, unknown>): Record<string, unknow
   return legacy;
 }
 
+// Account creation is never triggered by an unverified nickname, an email
+// string, or a second device's attempt to log in. Both a verified Supabase Auth
+// principal and a signed, active PupEye session are required to link credentials.
+async function linkLocalAccount(req: Request, admin: any, session: any): Promise<any> {
+  const authorization = req.headers.get("authorization") ?? "";
+  const match = /^Bearer ([^\s]+)$/.exec(authorization);
+  if (!match) throw new HttpError(401, "PUP_LOGIN_TOKEN_REQUIRED", "Sign in to your Pup Account first.");
+
+  const { data: identity, error: authError } = await admin.auth.getUser(match[1]);
+  const user = identity?.user;
+  if (authError || !user) {
+    throw new HttpError(401, "PUP_LOGIN_INVALID", "Pup Account password verification failed.");
+  }
+  if (!user.email || !(user.email_confirmed_at || user.confirmed_at)) {
+    throw new HttpError(403, "PUP_EMAIL_CONFIRMATION_REQUIRED", "Verify your email before signing in.");
+  }
+
+  const { data: byUser, error: byUserError } = await admin.from("pup_accounts")
+    .select("*").eq("auth_user_id", user.id).maybeSingle();
+  if (byUserError) throw byUserError;
+  if (byUser && byUser.player_uuid !== session.player.id) {
+    throw new HttpError(409, "PUP_ACCOUNT_ON_OTHER_DEVICE",
+      "This Pup Account is bound to another installation. An approved device transfer is required.");
+  }
+
+  const { data: byPlayer, error: playerError } = await admin.from("pup_accounts")
+    .select("*").eq("player_uuid", session.player.id).maybeSingle();
+  if (playerError) throw playerError;
+  if (byPlayer?.auth_user_id && byPlayer.auth_user_id !== user.id) {
+    throw new HttpError(409, "PUP_ACCOUNT_IDENTITY_CONFLICT",
+      "This PupEye player already belongs to another email/password account.");
+  }
+  if (byPlayer?.discord_user_id && byPlayer.discord_user_id !== session.player.discord_user_id) {
+    throw new HttpError(409, "PUP_ACCOUNT_IDENTITY_CONFLICT",
+      "The existing Discord account must be verified on this installation before adding a password.");
+  }
+
+  const requested = user.user_metadata?.puppy_username;
+  const username = byPlayer?.local_username ??
+    (typeof requested === "string" ? requested.trim() : "");
+  if (!/^[A-Za-z0-9_.-]{3,20}$/.test(username)) {
+    throw new HttpError(400, "PUP_USERNAME_REQUIRED",
+      "Pup Account registration requires a 3–20 character username.");
+  }
+  const values = {
+    auth_user_id: user.id,
+    local_username: username,
+    // Do not replace an established Discord identity, Player ID or cloud save.
+    username: byPlayer?.username && byPlayer.discord_user_id ? byPlayer.username : username,
+    active_installation_uuid: session.installation.id,
+    updated_at: new Date().toISOString(),
+  };
+  const write = byPlayer
+    ? await admin.from("pup_accounts").update(values).eq("id", byPlayer.id).select("*").single()
+    : await admin.from("pup_accounts").insert({
+      ...values, player_uuid: session.player.id,
+      discord_user_id: session.player.discord_user_id ?? null,
+      stage: "t0", status: "active",
+    }).select("*").single();
+  if (write.error) {
+    if (write.error.code === "23505") {
+      throw new HttpError(409, "PUP_USERNAME_TAKEN",
+        "This username is already in use. Choose another username.");
+    }
+    throw write.error;
+  }
+  return write.data;
+}
+
 async function ensureAccount(admin: any, session: any): Promise<any> {
   const discordUserId = session.player.discord_user_id;
   const discordUsername = session.player.discord_username;
-  if (!discordUserId || !discordUsername) {
-    throw new HttpError(
-      409,
-      "PUP_ACCOUNT_DISCORD_REQUIRED",
-      "Connect Discord to create or sign in to a Pup Account.",
-    );
-  }
-
   const { data: existing, error: existingError } = await admin
-    .from("pup_accounts")
-    .select("*")
-    .eq("player_uuid", session.player.id)
-    .maybeSingle();
+    .from("pup_accounts").select("*").eq("player_uuid", session.player.id).maybeSingle();
   if (existingError) throw existingError;
 
   if (existing) {
-    if (existing.discord_user_id !== discordUserId) {
-      throw new HttpError(
-        409,
-        "PUP_ACCOUNT_IDENTITY_CONFLICT",
-        "This Pup Account is linked to a different Discord identity.",
-      );
+    if (existing.discord_user_id && discordUserId &&
+        existing.discord_user_id !== discordUserId) {
+      throw new HttpError(409, "PUP_ACCOUNT_IDENTITY_CONFLICT",
+        "This Pup Account is linked to a different Discord identity.");
     }
-
-    const desiredDisplayName = session.player.discord_global_name ?? null;
-    const desiredAvatarHash = session.player.discord_avatar_hash ?? null;
-    const accountChanged =
-      existing.username !== discordUsername ||
-      existing.display_name !== desiredDisplayName ||
-      existing.avatar_hash !== desiredAvatarHash ||
-      existing.active_installation_uuid !== session.installation.id ||
-      existing.stage !== "t0";
-
-    if (!accountChanged) return existing;
-
-    const { data: updated, error: updateError } = await admin
-      .from("pup_accounts")
-      .update({
-        username: discordUsername,
-        display_name: desiredDisplayName,
-        avatar_hash: desiredAvatarHash,
-        active_installation_uuid: session.installation.id,
-        stage: "t0",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.id)
-      .select("*")
-      .single();
-    if (updateError) throw updateError;
+    if (!existing.auth_user_id && !existing.discord_user_id && !discordUserId) {
+      throw new HttpError(401, "PUP_ACCOUNT_LOGIN_REQUIRED", "Sign in to your Pup Account.");
+    }
+    // First-party local username survives connecting or disconnecting Discord.
+    const changes = {
+      username: existing.local_username ?? (discordUsername || existing.username),
+      discord_user_id: discordUserId ?? existing.discord_user_id,
+      display_name: discordUserId ? session.player.discord_global_name ?? null : existing.display_name,
+      avatar_hash: discordUserId ? session.player.discord_avatar_hash ?? null : existing.avatar_hash,
+      active_installation_uuid: session.installation.id,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing.username === changes.username &&
+        existing.discord_user_id === changes.discord_user_id &&
+        existing.display_name === changes.display_name &&
+        existing.avatar_hash === changes.avatar_hash &&
+        existing.active_installation_uuid === changes.active_installation_uuid) return existing;
+    const { data: updated, error } = await admin.from("pup_accounts")
+      .update(changes).eq("id", existing.id).select("*").single();
+    if (error) throw error;
     return updated;
   }
 
-  const { data: discordOwner, error: ownerError } = await admin
-    .from("pup_accounts")
-    .select("id,player_uuid")
-    .eq("discord_user_id", discordUserId)
-    .maybeSingle();
-  if (ownerError) throw ownerError;
-  if (discordOwner && discordOwner.player_uuid !== session.player.id) {
-    throw new HttpError(
-      409,
-      "PUP_ACCOUNT_ON_OTHER_DEVICE",
-      "This Discord account already owns a Pup Account on another Puppy Clicker player/device. Device transfer is required.",
-    );
+  if (!discordUserId || !discordUsername) {
+    throw new HttpError(401, "PUP_ACCOUNT_LOGIN_REQUIRED",
+      "Create or sign in to a Pup Account. Discord is optional.");
   }
-
-  const { data: account, error: createError } = await admin
-    .from("pup_accounts")
-    .insert({
-      player_uuid: session.player.id,
-      discord_user_id: discordUserId,
-      username: discordUsername,
-      display_name: session.player.discord_global_name ?? null,
-      avatar_hash: session.player.discord_avatar_hash ?? null,
-      active_installation_uuid: session.installation.id,
-      stage: "t0",
-      status: "active",
-    })
-    .select("*")
-    .single();
+  const { data: owner, error: ownerError } = await admin.from("pup_accounts")
+    .select("id,player_uuid").eq("discord_user_id", discordUserId).maybeSingle();
+  if (ownerError) throw ownerError;
+  if (owner && owner.player_uuid !== session.player.id) {
+    throw new HttpError(409, "PUP_ACCOUNT_ON_OTHER_DEVICE",
+      "This Discord account is linked to another installation. Approved device transfer is required.");
+  }
+  const { data: created, error: createError } = await admin.from("pup_accounts").insert({
+    player_uuid: session.player.id, discord_user_id: discordUserId,
+    username: discordUsername, display_name: session.player.discord_global_name ?? null,
+    avatar_hash: session.player.discord_avatar_hash ?? null,
+    active_installation_uuid: session.installation.id, stage: "t0", status: "active",
+  }).select("*").single();
   if (createError) throw createError;
-  return account;
+  return created;
 }
 
 Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
     const envelope = verifyEnvelope(await req.json());
-    if (!["account-status", "cloud-save-read", "cloud-save-write"].includes(envelope.action)) {
+    if (!["auth-local", "account-status", "cloud-save-read", "cloud-save-write"].includes(envelope.action)) {
       throw new HttpError(400, "PUP_ACCOUNT_ACTION_INVALID", "Unsupported Pup Account action.");
     }
 
     const admin = createAdminClient();
     const session = await authenticateSession(req, admin, envelope);
-    const account = await ensureAccount(admin, session);
+    const account = envelope.action === "auth-local"
+      ? await linkLocalAccount(req, admin, session)
+      : await ensureAccount(admin, session);
 
     if (account.status !== "active") {
       throw new HttpError(
@@ -171,7 +212,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (envelope.action === "account-status") {
+    if (envelope.action === "auth-local") {\n      return json(200, { ok: true, accountId: account.id });\n    }\n\n    if (envelope.action === "account-status") {
       const { data: save, error: saveError } = await admin
         .from("pup_account_saves")
         .select("revision,generation,updated_at")
@@ -190,7 +231,7 @@ Deno.serve(async (req: Request) => {
           username: account.username,
           displayName: account.display_name ?? null,
           avatarHash: account.avatar_hash ?? null,
-          discordUserId: account.discord_user_id,
+          discordUserId: account.discord_user_id,\n          loginMethods: { password: Boolean(account.auth_user_id), discord: Boolean(account.discord_user_id) },
           allowMultipleDevices: Boolean(account.allow_multiple_devices),
         },
         cloudSave: save
