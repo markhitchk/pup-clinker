@@ -169,6 +169,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
    putBoolean("readOnly",obj.optBoolean("readOnly",false))
+   putBoolean("accountWritable",true)
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
    putString("displayName",a.optString("displayName",a.getString("username")))
@@ -270,6 +271,18 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    if(e.code!="BETA_ACCOUNT_NOT_FOUND")throw e
    post("pupeye-auth-discord",envelope("auth-discord",JSONObject().put("discordAccessToken",discordToken)),
     key,pupeyeToken)
+  }
+  account(key)
+ }
+ @ReactMethod fun updateDisplayName(displayName:String,key:String,p:Promise)=runAsync(p){
+  val name=displayName.trim()
+  require(name.length in 2..24 && Regex("""[\p{L}\p{N} ._'’-]+""").matches(name)){"Invalid display name"}
+  val payload=JSONObject().put("displayName",name)
+  try{
+   post("pup-beta-link",envelope("beta-account-update",payload),key,session(key))
+  }catch(e:ApiError){
+   if(e.code!="BETA_LINK_REQUIRED")throw e
+   post("pup-account",envelope("account-update",payload),key,session(key))
   }
   account(key)
  }

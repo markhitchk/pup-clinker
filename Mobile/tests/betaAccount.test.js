@@ -114,3 +114,19 @@ test('native Pup Account credentials are independent from Discord and never stor
  assert.match(migration,/enable row level security/);
  assert.match(migration,/revoke all on public\.pup_credential_links from anon, authenticated/);
 });
+
+test('signed account profile edits never permit beta gameplay save writes',()=>{
+ const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const beta=read('../../supabase/functions/pup-beta-link/index.ts');
+ const account=read('../../supabase/functions/pup-account/index.ts');
+ const hook=read('../src/state/useGame.js');
+ const settings=read('../src/components/SettingsScreen.jsx');
+ assert.match(native,/@ReactMethod fun updateDisplayName/);
+ assert.match(native,/beta-account-update/);
+ assert.match(beta,/BETA_ACCOUNT_DISPLAY_NAME_UPDATED/);
+ assert.match(beta,/verifyOwner\(admin, account, envelope.action\)/);
+ assert.match(account,/account-update/);
+ assert.match(hook,/updateAccountName/);
+ assert.match(settings,/onUpdateAccountName/);
+ assert.doesNotMatch(beta,/beta-cloud-write/);
+});

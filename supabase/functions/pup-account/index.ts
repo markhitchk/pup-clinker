@@ -86,7 +86,8 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
       );
     }
 
-    const desiredDisplayName = session.player.discord_global_name ?? null;
+    // Preserve a custom display name instead of overwriting it on Discord refresh.
+    const desiredDisplayName = existing.display_name ?? session.player.discord_global_name ?? null;
     const desiredAvatarHash = session.player.discord_avatar_hash ?? null;
     if (!existing.discord_user_id) return existing;
     const accountChanged =
@@ -154,7 +155,7 @@ Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
     const envelope = verifyEnvelope(await req.json());
-    if (!["account-status", "cloud-save-read", "cloud-save-write"].includes(envelope.action)) {
+    if (!["account-status", "cloud-save-read", "cloud-save-write", "account-update"].includes(envelope.action)) {
       throw new HttpError(400, "PUP_ACCOUNT_ACTION_INVALID", "Unsupported Pup Account action.");
     }
 
@@ -170,6 +171,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (envelope.action === "account-update") {
+      // Only the account's active PupEye installation can use this route.
+      const displayName = String(envelope.payload.displayName ?? "").trim();
+      if (displayName.length < 2 || displayName.length > 24 ||
+          !/^[\p{L}\p{N} ._'’-]+$/u.test(displayName)) {
+        throw new HttpError(400, "PUP_DISPLAY_NAME_INVALID", "Display name must be 2–24 characters.");
+      }
+      const { data: changed, error: updateError } = await admin.from("pup_accounts")
+        .update({ display_name: displayName, updated_at: new Date().toISOString() })
+        .eq("id", account.id).eq("active_installation_uuid", session.installation.id)
+        .eq("status", "active").select("id,display_name").single();
+      if (updateError) throw updateError;
+      return json(200, { updated: true, displayName: changed.display_name });
+    }
     if (envelope.action === "account-status") {
       const { data: save, error: saveError } = await admin
         .from("pup_account_saves")

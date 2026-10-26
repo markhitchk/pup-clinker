@@ -9,7 +9,7 @@ import {MONTHLY_REWARDS_URL,MONTHLY_REWARDS_CACHE_KEY,MONTHLY_REWARDS_REFRESH_MS
 
 const PUBLISHABLE_KEY=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
-function emptyAccountView(){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName='Pup Account';return game;}
+function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
@@ -30,11 +30,11 @@ export function useGame({mode='guest'}={}){
    const cloud=await native.cloudRead(PUBLISHABLE_KEY);
    if(!cloud?.exists){
     setCloudState('NO_CLOUD_SAVE');
-    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    dispatch({type:'hydrate',game:emptyAccountView(active.displayName||active.username),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
     return true;
    }
-   const game=projectKotlinCloudSave(cloud.saveJson,active.username);
+   const game=projectKotlinCloudSave(cloud.saveJson,active.displayName||active.username);
    setCloudState('SERVER_SNAPSHOT_READ_ONLY');
    dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
@@ -161,5 +161,12 @@ export function useGame({mode='guest'}={}){
   }
   dispatch(action);
  },[beta]);
- return {state,act,account,cloudState,refreshAccount};
+ const updateAccountName=useCallback(async displayName=>{
+  if(!beta||account?.status!=='VERIFIED')throw new Error('Sign in before editing your Pup Account.');
+  const updated=await NativeModules.PuppyBetaAccount.updateDisplayName(displayName,PUBLISHABLE_KEY);
+  if(updated?.status!=='VERIFIED')throw new Error('Account update was not verified.');
+  await refreshAccount(updated);
+  return updated;
+ },[beta,account?.status,refreshAccount]);
+ return {state,act,account,cloudState,refreshAccount,updateAccountName};
 }

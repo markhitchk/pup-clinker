@@ -15,7 +15,7 @@ import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts
 // read-only, expiring companion link after Discord proves account ownership.
 // The primary PupEye installation, player and cloud-write authority never move.
 const MAX_BETA_GRANT_MS = 7 * 24 * 60 * 60 * 1000;
-const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read"]);
+const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update"]);
 
 Deno.serve(async (req: Request) => {
   try {
@@ -113,6 +113,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const owner = await verifyOwner(admin, account, envelope.action);
+    if (envelope.action === "beta-account-update") {
+      // Signed beta account profile edits only: no cloud-save or economy writes.
+      const displayName = requiredString(envelope.payload.displayName, "displayName").trim();
+      if (displayName.length < 2 || displayName.length > 24 ||
+          !/^[\p{L}\p{N} ._'’-]+$/u.test(displayName)) {
+        throw new HttpError(400, "PUP_DISPLAY_NAME_INVALID", "Display name must be 2–24 characters.");
+      }
+      const { data: changed, error: updateError } = await admin.from("pup_accounts")
+        .update({ display_name: displayName, updated_at: new Date().toISOString() })
+        .eq("id", account.id).eq("status", "active")
+        .select("id,display_name").single();
+      if (updateError) throw updateError;
+      await audit(admin, "BETA_ACCOUNT_DISPLAY_NAME_UPDATED", "info",
+        { accountId: account.id }, session.player.id, session.installation.id);
+      return json(200, { updated: true, displayName: changed.display_name, gameplayReadOnly: true });
+    }
     if (envelope.action === "beta-cloud-read") {
       const { data: save, error: saveError } = await admin
         .from("pup_account_saves").select("*")
@@ -139,6 +155,7 @@ Deno.serve(async (req: Request) => {
     return json(200, {
       readOnly: true,
       linkedFromPlay: true,
+      accountWritable: true,
       playerId: owner.player_id,
       friendCode: owner.friend_code,
       guildRole: owner.guild_role ?? null,
