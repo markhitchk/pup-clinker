@@ -12,7 +12,7 @@ import {newPendingScratch,validPendingScratch} from '../engine/scratch.js';
 import {newSlotsGuestRound,validPendingSlots} from '../engine/slotsV6.js';
 import {newRouletteGuestRound,validPendingRoulette,rouletteResult} from '../engine/rouletteV6.js';
 import {newPlinkoGuestRound,validPendingPlinko,plinkoResult} from '../engine/plinkoV6.js';
-import {newWheelGuestRound,validPendingWheel,wheelResult} from '../engine/wheelV6.js';
+import {newWheelGuestRound,validPendingWheel,validAuthoritativeWheel,wheelResult} from '../engine/wheelV6.js';
 import {nextGuestCasinoRoundId,guestRoundId,applyGuestCasinoTicketReward} from '../engine/casinoTicketRewards.js';
 
 export const initialState=()=>({game:freshGame(),blackjack:null,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,wheelDisplay:null,notice:'Local guest mode · no official cloud sync',ready:false,monthlySchedule:fallbackSchedule()});
@@ -78,7 +78,7 @@ export function transition(state,action){
   game.pendingSlots=validPendingSlots(game.pendingSlots)?game.pendingSlots:null;
   game.pendingRoulette=validPendingRoulette(game.pendingRoulette)?game.pendingRoulette:null;
   game.pendingPlinko=validPendingPlinko(game.pendingPlinko)?game.pendingPlinko:null;
-  game.pendingWheel=validPendingWheel(game.pendingWheel)?game.pendingWheel:null;
+  game.pendingWheel=(validPendingWheel(game.pendingWheel)||action.readOnly&&validAuthoritativeWheel(game.pendingWheel))?game.pendingWheel:null;
   const last=game.betaLastCasinoResult;
   return {...state,game,blackjack,blackjackDisplay:game.betaBlackjackDisplay||null,
    gachaResult:game.betaLastGachaResult?.id!==state.gachaDismissedId?game.betaLastGachaResult:null,
