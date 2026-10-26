@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
         "daily", "claimDailyGoal", "parkStart", "parkClaim", "prestige",
         "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
         "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
-        "wheelStart", "wheelReveal", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
+        "wheelStart", "wheelReveal", "gacha", "switch", "rename", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
       ]);
       if (typeof intent.type !== "string" || !allowed.has(intent.type)) {
         throw new HttpError(400, "BETA_GAMEPLAY_NOT_PORTED", "This gameplay action is not yet live.");
@@ -174,6 +174,8 @@ Deno.serve(async (req: Request) => {
         // RNG sample, deck, reward amount, price, XP and save JSON.
         const clean = {
           type: intent.type,
+          payment: typeof intent.payment === "string" ? intent.payment : undefined,
+          id: typeof intent.id === "string" ? intent.id : undefined,
           kind: typeof intent.kind === "string" ? intent.kind : undefined,
           upgradeId: typeof intent.upgradeId === "string" ? intent.upgradeId : undefined,
           rarity: typeof intent.rarity === "string" ? intent.rarity : undefined,
