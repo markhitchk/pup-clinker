@@ -21,6 +21,11 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
  assert.match(hook,/projectKotlinCloudSave/);
+ assert.match(root,/Cloud preview · read-only/);
+ assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
+ assert.match(root,/readOnly=\{betaMode\}/);
+ assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
+ assert.match(hook,/ToastAndroid\.show\(/);
  assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });
 
