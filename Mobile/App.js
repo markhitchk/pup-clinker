@@ -984,11 +984,11 @@ export function PuppyApp({betaMode=false}){
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
-  if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&cloudState!=='LIVE_SYNCED'}/>;
+  if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
-  if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&cloudState!=='LIVE_SYNCED'}/>;
+  if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>;
@@ -1012,7 +1012,7 @@ export function PuppyApp({betaMode=false}){
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?'Account synced · live gameplay':cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?'Account synced · no save':'Profile editable')
+     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?'Account synced · live gameplay':cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
      :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
