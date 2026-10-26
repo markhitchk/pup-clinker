@@ -59,3 +59,26 @@ Deno.test("Casino rejects client-controlled wager or invalid roulette and scratc
  await assertRejects(()=>applyBetaEconomy(make(),{type:"rouletteStart",wager:20,bet:{type:"STRAIGHT",number:99}},NOW),Error,"INVALID_ROULETTE_NUMBER");
  await assertRejects(()=>applyBetaEconomy(make(),{type:"scratchStart",wager:60},NOW),Error,"UNSUPPORTED_SCRATCH_CARD");
 });
+
+Deno.test("Gacha spends on the server, awards only Kotlin free pups and keeps protected IDs locked",async()=>{
+ const before=make();
+ const first=await applyBetaEconomy(before,{type:"gacha",payment:"TREATS"},NOW);
+ const reward=JSON.parse(String(data(first).beta_last_gacha_result_v1));
+ assert(["classic","golden","poodle","spotty","test_v1_crash_dummy","test_v2_crash_dummy"].includes(reward.puppyId));
+ assertEquals(data(first).treats,17500);
+ assertEquals(data(first).unlocked_puppies.includes("dev_pup"),false);
+ assertEquals(data(first).unlocked_puppies.includes("v2_discord_pup"),false);
+ assertEquals(data(first).player_xp_v1,300); // 100 unlock XP + 200 achievements from existing progression
+ assertEquals(data(before).treats,20000);
+ const second=await applyBetaEconomy(first,{type:"gacha",payment:"COMMON_TICKET"},NOW+200);
+ assertEquals(data(second).upgrade_ticket_common,0);
+});
+Deno.test("Gacha cannot mint protected puppy, and one owned puppy can be selected and renamed",async()=>{
+ const first=await applyBetaEconomy(make(),{type:"gacha",payment:"TREATS"},NOW);
+ const id=JSON.parse(String(data(first).beta_last_gacha_result_v1)).puppyId;
+ const switched=await applyBetaEconomy(first,{type:"switch",id},NOW+1);
+ assertEquals(data(switched).puppy_style,id);
+ const renamed=await applyBetaEconomy(switched,{type:"rename",name:"Mochi Test"},NOW+2);
+ assertEquals(data(renamed)["puppy_name_for_"+id],"Mochi Test");
+ await assertRejects(()=>applyBetaEconomy(renamed,{type:"switch",id:"dev_pup"},NOW+3),Error,"PUPPY_LOCKED");
+});
