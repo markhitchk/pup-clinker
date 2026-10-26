@@ -5,7 +5,7 @@
  * Works on typed Kotlin SharedPreferences snapshots and preserves unknown keys.
  */
 type Dict=Record<string,unknown>;
-export type BetaEconomyIntent={type:string;kind?:string;upgradeId?:string;rarity?:string;name?:string;skill?:string;goalId?:string;amount?:number;wager?:number;bet?:{type?:string;number?:number};id?:string};
+export type BetaEconomyIntent={type:string;kind?:string;upgradeId?:string;rarity?:string;name?:string;skill?:string;goalId?:string;amount?:number;wager?:number;bet?:{type?:string;number?:number};id?:string;payment?:string};
 const MAX=Number.MAX_SAFE_INTEGER;
 const defs=[
  {id:"better_treats",power:1,base:35,type:"COOKIE",effect:"CLICK"},
@@ -20,6 +20,17 @@ const defs=[
  {id:"legendary_snacks",power:100,base:900,type:"TICKET",effect:"CLICK",rarity:"legendary",tickets:2},
 ] as const;
 const rarities=["common","uncommon","rare","epic","legendary"];
+/**
+ * Kotlin PuppyCatalogV6 + assets/test/manifest.json. All other v1/v2
+ * puppies are redeemOnly or protected and MUST NOT be minted by beta Gacha.
+ */
+const FREE_GACHA_PUPPIES=[
+ {id:"classic",name:"Buddy"}, {id:"golden",name:"Sunny"},
+ {id:"poodle",name:"Mochi"}, {id:"spotty",name:"Pepper"},
+ {id:"test_v1_crash_dummy",name:"Crash Test Pup V1"},
+ {id:"test_v2_crash_dummy",name:"Crash Test Pup V2"},
+].sort((a,b)=>a.id.localeCompare(b.id,"en"));
+
 const slotSymbols=[
  {emoji:"🍪",weight:30,multi:7},{emoji:"🎾",weight:25,multi:12},
  {emoji:"🐾",weight:20,multi:18},{emoji:"🎟️",weight:13,multi:35},
@@ -312,6 +323,65 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    expect(num(v,"treats")>=amount,"EXCHANGE_NOT_AFFORDABLE");
    setLong(v,t,"treats",num(v,"treats")-amount);
    addLong(v,t,"casino_chips_v7",amount/10);break;
+  }
+  case "gacha":{
+   const payment=intent.payment;
+   expect(payment==="TREATS"||payment==="COMMON_TICKET","INVALID_GACHA_PAYMENT");
+   const unlocked=new Set([...own(v,"unlocked_puppies"),"classic","golden","poodle","spotty"]);
+   const missing=FREE_GACHA_PUPPIES.filter(p=>!unlocked.has(p.id));
+   const pool=missing.length?missing:FREE_GACHA_PUPPIES.filter(p=>unlocked.has(p.id));
+   expect(pool.length>0,"GACHA_NO_PUPPIES");
+   if(payment==="TREATS"){
+    expect(num(v,"treats")>=2500,"GACHA_INSUFFICIENT_TREATS");
+    setLong(v,t,"treats",num(v,"treats")-2500);
+   }else{
+    const key=ticketKey("common");
+    expect(num(v,key)>=1,"GACHA_INSUFFICIENT_TICKET");
+    setInt(v,t,key,num(v,key)-1);
+   }
+   const choice=pool[secureInt(pool.length)];
+   const isNewUnlock=!unlocked.has(choice.id);
+   if(isNewUnlock){
+    unlocked.add(choice.id);
+    write(v,t,"unlocked_puppies",[...unlocked],"string_set");
+    awardXp(v,t,100);
+   }
+   addLong(v,t,"beta_gacha_pulls_v1",1);
+   write(v,t,"beta_last_gacha_result_v1",JSON.stringify({
+    id:uuid(),success:true,puppyId:choice.id,puppyName:choice.name,
+    payment,isNewUnlock
+   }),"string");
+   break;
+  }
+  case "switch":{
+   const id=intent.id;expect(typeof id==="string"&&/^[a-z0-9_]{1,40}$/.test(id),"INVALID_PUPPY_ID");
+   const unlocked=new Set([...own(v,"unlocked_puppies"),"classic","golden","poodle","spotty"]);
+   expect(unlocked.has(id),"PUPPY_LOCKED");
+   const outgoing=String(v.puppy_style||"classic");
+   if(outgoing!==id){
+    careWrite(v,t,now);
+    // Preserve each puppy's own care and name, as in Kotlin setPuppyStyle.
+    const profile=(name:string,global:string,initial:number)=>
+      num(v,"care_profile_v1_"+id+"_"+name,initial);
+    for(const [field,key,initial] of [
+      ["happiness","happiness",100],["fullness","fullness",100],
+      ["energy","energy",100],["cleanliness","cleanliness_v5",100],["bond","bond_v5",10],
+    ] as const)setInt(v,t,key,profile(field,key,initial));
+    write(v,t,"puppy_style",id,"string");
+    const name=String(v["puppy_name_for_"+id]||
+      FREE_GACHA_PUPPIES.find(p=>p.id===id)?.name||"Puppy");
+    write(v,t,"puppy_name",name.slice(0,18),"string");
+    careWrite(v,t,now);
+   }
+   break;
+  }
+  case "rename":{
+   const name=typeof intent.name==="string"?intent.name.trim().replace(/\n/g," ").slice(0,18):"";
+   expect(name.length>0,"PUPPY_NAME_REQUIRED");
+   const style=String(v.puppy_style||"classic");
+   write(v,t,"puppy_name",name,"string");
+   write(v,t,"puppy_name_for_"+style,name,"string");
+   break;
   }
   case "prestige":{
    expect(!v.beta_casino_round_v1&&!v.casino_active_round_v1,"FINISH_CASINO_FIRST");
