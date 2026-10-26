@@ -101,6 +101,10 @@ async function linkLocalAccount(req: Request, admin: any, session: any): Promise
       "The existing Discord account must be verified on this installation before adding a password.");
   }
 
+  if (byPlayer && byPlayer.status !== "active") {
+    throw new HttpError(403, "PUP_ACCOUNT_BLOCKED", "This account cannot be linked while restricted.");
+  }
+
   const requested = user.user_metadata?.puppy_username;
   const username = byPlayer?.local_username ??
     (typeof requested === "string" ? requested.trim() : "");
@@ -212,7 +216,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (envelope.action === "auth-local") {\n      return json(200, { ok: true, accountId: account.id });\n    }\n\n    if (envelope.action === "account-status") {
+    if (envelope.action === "auth-local") {
+      return json(200, { ok: true, accountId: account.id });
+    }
+
+    if (envelope.action === "account-status") {
       const { data: save, error: saveError } = await admin
         .from("pup_account_saves")
         .select("revision,generation,updated_at")
@@ -231,7 +239,8 @@ Deno.serve(async (req: Request) => {
           username: account.username,
           displayName: account.display_name ?? null,
           avatarHash: account.avatar_hash ?? null,
-          discordUserId: account.discord_user_id,\n          loginMethods: { password: Boolean(account.auth_user_id), discord: Boolean(account.discord_user_id) },
+          discordUserId: account.discord_user_id,
+          loginMethods: { password: Boolean(account.auth_user_id), discord: Boolean(account.discord_user_id) },
           allowMultipleDevices: Boolean(account.allow_multiple_devices),
         },
         cloudSave: save
