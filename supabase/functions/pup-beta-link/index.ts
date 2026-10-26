@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     } else {
       const { data: grant, error: grantError } = await admin
         .from("pup_beta_account_links")
-        .select("account_uuid,discord_user_id")
+        .select("account_uuid,discord_user_id,credential_auth_user_id")
         .eq("installation_uuid", session.installation.id)
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
@@ -99,12 +99,12 @@ Deno.serve(async (req: Request) => {
       if (!grant) {
         throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect Discord to authorize this beta account.");
       }
-      const { data: owner, error: ownerError } = await admin
-        .from("pup_accounts")
-        .select("*")
-        .eq("id", grant.account_uuid)
-        .eq("discord_user_id", grant.discord_user_id)
-        .maybeSingle();
+      let query = admin.from("pup_accounts").select("*").eq("id", grant.account_uuid);
+      if (grant.discord_user_id) query = query.eq("discord_user_id", grant.discord_user_id);
+      const { data: owner, error: ownerError } = await query.maybeSingle();
+      if (!grant.discord_user_id && !grant.credential_auth_user_id) {
+        throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect your Pup Account.");
+      }
       if (ownerError) throw ownerError;
       if (!owner || owner.status !== "active") {
         throw new HttpError(403, "BETA_LINK_REVOKED", "Your existing Pup Account is unavailable; sign in again.");
@@ -178,7 +178,7 @@ async function verifyOwner(admin: any, account: any, action: string): Promise<an
   if (installError) throw installError;
   if (!player || !installation || installation.player_uuid !== player.id ||
       !installation.active || installation.revoked_at ||
-      player.discord_user_id !== account.discord_user_id) {
+      (account.discord_user_id && player.discord_user_id !== account.discord_user_id)) {
     throw new HttpError(409, "BETA_OWNER_DEVICE_UNAVAILABLE", "Original PupEye installation must be active and verified.");
   }
   await assertGlobalEnforcementAllowed(admin, {
