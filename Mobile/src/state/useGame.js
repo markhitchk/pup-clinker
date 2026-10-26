@@ -23,25 +23,25 @@ export function useGame({mode='guest'}={}){
    setAccount(active);
    if(active?.status!=='VERIFIED'){
     setCloudState('SIGN_IN_REQUIRED');
-    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now()});
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
     return;
    }
    const cloud=await native.cloudRead(PUBLISHABLE_KEY);
    if(!cloud?.exists){
     setCloudState('NO_CLOUD_SAVE');
-    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now()});
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
     return;
    }
    const game=projectKotlinCloudSave(cloud.saveJson,active.username);
    setCloudState('SERVER_SNAPSHOT_READ_ONLY');
-   dispatch({type:'hydrate',game,now:Date.now()});
+   dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
   }catch(error){
    setAccount(old=>old?.status==='VERIFIED'?old:{status:'SIGN_IN_REQUIRED'});
    setCloudState('UNVERIFIED_OR_UNSUPPORTED');
-   dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now()});
+   dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
   }
  },[beta]);
