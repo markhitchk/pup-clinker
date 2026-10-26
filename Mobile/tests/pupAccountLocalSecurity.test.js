@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 const api=read('../../supabase/functions/pup-account/index.ts');
 const discord=read('../../supabase/functions/pupeye-auth-discord/index.ts');
+const usernameLogin=read('../../supabase/functions/pup-username-login/index.ts');
 const schema=read('../../supabase/migrations/20261026030000_pup_account_local_credentials.sql');
 const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
 const ui=read('../src/production/BetaAccountEntry.jsx');
@@ -17,7 +18,7 @@ test('local login uses Supabase Auth verification plus signed PupEye session',()
  assert.match(api,/PUP_ACCOUNT_IDENTITY_CONFLICT/);
  assert.match(api,/auth_user_id.*user\.id/);
  assert.match(native,/registerLocal\(username:String,email:String,password:String,key:String,p:Promise\)/);
- assert.match(native,/loginLocal\(email:String,password:String,key:String,p:Promise\)/);
+ assert.match(native,/loginLocal\(identifier:String,password:String,key:String,p:Promise\)/);
  assert.match(native,/session\(key\)/);
  assert.match(native,/envelope\("auth-local",JSONObject\(\)\)/);
  assert.match(native,/Authorization","Bearer /);
@@ -41,4 +42,28 @@ test('Pup Account registration and login do not require Discord or guests',()=>{
  assert.match(ui,/Continue with Discord \(optional\)/);
  assert.match(ui,/secureTextEntry/);
  assert.doesNotMatch(ui,/GUEST_SAVE_KEY|saveGuest|unverified gameplay/);
+});
+
+test('username login never returns email or refresh tokens',()=>{
+ assert.match(usernameLogin,/pup_account_login_handles/);
+ assert.match(usernameLogin,/admin\.auth\.admin/);
+ assert.match(usernameLogin,/getUserById/);
+ assert.match(usernameLogin,/token\?grant_type=password/);
+ assert.match(usernameLogin,/result\.access_token/);
+ assert.match(usernameLogin,/accessToken: result\.access_token/);
+ assert.doesNotMatch(usernameLogin,/return json\(200, \{[^}]*email:/);
+ assert.doesNotMatch(usernameLogin,/refreshToken:|refresh_token:/);
+ assert.match(usernameLogin,/PUP_LOGIN_INVALID/);
+ assert.match(native,/name\.contains\("@"\)/);
+ assert.match(native,/pup-username-login/);
+ assert.match(ui,/USERNAME OR EMAIL/);
+});
+test('registration reserves immutable case-folded handles with no direct client read access',()=>{
+ assert.match(schema,/after insert on auth\.users/);
+ assert.match(schema,/unique index if not exists pup_login_handles_casefold_unique/);
+ assert.match(schema,/lower\(username\)/);
+ assert.match(schema,/pup_account_login_handles enable row level security/);
+ assert.match(schema,/revoke all on table public\.pup_account_login_handles from anon, authenticated/);
+ assert.match(api,/pup_account_login_handles/);
+ assert.doesNotMatch(api,/user\.user_metadata\?\.puppy_username/);
 });
