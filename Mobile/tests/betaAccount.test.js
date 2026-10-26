@@ -87,7 +87,7 @@ test('existing Play Pup Account can authorize signed beta companion without devi
  assert.doesNotMatch(endpoint,/cloud-save-write|revoke.*installation|delete.*pup_account_saves/);
  assert.match(migration,/enable row level security/);
  assert.match(migration,/revoke all on table public\.pup_beta_account_links from anon, authenticated/);
- assert.match(beta,/Signed Play and Care actions synchronize with Play/);
+ assert.match(beta,/Signed progression, shop, rewards, and casino actions synchronize with Play/);
 });
 
 test('native Pup Account credentials are independent from Discord and never stored as guest progress',()=>{
