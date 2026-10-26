@@ -67,13 +67,6 @@ function cloudSaveValue(payload: Record<string, unknown>): Record<string, unknow
 async function ensureAccount(admin: any, session: any): Promise<any> {
   const discordUserId = session.player.discord_user_id;
   const discordUsername = session.player.discord_username;
-  if (!discordUserId || !discordUsername) {
-    throw new HttpError(
-      409,
-      "PUP_ACCOUNT_DISCORD_REQUIRED",
-      "Connect Discord to create or sign in to a Pup Account.",
-    );
-  }
 
   const { data: existing, error: existingError } = await admin
     .from("pup_accounts")
@@ -83,7 +76,9 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
   if (existingError) throw existingError;
 
   if (existing) {
-    if (existing.discord_user_id !== discordUserId) {
+    // Native Pup Accounts can exist without Discord. Discord is optional,
+    // and its absence must never invalidate a verified PupEye credential login.
+    if (existing.discord_user_id && existing.discord_user_id !== discordUserId) {
       throw new HttpError(
         409,
         "PUP_ACCOUNT_IDENTITY_CONFLICT",
@@ -93,8 +88,8 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
 
     const desiredDisplayName = session.player.discord_global_name ?? null;
     const desiredAvatarHash = session.player.discord_avatar_hash ?? null;
+    if (!existing.discord_user_id) return existing;
     const accountChanged =
-      existing.username !== discordUsername ||
       existing.display_name !== desiredDisplayName ||
       existing.avatar_hash !== desiredAvatarHash ||
       existing.active_installation_uuid !== session.installation.id ||
@@ -105,7 +100,6 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
     const { data: updated, error: updateError } = await admin
       .from("pup_accounts")
       .update({
-        username: discordUsername,
         display_name: desiredDisplayName,
         avatar_hash: desiredAvatarHash,
         active_installation_uuid: session.installation.id,
@@ -117,6 +111,11 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
       .single();
     if (updateError) throw updateError;
     return updated;
+  }
+
+  if (!discordUserId || !discordUsername) {
+    throw new HttpError(409, "PUP_ACCOUNT_LOGIN_REQUIRED",
+      "Register a Pup Account or sign in using username, email, or Discord.");
   }
 
   const { data: discordOwner, error: ownerError } = await admin
