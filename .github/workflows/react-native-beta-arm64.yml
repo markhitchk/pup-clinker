@@ -3,6 +3,13 @@ name: Puppy Clicker Beta ARM64 APK
 # Samsung Galaxy A17 5G). This is NOT the production Kotlin Play update.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'Mobile/**'
+      - '!Mobile/**/*.md'
+      - '!Mobile/**/*.py'
+      - '!Mobile/.gitignore'
+      - '.github/workflows/react-native-beta-arm64.yml'
   push:
     branches: [main]
     paths:

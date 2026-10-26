@@ -1,6 +1,12 @@
-## October 25 — beta launcher is the main game, not the migration screen
+## October 25 — account onboarding restored
 
-The installable Android test APK uses `com.harleytg.puppyclicker.beta` and launcher name **Puppy Clicker [Beta]**. A beta-specific root now mounts the real `PuppyApp` screen hierarchy: Play, Care, Roster, Shop, Rewards, Casino and Settings. The Discord/PupEye screen is an optional, in-app account sheet. The game UI renders immediately on slow connections.
+The beta first-run entry now follows Kotlin's six screens and native Pup Account authorization. Account setup requires successful cloud activation; Ready independently rechecks the native account. UI/profile choices persist using original Kotlin preferences. Optional privacy stays off by default, and notifications may be declined. No guest profile or save import/export is offered. Original logos and offline legal documents are bundled.
+
+Remaining account blockers: signed economy/cloud checkpoint writes, full cloud mapping, existing-account device transfer and platform notification parity. Setup completion does not unlock unsigned gameplay or overwrite cloud progress. Device-transfer errors now use native error codes instead of misleading callback guidance.
+
+## Earlier October 25 — beta main game hierarchy
+
+The installable Android test APK uses `com.harleytg.puppyclicker.beta` and launcher name **Puppy Clicker [Beta]**. After account onboarding the beta mounts the real `PuppyApp` hierarchy: Play, Care, Roster, Shop, Rewards, Casino and Settings. The Discord/PupEye sheet is integrated into setup.
 
 **This is a UI parity/test shell, not completed playable parity.** The beta ignores `GUEST_SAVE_KEY` and blocks all unverified or unsigned economy mutations; it never writes a guest save or replaces a Kotlin Pup Account cloud save. After device-bound Discord authorization, a strictly read-only projector can show the existing `puppy-clicker-cloud-save` format from the server. Signed gameplay/casino transactions, comprehensive Kotlin save mapping, revision-aware signed cloud writes, device transfer of existing accounts, account entitlements, and remaining platform notifications must be completed and tested before releasing playable beta gameplay. The server's one-device rule remains enforced.
 
@@ -93,7 +99,7 @@ Status vocabulary: **Implemented guest** = screens/logic usable in local preview
 | Android capability | React Native status | Source / gap |
 | --- | --- | --- |
 | Real React Native UI, not browser shell | Implemented guest | `Mobile/App.js`; five native React tabs |
-| Six onboarding stages | Implemented guest | `PuppyOnboardingModel.kt`; account setup and notification permissions are intentionally simulated/disabled |
+| Six onboarding stages | Implemented account setup; signed gameplay checkpoint pending | `src/production/AccountOnboarding.jsx`, `useAccountOnboarding.js`, native `PuppyBetaAccountPackage.kt`; real Discord/PupEye, cloud-read activation, persistent UI/profile choices and Android permission request |
 | Play, taps, combo, care bonus and base V7 currencies | Partial | `PuppyEconomyV7.kt`; remaining authoritative server/anti-bot parity |
 | Per-puppy feeding/play/wash/rest/cuddle, offline decay | Implemented guest | `PuppyCareSystem.kt`; clock capped to 240 min |
 | XP, level curve, nine achievement milestones | Implemented guest | `PuppyProgression.kt`, `PuppyAchievementsV6.kt`; guest rewards not official XP |

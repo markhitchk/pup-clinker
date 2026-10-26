@@ -25,6 +25,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  override fun getConstants():Map<String,Any> = mapOf("isBeta" to (ctx.packageName=="com.harleytg.puppyclicker.beta"))
  private val prefs get()=ctx.getSharedPreferences("puppy_beta_discord_v1",0)
  private val player get()=ctx.getSharedPreferences("puppy_player_identity_v1",0)
+ private val setup get()=ctx.getSharedPreferences("puppy_ui_preferences_v2",0)
  private val stateFile get()=File(ctx.noBackupFilesDir,"pupeye/authority_state_v2.pup")
  private val sessionFile get()=File(ctx.noBackupFilesDir,"pupeye/supabase_session_v1.pup")
  private val store get()=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
@@ -160,6 +161,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
+   putString("displayName",a.optString("displayName",a.getString("username")))
+   putString("playerId",player.getString("player_id",""));putString("friendCode",player.getString("friend_code",""))
    putDouble("cloudRevision",save.optDouble("revision"));putString("guildRole",obj.optString("guildRole",""))
   }
  }
@@ -233,6 +236,59 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    if(save!=null){putDouble("revision",save.optDouble("revision"))
     putString("saveJson",save.opt("saveData")?.toString()?:"")}
   }
+ }
+ private val setupBooleans=mapOf(
+  "reducedMotion" to "reduced_motion", "anonymousDiagnosticsEnabled" to "anonymous_diagnostics_enabled",
+  "crashReportsEnabled" to "crash_reports_enabled", "supportIdentityEnabled" to "support_identity_enabled",
+  "dailyRewardNotifications" to "notify_daily_rewards", "gameEventNotifications" to "notify_game_events",
+  "updateNotifications" to "notify_app_updates")
+ private val setupEnums=mapOf("themeMode" to ("theme_mode" to setOf("system","light","dark")),
+  "uiScale" to ("ui_scale" to setOf("compact","default","large")))
+ private fun validBirthday(month:Int,day:Int):Boolean =
+  (month==0&&day==0)||(month in 1..12&&day in 1..listOf(31,29,31,30,31,30,31,31,30,31,30,31)[month-1])
+ @ReactMethod fun readSetup(p:Promise)=runAsync(p){
+  Arguments.createMap().apply{
+   val version=setup.getInt("setup_flow_version",0)
+   val reviewed=setup.getInt("privacy_consent_version",0)
+   val complete=setup.getBoolean("setup_complete",false)&&version>=5&&reviewed>=5
+   val step=if(setup.getBoolean("setup_complete",false)&&!complete)3 else setup.getInt("setup_step",0).coerceIn(0,5)
+   putBoolean("setupComplete",complete);putInt("setupStep",step)
+   putInt("birthdayMonth",setup.getInt("birthday_month",0));putInt("birthdayDay",setup.getInt("birthday_day",0))
+   putInt("privacyConsentVersion",reviewed)
+   putString("themeMode",setup.getString("theme_mode","SYSTEM")!!.lowercase())
+   putString("uiScale",setup.getString("ui_scale","COMPACT")!!.lowercase())
+   putString("accentHex",setup.getString("accent_hex","#00B8F0"))
+   for((name,stored) in setupBooleans)putBoolean(name,setup.getBoolean(stored,name.endsWith("Notifications")))
+  }
+ }
+ @ReactMethod fun saveSetup(json:String,p:Promise)=runAsync(p){
+  require(json.length<=8192)
+  val input=JSONObject(json)
+  val step=input.getInt("setupStep");require(step in 0..5)
+  val month=input.getInt("birthdayMonth");val day=input.getInt("birthdayDay")
+  // Incomplete picker choices may be persisted while editing, but cannot finish.
+  require(month in 0..12&&day in 0..31)
+  val reviewed=input.getInt("privacyConsentVersion");require(reviewed==0||reviewed==5)
+  val edit=setup.edit().putInt("setup_step",step).putInt("setup_flow_version",5)
+   .putInt("birthday_month",month).putInt("birthday_day",day).remove("birthday_year")
+   .putInt("privacy_consent_version",reviewed)
+  for((name,stored) in setupBooleans)if(input.has(name))edit.putBoolean(stored,input.getBoolean(name))
+  for((name,pair) in setupEnums)if(input.has(name)){
+   val value=input.getString(name);require(value in pair.second);edit.putString(pair.first,value.uppercase())
+  }
+  if(input.has("accentHex")){
+   val accent=input.getString("accentHex");require(Regex("#[0-9A-Fa-f]{6}").matches(accent))
+   edit.putString("accent_hex",accent.uppercase())
+  }
+  // setupComplete from JavaScript is deliberately ignored; only server-verified finish can set it.
+  check(edit.commit());true
+ }
+ @ReactMethod fun finishSetup(key:String,p:Promise)=runAsync(p){
+  require(setup.getInt("setup_step",0)==5&&setup.getInt("privacy_consent_version",0)>=5)
+  require(validBirthday(setup.getInt("birthday_month",0),setup.getInt("birthday_day",0)))
+  val verified=account(key)
+  check(setup.edit().putBoolean("setup_complete",true).putInt("setup_step",5).putInt("setup_flow_version",5).commit())
+  verified
  }
 }
 class PuppyBetaAccountPackage:ReactPackage {

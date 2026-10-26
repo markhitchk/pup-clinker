@@ -1,16 +1,18 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
+import AccountOnboarding from './src/production/AccountOnboarding.jsx';
+import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
-import {effectiveMotion} from './src/engine/settings.js';
+import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyPointer from './src/components/PuppyPointer.jsx';
 import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
 import {themedStyles} from './src/theme.js';
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {Alert,Animated,Easing,Image,ImageBackground,Modal,NativeModules,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,BackHandler,useColorScheme,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
@@ -953,7 +955,13 @@ export default function App(){return <SafeAreaProvider>{NativeModules.PuppyBetaA
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,act,account,cloudState,refreshAccount}=useGame({mode:betaMode?'beta':'guest'});
+ const {state,act:gameAct,account,cloudState,refreshAccount}=useGame({mode:betaMode?'beta':'guest'});
+ const onboarding=useAccountOnboarding({enabled:betaMode,account,activateAccount:refreshAccount});
+ const act=useCallback(action=>{
+  gameAct(action);
+  if(betaMode&&action.type==='setPreference')void onboarding.update({[action.name]:action.value});
+  if(betaMode&&action.type==='resetSettings')void onboarding.update(DEFAULT_PREFERENCES);
+ },[gameAct,betaMode,onboarding.update]);
  const [accountOpen,setAccountOpen]=useState(false);
  const registry=useRoster();
  const {width}=useWindowDimensions();
@@ -964,7 +972,7 @@ export function PuppyApp({betaMode=false}){
  const [contentHeight,setContentHeight]=useState(600);
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!secondary)return false;setSecondary(null);return true;});return ()=>sub.remove();},[secondary]);
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
- const saved=state.game;
+ const saved=betaMode?{...state.game,...Object.fromEntries(Object.keys(DEFAULT_PREFERENCES).map(name=>[name,onboarding.setup[name]??state.game[name]])),birthdayMonth:onboarding.setup.birthdayMonth,birthdayDay:onboarding.setup.birthdayDay}:state.game;
  applyAppearance(saved,systemDark);
  const motion=effectiveMotion(saved);
  const g={...saved,animationsEnabled:motion.casino,tapAnimationsEnabled:motion.tap,idleAnimationsEnabled:motion.decorative&&saved.animationsEnabled,buttonMotionEnabled:motion.buttons};
@@ -986,6 +994,10 @@ export function PuppyApp({betaMode=false}){
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
+ if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
+  <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={()=>setAccountOpen(true)}/>
+  <BetaAccountEntry visible={accountOpen} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
+ </>;
  return <PuppyPointer enabled={saved.puppyPointerEnabled} style={[styles.root,{paddingTop:insets.top,paddingBottom:insets.bottom}]}>
   <StatusBar barStyle={C.dark?'light-content':'dark-content'} backgroundColor={C.bg}/>
   {state.ready&&saved.onboardingComplete?<View style={styles.topBar}>

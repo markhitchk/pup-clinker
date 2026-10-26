@@ -1,6 +1,14 @@
-## October 25 — beta launcher is the main game, not the migration screen
+## October 25 — Kotlin onboarding with Pup Account integration
 
-The installable Android test APK uses `com.harleytg.puppyclicker.beta` and launcher name **Puppy Clicker [Beta]**. A beta-specific root now mounts the real `PuppyApp` screen hierarchy: Play, Care, Roster, Shop, Rewards, Casino and Settings. The Discord/PupEye screen is an optional, in-app account sheet. The game UI renders immediately on slow connections.
+The beta now shows the original six-step first-run sequence before the game: Welcome → Set Up Your Account → Personalize → Permissions & Privacy → Notifications → Ready to Play. Setup uses native Discord/PupEye authorization, requires a successful account cloud read to continue, and rechecks the account at completion. It does not offer a guest nickname or `.pupsave` import/export.
+
+Step, birthday (month/day only), appearance, privacy choices and notification categories persist under Kotlin's `puppy_ui_preferences_v2` keys. Optional reporting starts off; notification permission is requested only on its own step. Terms and privacy documents and original brand artwork are bundled offline. The Ready screen uses real public account identifiers.
+
+Discord device conflicts now read React Native's error code and show the actual device-transfer requirement. A separate `.beta` install counts as a different PupEye installation even on the same phone. This change does not transfer existing accounts or complete signed gameplay/cloud writes; the post-setup game remains a read-only account view.
+
+## Earlier October 25 — beta main game hierarchy
+
+The installable Android test APK uses `com.harleytg.puppyclicker.beta` and launcher name **Puppy Clicker [Beta]**. After account onboarding, the beta mounts the real `PuppyApp` hierarchy: Play, Care, Roster, Shop, Rewards, Casino and Settings. The Discord/PupEye sheet is available from account setup and Settings.
 
 **This is a UI parity/test shell, not completed playable parity.** The beta ignores `GUEST_SAVE_KEY` and blocks all unverified or unsigned economy mutations; it never writes a guest save or replaces a Kotlin Pup Account cloud save. After device-bound Discord authorization, a strictly read-only projector can show the existing `puppy-clicker-cloud-save` format from the server. Signed gameplay/casino transactions, comprehensive Kotlin save mapping, revision-aware signed cloud writes, device transfer of existing accounts, account entitlements, and remaining platform notifications must be completed and tested before releasing playable beta gameplay. The server's one-device rule remains enforced.
 
