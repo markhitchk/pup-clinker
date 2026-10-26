@@ -117,7 +117,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private class ApiError(val code:String):Exception(code)
  private fun post(function:String,body:JSONObject,key:String,token:String?=null):JSONObject {
   publishable(key)
-  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account"))
+  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link"))
   val c=URL(root+function).openConnection() as HttpURLConnection
   try {
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
@@ -154,12 +154,22 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return if(s!=null&&s.optLong("expiresAtEpochMs")>System.currentTimeMillis()+5000)
    s.getString("token") else register(key)
  }
+ private fun betaRead(key:String,action:String):JSONObject =
+  post("pup-beta-link",envelope(action,JSONObject()),key,session(key))
  private fun account(key:String):WritableMap {
-  val obj=post("pup-account",envelope("account-status",JSONObject()),key,session(key))
+  // A Play account may authorize a read-only beta companion using Discord
+  // without revoking or transferring its original PupEye installation.
+  val obj=try{betaRead(key,"beta-account-status")}
+   catch(e:ApiError){
+    if(e.code!="BETA_LINK_REQUIRED")throw e
+    post("pup-account",envelope("account-status",JSONObject()),key,session(key))
+   }
   val a=obj.getJSONObject("account");require(a.getString("status")=="active")
   val save=obj.getJSONObject("cloudSave")
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
+   putBoolean("readOnly",obj.optBoolean("readOnly",false))
+   putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
    putString("displayName",a.optString("displayName",a.getString("username")))
    putString("playerId",player.getString("player_id",""));putString("friendCode",player.getString("friend_code",""))
@@ -169,9 +179,13 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private fun runAsync(p:Promise, fn:()->Any) {Thread{
   try{beta();p.resolve(fn())}
   catch(e:ApiError){
-   val message=if(e.code in setOf("PUP_ACCOUNT_ON_OTHER_DEVICE","DISCORD_ALREADY_LINKED"))
-    "Your Discord Pup Account is on the Play app. An authorized device transfer is required."
-    else "PupEye server rejected login ("+e.code.take(64)+")."
+   val message=when(e.code){
+    "PUP_ACCOUNT_ON_OTHER_DEVICE","DISCORD_ALREADY_LINKED" ->
+     "Account conflict. The Play app remains intact; contact Support for account recovery."
+    "BETA_LINK_REQUIRED" -> "Reconnect Discord to renew beta companion access."
+    "BETA_OWNER_DEVICE_UNAVAILABLE" -> "Original Play app must have an active verified PupEye installation."
+    else -> "PupEye server rejected login ("+e.code.take(64)+")."
+   }
    p.reject("BETA_"+e.code.take(64),message)
   }catch(e:Exception){p.reject("BETA_LOGIN_FAILED","Could not securely verify this beta login. Original progress was not changed.")}
  }.start()}
@@ -224,12 +238,24 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   require(!code.isNullOrBlank()&&u.getQueryParameter("error")==null)
   val discordToken=exchange(code,verifier)
   val pupeyeToken=session(key)
-  post("pupeye-auth-discord",envelope("auth-discord",JSONObject().put("discordAccessToken",discordToken)),
-   key,pupeyeToken)
+  // Existing Discord/Pup Account: companion access only, never an
+  // automatic device transfer. New accounts retain normal registration.
+  try {
+   post("pup-beta-link",envelope("beta-link-discord",JSONObject().put("discordAccessToken",discordToken)),
+    key,pupeyeToken)
+  } catch(e:ApiError) {
+   if(e.code!="BETA_ACCOUNT_NOT_FOUND")throw e
+   post("pupeye-auth-discord",envelope("auth-discord",JSONObject().put("discordAccessToken",discordToken)),
+    key,pupeyeToken)
+  }
   account(key)
  }
  @ReactMethod fun cloudRead(key:String,p:Promise)=runAsync(p){
-  val obj=post("pup-account",envelope("cloud-save-read",JSONObject()),key,session(key))
+  val obj=try{betaRead(key,"beta-cloud-read")}
+   catch(e:ApiError){
+    if(e.code!="BETA_LINK_REQUIRED")throw e
+    post("pup-account",envelope("cloud-save-read",JSONObject()),key,session(key))
+   }
   val save=obj.optJSONObject("save")
   Arguments.createMap().apply {
    putBoolean("exists",save!=null)
