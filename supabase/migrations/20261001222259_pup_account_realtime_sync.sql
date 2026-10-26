@@ -100,7 +100,14 @@ create trigger pupeye_players_account_realtime
 after insert or update or delete on public.pupeye_players
 for each row execute function public.pup_account_emit_realtime();
 
-drop trigger if exists pup_account_devices_realtime on public.pup_account_devices;
-create trigger pup_account_devices_realtime
-after insert or update or delete on public.pup_account_devices
-for each row execute function public.pup_account_emit_realtime();
+-- Some Puppy Clicker installations use pupeye_installations without the
+-- optional legacy pup_account_devices table. Skip this trigger on fresh
+-- Supabase projects when that table has never existed.
+do $
+begin
+  if to_regclass('public.pup_account_devices') is not null then
+    execute 'drop trigger if exists pup_account_devices_realtime on public.pup_account_devices';
+    execute 'create trigger pup_account_devices_realtime after insert or update or delete on public.pup_account_devices for each row execute function public.pup_account_emit_realtime()';
+  end if;
+end
+$;
