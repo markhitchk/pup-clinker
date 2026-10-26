@@ -2,6 +2,8 @@ import {
   HttpError,
   assertPublishableRequest,
   authenticateSession,
+  canonicalJson,
+  sha256Hex,
   audit,
   createAdminClient,
   errorResponse,
@@ -10,12 +12,13 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
+import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
 
 // A beta app is a separate Android installation. This grants a deliberately
 // read-only, expiring companion link after Discord proves account ownership.
 // The primary PupEye installation, player and cloud-write authority never move.
 const MAX_BETA_GRANT_MS = 7 * 24 * 60 * 60 * 1000;
-const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-bootstrap"]);
+const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-bootstrap", "beta-gameplay"]);
 
 Deno.serve(async (req: Request) => {
   try {
@@ -129,6 +132,51 @@ Deno.serve(async (req: Request) => {
         { accountId: account.id }, session.player.id, session.installation.id);
       return json(200, { updated: true, displayName: changed.display_name, gameplayReadOnly: true });
     }
+    if (envelope.action === "beta-gameplay") {
+      // Only server-computed Play and Care actions are enabled. Never accept
+      // arbitrary client balances, XP, shop inventory or Kotlin save blobs.
+      const intent = envelope.payload;
+      if (intent.type !== "tap" && intent.type !== "care") {
+        throw new HttpError(400, "BETA_GAMEPLAY_NOT_PORTED", "This gameplay action is not yet live.");
+      }
+      const { data: current, error: currentError } = await admin
+        .from("pup_account_saves").select("*")
+        .eq("player_uuid", account.player_uuid).maybeSingle();
+      if (currentError) throw currentError;
+      if (!current || current.account_uuid !== account.id) {
+        throw new HttpError(409, "CLOUD_SAVE_REQUIRED", "Restore the existing Kotlin cloud save first.");
+      }
+      let next: Record<string, unknown>;
+      try {
+        next = applyBetaLiveGameplay(current.save_data, {
+          type: intent.type, kind: intent.kind,
+        });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
+        throw new HttpError(409, "BETA_GAMEPLAY_REJECTED", code);
+      }
+      const revision = Number(current.revision) + 1;
+      const { data: written, error: writeError } = await admin
+        .from("pup_account_saves")
+        .update({
+          revision,
+          save_data: next,
+          payload_hash_sha256: sha256Hex(canonicalJson(next)),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("player_uuid", account.player_uuid)
+        .eq("account_uuid", account.id)
+        .eq("revision", current.revision)
+        .select("revision,save_data").maybeSingle();
+      if (writeError) throw writeError;
+      if (!written) {
+        throw new HttpError(409, "CLOUD_SAVE_CONFLICT", "Progress changed on Play or beta; refresh and retry.");
+      }
+      await audit(admin, "BETA_LIVE_GAMEPLAY", "info",
+        { action: intent.type, kind: intent.type === "care" ? intent.kind : null, revision },
+        session.player.id, session.installation.id);
+      return json(200, { revision, saveData: written.save_data });
+    }
     if (envelope.action === "beta-bootstrap") {
       // Single signed startup response: account identity and snapshot share the
       // same ownership/enforcement check and one network round trip.
@@ -137,7 +185,8 @@ Deno.serve(async (req: Request) => {
         .eq("player_uuid", account.player_uuid).maybeSingle();
       if (saveError) throw saveError;
       return json(200, {
-        readOnly: true,
+        readOnly: !save,
+        gameplayWritable: Boolean(save),
         accountWritable: true,
         linkedFromPlay: true,
         playerId: owner.player_id,
