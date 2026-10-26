@@ -21,7 +21,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [login,setLogin]=useState('');
  const [password,setPassword]=useState('');
  const [notice,setNotice]=useState('');
- useEffect(()=>{if(visible){setMode(initialMode);setNotice('');setProblem('');}},[visible,initialMode]);
+ const [linkNative,setLinkNative]=useState(false);
+ useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');}},[visible,initialMode]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -97,12 +98,13 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     :await api().signInPupAccount(login.trim(),password,publishableKey);
    setPassword('');
    if(result?.status==='VERIFY_EMAIL'){
-    setState({status:'VERIFY_EMAIL'});
+    if(!linkNative)setState({status:'VERIFY_EMAIL'});
     setNotice('Check your email for a verification link. After confirming, return and sign in with your Pup Account.');
     setMode('signin');
     setLogin(email.trim());
    }else{
     setState(result);
+    setLinkNative(false);
     if(result.status==='VERIFIED')onVerified?.(result);
    }
   }catch(error){
@@ -119,7 +121,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    };
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
- },[busy,mode,username,email,login,password,onVerified]);
+ },[busy,mode,username,email,login,password,onVerified,linkNative]);
  const read=useCallback(async()=>{
   setBusy(true);setProblem('');
   try{
@@ -154,7 +156,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {verified&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
     <Text style={styles.secondaryText}>Link Discord (optional)</Text>
    </Pressable>:null}
-   {!verified?<>
+   {verified&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Add Pup Account password login" disabled={busy} style={styles.secondary}
+    onPress={()=>{setUsername(state.username||'');setLinkNative(true);setMode('signup');setNotice('');setProblem('');}}>
+    <Text style={styles.secondaryText}>Add username/email password login</Text>
+   </Pressable>:null}
+   {(!verified||linkNative)?<>
     <View style={styles.modes}>
      {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
       accessibilityLabel={item==='signin'?'Sign in':item==='signup'?'Create account':'Discord login'}
