@@ -7,7 +7,7 @@ import {colors as C,themedStyles} from '../theme.js';
 import PuppyPointer from './PuppyPointer.jsx';
 
 const actions={
- settings:{title:'Reset settings?',description:'Theme, accent, motion, UI scale and gameplay preference switches return to defaults. Your profile, birthday and game progress remain.',button:'Hold to Reset Settings'},
+ settings:{title:'Reset settings?',description:'Restore theme, accent, motion, UI scale and gameplay preferences to their defaults. Your profile, birthday and saved game progress are not reset.',button:'Hold to Reset Settings'},
  progress:{title:'Reset game progress?',description:'This clears local guest gameplay progression: currencies, upgrades, XP, achievements, streaks, bonds, Casino state, local reward unlocks and prestige progress. Your local profile, birthday and app settings remain.',button:'Hold to Reset Progress'},
  delete:{title:'Delete local save data?',description:'This deletes local guest game progress, player identity and birthday/setup state. Puppy Clicker will restart into first-run setup. Your original Kotlin app and cloud save are separate.',button:'Hold to Delete Local Data'}
 };
@@ -58,11 +58,11 @@ export default function DangerHoldDialog({action,g,onDismiss,onConfirmed}){
   <PuppyPointer enabled={g.puppyPointerEnabled} style={s.overlay}>
    <View accessibilityViewIsModal style={{flex:1,paddingTop:insets.top,paddingBottom:insets.bottom}}>
     <View style={{flex:1}}>
-    <DangerTape reducedMotion={g.reducedMotion||!g.animatedUi}/>
+    {action!=='settings'?<DangerTape reducedMotion={g.reducedMotion||!g.animatedUi}/>:null}
     <View style={s.center}><ScrollView bounces={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
      <View style={s.card}>
-      <Text style={s.warning}>⚠️ DANGER ZONE</Text><Text accessibilityRole="header" style={s.title}>{definition.title}</Text>
-      <Text style={s.body}>{definition.description}</Text><Text style={s.detail}>Do you wish to continue? Press and hold the red button for 10 seconds. Releasing, moving off the button, or leaving the app cancels the hold.</Text>
+      <Text style={[s.warning,action==='settings'&&s.warningSettings]}>{action==='settings'?'⚙️ PREFERENCES':'⚠️ DANGER ZONE'}</Text><Text accessibilityRole="header" style={s.title}>{definition.title}</Text>
+      <Text style={s.body}>{definition.description}</Text><Text style={s.detail}>Hold the button continuously for 10 seconds. Release, move off the button or leave the app to cancel.</Text>
       <View accessible accessibilityRole="button" accessibilityLabel={definition.button} accessibilityHint="Hold continuously for 10 seconds to confirm. Release to cancel."
        onLayout={e=>{bounds.current=e.nativeEvent.layout;}} onStartShouldSetResponder={()=>true}
        onResponderGrant={start} onResponderMove={e=>{if(!inside(e))cancel();}} onResponderStart={e=>{if((e.nativeEvent.touches?.length??1)!==1)cancel();}}
@@ -82,7 +82,7 @@ export default function DangerHoldDialog({action,g,onDismiss,onConfirmed}){
 const s=themedStyles(()=>({
  overlay:{flex:1,backgroundColor:'rgba(0,0,0,.64)'},frame:{position:'absolute',left:0,top:0,right:0,bottom:0},clip:{position:'absolute',overflow:'hidden',backgroundColor:'#000000'},
  center:{flex:1,padding:20},scroll:{flexGrow:1,justifyContent:'center',alignItems:'center',paddingVertical:8},card:{width:'94%',maxWidth:540,backgroundColor:C.dark?'#132F3B':C.surface,borderRadius:24,padding:20,gap:10},
- warning:{fontSize:14,fontWeight:'900',color:C.dark?'#FFB4AB':'#BA1A1A'},title:{fontSize:24,fontWeight:'900',color:C.text},body:{fontSize:14,lineHeight:21,color:C.text},detail:{fontSize:12,lineHeight:18,color:C.muted,marginBottom:6},
+ warning:{fontSize:14,fontWeight:'900',color:C.dark?'#FFB4AB':'#BA1A1A'},warningSettings:{color:C.accentInk},title:{fontSize:24,fontWeight:'900',color:C.text},body:{fontSize:14,lineHeight:21,color:C.text},detail:{fontSize:12,lineHeight:18,color:C.muted,marginBottom:6},
  hold:{minHeight:68,borderRadius:18,backgroundColor:C.dark?'#FFB4AB':'#BA1A1A',overflow:'hidden',justifyContent:'center',alignItems:'center',padding:10},holdLabels:{alignItems:'center',gap:4},progress:{position:'absolute',left:0,top:0,bottom:0,backgroundColor:'rgba(0,0,0,.18)'},holdTitle:{fontSize:16,fontWeight:'900',textAlign:'center',color:C.dark?'#690005':'#FFFFFF'},holdDetail:{fontSize:12,textAlign:'center',color:C.dark?'#690005':'#FFFFFF'},
  cancel:{minHeight:42,borderWidth:1,borderColor:C.line,borderRadius:24,justifyContent:'center',alignItems:'center',padding:10},cancelText:{fontSize:14,fontWeight:'700',color:C.accentInk}
 }));
