@@ -14,6 +14,7 @@ import {
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
 import { applyBetaEconomy } from "../_shared/beta-economy.ts";
+import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
 
 // A beta app is a separate Android installation. This grants a deliberately
 // read-only, expiring companion link after Discord proves account ownership.
@@ -155,7 +156,7 @@ Deno.serve(async (req: Request) => {
         "daily", "claimDailyGoal", "parkStart", "parkClaim",
         "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
         "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
-        "wheelStart", "wheelReveal",
+        "wheelStart", "wheelReveal", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
       ]);
       if (typeof intent.type !== "string" || !allowed.has(intent.type)) {
         throw new HttpError(400, "BETA_GAMEPLAY_NOT_PORTED", "This gameplay action is not yet live.");
@@ -189,7 +190,9 @@ Deno.serve(async (req: Request) => {
         };
         next = intent.type === "tap" || intent.type === "care"
           ? applyBetaLiveGameplay(current.save_data, clean)
-          : await applyBetaEconomy(current.save_data, clean);
+          : intent.type.startsWith("blackjack")
+            ? await applyBetaBlackjack(current.save_data, clean)
+            : await applyBetaEconomy(current.save_data, clean);
       } catch (error) {
         const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
         throw new HttpError(409, "BETA_GAMEPLAY_REJECTED", code);
