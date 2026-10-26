@@ -152,7 +152,9 @@ export async function getAuthoritativeGoal(goalId:string,date:Date):Promise<Serv
   if(!Array.isArray(list))throw Error("NO_SCHEDULE");
   const item=list.slice(0,12).find((x:unknown)=>isObj(x)&&x.id===goalId&&x.enabled!==false);
   if(!isObj(item))return fallbackGoal(dayOfMonth,goalId);
-  const metric=String(item.type||"").toLowerCase(),target=item.target,reward=item.rewardTreats;
+  const metric=String(item.type||"").toLowerCase();
+  const target=typeof item.target==="number"?item.target:NaN;
+  const reward=typeof item.rewardTreats==="number"?item.rewardTreats:NaN;
   if(!["taps","care","shop","wellness","bond","tickets"].includes(metric)||
      !Number.isSafeInteger(target)||target<1||target>1_000_000||
      !Number.isSafeInteger(reward)||reward<1||reward>100_000||
@@ -162,7 +164,7 @@ export async function getAuthoritativeGoal(goalId:string,date:Date):Promise<Serv
 }
 function ticketTotal(v:Dict){return rarities.reduce((n,k)=>n+num(v,ticketKey(k)),0);}
 function priceUpgrade(u:typeof defs[number],owned:number,shopper:number):number{
- let c=u.base;
+ let c:number=u.base;
  for(let i=0;i<owned;i++){
   const multiplier=u.type==="COOKIE"?155:135;
   c=Math.ceil(c*multiplier/100);
@@ -315,8 +317,8 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    setInt(v,t,k,owned+1);setInt(v,t,"prestige_skill_points_v6",num(v,"prestige_skill_points_v6")-price);break;
   }
   case "daily":{
-   expect(num(v,"daily_claim_day",0)!==today&&num(v,"daily_claim_day",0)<today,"DAILY_ALREADY_CLAIMED");
-   const last=num(v,"daily_claim_day",0),streak=last===today-1?Math.min(365,num(v,"daily_streak_v5")+1):1;
+   expect(Number(v.daily_claim_day??0)!==today&&Number(v.daily_claim_day??0)<today,"DAILY_ALREADY_CLAIMED");
+   const last=Number(v.daily_claim_day??0),streak=last===today-1?Math.min(365,num(v,"daily_streak_v5")+1):1;
    const gameLevel=1+Math.floor(Math.sqrt(num(v,"lifetime_treats")/100)),reward=150+streak*25+gameLevel*10;
    earned(v,t,reward);addLong(v,t,"bones_v7",2);addLong(v,t,"pup_coins_v7",3);
    setLong(v,t,"daily_claim_day",today);setInt(v,t,"daily_streak_v5",streak);
