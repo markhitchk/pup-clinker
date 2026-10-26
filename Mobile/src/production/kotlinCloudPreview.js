@@ -43,13 +43,23 @@ export function projectKotlinCloudSave(raw,username=''){
  g.cleanliness=number('cleanliness_v5',100);
  g.bond=number('bond_v5',10);
  g.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,number('upgrade_'+u.id)]));
- g.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,number('ticket_'+r.toLowerCase())]));
- g.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,number('ticket_shop_'+r.toLowerCase())]));
+ g.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,number('upgrade_ticket_'+r.toLowerCase())]));
+ g.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,number('ticket_shop_purchase_'+r.toLowerCase()+'_v7')]));
  g.prestigeCount=number('prestige_count_v6');
  g.skillPoints=number('prestige_skill_points_v6');
  g.totalPrestigePointsEarned=number('prestige_total_points_v6');
- g.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,number('prestige_skill_'+s.toLowerCase())]));
+ g.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,number('prestige_skill_'+s.toLowerCase()+'_v6')]));
+ g.xp=number('player_xp_v1');
  g.parkActive=values.park_active===true;
+ const active=g.puppyStyle;
+ const careFields=[['happiness','happiness'],['fullness','fullness'],['energy','energy'],['cleanliness','cleanliness_v5'],['bond','bond_v5']];
+ for(const id of g.unlockedPuppies){
+  const prefix='care_profile_v1_'+id+'_';
+  if(!Number.isSafeInteger(values[prefix+'updated_at']))continue;
+  g.careProfiles[id]=Object.fromEntries(careFields.map(([field,fallback])=>[field,number(prefix+field,number(fallback,field==='bond'?10:100))]));
+  g.careUpdatedAtByPuppy[id]=number(prefix+'updated_at');
+ }
+ if(g.careProfiles[active])Object.assign(g,g.careProfiles[active]);
  g.parkReadyAtMs=number('park_ready_at');
  g.dailyStreak=number('daily_streak_v5');
  g.lastDailyClaimDay=number('daily_claim_day',0)||null;
