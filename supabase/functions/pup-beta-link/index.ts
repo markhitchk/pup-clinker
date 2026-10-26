@@ -162,7 +162,7 @@ Deno.serve(async (req: Request) => {
       let next: Record<string, unknown>;
       try {
         next = applyBetaLiveGameplay(current.save_data, {
-          type: intent.type, kind: intent.kind,
+          type: intent.type, kind: typeof intent.kind === "string" ? intent.kind : undefined,
         });
       } catch (error) {
         const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
