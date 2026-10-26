@@ -367,6 +367,19 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     putString("saveJson",save.opt("saveData")?.toString()?:"")}
   }
  }
+ // Only gameplay intent crosses into native code; balances, XP and
+ // saves are recalculated inside the signed PupEye server endpoint.
+ @ReactMethod fun gameplayAction(type:String,kind:String,key:String,p:Promise)=runAsync(p){
+  require(type=="tap"||type=="care"){"Unsupported live gameplay action"}
+  if(type=="care")require(kind in setOf("feed","play","wash","rest","cuddle")){"Unsupported care action"}
+  val payload=JSONObject().put("type",type)
+  if(type=="care")payload.put("kind",kind)
+  val answer=post("pup-beta-link",envelope("beta-gameplay",payload),key,session(key))
+  Arguments.createMap().apply{
+   putDouble("revision",answer.getDouble("revision"))
+   putString("saveJson",answer.getJSONObject("saveData").toString())
+  }
+ }
  private val setupBooleans=mapOf(
   "reducedMotion" to "reduced_motion", "anonymousDiagnosticsEnabled" to "anonymous_diagnostics_enabled",
   "crashReportsEnabled" to "crash_reports_enabled", "supportIdentityEnabled" to "support_identity_enabled",
