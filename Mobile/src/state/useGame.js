@@ -16,7 +16,7 @@ const BETA_LIVE_ACTIONS=new Set([
  'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit',
  'gacha','switch','rename'
 ]);
-const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
+const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
