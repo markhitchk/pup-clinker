@@ -70,7 +70,7 @@ export function transition(state,action){
   if(action.game&&!action.readOnly)applyOfflineCare(game,action.now||Date.now());
   // Kotlin normalizes the active LocalDate on load. Daily progress must not
   // display the previous day's counters until the first minute timer fires.
-  rollDailyDay(game,new Date(action.now||Date.now()));
+  if(!action.readOnly)rollDailyDay(game,new Date(action.now||Date.now()));
   const blackjack=validBlackjackState(game.casinoRound)?game.casinoRound:null;
   if(blackjack&&!guestRoundId(blackjack))blackjack.roundId=nextGuestCasinoRoundId(game);
   game.casinoRound=blackjack;
