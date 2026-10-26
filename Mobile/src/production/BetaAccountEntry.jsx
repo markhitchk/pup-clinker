@@ -151,6 +151,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
    {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={onClose}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
+   {verified&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
+    <Text style={styles.secondaryText}>Link Discord (optional)</Text>
+   </Pressable>:null}
    {!verified?<>
     <View style={styles.modes}>
      {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
