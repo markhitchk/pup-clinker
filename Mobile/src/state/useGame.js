@@ -32,7 +32,8 @@ export function useGame({mode='guest'}={}){
     liveVerified.current=false;
     cachedPreview.current=false;
     setAccount(active||{status:'NEEDS_ACCOUNT'});
-    showCloud(null,emptyAccountView(),'account');
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    dispatch({type:'dismiss'});
     setCloudState('SIGN_IN_REQUIRED');
     return false;
    }
