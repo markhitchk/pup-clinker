@@ -67,9 +67,9 @@ export default function AccountOnboarding({flow,account,notifications,onConnect}
      {legalLinks}<T muted style={[styles.small,{textAlign:'center'}]}>Puppy Clicker is in active development. Features and balance may change.</T>
     </View>:null}
     {step===1?<>
-     <T muted style={styles.small}>Create a Pup Account with a username, email and password, or sign in with Discord. Both use Supabase; PupEye binds the active installation. Discord is optional.</T>
-     <Card><View style={styles.row}><Image source={require('../../assets/logos/discord.png')} accessibilityLabel="Discord" resizeMode="contain" style={[styles.featureIcon,{tintColor:C.text}]}/><View style={{flex:1}}><T style={styles.cardTitle}>Pup Account · T0</T><T muted style={styles.small}>{connected?'@'+account.username:'Email/password or Discord'}</T></View><T style={styles.badge}>{connected?'CONNECTED':'SIGN IN'}</T></View>
-      <T muted style={styles.small}>{connected?"Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key.":'Create an in-game Pup Account with email/password, or continue with Discord. Linking Discord later does not replace your account or username.'}</T>
+     <T muted style={styles.small}>Create your Pup Account with a username, email and password. Later, use your username or email to sign in. Discord is optional; PupEye protects your installation.</T>
+     <Card><View style={styles.row}><Image source={require('../../assets/logos/discord.png')} accessibilityLabel="Discord" resizeMode="contain" style={[styles.featureIcon,{tintColor:C.text}]}/><View style={{flex:1}}><T style={styles.cardTitle}>Pup Account · T0</T><T muted style={styles.small}>{connected?'@'+account.username:'Username/email + password or Discord'}</T></View><T style={styles.badge}>{connected?'CONNECTED':'SIGN IN'}</T></View>
+      <T muted style={styles.small}>{connected?"Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key.":'Register with username, email and password, then log in using either your username or email. Linking Discord later does not replace your account or username.'}</T>
       {connected?<><Button disabled={disabled} label="Continue with Pup Account" onPress={()=>void next()}>{busy?'Loading Pup Account…':'Continue with @'+account.username}</Button><Button secondary disabled={disabled} onPress={onConnect}>Manage Pup Account / Discord</Button></>:
        <Button disabled={disabled} onPress={onConnect}>Sign in or register Pup Account</Button>}
      </Card>
