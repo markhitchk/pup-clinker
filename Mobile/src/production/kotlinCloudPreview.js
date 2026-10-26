@@ -75,7 +75,21 @@ export function projectKotlinCloudSave(raw,username=''){
  const previousResult=string('beta_last_casino_result_v1');
  const parseRecord=value=>{try{const r=JSON.parse(value);return r&&typeof r==='object'&&!Array.isArray(r)?r:null;}catch{return null;}};
  const pending=parseRecord(cloudRound),last=parseRecord(previousResult);
+ // React's Blackjack layout requires a 52-card structural deck. Construct
+ // dummy, presentation-only remaining cards, never the server's real shoe.
+ const publicBlackjackState=round=>{
+  if(!round||!Array.isArray(round.hands)||!Array.isArray(round.dealerCards))return null;
+  const seen=new Set([...round.dealerCards,...round.hands.flatMap(h=>h.cards||[])]);
+  const extra=round.complete?[]:[Array.from({length:52},(_,i)=>i).find(i=>!seen.has(i))];
+  if(extra.some(v=>v===undefined))return null;
+  const dealer=[...round.dealerCards,...extra];
+  const used=new Set([...dealer,...round.hands.flatMap(h=>h.cards||[])]);
+  const remainingDeck=Array.from({length:52},(_,i)=>i).filter(i=>!used.has(i));
+  return {...round,dealerCards:dealer,remainingDeck};
+ };
+ const lastBlackjack=parseRecord(string('beta_last_blackjack_result_v1'));
  if(pending){
+  if(pending.type==='BLACKJACK')g.casinoRound=publicBlackjackState(pending);
   if(pending.game==='SLOTS')g.pendingSlots=pending;
   if(pending.game==='ROULETTE')g.pendingRoulette=pending;
   if(pending.game==='PLINKO')g.pendingPlinko=pending;
@@ -91,5 +105,6 @@ export function projectKotlinCloudSave(raw,username=''){
  g.lastActiveAt=Date.now();
  const projected=sanitizeGame(g);
  projected.betaLastCasinoResult=last;
+ projected.betaBlackjackDisplay=lastBlackjack?.state?{...lastBlackjack,state:publicBlackjackState(lastBlackjack.state)}:null;
  return projected;
 }
