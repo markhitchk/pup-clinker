@@ -309,6 +309,36 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    setLong(v,t,"treats",num(v,"treats")-amount);
    addLong(v,t,"casino_chips_v7",amount/10);break;
   }
+  case "prestige":{
+   expect(!v.beta_casino_round_v1&&!v.casino_active_round_v1,"FINISH_CASINO_FIRST");
+   const lifetime=num(v,"lifetime_treats");
+   expect(lifetime>=50000,"PRESTIGE_NOT_UNLOCKED");
+   const gained=Math.min(8,1+Math.floor((lifetime-50000)/100000));
+   for(const key of ["treats","lifetime_treats","bones_v7","legitimate_taps_v7",
+     "total_shop_purchases_v5","total_taps","care_actions_v5"]){
+    setLong(v,t,key,0);
+   }
+   for(const key of ["happiness","fullness","energy","cleanliness_v5"])
+    setInt(v,t,key,100);
+   for(const u of defs)setInt(v,t,"upgrade_"+u.id,0);
+   for(const rarity of rarities)setInt(v,t,ticketKey(rarity),0);
+   setInt(v,t,"best_combo",0);
+   setInt(v,t,"daily_streak_v5",0);
+   setLong(v,t,"daily_claim_day",0);
+   setLong(v,t,"daily_day_v5",today);
+   setLong(v,t,"daily_tap_start_v5",0);
+   setLong(v,t,"daily_care_start_v5",0);
+   setLong(v,t,"daily_shop_start_v5",0);
+   write(v,t,"daily_tasks_v5",[],"string_set");
+   setLong(v,t,"fair_play_cooldown_until",0);
+   write(v,t,"park_active",false,"boolean");
+   setLong(v,t,"park_ready_at",0);
+   setInt(v,t,"prestige_count_v6",num(v,"prestige_count_v6")+1);
+   setInt(v,t,"prestige_skill_points_v6",num(v,"prestige_skill_points_v6")+gained);
+   addLong(v,t,"prestige_total_points_v6",gained);
+   careWrite(v,t,now);
+   break;
+  }
   case "skill":{
    const skill=String(intent.skill||"").toLowerCase();
    expect(["tap_training","auto_training","smart_shopper","ticket_sense"].includes(skill),"UNKNOWN_SKILL");
