@@ -70,8 +70,7 @@ Deno.test("Gacha spends on the server, awards only Kotlin free pups and keeps pr
  assertEquals(data(first).unlocked_puppies.includes("v2_discord_pup"),false);
  assertEquals(data(first).player_xp_v1,300); // 100 unlock XP + 200 achievements from existing progression
  assertEquals(data(before).treats,20000);
- const second=await applyBetaEconomy(first,{type:"gacha",payment:"COMMON_TICKET"},NOW+200);
- assertEquals(data(second).upgrade_ticket_common,0);
+ await assertRejects(()=>applyBetaEconomy(first,{type:"gacha",payment:"COMMON_TICKET"},NOW+200),Error,"GACHA_INSUFFICIENT_TICKET");
 });
 Deno.test("Gacha cannot mint protected puppy, and one owned puppy can be selected and renamed",async()=>{
  const first=await applyBetaEconomy(make(),{type:"gacha",payment:"TREATS"},NOW);
