@@ -10,7 +10,7 @@ import commonjs from '@babel/plugin-transform-modules-commonjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
-const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','View'].map(name=>[name,name]));
+const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
 native.NativeModules={};
 native.Linking={
@@ -53,5 +53,34 @@ test('account status uses the native code to identify a transfer block',async()=
   await act(async()=>{renderer=create(React.createElement(Entry));await flush();});
   assert.match(contents(renderer),/DEVICE TRANSFER REQUIRED/);
   assert.doesNotMatch(contents(renderer),/server could not verify/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('Pup Account signup and username/password signin use their own native methods',async()=>{
+ let renderer,verified=0;
+ const calls=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  createPupAccount:async(...args)=>{calls.push(['signup',...args]);return {status:'VERIFY_EMAIL'};},
+  signInPupAccount:async(...args)=>{calls.push(['signin',...args]);return {status:'VERIFIED',username:'PuppyFan',accountId:'acc1',cloudSaveExists:false};}
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signup',onVerified:()=>verified++}));await flush();});
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
+   renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+  });
+  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Create Pup Account'}).props.onPress();await flush();});
+  assert.equal(calls[0][0],'signup');
+  assert.equal(calls[0][1],'PuppyFan');
+  assert.match(contents(renderer),/verification link/);
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+  });
+  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();await flush();});
+  assert.equal(calls[1][0],'signin');
+  assert.equal(calls[1][1],'pup@example.com');
+  assert.equal(verified,1);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
