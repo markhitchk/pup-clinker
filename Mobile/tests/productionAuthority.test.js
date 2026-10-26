@@ -13,11 +13,14 @@ const probe=(change={})=>({
  ...change
 });
 
-test('production root cannot launch guest gameplay or use AsyncStorage state',()=>{
+test('beta root mounts the main Puppy Clicker UI while production retains safe handoff',()=>{
  const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
  const root=app.match(/export default function App\(\)\{[^\n]+\}/)?.[0]||'';
+ assert.match(root,/<PuppyApp betaMode\/>/);
  assert.match(root,/<ProductionEntry\/>/);
- assert.doesNotMatch(root,/<PuppyApp\/>/);
+ const hook=readFileSync(new URL('../src/state/useGame.js',import.meta.url),'utf8');
+ assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
+ assert.match(hook,/BETA_LOCAL_ONLY_ACTIONS/);
  const entry=readFileSync(new URL('../src/production/ProductionEntry.jsx',import.meta.url),'utf8');
  assert.doesNotMatch(entry,/useGame|serializeGuestSave|AsyncStorage|guestSave|casinoSpend/);
  assert.equal(mayEnterGameplay(),false);
