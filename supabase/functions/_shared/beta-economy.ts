@@ -1,3 +1,4 @@
+import {grantCasinoBonuses,canWheelUnlock,unownedCasinoPuppies} from "./beta-casino-rewards.ts";
 /**
  * Server-owned Puppy Clicker economy for signed beta intentions.
  * This is NOT the guest reducer: never trust prices, winnings, XP, randomness,
@@ -267,7 +268,7 @@ function stakeAllowed(v:Dict,wager:unknown):asserts wager is number {
  expect(num(v,"casino_chips_v7")>=wager,"NOT_ENOUGH_CASINO_CHIPS");
 }
 const rollSymbol=(roll:number)=>{let count=0;for(const x of slotSymbols){count+=x.weight;if(roll<count)return x;}throw Error("BAD_SLOT_WEIGHTS");};
-function newCasinoRound(type:string,intent:BetaEconomyIntent,now:number):Dict{
+function newCasinoRound(type:string,intent:BetaEconomyIntent,now:number,v:Dict):Dict{
  const wager=intent.wager as number;
  const base={roundId:uuid(),wager,createdAt:now};
  if(type==="slotsStart"){
@@ -309,14 +310,17 @@ function newCasinoRound(type:string,intent:BetaEconomyIntent,now:number):Dict{
  if(type==="wheelStart"){
   const roll=secureInt(100);let sum=0,prize=wheelPrizes[0];
   for(const p of wheelPrizes){sum+=p.weight;if(roll<sum){prize=p;break;}}
-  if(prize.id==="PUPPY_UNLOCK")prize=wheelPrizes[2]; // Kotlin fallback for ineligible unlock
+  const available=unownedCasinoPuppies(v);
+  const eligible=canWheelUnlock(v,now)&&available.length>0;
+  if(prize.id==="PUPPY_UNLOCK"&&!eligible)prize=wheelPrizes[2];
+  const puppyStyleId=prize.id==="PUPPY_UNLOCK"?available[secureInt(available.length)]:null;
   return {...base,type:"LUCKY_WHEEL",version:1,roll,prize:prize.id,
-   segmentIndex:wheelPrizes.findIndex(p=>p.id===prize.id),puppyStyleId:null,
+   segmentIndex:wheelPrizes.findIndex(p=>p.id===prize.id),puppyStyleId,
    payout:Math.floor(wager*prize.multi/100)};
  }
  throw Error("UNSUPPORTED_CASINO_GAME");
 }
-function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
+async function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
  const current=v.beta_casino_round_v1;
  const round=typeof current==="string"&&current?requireObj(JSON.parse(current)):null;
  if(intent.type.endsWith("Start")){
@@ -325,7 +329,7 @@ function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
   if(intent.type==="scratchStart")expect(Object.hasOwn(scratchCards,intent.wager as number),"UNSUPPORTED_SCRATCH_CARD");
   if(["plinkoStart","scratchStart","wheelStart"].includes(intent.type))
    expect((intent.wager as number)%20===0,"INVALID_CASINO_WAGER_INCREMENT");
-  const created=newCasinoRound(intent.type,intent,now);
+  const created=newCasinoRound(intent.type,intent,now,v);
   setLong(v,t,"casino_chips_v7",num(v,"casino_chips_v7")-(intent.wager as number));
   write(v,t,"beta_casino_round_v1",JSON.stringify(created),"string");
   write(v,t,"beta_last_casino_result_v1","","string");
@@ -335,7 +339,11 @@ function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
   expect(Number.isSafeInteger(round?.payout)&&Number(round.payout)>=0,"CORRUPT_CASINO_ROUND");
   setLong(v,t,"casino_chips_v7",inc(num(v,"casino_chips_v7"),Number(round.payout)));
   write(v,t,"beta_casino_round_v1","","string");
-  write(v,t,"beta_last_casino_result_v1",JSON.stringify(round),"string");
+  const bonus=await grantCasinoBonuses(v,t,{
+   roundId:String(round.roundId),wager:Number(round.wager),payout:Number(round.payout),
+   guaranteedPuppyId:round.type==="LUCKY_WHEEL"&&round.prize==="PUPPY_UNLOCK"?String(round.puppyStyleId):null
+  },now);
+  write(v,t,"beta_last_casino_result_v1",JSON.stringify({...round,bonus}),"string");
  }
 }
 /** Handles rewards, shops and casino using *only* the stored server-signed Kotlin save. */
@@ -495,7 +503,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
   }
   case "slotsStart":case "rouletteStart":case "plinkoStart":case "scratchStart":case "wheelStart":
   case "slotsReveal":case "rouletteReveal":case "plinkoReveal":case "scratchReveal":case "wheelReveal":
-   casino(v,t,intent,now);break;
+   await casino(v,t,intent,now);break;
   default:throw Error("BETA_ACTION_NOT_PORTED");
  }
  settleBetaAchievements(v,t);
