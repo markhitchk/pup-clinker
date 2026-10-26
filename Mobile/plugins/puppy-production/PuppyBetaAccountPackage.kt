@@ -375,7 +375,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val action=payload.optString("type")
   require(action in setOf(
    "tap","care","purchase","ticket","accessory","equip","exchange","skill",
-   "daily","claimDailyGoal","parkStart","parkClaim",
+   "daily","claimDailyGoal","parkStart","parkClaim","prestige",
    "slotsStart","slotsReveal","rouletteStart","rouletteReveal",
    "plinkoStart","plinkoReveal","scratchStart","scratchReveal",
    "wheelStart","wheelReveal",
