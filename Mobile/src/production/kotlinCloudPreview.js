@@ -63,12 +63,33 @@ export function projectKotlinCloudSave(raw,username=''){
  g.parkReadyAtMs=number('park_ready_at');
  g.dailyStreak=number('daily_streak_v5');
  g.lastDailyClaimDay=number('daily_claim_day',0)||null;
- g.redeemedCodeIds=set('redeemed_code_ids');
+ g.achievementRewardedIds=set('achievement_rewarded_v1');
+ g.dailyDay=number('daily_day_v5');
+ g.dailyTapStart=number('daily_tap_start_v5');
+ g.dailyCareStart=number('daily_care_start_v5');
+ g.dailyShopStart=number('daily_shop_start_v5');
+ g.claimedDailyTasks=set('daily_tasks_v5');
+ g.cooldownUntilMs=number('fair_play_cooldown_until');
+ g.parkActive=values.park_active===true;
+ const cloudRound=string('beta_casino_round_v1');
+ const previousResult=string('beta_last_casino_result_v1');
+ const parseRecord=value=>{try{const r=JSON.parse(value);return r&&typeof r==='object'&&!Array.isArray(r)?r:null;}catch{return null;}};
+ const pending=parseRecord(cloudRound),last=parseRecord(previousResult);
+ if(pending){
+  if(pending.game==='SLOTS')g.pendingSlots=pending;
+  if(pending.game==='ROULETTE')g.pendingRoulette=pending;
+  if(pending.game==='PLINKO')g.pendingPlinko=pending;
+  if(pending.type==='SCRATCHERS')g.pendingScratch=pending;
+  if(pending.type==='LUCKY_WHEEL')g.pendingWheel=pending;
+ }
+  g.redeemedCodeIds=set('redeemed_code_ids');
  g.onboardingComplete=true;
  g.onboardingStep=5;
  // Internal legacy presentation field only; it is never a guest identity.
  g.guestName=typeof username==='string'&&username?username:'Pup Account';
  // Suppress mutating offline-care restoration during read-only projection.
  g.lastActiveAt=Date.now();
- return sanitizeGame(g);
+ const projected=sanitizeGame(g);
+ projected.betaLastCasinoResult=last;
+ return projected;
 }
