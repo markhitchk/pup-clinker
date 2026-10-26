@@ -49,7 +49,8 @@ export function projectKotlinCloudSave(raw,username=''){
  g.skillPoints=number('prestige_skill_points_v6');
  g.totalPrestigePointsEarned=number('prestige_total_points_v6');
  g.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,number('prestige_skill_'+s.toLowerCase()+'_v6')]));
- g.xp=number('player_xp_v1');
+ g.xp=number('player_xp_v1',number('lifetime_treats'));
+ g.gachaPulls=number('beta_gacha_pulls_v1');
  g.parkActive=values.park_active===true;
  const active=g.puppyStyle;
  const careFields=[['happiness','happiness'],['fullness','fullness'],['energy','energy'],['cleanliness','cleanliness_v5'],['bond','bond_v5']];
@@ -105,6 +106,7 @@ export function projectKotlinCloudSave(raw,username=''){
  g.lastActiveAt=Date.now();
  const projected=sanitizeGame(g);
  projected.betaLastCasinoResult=last;
+ projected.betaLastGachaResult=parseRecord(string('beta_last_gacha_result_v1'));
  projected.betaBlackjackDisplay=lastBlackjack?.state?{...lastBlackjack,state:publicBlackjackState(lastBlackjack.state)}:null;
  return projected;
 }
