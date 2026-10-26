@@ -378,7 +378,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    "daily","claimDailyGoal","parkStart","parkClaim",
    "slotsStart","slotsReveal","rouletteStart","rouletteReveal",
    "plinkoStart","plinkoReveal","scratchStart","scratchReveal",
-   "wheelStart","wheelReveal"
+   "wheelStart","wheelReveal",
+   "blackjackStart","blackjackHit","blackjackStand","blackjackDouble","blackjackSplit"
   )){"Unsupported live gameplay action"}
   val answer=post("pup-beta-link",envelope("beta-gameplay",payload),key,session(key))
   Arguments.createMap().apply{
