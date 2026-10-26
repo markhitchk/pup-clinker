@@ -18,10 +18,10 @@ Deno.test("Kotlin upgrade purchase charges authoritative costs, retains seasonal
  assertEquals(data(updated).bones_v7,99);
  assertEquals(data(updated).upgrade_better_treats,1);
  assertEquals(data(updated).total_shop_purchases_v5,1);
- assertEquals(updated.stores.puppy_seasonal_v1,base.stores.puppy_seasonal_v1);
+ assertEquals((updated.stores as any).puppy_seasonal_v1,base.stores.puppy_seasonal_v1);
  assertEquals(data(base).upgrade_better_treats,0);
  assertEquals(data(updated).player_xp_v1,150); // first treat, snack stash, puppy pro achievements
- assertEquals((updated.stores.puppy_clicker_save as any).types.treats,"long");
+ assertEquals(((updated.stores as any).puppy_clicker_save as any).types.treats,"long");
 });
 Deno.test("Kotlin daily gift is once-only and advances streak without double credit",async()=>{
  const first=await applyBetaEconomy(make(),{type:"daily"},NOW);
