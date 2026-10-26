@@ -273,8 +273,8 @@ Deno.serve(async (req: Request) => {
         .eq("player_uuid", account.player_uuid).maybeSingle();
       if (saveError) throw saveError;
       return json(200, {
-        readOnly: !save,
-        gameplayWritable: Boolean(save),
+        readOnly: !save && session.player.id !== account.player_uuid,
+        gameplayWritable: Boolean(save) || session.player.id === account.player_uuid,
         accountWritable: true,
         linkedFromPlay: true,
         playerId: owner.player_id,
