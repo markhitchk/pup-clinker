@@ -140,11 +140,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    <View style={styles.card}>
     <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
     <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
-    {verified?<><Text style={styles.body}>Discord: {state.username}</Text>
+    {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
+      <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
       <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account in read-only beta mode. The Play installation stays active; no device transfer or guest progress was created.</Text>:null}</>:
-      <Text style={styles.body}>Connect Discord to register a real PupEye session. No guest game is launched and no preview save is substituted.</Text>}
+      <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
    {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
    {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
