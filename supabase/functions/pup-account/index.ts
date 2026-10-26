@@ -120,12 +120,22 @@ async function linkLocalAccount(req: Request, admin: any, session: any): Promise
     throw new HttpError(403, "PUP_ACCOUNT_BLOCKED", "This account cannot be linked while restricted.");
   }
 
-  const requested = user.user_metadata?.puppy_username;
-  const username = byPlayer?.local_username ??
-    (typeof requested === "string" ? requested.trim() : "");
-  if (!/^[A-Za-z0-9_.-]{3,20}$/.test(username)) {
-    throw new HttpError(400, "PUP_USERNAME_REQUIRED",
-      "Pup Account registration requires a 3–20 character username.");
+  // Never trust mutable Auth user_metadata or an arbitrary client-provided
+  // username for a sign-in binding. Only the immutable registration index may
+  // choose the username owned by the verified auth.users row.
+  const { data: handle, error: handleError } = await admin
+    .from("pup_account_login_handles")
+    .select("username").eq("auth_user_id", user.id).maybeSingle();
+  if (handleError) throw handleError;
+  if (!handle) {
+    throw new HttpError(409, "PUP_USERNAME_REQUIRED",
+      "This login is not registered as a first-party Pup Account.");
+  }
+  const username = handle.username;
+  if (byPlayer?.local_username &&
+      byPlayer.local_username.toLowerCase() !== username.toLowerCase()) {
+    throw new HttpError(409, "PUP_ACCOUNT_IDENTITY_CONFLICT",
+      "This installation is already linked to a different Pup Account username.");
   }
   const values = {
     auth_user_id: user.id,
