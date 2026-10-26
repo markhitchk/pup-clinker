@@ -67,11 +67,11 @@ export default function AccountOnboarding({flow,account,notifications,onConnect}
      {legalLinks}<T muted style={[styles.small,{textAlign:'center'}]}>Puppy Clicker is in active development. Features and balance may change.</T>
     </View>:null}
     {step===1?<>
-     <T muted style={styles.small}>T0 Pup Accounts are passwordless. Discord OAuth signs you in through Supabase, which stores your Discord identity and server-role metadata; PupEye binds the active device.</T>
-     <Card><View style={styles.row}><Image source={require('../../assets/logos/discord.png')} accessibilityLabel="Discord" resizeMode="contain" style={[styles.featureIcon,{tintColor:C.text}]}/><View style={{flex:1}}><T style={styles.cardTitle}>Pup Account · T0</T><T muted style={styles.small}>{connected?'@'+account.username:'Passwordless sign-in with Discord'}</T></View><T style={styles.badge}>{connected?'CONNECTED':'SIGN IN'}</T></View>
-      <T muted style={styles.small}>{connected?"Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key.":'Discord OAuth provides your username and identity directly to Supabase for Pup Account sign-in. No separate Puppy Clicker password or bot code is required for login.'}</T>
-      {connected?<><Button disabled={disabled} label="Continue with Pup Account" onPress={()=>void next()}>{busy?'Loading Pup Account…':'Continue with @'+account.username}</Button><Button secondary disabled={disabled} onPress={onConnect}>Manage Discord sign-in</Button></>:
-       <Button disabled={disabled} onPress={onConnect}>Sign in with Discord</Button>}
+     <T muted style={styles.small}>Create a Pup Account with a username, email and password, or sign in with Discord. Both use Supabase; PupEye binds the active installation. Discord is optional.</T>
+     <Card><View style={styles.row}><Image source={require('../../assets/logos/discord.png')} accessibilityLabel="Discord" resizeMode="contain" style={[styles.featureIcon,{tintColor:C.text}]}/><View style={{flex:1}}><T style={styles.cardTitle}>Pup Account · T0</T><T muted style={styles.small}>{connected?'@'+account.username:'Email/password or Discord'}</T></View><T style={styles.badge}>{connected?'CONNECTED':'SIGN IN'}</T></View>
+      <T muted style={styles.small}>{connected?"Your Pup Account is backed by Supabase cloud progression and protected by this device's PupEye key.":'Create an in-game Pup Account with email/password, or continue with Discord. Linking Discord later does not replace your account or username.'}</T>
+      {connected?<><Button disabled={disabled} label="Continue with Pup Account" onPress={()=>void next()}>{busy?'Loading Pup Account…':'Continue with @'+account.username}</Button><Button secondary disabled={disabled} onPress={onConnect}>Manage Pup Account / Discord</Button></>:
+       <Button disabled={disabled} onPress={onConnect}>Sign in or register Pup Account</Button>}
      </Card>
      <Card><View style={styles.row}><Image source={require('../../assets/logos/PupEye.png')} resizeMode="contain" style={styles.featureIcon}/><View style={{flex:1}}><T style={styles.bold}>Protected by PupEye</T><T muted style={styles.small}>Save integrity + fair-play protection.</T></View></View></Card>
     </>:null}
@@ -109,7 +109,7 @@ export default function AccountOnboarding({flow,account,notifications,onConnect}
     {step===5?<>
      <T style={styles.cardTitle}>Your setup is ready.</T><T muted style={styles.small}>You can change profile, appearance, and notification options later in Settings.</T>
      <Card title="Player Profile"><Pair label="Username" value={account?.username||'Not connected'}/><Pair label="Player ID" value={account?.playerId||'Not available'}/><Pair label="Friend Code" value={account?.friendCode||'Not available'}/></Card>
-     <Card title="Connected"><Pair label="Discord" value={connected?'@'+account.username:'Not connected'}/><Pair label="PupEye" value={connected?'Device verified':'Verification required'}/>{g.birthdayMonth?<Pair label="Birthday" value={months[g.birthdayMonth-1]+' '+g.birthdayDay}/>:null}</Card>
+     <Card title="Connected"><Pair label="Discord" value={account?.discordUserId?'Linked':'Not linked (optional)'}/><Pair label="PupEye" value={connected?'Device verified':'Verification required'}/>{g.birthdayMonth?<Pair label="Birthday" value={months[g.birthdayMonth-1]+' '+g.birthdayDay}/>:null}</Card>
      <Card title="Preferences"><Pair label="Theme" value={g.themeMode==='system'?'Follow System':g.themeMode==='light'?'Light':'Dark'}/><Pair label="UI scale" value={g.uiScale[0].toUpperCase()+g.uiScale.slice(1)}/></Card>
      <Button secondary disabled={disabled} onPress={()=>void review()}>Review Setup</Button>
     </>:null}
