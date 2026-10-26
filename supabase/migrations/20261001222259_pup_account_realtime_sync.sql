@@ -100,7 +100,13 @@ create trigger pupeye_players_account_realtime
 after insert or update or delete on public.pupeye_players
 for each row execute function public.pup_account_emit_realtime();
 
-drop trigger if exists pup_account_devices_realtime on public.pup_account_devices;
-create trigger pup_account_devices_realtime
-after insert or update or delete on public.pup_account_devices
-for each row execute function public.pup_account_emit_realtime();
+-- Older T0 schemas have no pup_account_devices table. Only install this
+-- optional realtime trigger when that relation exists; PostgreSQL DROP TRIGGER
+-- IF EXISTS still fails when its referenced relation is absent.
+do $
+begin
+  if to_regclass('public.pup_account_devices') is not null then
+    execute 'drop trigger if exists pup_account_devices_realtime on public.pup_account_devices';
+    execute 'create trigger pup_account_devices_realtime after insert or update or delete on public.pup_account_devices for each row execute function public.pup_account_emit_realtime()';
+  end if;
+end $;
