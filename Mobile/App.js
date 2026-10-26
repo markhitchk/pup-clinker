@@ -832,7 +832,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
    </View>)}
    <Txt muted style={styles.small}>Dealer Blackjack is resolved immediately after the initial deal. Split aces cannot be resplit in this version.</Txt>
    <Txt muted style={styles.small}>Every deck position, hand, wager, split, double, and dealer draw is saved to the active casino round.</Txt>
-   <Txt muted style={styles.small}>PupEye authoritative wagering is not enabled in this beta.</Txt>
+   <Txt muted style={styles.small}>Wagers and payouts are committed by the signed PupEye server. Cards are dealt without exposing the hidden shoe.</Txt>
   </View>:null}
  </View>;
 }
