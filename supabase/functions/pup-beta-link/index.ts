@@ -100,19 +100,32 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (grantError) throw grantError;
       if (!grant) {
-        throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect Discord to authorize this beta account.");
+        // A brand-new Pup Account created on this beta does not have a
+        // companion grant: it already owns its signed PupEye installation.
+        if (envelope.action !== "beta-gameplay") {
+          throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect your Pup Account.");
+        }
+        const { data: own, error: ownError } = await admin.from("pup_accounts")
+          .select("*").eq("player_uuid", session.player.id)
+          .eq("active_installation_uuid", session.installation.id).maybeSingle();
+        if (ownError) throw ownError;
+        if (!own || own.status !== "active") {
+          throw new HttpError(401, "BETA_LINK_REQUIRED", "A verified Pup Account is required.");
+        }
+        account = own;
+      } else {
+        let query = admin.from("pup_accounts").select("*").eq("id", grant.account_uuid);
+        if (grant.discord_user_id) query = query.eq("discord_user_id", grant.discord_user_id);
+        const { data: linked, error: ownerError } = await query.maybeSingle();
+        if (!grant.discord_user_id && !grant.credential_auth_user_id) {
+          throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect your Pup Account.");
+        }
+        if (ownerError) throw ownerError;
+        if (!linked || linked.status !== "active") {
+          throw new HttpError(403, "BETA_LINK_REVOKED", "Your existing Pup Account is unavailable; sign in again.");
+        }
+        account = linked;
       }
-      let query = admin.from("pup_accounts").select("*").eq("id", grant.account_uuid);
-      if (grant.discord_user_id) query = query.eq("discord_user_id", grant.discord_user_id);
-      const { data: owner, error: ownerError } = await query.maybeSingle();
-      if (!grant.discord_user_id && !grant.credential_auth_user_id) {
-        throw new HttpError(401, "BETA_LINK_REQUIRED", "Reconnect your Pup Account.");
-      }
-      if (ownerError) throw ownerError;
-      if (!owner || owner.status !== "active") {
-        throw new HttpError(403, "BETA_LINK_REVOKED", "Your existing Pup Account is unavailable; sign in again.");
-      }
-      account = owner;
     }
 
     const owner = await verifyOwner(admin, account, envelope.action);
