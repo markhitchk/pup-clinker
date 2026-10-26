@@ -16,7 +16,9 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(root,/RosterScreen g=/);
  assert.match(root,/SettingsScreen g=/);
  assert.match(root,/CasinoScreen g=/);
- assert.match(beta,/Connect with Discord/);
+ assert.match(beta,/Continue with Discord \(optional\)/);
+ assert.match(beta,/Register Pup Account/);
+ assert.match(beta,/Sign in with Pup Account/);
  assert.match(beta,/cloudRead\(/);
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
