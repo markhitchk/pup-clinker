@@ -262,7 +262,7 @@ function newCasinoRound(type:string,intent:BetaEconomyIntent,now:number):Dict{
   const roll=secureInt(100);let sum=0,prize=wheelPrizes[0];
   for(const p of wheelPrizes){sum+=p.weight;if(roll<sum){prize=p;break;}}
   if(prize.id==="PUPPY_UNLOCK")prize=wheelPrizes[2]; // Kotlin fallback for ineligible unlock
-  return {...base,type:"LUCKY_WHEEL",version:2,roll,prize:prize.id,
+  return {...base,type:"LUCKY_WHEEL",version:1,roll,prize:prize.id,
    segmentIndex:wheelPrizes.findIndex(p=>p.id===prize.id),puppyStyleId:null,
    payout:Math.floor(wager*prize.multi/100)};
  }
@@ -275,6 +275,8 @@ function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
   expect(!round,"CASINO_ROUND_ALREADY_ACTIVE");
   stakeAllowed(v,intent.wager);
   if(intent.type==="scratchStart")expect(Object.hasOwn(scratchCards,intent.wager as number),"UNSUPPORTED_SCRATCH_CARD");
+  if(["plinkoStart","scratchStart","wheelStart"].includes(intent.type))
+   expect((intent.wager as number)%20===0,"INVALID_CASINO_WAGER_INCREMENT");
   const created=newCasinoRound(intent.type,intent,now);
   setLong(v,t,"casino_chips_v7",num(v,"casino_chips_v7")-(intent.wager as number));
   write(v,t,"beta_casino_round_v1",JSON.stringify(created),"string");
@@ -315,7 +317,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
   case "daily":{
    expect(num(v,"daily_claim_day",0)!==today&&num(v,"daily_claim_day",0)<today,"DAILY_ALREADY_CLAIMED");
    const last=num(v,"daily_claim_day",0),streak=last===today-1?Math.min(365,num(v,"daily_streak_v5")+1):1;
-   const xpLevel=level(v),reward=150+streak*25+xpLevel*10;
+   const gameLevel=1+Math.floor(Math.sqrt(num(v,"lifetime_treats")/100)),reward=150+streak*25+gameLevel*10;
    earned(v,t,reward);addLong(v,t,"bones_v7",2);addLong(v,t,"pup_coins_v7",3);
    setLong(v,t,"daily_claim_day",today);setInt(v,t,"daily_streak_v5",streak);
    setInt(v,t,"happiness",cap100(num(v,"happiness",100)+8));setInt(v,t,"bond_v5",cap100(num(v,"bond_v5",10)+1));
