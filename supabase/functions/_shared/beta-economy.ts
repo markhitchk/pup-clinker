@@ -86,6 +86,10 @@ function careWrite(v:Dict,t:Dict,now:number){
  bonds[style]=num(v,"bond_v5",10);write(v,t,"bond_by_puppy_v1",JSON.stringify(bonds),"string");
 }
 function awardXp(v:Dict,t:Dict,n:number){addLong(v,t,"player_xp_v1",n);}
+export function awardBetaXp(v:Dict,t:Dict,event:"MANUAL_TAP"|"CARE_ACTION"){
+ awardXp(v,t,event==="MANUAL_TAP"?1:5);
+}
+export function rollBetaDay(v:Dict,t:Dict,now:number){rollDay(v,t,day(now));}
 export function settleBetaAchievements(v:Dict,t:Dict){
  // The Kotlin V6 achievements are fixed/immutable and pay once per id.
  const original=own(v,"achievement_rewarded_v1"),awarded=new Set(original);
@@ -176,8 +180,8 @@ function shopUpgrade(v:Dict,t:Dict,intent:BetaEconomyIntent){
  expect(treats>=treatPrice&&bones>=bonePrice,"UPGRADE_NOT_AFFORDABLE");
  if(u.type==="TICKET"){
   const sense=Math.min(5,num(v,skillKey("ticket_sense")));
-  const discounted=Math.max(1,(u.tickets??1)+Math.min(2,Math.floor(owned/3))-(sense>=2?1:0)-(sense>=4?1:0));
-  const key=ticketKey(u.rarity??"");
+  const discounted=Math.max(1,('tickets' in u?u.tickets:1)+Math.min(2,Math.floor(owned/3))-(sense>=2?1:0)-(sense>=4?1:0));
+  const key=ticketKey('rarity' in u?u.rarity:"");
   expect(num(v,key)>=discounted,"UPGRADE_NEEDS_TICKETS");
   setInt(v,t,key,num(v,key)-discounted);
  }
@@ -292,7 +296,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
  const nowDate=new Date(now),today=day(now),dayOfMonth=nowDate.getUTCDate();
  // Do not permit a client-controlled timestamp, balance, randomness or price.
  switch(intent.type){
-  case "purchase":shopUpgrade(v,t,intent);rollDay(v,t,today);break;
+  case "purchase":rollDay(v,t,today);shopUpgrade(v,t,intent);break;
   case "ticket":ticketShop(v,t,intent);break;
   case "accessory":case "equip":accessories(v,t,intent);break;
   case "exchange":{
