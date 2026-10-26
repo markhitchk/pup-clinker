@@ -211,7 +211,7 @@ export function useGame({mode='guest'}={}){
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
    const native=NativeModules.PuppyBetaAccount;
-   if(!liveVerified.current||!native?.gameplayAction||(cloudState==='NO_CLOUD_SAVE'&&(account?.linkedFromPlay||account?.readOnly))){
+   if(!liveVerified.current||!native?.gameplayAction||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable!==true)){
     if(ToastAndroid?.show)ToastAndroid.show('Live Pup Account progress is not available. Connect your cloud save.',ToastAndroid.SHORT);
     return;
    }
