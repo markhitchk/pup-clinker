@@ -139,6 +139,8 @@ Deno.serve(async (req: Request) => {
     return json(200, {
       readOnly: true,
       linkedFromPlay: true,
+      playerId: owner.player_id,
+      friendCode: owner.friend_code,
       guildRole: owner.guild_role ?? null,
       account: {
         id: account.id,
