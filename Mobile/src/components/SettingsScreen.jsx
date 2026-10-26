@@ -11,7 +11,7 @@ const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
-export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics}){
+export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,onConnectAccount,cloudState}){
  const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
@@ -26,7 +26,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </Pressable>{expanded===id?<View style={s.body}>{children}</View>:null}
  </View>;
  const group=title=><T style={s.group}>{title}</T>;
- const pending=<T muted>Available after the original linked account and protected services are migrated. This preview has local guest progress.</T>;
+ const pending=<T muted>{betaMode?'The beta displays Kotlin-compatible cloud progress read-only. Signed economy and complete PupEye services are still being migrated.':'Available after the original linked account and protected services are migrated. This preview has local guest progress.'}</T>;
  return <View style={s.page}>
   <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
   <View style={s.identity}>
@@ -35,11 +35,11 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T muted>Guest · Level {guestLevel(g)} · Saved on this device</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={!name.trim()} onPress={()=>act({type:'onboardPlayer',name})}>Save Display Name</Action>
-   <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
-   <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={!validBirthday(Number(month),Number(day))} onPress={()=>act({type:'onboardBirthday',month:Number(month),day:Number(day)})}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
+   <T muted>{betaMode?'Pup Account · Kotlin cloud progress is read-only':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={betaMode||!name.trim()} onPress={()=>act({type:'onboardPlayer',name})}>Save Display Name</Action>
+   <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={betaMode||!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
+   <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={betaMode||!validBirthday(Number(month),Number(day))} onPress={()=>act({type:'onboardBirthday',month:Number(month),day:Number(day)})}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
-  {section('discord','◉','Discord','Connect or manage your Discord account',pending)}
+  {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>The original Play app and beta have separate Android identities. Existing-account access requires a server-authorized device transfer.</T></>:pending)}
   {group('APP & EXPERIENCE')}
   {section('appearance','🎨','Appearance','Theme, accent color, scale, contrast and motion',<>
    <Choices label="THEME" value={g.themeMode} items={[["light","Light"],["dark","Dark"],["system","Follow System"]]} onChange={v=>pref('themeMode',v)}/>
@@ -61,7 +61,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('gameEventNotifications','Game Events','Dog Park Adventure completion alerts.')}
    {toggle('updateNotifications','App Updates','Keep update notices in the notification inbox when available.')}
    {toggle('puppyAttentionNotifications','Puppy Attention',"Every two hours while away, using your puppy's care status when scheduled.")}
-   <T muted>Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.</T>
+   <T muted>{betaMode?'PupEye notification delivery and original Kotlin history are not yet ported to this beta.':'Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.'}</T>
    {notifications.error?<T style={{color:C.danger}}>{notifications.error}</T>:null}
    <Action onPress={()=>{notifications.check();onOpen('notifications');}}>Check Notifications Now</Action><Action onPress={notifications.sendTest}>Send Test Notification</Action>
   </>)}
@@ -69,7 +69,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('anonymousDiagnosticsEnabled','Optional anonymous diagnostics','Record recent screen visits locally for troubleshooting. No telemetry is uploaded.')}
    {toggle('crashReportsEnabled','Optional crash reports','Save a local error summary when Android can finish writing it. No remote crash destination is configured.')}
    {toggle('supportIdentityEnabled','Include account identity in support reports','Include your local display name only when you choose to share a support report.')}
-   <T muted>Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
+   <T muted>{betaMode?'This beta never loads guest saves. Kotlin cloud data is projected read-only, and transactions remain blocked until signed PupEye gameplay is complete.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
   </>)}
   {group('GAME')}
   {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
@@ -79,20 +79,19 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('compactNumbers','Compact numbers','Use K/M/B abbreviations for large values.')}
    {toggle('reducedMotion','Reduced visual effects','Uses the same reduced-motion preference as Appearance.')}
    {toggle('puppyPointerEnabled','Puppy mouse pointer','Original light/dark pointer for a connected mouse or trackpad.')}
-   <T muted>Auto-save: Active · local guest save</T>
+   <T muted>{betaMode?'Cloud-save writes: Disabled until signed PupEye gameplay parity is verified':'Auto-save: Active · local guest save'}</T>
   </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>Local guest save. Your original Kotlin app and cloud progress are separate.</T>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Protected cloud progress is not overwritten.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
-    <Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action>
-    <Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action>
+    {!betaMode?<><Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action><Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action></>:<T muted>Destructive account actions are disabled in the beta.</T>}
    </>:null}
   </>)}
   {group('SUPPORT')}
   {section('support','🐾','Support & Reports','Report bugs, account problems, users, Casino issues and more',<>
    <Choices label="Report type" value={category} items={['Bug','Account','Casino','Other'].map(x=>[x,x])} onChange={setCategory}/><TextInput accessibilityLabel="Support report" multiline placeholder="What happened? Include the steps to reproduce." placeholderTextColor={C.muted} value={report} onChangeText={setReport} maxLength={2000} style={[s.input,{minHeight:110,textAlignVertical:'top'}]}/>
-   <Action disabled={!report.trim()} onPress={()=>Share.share({message:`Puppy Clicker React Preview 1.8.0\n${category} report\n${g.supportIdentityEnabled?'Player: '+g.guestName+'\n':''}${report.trim()}`}).catch(e=>Alert.alert('Unable to share',e.message))}>Share Support Report</Action><T muted>Choose where to send your report in Android’s share menu.</T>
+   <Action disabled={!report.trim()} onPress={()=>Share.share({message:`Puppy Clicker React Beta 1.8.0\n${category} report\n${g.supportIdentityEnabled?'Player: '+g.guestName+'\n':''}${report.trim()}`}).catch(e=>Alert.alert('Unable to share',e.message))}>Share Support Report</Action><T muted>Choose where to send your report in Android’s share menu.</T>
   </>)}
   {group('ADVANCED')}
   {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<T muted>Open the items below when you need them.</T>)}
@@ -101,8 +100,8 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<>
    <T>Roster source: {registry.source}</T><T>Visible puppies: {registry.items.length}</T><T muted>{registry.status}</T><Action disabled={registry.refreshing} onPress={registry.refresh}>{registry.refreshing?'Refreshing…':'Refresh Assets'}</Action><Action disabled={registry.refreshing} onPress={registry.clearCache}>Clear Asset Cache</Action>
   </>)}
-  {section('release-hub','↻','Release Hub',"What's New, installed build and app updates",<><T style={s.bold}>React Native preview 1.8.0</T><T muted>Settings controls, local notification inbox and original hardware pointer artwork.</T><Action onPress={()=>Linking.openURL('https://github.com/markhitchk/pup-clinker/actions/workflows/react-native-preview-apk.yml')}>View Preview Builds</Action></>)}
-  {section('about','ⓘ','About Puppy Clicker','Version, links, development and legal information',<><Image source={require('../../assets/logos/puppy_clicker.png')} resizeMode="contain" style={s.aboutLogo}/><T style={s.bold}>Puppy Clicker · 1.8.0 Preview</T><T>Built by Harley’s Studios</T><T muted>React Native Android · com.harleytg.puppyclicker.preview</T><T muted>Production account migration and Google Play release validation are still required.</T></>)}
+  {section('release-hub','↻','Release Hub',"What's New, installed build and app updates",<><T style={s.bold}>{betaMode?'React Native [Beta] 1.8.0':'React Native preview 1.8.0'}</T><T muted>Settings controls, local notification inbox and original hardware pointer artwork.</T><Action onPress={()=>Linking.openURL('https://github.com/markhitchk/pup-clinker/actions/workflows/react-native-preview-apk.yml')}>View Preview Builds</Action></>)}
+  {section('about','ⓘ','About Puppy Clicker','Version, links, development and legal information',<><Image source={require('../../assets/logos/puppy_clicker.png')} resizeMode="contain" style={s.aboutLogo}/><T style={s.bold}>Puppy Clicker · 1.8.0 {betaMode?'Beta':'Preview'}</T><T>Built by Harley’s Studios</T><T muted>React Native Android · {betaMode?'com.harleytg.puppyclicker.beta':'com.harleytg.puppyclicker.preview'}</T><T muted>Production account migration and Google Play release validation are still required.</T></>)}
   {dangerAction?<DangerHoldDialog action={dangerAction} g={g} onDismiss={()=>setDangerAction(null)} onConfirmed={()=>{const type={settings:'resetSettings',progress:'resetGuestProgress',delete:'clearGuest'}[dangerAction];setDangerAction(null);act({type});}}/>:null}
  </View>;
 }
