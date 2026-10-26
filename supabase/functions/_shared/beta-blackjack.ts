@@ -1,3 +1,4 @@
+import {grantCasinoBonuses} from "./beta-casino-rewards.ts";
 /**
  * Server-only deterministic Blackjack shoe derived from the service secret.
  * The complete shoe is NEVER written to the Kotlin cloud save or returned to
@@ -47,7 +48,7 @@ function completedOutcome(round:Round,dealerCards:number[]){
  });
  return {dealerTotal,dealerBlackjack:dealerBj,dealerBust,hands,totalPayout:hands.reduce((n,h)=>n+h.payout,0)};
 }
-function finish(v:Dict,t:Dict,round:Round,deck:number[]){
+async function finish(v:Dict,t:Dict,round:Round,deck:number[],now:number){
  const dealer=[deck[1],deck[3]];
  let cursor=round.drawIndex;
  if(round.hands.some(h=>score(h.cards)<=21)&&!natural(dealer)){
@@ -59,7 +60,11 @@ function finish(v:Dict,t:Dict,round:Round,deck:number[]){
  v.casino_chips_v7=balance+outcome.totalPayout;t.casino_chips_v7="long";
  const finished={...round,dealerCards:dealer,drawIndex:cursor,activeHandIndex:-1,complete:true};
  // The finished state is presentation-only; the wager has already settled.
- v.beta_last_blackjack_result_v1=JSON.stringify({state:finished,outcome});
+ const bonus=await grantCasinoBonuses(v,t,{
+  roundId:round.roundId,
+  wager:round.hands.reduce((n,h)=>n+h.wager,0),payout:outcome.totalPayout
+ },now);
+ v.beta_last_blackjack_result_v1=JSON.stringify({state:finished,outcome,bonus});
  t.beta_last_blackjack_result_v1="string";
  v.beta_casino_round_v1="";t.beta_casino_round_v1="string";
 }
@@ -74,7 +79,7 @@ export async function applyBetaBlackjack(raw:unknown,intent:Intent,now=Date.now(
  const updated:Dict={...source,savedAtEpochMs:now,stores:{...stores,puppy_clicker_save:{...main,values:v,types:t}}};
  const pending=v.beta_casino_round_v1;
  if(intent.type==="blackjackStart"){
-  check(!pending,"CASINO_ROUND_ALREADY_ACTIVE");
+  check(!pending&&!v.casino_active_round_v1,"CASINO_ROUND_ALREADY_ACTIVE");
   const wager=intent.wager;check(Number.isSafeInteger(wager)&&typeof wager==="number"&&wager>=20&&wager<=100000&&wager%10===0,"BLACKJACK_INVALID_WAGER");
   check(number(v,"casino_chips_v7")>=wager,"BLACKJACK_INSUFFICIENT_CHIPS");
   const id=crypto.randomUUID(),deck=await shoe(id);
@@ -86,7 +91,7 @@ export async function applyBetaBlackjack(raw:unknown,intent:Intent,now=Date.now(
   if(natural(player)||natural([deck[1],deck[3]])){
    // Kotlin resolves either initial natural immediately; a dealer Blackjack
    // must never leave Double or Split available to a client.
-   finish(v,t,round,deck);
+   await finish(v,t,round,deck,now);
   }else{
    v.beta_casino_round_v1=JSON.stringify(round);t.beta_casino_round_v1="string";
    v.beta_last_blackjack_result_v1="";t.beta_last_blackjack_result_v1="string";
@@ -118,7 +123,7 @@ export async function applyBetaBlackjack(raw:unknown,intent:Intent,now=Date.now(
   }else throw Error("BLACKJACK_UNKNOWN_ACTION");
   round.drawIndex=index;
   const next=activeIndex(round);
-  if(next<0)finish(v,t,round,deck);
+  if(next<0)await finish(v,t,round,deck,now);
   else{
    round.activeHandIndex=next;
    v.beta_casino_round_v1=JSON.stringify(round);t.beta_casino_round_v1="string";
