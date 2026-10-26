@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Linking,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 // This is the project's public publishable key, not an admin/service-role secret.
@@ -9,7 +9,7 @@ const api=()=>NativeModules.PuppyBetaAccount;
 const isCallback=url=>typeof url==='string'&&
  /^discord-1547982688898777118:\/authorize\/callback(?:\?|$)/.test(url);
 
-export default function BetaAccountEntry(){
+export default function BetaAccountEntry({visible=true,onVerified,onClose}){
  const insets=useSafeAreaInsets();
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
@@ -25,6 +25,7 @@ export default function BetaAccountEntry(){
   try{
    const result=await native.status(publishableKey);
    setState(result);
+   if(result.status==='VERIFIED')onVerified?.(result);
   }catch(error){
    // A device can have a valid PupEye session but no Discord link yet.
    // Do not manufacture gameplay credentials or progression from this.
@@ -40,7 +41,7 @@ export default function BetaAccountEntry(){
    setState({status:'NEEDS_DISCORD'});
    setProblem('The PupEye server could not verify this beta installation. You may retry Discord sign-in.');
   }
- },[]);
+ },[onVerified]);
  const finish=useCallback(async url=>{
   if(!isCallback(url)||recent.current===url)return;
   recent.current=url;
@@ -49,6 +50,7 @@ export default function BetaAccountEntry(){
   try{
    const result=await api().completeDiscord(url,publishableKey);
    setState(result);
+   if(result.status==='VERIFIED')onVerified?.(result);
   }catch(error){
    const message=String(error?.message||'');
    if(message.includes('PUP_ACCOUNT_ON_OTHER_DEVICE')||message.includes('DISCORD_ALREADY_LINKED')){
@@ -58,7 +60,7 @@ export default function BetaAccountEntry(){
     setProblem('Discord/PupEye authorization did not complete. Confirm you selected Puppy Clicker [Beta] for the callback and try again.');
    }
   }finally{setBusy(false);}
- },[]);
+ },[onVerified]);
  useEffect(()=>{
   let alive=true;
   void check();
@@ -81,9 +83,11 @@ export default function BetaAccountEntry(){
   finally{setBusy(false);}
  },[]);
  const verified=state.status==='VERIFIED';
- return <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
+ return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+ <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
   <ScrollView contentContainerStyle={styles.content}>
+   <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>← Back to Puppy Clicker</Text></Pressable>
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
    <Text style={styles.title}>{verified?'Pup Account connected':'Sign in to Puppy Clicker'}</Text>
    <Text style={styles.body}>This beta has its own secured Android identity. It never reads, uninstalls or overwrites your original Kotlin app.</Text>
@@ -116,7 +120,8 @@ export default function BetaAccountEntry(){
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>
   </ScrollView>
- </View>;
+ </View>
+ </Modal>;
 }
 const styles=StyleSheet.create({
  root:{flex:1,backgroundColor:'#0F1A23'},
