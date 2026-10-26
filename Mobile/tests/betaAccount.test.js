@@ -6,16 +6,22 @@ import configPlugin from '../app.config.js';
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 const base=JSON.parse(read('../app.json')).expo;
 
-test('beta launcher routes to authenticated PupEye/Discord bootstrap, never guest gameplay',()=>{
+test('beta launches full Puppy Clicker screen hierarchy, with optional Discord sheet',()=>{
  const root=read('../App.js');
- const entry=read('../src/production/ProductionEntry.jsx');
  const beta=read('../src/production/BetaAccountEntry.jsx');
- assert.match(root,/export default function App\(\)\{return <SafeAreaProvider><ProductionEntry\/><\/SafeAreaProvider>;\}/);
- assert.match(entry,/<BetaAccountEntry\/>/);
+ const hook=read('../src/state/useGame.js');
+ assert.match(root,/<PuppyApp betaMode\/>/);
+ assert.match(root,/<BetaAccountEntry visible=\{accountOpen\}/);
+ assert.match(root,/PlayScreen g=/);
+ assert.match(root,/RosterScreen g=/);
+ assert.match(root,/SettingsScreen g=/);
+ assert.match(root,/CasinoScreen g=/);
  assert.match(beta,/Connect with Discord/);
  assert.match(beta,/cloudRead\(/);
- assert.doesNotMatch(beta,/useGame|GUEST_SAVE_KEY|AsyncStorage|serializeGuestSave|PuppyApp|freshGame/);
- assert.doesNotMatch(beta,/mayEnterGameplay\(true\)|onboardingComplete=true/);
+ assert.match(beta,/Modal visible=\{visible\}/);
+ assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
+ assert.match(hook,/projectKotlinCloudSave/);
+ assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });
 
 test('beta native module has isolated Keystore identity and signed Supabase calls',()=>{
