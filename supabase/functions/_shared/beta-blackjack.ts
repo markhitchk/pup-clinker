@@ -13,7 +13,7 @@ const isObj=(x:unknown):x is Dict=>Boolean(x)&&typeof x==="object"&&!Array.isArr
 const obj=(x:unknown)=>{if(!isObj(x))throw Error("INVALID_SAVE");return x;};
 const number=(v:Dict,k:string):number=>{const n=v[k]??0;if(typeof n!=="number"||!Number.isSafeInteger(n)||n<0)throw Error("UNSAFE_SAVE_NUMBER");return n;};
 const cap=(a:number,b:number)=>Math.min(Number.MAX_SAFE_INTEGER,a+b);
-const check=(v:unknown,k:string):asserts v=>{if(!v)throw Error(k);};
+function check(v:unknown,k:string):asserts v {if(!v)throw Error(k);}
 const rank=(id:number)=>id%13+1;
 const score=(cards:number[])=>{
  let total=0,aces=0;
