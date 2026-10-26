@@ -23,6 +23,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [notice,setNotice]=useState('');
  const [linkNative,setLinkNative]=useState(false);
  useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');}},[visible,initialMode]);
+ const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -131,11 +132,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   finally{setBusy(false);}
  },[]);
  const verified=state.status==='VERIFIED';
- return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+ return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={close}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
   <ScrollView contentContainerStyle={styles.content}>
-   <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
+   <Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
    <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
    <Text style={styles.body}>{onboarding?'Use a Pup username, email and password, or connect Discord instead. PupEye protects your cloud progression.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
@@ -152,7 +153,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
    {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
-   {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={onClose}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
+   {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={close}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
    {verified&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
     <Text style={styles.secondaryText}>Link Discord (optional)</Text>
    </Pressable>:null}
