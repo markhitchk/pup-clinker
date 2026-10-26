@@ -1,3 +1,11 @@
+## October 25 — beta launcher is the main game, not the migration screen
+
+The installable Android test APK uses `com.harleytg.puppyclicker.beta` and launcher name **Puppy Clicker [Beta]**. A beta-specific root now mounts the real `PuppyApp` screen hierarchy: Play, Care, Roster, Shop, Rewards, Casino and Settings. The Discord/PupEye screen is an optional, in-app account sheet. The game UI renders immediately on slow connections.
+
+**This is a UI parity/test shell, not completed playable parity.** The beta ignores `GUEST_SAVE_KEY` and blocks all unverified or unsigned economy mutations; it never writes a guest save or replaces a Kotlin Pup Account cloud save. After device-bound Discord authorization, a strictly read-only projector can show the existing `puppy-clicker-cloud-save` format from the server. Signed gameplay/casino transactions, comprehensive Kotlin save mapping, revision-aware signed cloud writes, device transfer of existing accounts, account entitlements, and remaining platform notifications must be completed and tested before releasing playable beta gameplay. The server's one-device rule remains enforced.
+
+The authoritative Kotlin reference remains archived for parity. The `com.harleytg.puppyclicker` Play replacement needs complete feature and security validation and the original signing identity; the isolated `.beta` APK is not an in-place update.
+
 ## October 25 — beta native Discord/PupEye account bootstrap
 
 - **Separate beta launcher no longer runs `classifyOriginalInstall()`:** `ProductionEntry` selects `BetaAccountEntry` for the `com.harleytg.puppyclicker.beta` package. The old `SIGNED_UPGRADE_REQUIRED` screen applies only to the reserved original production package handoff.
