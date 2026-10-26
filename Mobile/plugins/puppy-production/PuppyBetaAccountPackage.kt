@@ -117,7 +117,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private class ApiError(val code:String):Exception(code)
  private fun post(function:String,body:JSONObject,key:String,token:String?=null):JSONObject {
   publishable(key)
-  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link"))
+  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link","pup-credentials"))
   val c=URL(root+function).openConnection() as HttpURLConnection
   try {
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
@@ -183,7 +183,13 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    val message=when(e.code){
     "PUP_ACCOUNT_ON_OTHER_DEVICE","DISCORD_ALREADY_LINKED" ->
      "Account conflict. The Play app remains intact; contact Support for account recovery."
-    "BETA_LINK_REQUIRED" -> "Reconnect Discord to renew beta companion access."
+    "BETA_LINK_REQUIRED" -> "Sign in using your Pup Account or Discord."
+    "PUP_USERNAME_TAKEN" -> "This Pup username is already taken. Choose another."
+    "PUP_EMAIL_UNVERIFIED" -> "Verify your email from the confirmation message, then sign in."
+    "PUP_SIGNIN_INVALID" -> "Incorrect username/email or password."
+    "PUP_CREDENTIAL_ALREADY_LINKED" -> "This Pup Account already has a password login."
+    "PUP_ACCOUNT_RECOVERY_REQUIRED" -> "Account recovery is required. Contact Support."
+    "PUP_SIGNUP_UNAVAILABLE" -> "Could not register. Check your email or sign in."
     "BETA_OWNER_DEVICE_UNAVAILABLE" -> "Original Play app must have an active verified PupEye installation."
     else -> "PupEye server rejected login ("+e.code.take(64)+")."
    }
@@ -191,8 +197,24 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   }catch(e:Exception){p.reject("BETA_LOGIN_FAILED","Could not securely verify this beta login. Original progress was not changed.")}
  }.start()}
  @ReactMethod fun status(key:String,p:Promise)=runAsync(p){
-  if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_DISCORD")}
+  if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
+ }
+ @ReactMethod fun createPupAccount(username:String,email:String,password:String,key:String,p:Promise)=runAsync(p){
+  require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
+  require(email.length<=254 && email.contains("@") && password.length in 8..128){"Invalid Pup account input"}
+  val body=JSONObject().put("username",username).put("email",email.trim()).put("password",password)
+  val result=post("pup-credentials",envelope("native-sign-up",body),key,session(key))
+  if(result.optString("status")=="VERIFY_EMAIL")Arguments.createMap().apply{
+   putString("status","VERIFY_EMAIL")
+   putString("message","Check your email to verify your Pup Account, then sign in.")
+  } else account(key)
+ }
+ @ReactMethod fun signInPupAccount(login:String,password:String,key:String,p:Promise)=runAsync(p){
+  require(login.isNotBlank()&&login.length<=254&&password.length in 1..128){"Invalid Pup login"}
+  post("pup-credentials",envelope("native-sign-in",
+   JSONObject().put("login",login.trim()).put("password",password)),key,session(key))
+  account(key)
  }
  @ReactMethod fun beginDiscord(p:Promise) {
   try{
