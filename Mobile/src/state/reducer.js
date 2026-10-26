@@ -39,6 +39,7 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
+ if(action.type==='betaActionBlocked')return {...state,notice:'🔒 PupEye-protected gameplay requires signed cloud-save and economy support. This beta cannot change your live progress.'};
  // Kotlin V6 ViewModel's 1-second loop expires combos after 1600 ms.
  // This transient UI update must never reset the puppy's care clock.
  if(action.type==='comboTimeout'){
