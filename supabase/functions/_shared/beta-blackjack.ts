@@ -83,7 +83,9 @@ export async function applyBetaBlackjack(raw:unknown,intent:Intent,now=Date.now(
    hands:[{cards:player,wager,stood:false,doubled:false,fromSplit:false,splitAces:false}],
    activeHandIndex:0,complete:false};
   v.casino_chips_v7=number(v,"casino_chips_v7")-wager;t.casino_chips_v7="long";
-  if(natural(player)){
+  if(natural(player)||natural([deck[1],deck[3]])){
+   // Kotlin resolves either initial natural immediately; a dealer Blackjack
+   // must never leave Double or Split available to a client.
    finish(v,t,round,deck);
   }else{
    v.beta_casino_round_v1=JSON.stringify(round);t.beta_casino_round_v1="string";
