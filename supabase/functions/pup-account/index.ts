@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
     const envelope = verifyEnvelope(await req.json());
-    if (!["account-status", "cloud-save-read", "cloud-save-write", "account-update"].includes(envelope.action)) {
+    if (!["account-status", "cloud-save-read", "cloud-save-write", "account-update", "account-bootstrap"].includes(envelope.action)) {
       throw new HttpError(400, "PUP_ACCOUNT_ACTION_INVALID", "Unsupported Pup Account action.");
     }
 
@@ -184,6 +184,32 @@ Deno.serve(async (req: Request) => {
         .eq("status", "active").select("id,display_name").single();
       if (updateError) throw updateError;
       return json(200, { updated: true, displayName: changed.display_name });
+    }
+    if (envelope.action === "account-bootstrap") {
+      const { data: save, error: saveError } = await admin.from("pup_account_saves")
+        .select("revision,generation,save_schema,save_data,updated_at")
+        .eq("player_uuid", session.player.id).maybeSingle();
+      if (saveError) throw saveError;
+      return json(200, {
+        readOnly: false, accountWritable: true, linkedFromPlay: false,
+        playerId: session.player.player_id ?? null,
+        friendCode: session.player.friend_code ?? null,
+        guildRole: session.player.guild_role ?? null,
+        account: {
+          id: account.id, status: account.status, stage: account.stage,
+          username: account.username, displayName: account.display_name ?? null,
+          avatarHash: account.avatar_hash ?? null, discordUserId: account.discord_user_id,
+        },
+        cloudSave: save ? {
+          exists: true, revision: Number(save.revision), generation: Number(save.generation),
+          updatedAt: save.updated_at,
+        } : { exists: false, revision: 0, generation: 0, updatedAt: null },
+        save: save ? {
+          revision: Number(save.revision), generation: Number(save.generation),
+          saveSchema: Number(save.save_schema), saveData: save.save_data,
+          updatedAt: save.updated_at,
+        } : null,
+      });
     }
     if (envelope.action === "account-status") {
       const { data: save, error: saveError } = await admin

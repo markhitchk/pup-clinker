@@ -15,7 +15,7 @@ import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts
 // read-only, expiring companion link after Discord proves account ownership.
 // The primary PupEye installation, player and cloud-write authority never move.
 const MAX_BETA_GRANT_MS = 7 * 24 * 60 * 60 * 1000;
-const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update"]);
+const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-bootstrap"]);
 
 Deno.serve(async (req: Request) => {
   try {
@@ -128,6 +128,37 @@ Deno.serve(async (req: Request) => {
       await audit(admin, "BETA_ACCOUNT_DISPLAY_NAME_UPDATED", "info",
         { accountId: account.id }, session.player.id, session.installation.id);
       return json(200, { updated: true, displayName: changed.display_name, gameplayReadOnly: true });
+    }
+    if (envelope.action === "beta-bootstrap") {
+      // Single signed startup response: account identity and snapshot share the
+      // same ownership/enforcement check and one network round trip.
+      const { data: save, error: saveError } = await admin.from("pup_account_saves")
+        .select("revision,generation,save_schema,save_data,updated_at")
+        .eq("player_uuid", account.player_uuid).maybeSingle();
+      if (saveError) throw saveError;
+      return json(200, {
+        readOnly: true,
+        accountWritable: true,
+        linkedFromPlay: true,
+        playerId: owner.player_id,
+        friendCode: owner.friend_code,
+        guildRole: owner.guild_role ?? null,
+        account: {
+          id: account.id, stage: account.stage, status: account.status,
+          username: account.username, displayName: account.display_name ?? null,
+          avatarHash: account.avatar_hash ?? null,
+          discordUserId: account.discord_user_id,
+        },
+        cloudSave: save ? {
+          exists: true, revision: Number(save.revision), generation: Number(save.generation),
+          updatedAt: save.updated_at,
+        } : { exists: false, revision: 0, generation: 0, updatedAt: null },
+        save: save ? {
+          revision: Number(save.revision), generation: Number(save.generation),
+          saveSchema: Number(save.save_schema), saveData: save.save_data,
+          updatedAt: save.updated_at,
+        } : null,
+      });
     }
     if (envelope.action === "beta-cloud-read") {
       const { data: save, error: saveError } = await admin
