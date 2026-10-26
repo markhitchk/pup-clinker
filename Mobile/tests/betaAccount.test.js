@@ -84,3 +84,28 @@ test('existing Play Pup Account can authorize read-only beta without device tran
  assert.match(migration,/revoke all on table public\.pup_beta_account_links from anon, authenticated/);
  assert.match(beta,/read-only beta mode/);
 });
+
+test('native Pup Account credentials are independent from Discord and never stored as guest progress',()=>{
+ const bridge=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const screen=read('../src/production/BetaAccountEntry.jsx');
+ const endpoint=read('../../supabase/functions/pup-credentials/index.ts');
+ const account=read('../../supabase/functions/pup-account/index.ts');
+ const migration=read('../../supabase/migrations/20261025221000_pup_native_credentials.sql');
+ for(const required of ['createPupAccount','signInPupAccount','native-sign-up','native-sign-in'])
+  assert.ok(bridge.includes(required)||endpoint.includes(required),required);
+ assert.match(bridge,/post\("pup-credentials"/);
+ assert.match(screen,/secureTextEntry/);
+ assert.match(screen,/USERNAME OR EMAIL/);
+ assert.match(screen,/CREATE|Create Pup Account/);
+ assert.match(endpoint,/signInWithPassword/);
+ assert.match(endpoint,/auth\.signUp/);
+ assert.match(endpoint,/email_confirmed_at/);
+ assert.match(endpoint,/assertGlobalEnforcementAllowed/);
+ assert.match(endpoint,/pup_credential_links/);
+ assert.match(endpoint,/pup_beta_account_links/);
+ assert.doesNotMatch(endpoint,/cloud-save-write|password_hash|bcrypt/);
+ assert.match(account,/if \(!existing\.discord_user_id\) return existing/);
+ assert.match(migration,/alter column discord_user_id drop not null/);
+ assert.match(migration,/enable row level security/);
+ assert.match(migration,/revoke all on public\.pup_credential_links from anon, authenticated/);
+});
