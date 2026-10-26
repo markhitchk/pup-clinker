@@ -1,3 +1,4 @@
+import {awardBetaXp,rollBetaDay,settleBetaAchievements} from "./beta-economy.ts";
 /**
  * Server-authoritative subset of the Kotlin V6 economy. The client submits
  * intent only. Never accept client-provided balances, RNG, XP or save data.
@@ -46,6 +47,7 @@ export function applyBetaLiveGameplay(raw:unknown,intent:LiveIntent,now=Date.now
  const values:Dict={...original},types:Dict={...originalTypes};
  const result:Dict={...source,stores:{...stores,puppy_clicker_save:{...main,values,types}},savedAtEpochMs:now};
  const kind=intent?.kind;
+ rollBetaDay(values,types,now);
  if(intent?.type==="tap"){
   const last=int(values,"beta_last_tap_at_v1",0);
   if(now-last<65)throw new Error("PUP_TAP_RATE_LIMIT");
@@ -89,6 +91,7 @@ export function applyBetaLiveGameplay(raw:unknown,intent:LiveIntent,now=Date.now
    }
   }
   careWrite(values,types,now);
+  awardBetaXp(values,types,"MANUAL_TAP");
  }else if(intent?.type==="care"){
   let treats=int(values,"treats"),bones=int(values,"bones_v7");
   let h=int(values,"happiness",100),f=int(values,"fullness",100),e=int(values,"energy",100),
@@ -118,7 +121,9 @@ export function applyBetaLiveGameplay(raw:unknown,intent:LiveIntent,now=Date.now
   setInt(values,types,"bond_v5",b);
   setLong(values,types,"care_actions_v5",add(int(values,"care_actions_v5"),1));
   careWrite(values,types,now);
+  awardBetaXp(values,types,"CARE_ACTION");
  }else throw new Error("BETA_GAMEPLAY_NOT_PORTED");
+ settleBetaAchievements(values,types);
  setLong(values,types,"last_seen",now);
  return result;
 }
