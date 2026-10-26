@@ -369,11 +369,17 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  }
  // Only gameplay intent crosses into native code; balances, XP and
  // saves are recalculated inside the signed PupEye server endpoint.
- @ReactMethod fun gameplayAction(type:String,kind:String,key:String,p:Promise)=runAsync(p){
-  require(type=="tap"||type=="care"){"Unsupported live gameplay action"}
-  if(type=="care")require(kind in setOf("feed","play","wash","rest","cuddle")){"Unsupported care action"}
-  val payload=JSONObject().put("type",type)
-  if(type=="care")payload.put("kind",kind)
+ @ReactMethod fun gameplayAction(intentJson:String,key:String,p:Promise)=runAsync(p){
+  require(intentJson.length in 2..4096){"Invalid gameplay intent size"}
+  val payload=JSONObject(intentJson)
+  val action=payload.optString("type")
+  require(action in setOf(
+   "tap","care","purchase","ticket","accessory","equip","exchange","skill",
+   "daily","claimDailyGoal","parkStart","parkClaim",
+   "slotsStart","slotsReveal","rouletteStart","rouletteReveal",
+   "plinkoStart","plinkoReveal","scratchStart","scratchReveal",
+   "wheelStart","wheelReveal"
+  )){"Unsupported live gameplay action"}
   val answer=post("pup-beta-link",envelope("beta-gameplay",payload),key,session(key))
   Arguments.createMap().apply{
    putDouble("revision",answer.getDouble("revision"))
