@@ -30,3 +30,23 @@ test('refuses malformed and incompatible cloud data rather than inventing progre
   assert.throws(()=>projectKotlinCloudSave(input));
  }
 });
+
+test('reads current Kotlin ticket, prestige, XP and per-puppy care keys',()=>{
+ const source={format:'puppy-clicker-cloud-save',version:1,stores:{
+  puppy_clicker_save:{values:{
+   puppy_style:'classic',puppy_name:'Buddy',
+   upgrade_ticket_common:9,ticket_shop_purchase_rare_v7:2,
+   prestige_skill_tap_training_v6:4,player_xp_v1:775,
+   care_profile_v1_classic_energy:68,care_profile_v1_classic_fullness:80,
+   care_profile_v1_classic_happiness:90,care_profile_v1_classic_cleanliness:60,
+   care_profile_v1_classic_bond:31,care_profile_v1_classic_updated_at:1790000000000,
+  },types:{}},
+  puppy_seasonal_v1:{values:{},types:{}}
+ }};
+ const result=projectKotlinCloudSave(JSON.stringify(source));
+ assert.equal(result.ticketInventory.COMMON,9);
+ assert.equal(result.ticketShopPurchases.RARE,2);
+ assert.equal(result.prestigeSkills.TAP_TRAINING,4);
+ assert.equal(result.xp,775);
+ assert.equal(result.careProfiles.classic.energy,68);
+});
