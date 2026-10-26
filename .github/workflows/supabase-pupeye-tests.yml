@@ -43,4 +43,5 @@ jobs:
             supabase/functions/pupeye-save-attestation/index.ts \
             supabase/functions/pupeye-device-transfer/index.ts \
             supabase/functions/pupeye-support-ban/index.ts \
-            supabase/functions/pup-account/index.ts
+            supabase/functions/pup-account/index.ts \
+            supabase/functions/pup-beta-link/index.ts
