@@ -48,7 +48,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
     {profileMessage?<T accessibilityRole="alert" muted>{profileMessage}</T>:null}
    <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={betaMode||!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
    <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={!validBirthday(Number(month),Number(day))} onPress={()=>{
-     if(betaMode){void onUpdateBirthday?.({birthdayMonth:Number(month),birthdayDay:Number(day)}).then(()=>setProfileMessage('✓ Birthday saved securely on this device.')).catch(()=>setProfileMessage('Unable to save birthday.'));}
+     if(betaMode){void onUpdateBirthday?.({birthdayMonth:Number(month),birthdayDay:Number(day)}).then(ok=>setProfileMessage(ok?'✓ Birthday saved securely on this device.':'Unable to save birthday.')).catch(()=>setProfileMessage('Unable to save birthday.'));}
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
     }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
