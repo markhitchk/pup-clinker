@@ -47,7 +47,8 @@ export function useAccountOnboarding({enabled,account,activateAccount}){
   for(const name of Object.keys(DEFAULT_PREFERENCES))if(Object.hasOwn(patch,name))
    safe[name]=sanitizePreferences({...current.current,...patch})[name];
   for(const name of ['birthdayMonth','birthdayDay'])if(Number.isInteger(patch[name]))safe[name]=patch[name];
-  try{await persist(safe);setProblem('');}catch{setProblem('Could not save your setup choices. Please retry.');}
+  try{await persist(safe);setProblem('');return true;}
+  catch{setProblem('Could not save your setup choices. Please retry.');return false;}
  },[persist]);
  const next=useCallback(async()=>{
   if(working.current||!ready)return;
