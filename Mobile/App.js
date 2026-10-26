@@ -1012,8 +1012,8 @@ export function PuppyApp({betaMode=false}){
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Cloud preview · read-only':cloudState==='NO_CLOUD_SAVE'?'No cloud save found':'Account connected')
-     :'🔒 Sign in to Pup Account'}  ›</Txt>
+     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay preview':cloudState==='NO_CLOUD_SAVE'?'Account synced · no save':'Profile editable')
+     :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">

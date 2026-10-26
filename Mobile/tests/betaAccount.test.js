@@ -21,7 +21,7 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
  assert.match(hook,/projectKotlinCloudSave/);
- assert.match(root,/Cloud preview · read-only/);
+ assert.match(root,/Account synced · gameplay preview/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{betaMode\}/);
  assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
@@ -87,7 +87,7 @@ test('existing Play Pup Account can authorize read-only beta without device tran
  assert.doesNotMatch(endpoint,/cloud-save-write|revoke.*installation|delete.*pup_account_saves/);
  assert.match(migration,/enable row level security/);
  assert.match(migration,/revoke all on table public\.pup_beta_account_links from anon, authenticated/);
- assert.match(beta,/read-only beta mode/);
+ assert.match(beta,/Profile changes are writable/);
 });
 
 test('native Pup Account credentials are independent from Discord and never stored as guest progress',()=>{
@@ -129,4 +129,22 @@ test('signed account profile edits never permit beta gameplay save writes',()=>{
  assert.match(hook,/updateAccountName/);
  assert.match(settings,/onUpdateAccountName/);
  assert.doesNotMatch(beta,/beta-cloud-write/);
+});
+
+test('startup uses one signed bootstrap and an encrypted display-only cache',()=>{
+ const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const hook=read('../src/state/useGame.js');
+ const sheet=read('../src/production/BetaAccountEntry.jsx');
+ const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
+ const own=read('../../supabase/functions/pup-account/index.ts');
+ for(const phrase of ['@ReactMethod fun bootstrap','@ReactMethod fun cachedBootstrap','@ReactMethod fun clearCachedBootstrap','account_preview_v1.pup'])
+  assert.ok(native.includes(phrase),phrase);
+ assert.match(native,/write\(accountPreviewFile/);
+ assert.match(hook,/native\.cachedBootstrap\(\)/);
+ assert.match(hook,/native\.bootstrap\(PUBLISHABLE_KEY\)/);
+ assert.doesNotMatch(hook,/native\.cloudRead\(PUBLISHABLE_KEY\)/);
+ assert.match(sheet,/if\(visible\)void check\(\)/);
+ assert.match(endpoint,/beta-bootstrap/);
+ assert.match(own,/account-bootstrap/);
+ assert.match(hook,/CACHED_OFFLINE/);
 });

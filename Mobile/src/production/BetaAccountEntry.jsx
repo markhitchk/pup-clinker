@@ -72,11 +72,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  },[onVerified]);
  useEffect(()=>{
   let alive=true;
-  void check();
+  // The closed account sheet must not issue a second full account lookup on launch.
+  if(visible)void check();
   void Linking.getInitialURL().then(url=>{if(alive&&isCallback(url))void finish(url);});
   const sub=Linking.addEventListener('url',e=>{if(isCallback(e.url))void finish(e.url);});
   return ()=>{alive=false;sub.remove();};
- },[check,finish]);
+ },[check,finish,visible]);
  const signin=useCallback(async()=>{
   setBusy(true);setProblem('');recent.current='';
   try{await api().beginDiscord();}
@@ -147,7 +148,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
       <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
-      {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account in read-only beta mode. The Play installation stays active; no device transfer or guest progress was created.</Text>:null}</>:
+      {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Profile changes are writable; gameplay progression still requires the signed economy port. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
    {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
@@ -212,7 +213,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    </Pressable>
    {!onboarding?<View style={styles.card}>
     <Text style={styles.cardTitle}>About the beta</Text>
-    <Text style={styles.body}>The original Puppy Clicker remains installed and retains cloud-save write authority. Discord can authorize this beta as a read-only companion without changing the primary PupEye device.</Text>
+    <Text style={styles.body}>Your Pup Account profile is editable. The original Play installation still owns progression writes until signed React gameplay transactions are implemented.</Text>
     <Text style={styles.body}>Gameplay stays locked until the authenticated cloud state and signed economy are supported end to end. This is not a guest gameplay mode.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
