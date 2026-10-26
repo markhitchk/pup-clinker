@@ -21,7 +21,7 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
  assert.match(hook,/projectKotlinCloudSave/);
- assert.match(root,/Account synced · gameplay preview/);
+ assert.match(root,/Account synced · live Play & Care/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{betaMode\}/);
  assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
@@ -69,7 +69,7 @@ test('beta package registers the Discord callback without altering Play configur
  }
 });
 
-test('existing Play Pup Account can authorize read-only beta without device transfer',()=>{
+test('existing Play Pup Account can authorize signed beta companion without device transfer',()=>{
  const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
  const beta=read('../src/production/BetaAccountEntry.jsx');
  const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
@@ -87,7 +87,7 @@ test('existing Play Pup Account can authorize read-only beta without device tran
  assert.doesNotMatch(endpoint,/cloud-save-write|revoke.*installation|delete.*pup_account_saves/);
  assert.match(migration,/enable row level security/);
  assert.match(migration,/revoke all on table public\.pup_beta_account_links from anon, authenticated/);
- assert.match(beta,/Profile changes are writable/);
+ assert.match(beta,/Signed Play and Care actions synchronize with Play/);
 });
 
 test('native Pup Account credentials are independent from Discord and never stored as guest progress',()=>{
@@ -115,7 +115,7 @@ test('native Pup Account credentials are independent from Discord and never stor
  assert.match(migration,/revoke all on public\.pup_credential_links from anon, authenticated/);
 });
 
-test('signed account profile edits never permit beta gameplay save writes',()=>{
+test('signed profile edits remain isolated from approved beta gameplay actions',()=>{
  const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
  const beta=read('../../supabase/functions/pup-beta-link/index.ts');
  const account=read('../../supabase/functions/pup-account/index.ts');
@@ -128,7 +128,9 @@ test('signed account profile edits never permit beta gameplay save writes',()=>{
  assert.match(account,/account-update/);
  assert.match(hook,/updateAccountName/);
  assert.match(settings,/onUpdateAccountName/);
- assert.doesNotMatch(beta,/beta-cloud-write/);
+ assert.match(beta,/beta-gameplay/);
+ assert.match(native,/@ReactMethod fun gameplayAction/);
+ assert.match(hook,/BETA_LIVE_ACTIONS/);
 });
 
 test('startup uses one signed bootstrap and an encrypted display-only cache',()=>{
