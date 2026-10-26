@@ -315,10 +315,26 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     };
 
-    const { error: writeError } = await admin
-      .from("pup_account_saves")
-      .upsert(row, { onConflict: "player_uuid" });
-    if (writeError) throw writeError;
+    // Atomic compare-and-swap: the beta and Kotlin Play can both write,
+    // so a stale Play upsert must never overwrite a newer beta revision.
+    if (current) {
+      const { data: updated, error: writeError } = await admin
+        .from("pup_account_saves")
+        .update(row)
+        .eq("player_uuid", session.player.id)
+        .eq("revision", expectedRevision)
+        .select("revision").maybeSingle();
+      if (writeError) throw writeError;
+      if (!updated) throw new HttpError(
+        409, "CLOUD_SAVE_CONFLICT", "Cloud save changed while updating; reload before saving."
+      );
+    } else {
+      const { error: writeError } = await admin
+        .from("pup_account_saves").insert(row);
+      if (writeError) throw new HttpError(
+        409, "CLOUD_SAVE_CONFLICT", "Cloud save was created concurrently; reload before saving."
+      );
+    }
 
     return json(200, {
       realtimeTopic: `pup-account:${account.realtime_topic}`,
