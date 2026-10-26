@@ -78,10 +78,10 @@ export function applyBetaLiveGameplay(raw:unknown,intent:LiveIntent,now=Date.now
   setInt(values,types,"beta_combo_v1",combo);
   setInt(values,types,"best_combo",Math.max(int(values,"best_combo"),combo));
   setLong(values,types,"beta_last_tap_at_v1",now);
-  // Kotlin's upgrade ticket RNG: 1/500, rarity weights 60/25/10/4/1.
+  // Kotlin PuppyEconomyV7: 1/500 drop, rarity roll [0,10000) thresholds.
   if(Math.floor(Math.random()*500)===0){
-   const roll=Math.floor(Math.random()*100);
-   const rarity=roll<60?"common":roll<85?"uncommon":roll<95?"rare":roll<99?"epic":"legendary";
+   const roll=Math.floor(Math.random()*10000);
+   const rarity=roll<7800?"common":roll<9350?"uncommon":roll<9850?"rare":roll<9980?"epic":"legendary";
    const key="upgrade_ticket_"+rarity,owned=int(values,key);
    if(owned<9999){
     setInt(values,types,key,owned+1);
