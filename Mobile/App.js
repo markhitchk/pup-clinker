@@ -1,4 +1,5 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
+import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
@@ -10,7 +11,7 @@ import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
 import {themedStyles} from './src/theme.js';
 import React,{useEffect,useRef,useState} from 'react';
-import {Alert,Animated,Easing,Image,ImageBackground,Modal,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,BackHandler,useColorScheme,useWindowDimensions} from 'react-native';
+import {Alert,Animated,Easing,Image,ImageBackground,Modal,NativeModules,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,BackHandler,useColorScheme,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
 import {useGame} from './src/state/useGame.js';
 import {useRoster} from './src/state/useRoster.js';
@@ -946,13 +947,14 @@ function OnboardingScreen({g,act,notifications}){
   </View>
  </Card>;
 }
-// The shipped root is an authoritative Pup Account handoff, never the old guest engine.
-export default function App(){return <SafeAreaProvider><ProductionEntry/></SafeAreaProvider>;}
-// Retained for Kotlin UI parity fixtures. Not mounted by the production entry point.
-export function PuppyApp(){
+// Beta uses the real Puppy Clicker screen hierarchy, not a migration-only page.
+// The production package continues to require an original-key-signed Play upgrade.
+export default function App(){return <SafeAreaProvider>{NativeModules.PuppyBetaAccount?.isBeta===true?<PuppyApp betaMode/>:<ProductionEntry/>}</SafeAreaProvider>;}
+export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,act}=useGame();
+ const {state,act,account,cloudState,refreshAccount}=useGame({mode:betaMode?'beta':'guest'});
+ const [accountOpen,setAccountOpen]=useState(false);
  const registry=useRoster();
  const {width}=useWindowDimensions();
  const [tab,setTab]=useState('play');
@@ -967,13 +969,13 @@ export function PuppyApp(){
  const motion=effectiveMotion(saved);
  const g={...saved,animationsEnabled:motion.casino,tapAnimationsEnabled:motion.tap,idleAnimationsEnabled:motion.decorative&&saved.animationsEnabled,buttonMotionEnabled:motion.buttons};
  const [inboxOpen,setInboxOpen]=useState(false);
- const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete,act,onOpen:()=>setInboxOpen(true)});
+ const notifications=useNotifications({game:saved,ready:!betaMode&&state.ready&&saved.onboardingComplete,act,onOpen:()=>setInboxOpen(true)});
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
-  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics}/>;
+  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>setAccountOpen(true)} cloudState={cloudState}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
@@ -993,10 +995,17 @@ export function PuppyApp(){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
+  {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account sign in"
+    onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
+    <Txt style={styles.small}>{account?.status==='VERIFIED'?'🔐 '+account.username+' · '+(cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Cloud data view only':'Account connected'):'🔒 Connect Pup Account · Discord sign-in'}  ›</Txt>
+   </Pressable>:null}
+  {betaMode?<View style={{paddingHorizontal:14,paddingBottom:4}}>
+   <Txt muted style={styles.tiny}>{cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Read-only original cloud progress · protected actions unavailable until signed gameplay is ported':'Game interface loaded · protected gameplay requires verified Pup Account and signed transactions'}</Txt>
+  </View>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
-   {!state.ready?<Card title="Loading local guest data…"><Txt muted>Reading device cache.</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
+   {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
   {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
@@ -1004,6 +1013,7 @@ export function PuppyApp(){
    </Pressable>)}
   </View>:null}
   <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)}/>
+  {betaMode?<BetaAccountEntry visible={accountOpen} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>:null}
  </PuppyPointer>;
 }
 const styles=themedStyles(()=>({
