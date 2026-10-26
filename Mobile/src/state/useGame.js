@@ -8,7 +8,12 @@ import {GUEST_SAVE_KEY,parseGuestSave,serializeGuestSave} from './guestSave.js';
 import {MONTHLY_REWARDS_URL,MONTHLY_REWARDS_CACHE_KEY,MONTHLY_REWARDS_REFRESH_MS,monthKey,localEpochDay,fallbackSchedule,parseMonthlySchedule} from '../engine/monthlyRewards.js';
 
 const PUBLISHABLE_KEY=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
-const BETA_LIVE_ACTIONS=new Set(['tap','care']);
+const BETA_LIVE_ACTIONS=new Set([
+ 'tap','care','purchase','ticket','accessory','equip','exchange','skill','daily',
+ 'claimDailyGoal','parkStart','parkClaim',
+ 'slotsStart','slotsReveal','rouletteStart','rouletteReveal','plinkoStart','plinkoReveal',
+ 'scratchStart','scratchReveal','wheelStart','wheelReveal'
+]);
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
@@ -210,7 +215,10 @@ export function useGame({mode='guest'}={}){
    }
    pendingLiveWrites.current++;
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
-    const result=await native.gameplayAction(action.type,action.type==='care'?action.kind:'',PUBLISHABLE_KEY);
+    const intent=Object.fromEntries(
+     ['type','kind','upgradeId','rarity','name','skill','goalId','amount','wager','bet'].filter(k=>action[k]!==undefined).map(k=>[k,action[k]])
+    );
+    const result=await native.gameplayAction(JSON.stringify(intent),PUBLISHABLE_KEY);
     const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
     ++currentRequest.current; // Ignore an older overlapping bootstrap reply.
     dispatch({type:'hydrate',game,now:Date.now()});
@@ -220,7 +228,7 @@ export function useGame({mode='guest'}={}){
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
     const message=/CLOUD_SAVE_CONFLICT/.test(code)
      ?'Cloud progress changed; refreshing before retry.'
-     :/GAMEPLAY_REJECTED/.test(code)?'Action rejected by PupEye or puppy care limits.'
+     :/GAMEPLAY_REJECTED/.test(code)?'Action rejected: insufficient funds, ineligible reward or account restrictions.'
      :'Cloud action was not saved. Check your connection.';
     if(ToastAndroid?.show)ToastAndroid.show(message,ToastAndroid.SHORT);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
