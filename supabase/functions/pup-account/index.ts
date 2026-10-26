@@ -96,7 +96,7 @@ async function linkLocalAccount(req: Request, admin: any, session: any): Promise
   // Email equality is a collision guard, NOT proof of ownership or authority
   // to migrate that player's save. Require approved transfer/Discord linking.
   if (!byPlayer) {
-    const escapedEmail = user.email.toLowerCase().replace(/[\\%_]/g, "\\  if (byPlayer?.auth_user_id && byPlayer.auth_user_id !== user.id) {");
+    const escapedEmail = user.email.toLowerCase().replace(/[\\%_]/g, "\\$&");
     const { data: legacyMatches, error: legacyError } = await admin
       .from("pupeye_players").select("id")
       .ilike("discord_email", escapedEmail)
