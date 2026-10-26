@@ -64,6 +64,7 @@ export function transition(state,action){
   return {...state,game};
  }
  if(action.type==='monthlySchedule')return {...state,monthlySchedule:action.schedule};
+ if(action.type==='dismissGacha')return {...state,gachaResult:null,gachaDismissedId:state.gachaResult?.id||state.gachaDismissedId};
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
   if(action.game&&!action.readOnly)applyOfflineCare(game,action.now||Date.now());
@@ -80,7 +81,8 @@ export function transition(state,action){
   game.pendingWheel=validPendingWheel(game.pendingWheel)?game.pendingWheel:null;
   const last=game.betaLastCasinoResult;
   return {...state,game,blackjack,blackjackDisplay:game.betaBlackjackDisplay||null,
-   slotsDisplay:last?.game==='SLOTS'?last:null,
+   gachaResult:game.betaLastGachaResult?.id!==state.gachaDismissedId?game.betaLastGachaResult:null,
+ slotsDisplay:last?.game==='SLOTS'?last:null,
    rouletteDisplay:last?.game==='ROULETTE'?last:null,
    plinkoDisplay:last?.game==='PLINKO'?last:null,
    scratchDisplay:last?.type==='SCRATCHERS'?last:null,
