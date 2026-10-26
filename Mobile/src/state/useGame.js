@@ -13,7 +13,8 @@ const BETA_LIVE_ACTIONS=new Set([
  'claimDailyGoal','parkStart','parkClaim','prestige',
  'slotsStart','slotsReveal','rouletteStart','rouletteReveal','plinkoStart','plinkoReveal',
  'scratchStart','scratchReveal','wheelStart','wheelReveal',
- 'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit'
+ 'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit',
+ 'gacha','switch','rename'
 ]);
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
@@ -217,7 +218,7 @@ export function useGame({mode='guest'}={}){
    pendingLiveWrites.current++;
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
     const intent=Object.fromEntries(
-     ['type','kind','upgradeId','rarity','name','skill','goalId','amount','wager','bet'].filter(k=>action[k]!==undefined).map(k=>[k,action[k]])
+     ['type','kind','id','payment','upgradeId','rarity','name','skill','goalId','amount','wager','bet'].filter(k=>action[k]!==undefined).map(k=>[k,action[k]])
     );
     const result=await native.gameplayAction(JSON.stringify(intent),PUBLISHABLE_KEY);
     const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
