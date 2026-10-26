@@ -28,7 +28,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </Pressable>{expanded===id?<View style={s.body}>{children}</View>:null}
  </View>;
  const group=title=><T style={s.group}>{title}</T>;
- const pending=<T muted>{betaMode?'The beta displays Kotlin-compatible cloud progress read-only. Signed economy and complete PupEye services are still being migrated.':'Available after the original linked account and protected services are migrated. This preview has local guest progress.'}</T>;
+ const pending=<T muted>{betaMode?'Live Play and Care are signed and saved to the Kotlin Pup Account cloud. This other feature still needs its protected server-side implementation.':'Available after the original linked account and protected services are migrated. This preview has local guest progress.'}</T>;
  return <View style={s.page}>
   <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
   <View style={s.identity}>
@@ -37,7 +37,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T muted>{betaMode?'Pup Account · Profile edits save securely. Gameplay progress is currently read-only.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
+   <T muted>{betaMode?'Pup Account · Live Play and Care save securely and sync to Play.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
     if(!betaMode){act({type:'onboardPlayer',name});return;}
     setProfileBusy(true);setProfileMessage('');
     Promise.resolve(onUpdateAccountName?.(name.trim()))
@@ -52,14 +52,14 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
     }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
-  {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>The original Play app and beta have separate Android identities. Existing-account access requires a server-authorized device transfer.</T></>:pending)}
+  {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>The original Play app and beta have separate Android identities. An authorized companion link provides access without replacing the Play installation.</T></>:pending)}
   {group('APP & EXPERIENCE')}
   {section('appearance','🎨','Appearance','Theme, accent color, scale, contrast and motion',<>
    <Choices label="THEME" value={g.themeMode} items={[["light","Light"],["dark","Dark"],["system","Follow System"]]} onChange={v=>pref('themeMode',v)}/>
    <T style={s.bold}>ACCENT COLOR</T><T muted>Current: {ACCENT_PRESETS.find(p=>p[1]===g.accentHex)?.[0]||g.accentHex}</T>
    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10}}>{ACCENT_PRESETS.map(([title,color])=><Pressable key={color} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{checked:g.accentHex===color}} onPress={()=>pref('accentHex',color)} style={{alignItems:'center',gap:4}}><View style={[s.swatch,{backgroundColor:color,borderColor:g.accentHex===color?C.text:C.line}]}>{g.accentHex===color?<T style={{color:'#071014',fontWeight:'900'}}>✓</T>:null}</View><T style={s.small}>{title.split(' ')[0]}</T></Pressable>)}</ScrollView>
    <Action onPress={()=>setCustom(!custom)}>Custom Color</Action>{custom?<><TextInput accessibilityLabel="Custom accent HEX" value={hex} onChangeText={setHex} autoCapitalize="characters" maxLength={7} style={s.input}/><Action disabled={!/^#[0-9a-f]{6}$/i.test(hex)} onPress={()=>{pref('accentHex',hex);setCustom(false);}}>Apply Custom Color</Action></>:null}
-   <View style={s.preview}><T style={s.bold}>LIVE PREVIEW</T><T>Puppy Clicker</T><T muted>Theme preview</T><View style={[s.action,{backgroundColor:C.accent}]}><T style={{color:C.onAccent}}>Accent Preview</T></View><T muted>{g.themeMode} · {g.accentHex}</T></View>
+   <View style={s.preview}><T style={s.bold}>THEME EXAMPLE</T><T>Puppy Clicker</T><T muted>Current theme</T><View style={[s.action,{backgroundColor:C.accent}]}><T style={{color:C.onAccent}}>Accent example</T></View><T muted>{g.themeMode} · {g.accentHex}</T></View>
    <Choices label="Performance preset" value={g.performancePreset} items={[["automatic","Automatic"],["quality","Quality"],["battery_saver","Battery Saver"]]} onChange={v=>pref('performancePreset',v)}/>
    {toggle('animatedUi','Animated UI','Optional interface transitions and decorative movement.')}
    {toggle('buttonAnimations','Button animations','Small press and interaction motion.')}
@@ -82,7 +82,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('anonymousDiagnosticsEnabled','Optional anonymous diagnostics','Record recent screen visits locally for troubleshooting. No telemetry is uploaded.')}
    {toggle('crashReportsEnabled','Optional crash reports','Save a local error summary when Android can finish writing it. No remote crash destination is configured.')}
    {toggle('supportIdentityEnabled','Include account identity in support reports','Include your local display name only when you choose to share a support report.')}
-   <T muted>{betaMode?'This beta never loads guest saves. Kotlin cloud data is projected read-only, and transactions remain blocked until signed PupEye gameplay is complete.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
+   <T muted>{betaMode?'This beta never loads guest saves. Signed Play and Care changes are written to the existing Kotlin cloud save. Other protected features remain disabled until verified.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
   </>)}
   {group('GAME')}
   {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
@@ -92,10 +92,10 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('compactNumbers','Compact numbers','Use K/M/B abbreviations for large values.')}
    {toggle('reducedMotion','Reduced visual effects','Uses the same reduced-motion preference as Appearance.')}
    {toggle('puppyPointerEnabled','Puppy mouse pointer','Original light/dark pointer for a connected mouse or trackpad.')}
-   <T muted>{betaMode?'Cloud-save writes: Disabled until signed PupEye gameplay parity is verified':'Auto-save: Active · local guest save'}</T>
+   <T muted>{betaMode?'Cloud-save writes: Live for Play and Care · revision-checked':'Auto-save: Active · local guest save'}</T>
   </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Protected cloud progress is not overwritten.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Live Play/Care updates are signed; other gameplay saves are still restricted.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
     {!betaMode?<><Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action><Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action></>:<T muted>Destructive account actions are disabled in the beta.</T>}
