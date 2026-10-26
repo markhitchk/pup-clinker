@@ -28,6 +28,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private val setup get()=ctx.getSharedPreferences("puppy_ui_preferences_v2",0)
  private val stateFile get()=File(ctx.noBackupFilesDir,"pupeye/authority_state_v2.pup")
  private val sessionFile get()=File(ctx.noBackupFilesDir,"pupeye/supabase_session_v1.pup")
+ // Encrypted and device-bound; never an authority for economy writes.
+ private val accountPreviewFile get()=File(ctx.noBackupFilesDir,"pupeye/account_preview_v1.pup")
  private val store get()=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
  private val random=SecureRandom()
  private val root="https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/"
@@ -285,6 +287,72 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    post("pup-account",envelope("account-update",payload),key,session(key))
   }
   account(key)
+ }
+ // Cache is display-only until a fresh signed server response verifies the
+ // account. This prevents blank startup on weak mobile data connections.
+ private fun bootstrapMap(obj:JSONObject,cached:Boolean):WritableMap {
+  val a=obj.getJSONObject("account")
+  val summary=obj.optJSONObject("cloudSave")
+  val save=obj.optJSONObject("save")
+  val account=Arguments.createMap().apply{
+   putString("status",if(cached)"CACHED" else "VERIFIED")
+   putString("username",a.getString("username"))
+   putString("displayName",a.optString("displayName",a.getString("username")))
+   putString("accountId",a.getString("id"))
+   putBoolean("readOnly",obj.optBoolean("readOnly",true))
+   putBoolean("accountWritable",obj.optBoolean("accountWritable",true))
+   putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
+   putBoolean("cloudSaveExists",summary?.optBoolean("exists",false)?:false)
+   putDouble("cloudRevision",summary?.optDouble("revision",0.0)?:0.0)
+   putString("playerId",obj.optString("playerId",player.getString("player_id","")))
+   putString("friendCode",obj.optString("friendCode",player.getString("friend_code","")))
+   putString("guildRole",obj.optString("guildRole",""))
+  }
+  val cloud=Arguments.createMap().apply{
+   putBoolean("exists",save!=null)
+   if(save!=null){
+    putDouble("revision",save.optDouble("revision",0.0))
+    putString("saveJson",save.getJSONObject("saveData").toString())
+   }
+  }
+  return Arguments.createMap().apply{
+   putBoolean("cached",cached)
+   putMap("account",account)
+   putMap("cloud",cloud)
+  }
+ }
+ @ReactMethod fun cachedBootstrap(p:Promise)=runAsync(p){
+  if(!sessionFile.isFile||!accountPreviewFile.isFile)Arguments.createMap().apply{
+   putBoolean("cached",false)
+  } else {
+   val cache=read(accountPreviewFile)
+   // The cached identity can be displayed, but is never treated as verified.
+   val age=System.currentTimeMillis()-cache.optLong("storedAt",0)
+   if(age<0||age>7L*24*60*60*1000)Arguments.createMap().apply{putBoolean("cached",false)}
+   else bootstrapMap(cache.getJSONObject("response"),true)
+  }
+ }
+ @ReactMethod fun bootstrap(key:String,p:Promise)=runAsync(p){
+  if(!sessionFile.isFile)Arguments.createMap().apply{
+   putMap("account",Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")})
+   putMap("cloud",Arguments.createMap().apply{putBoolean("exists",false)})
+  } else {
+   val obj=try{betaRead(key,"beta-bootstrap")}
+    catch(e:ApiError){
+     if(e.code!="BETA_LINK_REQUIRED")throw e
+     post("pup-account",envelope("account-bootstrap",JSONObject()),key,session(key))
+    }
+   require(obj.getJSONObject("account").getString("status")=="active")
+   // Persist successful authenticated snapshots only, never an unverified response.
+   val json=obj.toString()
+   if(json.length<=1100000)write(accountPreviewFile,
+    JSONObject().put("storedAt",System.currentTimeMillis()).put("response",obj))
+   bootstrapMap(obj,false)
+  }
+ }
+ @ReactMethod fun clearCachedBootstrap(p:Promise)=runAsync(p){
+  accountPreviewFile.delete()
+  true
  }
  @ReactMethod fun cloudRead(key:String,p:Promise)=runAsync(p){
   val obj=try{betaRead(key,"beta-cloud-read")}
