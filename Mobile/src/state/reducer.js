@@ -79,7 +79,7 @@ export function transition(state,action){
   game.pendingPlinko=validPendingPlinko(game.pendingPlinko)?game.pendingPlinko:null;
   game.pendingWheel=validPendingWheel(game.pendingWheel)?game.pendingWheel:null;
   const last=game.betaLastCasinoResult;
-  return {...state,game,blackjack,blackjackDisplay:null,
+  return {...state,game,blackjack,blackjackDisplay:game.betaBlackjackDisplay||null,
    slotsDisplay:last?.game==='SLOTS'?last:null,
    rouletteDisplay:last?.game==='ROULETTE'?last:null,
    plinkoDisplay:last?.game==='PLINKO'?last:null,
