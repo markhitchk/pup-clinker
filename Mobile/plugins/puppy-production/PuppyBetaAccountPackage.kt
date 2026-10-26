@@ -300,6 +300,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putString("displayName",a.optString("displayName",a.getString("username")))
    putString("accountId",a.getString("id"))
    putBoolean("readOnly",obj.optBoolean("readOnly",true))
+   putBoolean("gameplayWritable",obj.optBoolean("gameplayWritable",!obj.optBoolean("readOnly",true)))
    putBoolean("accountWritable",obj.optBoolean("accountWritable",true))
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
    putBoolean("cloudSaveExists",summary?.optBoolean("exists",false)?:false)
