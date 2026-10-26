@@ -963,6 +963,8 @@ export function PuppyApp({betaMode=false}){
   if(betaMode&&action.type==='resetSettings')void onboarding.update(DEFAULT_PREFERENCES);
  },[gameAct,betaMode,onboarding.update]);
  const [accountOpen,setAccountOpen]=useState(false);
+ const [accountEntryMode,setAccountEntryMode]=useState('signin');
+ const openAccount=mode=>{setAccountEntryMode(mode||'signin');setAccountOpen(true);};
  const registry=useRoster();
  const {width}=useWindowDimensions();
  const [tab,setTab]=useState('play');
@@ -983,7 +985,7 @@ export function PuppyApp({betaMode=false}){
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
-  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>setAccountOpen(true)} cloudState={cloudState}/>;
+  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>openAccount('signin')} cloudState={cloudState}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')}/>;
@@ -995,8 +997,8 @@ export function PuppyApp({betaMode=false}){
   return null;
  };
  if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
-  <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={()=>setAccountOpen(true)}/>
-  <BetaAccountEntry visible={accountOpen} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
+  <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={openAccount}/>
+  <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
  </>;
  return <PuppyPointer enabled={saved.puppyPointerEnabled} style={[styles.root,{paddingTop:insets.top,paddingBottom:insets.bottom}]}>
   <StatusBar barStyle={C.dark?'light-content':'dark-content'} backgroundColor={C.bg}/>
@@ -1025,7 +1027,7 @@ export function PuppyApp({betaMode=false}){
    </Pressable>)}
   </View>:null}
   <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)}/>
-  {betaMode?<BetaAccountEntry visible={accountOpen} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>:null}
+  {betaMode?<BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>:null}
  </PuppyPointer>;
 }
 const styles=themedStyles(()=>({
