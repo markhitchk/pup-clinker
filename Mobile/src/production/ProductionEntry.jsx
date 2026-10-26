@@ -2,10 +2,14 @@ import React,{useCallback,useEffect,useState} from 'react';
 import {ActivityIndicator,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {classifyOriginalInstall,classifyVerifiedAccount} from './authority.js';
+import BetaAccountEntry from './BetaAccountEntry.jsx';
 
 const key=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'';
 const bridge=()=>NativeModules.PuppyProductionAuthority;
 export default function ProductionEntry(){
+ return NativeModules.PuppyBetaAccount?.isBeta===true?<BetaAccountEntry/>:<OriginalEntry/>;
+}
+function OriginalEntry(){
  const insets=useSafeAreaInsets();
  const [state,setState]=useState({status:'CHECKING',canPlay:false,
   message:'Inspecting the original Kotlin installation without changing player data.'});
