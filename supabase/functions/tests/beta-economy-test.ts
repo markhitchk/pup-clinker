@@ -1,5 +1,6 @@
 import {assert,assertEquals,assertRejects} from "jsr:@std/assert@1";
-import {applyBetaEconomy} from "../_shared/beta-economy.ts";
+import {applyBetaEconomy,newBetaKotlinSave} from "../_shared/beta-economy.ts";
+import {applyBetaLiveGameplay} from "../_shared/beta-live-gameplay.ts";
 function make(){
  return {format:"puppy-clicker-cloud-save",version:1,savedAtEpochMs:1,
   stores:{puppy_clicker_save:{values:{
@@ -80,4 +81,19 @@ Deno.test("Gacha cannot mint protected puppy, and one owned puppy can be selecte
  const renamed=await applyBetaEconomy(switched,{type:"rename",name:"Mochi Test"},NOW+2);
  assertEquals(data(renamed)["puppy_name_for_"+id],"Mochi Test");
  await assertRejects(()=>applyBetaEconomy(renamed,{type:"switch",id:"dev_pup"},NOW+3),Error,"PUPPY_LOCKED");
+});
+
+Deno.test("fresh Pup Account receives a Kotlin-restorable typed save and immediately earns live tap XP",()=>{
+ const seed=newBetaKotlinSave(NOW);
+ const main=(seed.stores as any).puppy_clicker_save;
+ assertEquals(main.values.treats,0);
+ assertEquals(main.types.puppy_style,"string");
+ assertEquals(main.types.unlocked_puppies,"string_set");
+ assertEquals(main.types.player_xp_v1,"long");
+ assertEquals((seed.stores as any).puppy_seasonal_v1.types,{});
+ for(const [key,value] of Object.entries(main.values))assert(typeof main.types[key]==="string",key);
+ const tapped=applyBetaLiveGameplay(seed,{type:"tap"},NOW+1000);
+ assertEquals((tapped.stores as any).puppy_clicker_save.values.total_taps,1);
+ assertEquals((tapped.stores as any).puppy_clicker_save.values.player_xp_v1>=1,true);
+ assertEquals(main.values.total_taps,0);
 });
