@@ -21,6 +21,7 @@ native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
 native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
 let fixture={},latestState;
+let setupComplete=true;
 function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch};}
 const file=new URL('../App.js',import.meta.url),require=createRequire(file),module={exports:{}};
 const source=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
@@ -30,6 +31,8 @@ new Function('require','module','exports',source)(id=>{
  if(id.endsWith('/theme.js'))return theme;
  if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
  if(id==='./src/production/BetaAccountEntry.jsx')return {__esModule:true,default:()=>null};
+ if(id==='./src/production/useAccountOnboarding.js')return {useAccountOnboarding:()=>({ready:true,setup:{setupComplete}})};
+ if(id==='./src/production/AccountOnboarding.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Set Up Your Account')};
  if(id==='./src/state/useGame.js')return {useGame};
  if(id==='./src/state/useRoster.js')return {useRoster:()=>({items:mergeRoster(),source:'bundled',categories:categoriesForRoster(mergeRoster()),refresh(){},clearCache(){}})};
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
@@ -46,6 +49,11 @@ new Function('require','module','exports',source)(id=>{
 const App=module.exports.PuppyApp;
 const text=root=>root.findAllByType('Text').map(t=>t.props.children).flat().join(' ');
 async function render(values={}){fixture=values;let renderer;await act(()=>{renderer=create(React.createElement(App));});return renderer;}
+test('beta first-run entry displays account onboarding before the game hierarchy',async()=>{
+ setupComplete=false;let renderer;
+ try{await act(()=>{renderer=create(React.createElement(App,{betaMode:true}));});assert.match(text(renderer.root),/Set Up Your Account/);assert.equal(renderer.root.findAllByType('Pressable').filter(p=>p.props.accessibilityRole==='tab').length,0);}
+ finally{setupComplete=true;if(renderer)await act(()=>renderer.unmount());}
+});
 test('primary navigation preserves Play, Care, Roster, Shop and Rewards with working routes',async()=>{
  const renderer=await render();
  try{

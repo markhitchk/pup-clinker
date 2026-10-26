@@ -15,9 +15,9 @@ export function useGame({mode='guest'}={}){
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
  const [cloudState,setCloudState]=useState(beta?'NOT_LOADED':null);
  const refreshAccount=useCallback(async (incoming)=>{
-  if(!beta)return;
+  if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
-  if(!native){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return;}
+  if(!native){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
   try {
    const active=incoming?.status==='VERIFIED'?incoming:await native.status(PUBLISHABLE_KEY);
    setAccount(active);
@@ -25,24 +25,26 @@ export function useGame({mode='guest'}={}){
     setCloudState('SIGN_IN_REQUIRED');
     dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
-    return;
+    return false;
    }
    const cloud=await native.cloudRead(PUBLISHABLE_KEY);
    if(!cloud?.exists){
     setCloudState('NO_CLOUD_SAVE');
     dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
-    return;
+    return true;
    }
    const game=projectKotlinCloudSave(cloud.saveJson,active.username);
    setCloudState('SERVER_SNAPSHOT_READ_ONLY');
    dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
+   return true;
   }catch(error){
    setAccount(old=>old?.status==='VERIFIED'?old:{status:'SIGN_IN_REQUIRED'});
    setCloudState('UNVERIFIED_OR_UNSUPPORTED');
    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
+   return false;
   }
  },[beta]);
  const [state,dispatch]=useReducer(transition,undefined,initialState);

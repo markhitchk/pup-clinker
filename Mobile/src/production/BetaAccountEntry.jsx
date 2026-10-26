@@ -9,7 +9,7 @@ const api=()=>NativeModules.PuppyBetaAccount;
 const isCallback=url=>typeof url==='string'&&
  /^discord-1547982688898777118:\/authorize\/callback(?:\?|$)/.test(url);
 
-export default function BetaAccountEntry({visible=true,onVerified,onClose}){
+export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false}){
  const insets=useSafeAreaInsets();
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
@@ -29,13 +29,13 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose}){
   }catch(error){
    // A device can have a valid PupEye session but no Discord link yet.
    // Do not manufacture gameplay credentials or progression from this.
-   const message=String(error?.message||'');
+   const message=[error?.code,error?.message].filter(Boolean).join(' ');
    if(message.includes('PUP_ACCOUNT_DISCORD_REQUIRED')){
     setState({status:'NEEDS_DISCORD'});return;
    }
    if(message.includes('PUP_ACCOUNT_ON_OTHER_DEVICE')||message.includes('DISCORD_ALREADY_LINKED')){
     setState({status:'DEVICE_TRANSFER_REQUIRED'});
-    setProblem('Your Pup Account is already linked to the Play app. The server requires an authorized transfer. Original progress is untouched.');
+    setProblem('Your Discord account is already linked to another Puppy Clicker installation. The beta counts as a separate installation, even on the same phone. An authorized device transfer is required before beta access.');
     return;
    }
    setState({status:'NEEDS_DISCORD'});
@@ -52,12 +52,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose}){
    setState(result);
    if(result.status==='VERIFIED')onVerified?.(result);
   }catch(error){
-   const message=String(error?.message||'');
+   const message=[error?.code,error?.message].filter(Boolean).join(' ');
    if(message.includes('PUP_ACCOUNT_ON_OTHER_DEVICE')||message.includes('DISCORD_ALREADY_LINKED')){
     setState({status:'DEVICE_TRANSFER_REQUIRED'});
-    setProblem('Your Discord account is already linked to the original Play installation. PupEye must authorize device transfer before beta access.');
+    setProblem('Discord authorization succeeded, but PupEye blocked this beta because your account is already linked to another Puppy Clicker installation. The beta counts as a separate installation, even on the same phone. An authorized device transfer is required before beta access.');
    }else{
-    setProblem('Discord/PupEye authorization did not complete. Confirm you selected Puppy Clicker [Beta] for the callback and try again.');
+    setProblem('Discord/PupEye sign-in could not complete. Please retry.');
    }
   }finally{setBusy(false);}
  },[onVerified]);
@@ -83,14 +83,14 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose}){
   finally{setBusy(false);}
  },[]);
  const verified=state.status==='VERIFIED';
- return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+ return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
   <ScrollView contentContainerStyle={styles.content}>
-   <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>← Back to Puppy Clicker</Text></Pressable>
+   <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
-   <Text style={styles.title}>{verified?'Pup Account connected':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>This beta has its own secured Android identity. It never reads, uninstalls or overwrites your original Kotlin app.</Text>
+   <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Connect Discord':'Sign in to Puppy Clicker'}</Text>
+   <Text style={styles.body}>{onboarding?'Passwordless Pup Account sign-in. Discord verifies your identity; Supabase stores your account and cloud progression. PupEye controls device access.':'This beta has its own secured Android identity. It never reads, uninstalls or overwrites your original Kotlin app.'}</Text>
    <View style={styles.card}>
     <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
     <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
@@ -101,6 +101,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose}){
    </View>
    {problem?<View style={styles.error}><Text style={styles.body}>{problem}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
+   {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={onClose}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
    {!verified?<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
     disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
     <Text style={styles.buttonText}>Connect with Discord</Text>
@@ -113,12 +114,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose}){
    <Pressable accessibilityRole="button" disabled={busy} style={styles.secondary} onPress={()=>void check()}>
     <Text style={styles.secondaryText}>Retry account status</Text>
    </Pressable>
-   <View style={styles.card}>
+   {!onboarding?<View style={styles.card}>
     <Text style={styles.cardTitle}>About the beta</Text>
     <Text style={styles.body}>The original Puppy Clicker remains installed. Discord and Supabase enforce one active PupEye installation for existing accounts; access to an existing account may need an authorized device transfer.</Text>
     <Text style={styles.body}>Gameplay stays locked until the authenticated cloud state and signed economy are supported end to end. This is not a guest gameplay mode.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
-   </View>
+   </View>:null}
   </ScrollView>
  </View>
  </Modal>;
