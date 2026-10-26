@@ -1,3 +1,11 @@
+## October 25 — beta native Discord/PupEye account bootstrap
+
+- **Separate beta launcher no longer runs `classifyOriginalInstall()`:** `ProductionEntry` selects `BetaAccountEntry` for the `com.harleytg.puppyclicker.beta` package. The old `SIGNED_UPGRADE_REQUIRED` screen applies only to the reserved original production package handoff.
+- The beta registers the original Discord OAuth callback URI using Android intent filters and launches a PKCE S256 flow from a native module. If Android offers multiple callback handlers because the Kotlin Play app uses the same redirect, users must choose **Puppy Clicker [Beta]**.
+- **No guest gameplay:** after Discord authorization, the native bridge generates a *beta-only* Android Keystore signing/encryption identity and enrolls it with the existing `pupeye-register` endpoint, authorizes through `pupeye-auth-discord`, and reads `pup-account` status / cloud-save data. Device sessions are AES-GCM sealed in the beta sandbox and are never returned to JavaScript.
+- **Original-account limitation:** PupEye enforces one authorized installation. An existing Play app account can return `DISCORD_ALREADY_LINKED` or `PUP_ACCOUNT_ON_OTHER_DEVICE`. The beta does not override enforcement or silently transfer/revoke the original account. No production cloud writes or React guest fallback are enabled.
+- **Still not playable:** signed production economy/casino operations, Kotlin-format authoritative cloud save hydration, post-transfer reconciliation, and full visual parity must be implemented and validated. This beta account foundation is not a finished replacement.
+
 ## October 25 — separately installable Puppy Clicker [Beta] APK
 
 - Android beta identity: `com.harleytg.puppyclicker.beta`; launcher name: **Puppy Clicker [Beta]**. This is an isolated, debug-key-signed standalone release APK with bundled JavaScript, not a Google Play update or the production signing certificate.
