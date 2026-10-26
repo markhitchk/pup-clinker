@@ -29,7 +29,7 @@ jobs:
       - name: Start local Supabase
         run: supabase start
       - name: Run database tests
-        run: supabase test db supabase/tests/pupeye_global_bans_test.sql supabase/tests/pup_accounts_t0_test.sql
+        run: supabase test db supabase/tests/pupeye_global_bans_test.sql supabase/tests/pup_accounts_t0_test.sql supabase/tests/pup_login_usernames_test.sql
       - name: Run Edge Function tests
         run: deno test --allow-all supabase/functions/tests/*-test.ts
       - name: Type-check PupEye Edge Functions
@@ -43,4 +43,5 @@ jobs:
             supabase/functions/pupeye-save-attestation/index.ts \
             supabase/functions/pupeye-device-transfer/index.ts \
             supabase/functions/pupeye-support-ban/index.ts \
-            supabase/functions/pup-account/index.ts
+            supabase/functions/pup-account/index.ts \
+            supabase/functions/pup-username-login/index.ts
