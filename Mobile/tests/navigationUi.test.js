@@ -29,6 +29,7 @@ new Function('require','module','exports',source)(id=>{
  if(id==='react-native-safe-area-context')return {SafeAreaProvider:({children})=>children,useSafeAreaInsets:()=>({top:24,bottom:24})};
  if(id.endsWith('/theme.js'))return theme;
  if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
+ if(id==='./src/production/BetaAccountEntry.jsx')return {__esModule:true,default:()=>null};
  if(id==='./src/state/useGame.js')return {useGame};
  if(id==='./src/state/useRoster.js')return {useRoster:()=>({items:mergeRoster(),source:'bundled',categories:categoriesForRoster(mergeRoster()),refresh(){},clearCache(){}})};
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
