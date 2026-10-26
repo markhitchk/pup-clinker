@@ -68,9 +68,27 @@ export function validPendingWheel(record){
  return !!expected&&expected.prize===record.prize&&
  expected.segmentIndex===record.segmentIndex&&expected.payout===record.payout;
 }
-export const wheelResult=round=>validPendingWheel(round)?{
+/**
+ * Presentation-only verifier for a round projected from the signed PupEye
+ * Kotlin cloud snapshot. Guest settlement still uses validPendingWheel and
+ * cannot unlock protected puppies or credit server payouts.
+ */
+export function validAuthoritativeWheel(round){
+ if(!round||round.authority!=='PUPEYE'||round.type!=='LUCKY_WHEEL'||
+   round.version!==WHEEL_V6.latestVersion||
+   typeof round.roundId!=='string'||!/^[A-Za-z0-9_-]{8,80}$/.test(round.roundId)||
+   !validWheelWager(round.wager)||!Number.isSafeInteger(round.roll)||
+   round.roll<0||round.roll>99||!Number.isSafeInteger(round.createdAt)||round.createdAt<=0)return false;
+ const segment=WHEEL_SEGMENTS[round.segmentIndex];
+ if(!segment||segment.id!==round.prize||
+    round.payout!==Math.floor(round.wager*segment.multiplierHundredths/100))return false;
+ return round.prize==='PUPPY_UNLOCK'?
+  WHEEL_PROTECTED_REWARD_POOL.includes(round.puppyStyleId):
+  round.puppyStyleId===null;
+}
+export const wheelResult=round=>(validPendingWheel(round)||validAuthoritativeWheel(round))?{
  wager:round.wager,prize:round.prize,segmentIndex:round.segmentIndex,
- payout:round.payout,puppyStyleId:null
+ payout:round.payout,puppyStyleId:round.puppyStyleId
 }:null;
 export const wheelResultLabel=result=>{
  const segment=WHEEL_SEGMENTS.find(s=>s.id===result?.prize);
