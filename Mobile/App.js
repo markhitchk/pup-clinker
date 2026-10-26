@@ -132,7 +132,7 @@ function DailyGoalCard({g,goal,act,clock,readOnly=false}){
    <Txt muted style={styles.small}>{goal.description}</Txt>
    <View style={styles.track}><View style={[styles.fill,{backgroundColor:C.accent,width:Math.min(100,100*progress/goal.target)+'%'}]}/></View>
    <View style={styles.pair}><Txt muted style={styles.small}>Reward: {format(goal.rewardTreats)} 🍪 + 1 🦴 + 1 🪙</Txt>
-    {claimed?<Txt style={styles.claimedText}>✓ Claimed</Txt>:<Button compact disabled={readOnly||!complete} onPress={()=>act({type:'claimDailyGoal',goalId:goal.id,now:clock})}>{readOnly?'View only':'Claim'}</Button>}
+    {claimed?<Txt style={styles.claimedText}>✓ Claimed</Txt>:<Button compact disabled={readOnly||!complete} onPress={()=>act({type:'claimDailyGoal',goalId:goal.id,now:clock})}>{readOnly?'Not yet live':'Claim'}</Button>}
    </View>
   </View>
  </View>;
@@ -234,7 +234,7 @@ function ShopScreen({g,act,onOpen}){
   <PageHeader withLogo title="Puppy Shop" subtitle="Active upgrades, rare tickets, Pup Coins and Puppy Codes."/>
   <Wallet game={g}/>
   <View style={styles.shopTopActions}>
-   <Button secondary onPress={()=>Alert.alert('🎫 Redeem Puppy Code','Kotlin has local Puppy Codes, but preview code redemption is disabled until original save, account and entitlement behavior can be verified. No protected rewards will be simulated.')}>🎫 Redeem Code</Button>
+   <Button secondary onPress={()=>Alert.alert('🎫 Redeem Puppy Code','Kotlin has local Puppy Codes, but code redemption requires the signed live entitlement service before it can be enabled. No protected rewards will be simulated.')}>🎫 Redeem Code</Button>
    <Button secondary onPress={()=>onOpen('roster')}>🐶 Pups</Button>
   </View>
   <View style={styles.filterRow}>
@@ -645,10 +645,10 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
    </View>
   </View>
   {!giftClaimed?<View style={styles.dailyGiftCard}>
-   <Txt style={{fontSize:32}}>🎁</Txt><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{readOnly?'Daily Puppy Gift · Preview':'Daily Puppy Gift'}</Txt><Txt muted style={styles.small}>{format(giftReward)} Treats + 2 Bones + 3 Pup Coins</Txt></View>
-   <Button compact disabled={readOnly} onPress={()=>act({type:'daily',epochDay:today,now:clock})}>{readOnly?'View only':'Claim'}</Button>
+   <Txt style={{fontSize:32}}>🎁</Txt><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{readOnly?'Daily Puppy Gift · Not yet live':'Daily Puppy Gift'}</Txt><Txt muted style={styles.small}>{format(giftReward)} Treats + 2 Bones + 3 Pup Coins</Txt></View>
+   <Button compact disabled={readOnly} onPress={()=>act({type:'daily',epochDay:today,now:clock})}>{readOnly?'Not yet live':'Claim'}</Button>
   </View>:null}
-  <View style={styles.pair}><Txt style={styles.sectionTitle}>Today’s goals</Txt><Txt muted style={styles.small}>{monthKey(date)} · {readOnly?'Preview (not synced)':schedule?.source==='github'?'Live':schedule?.source==='cache'?'Cached':'Fallback'}</Txt></View>
+  <View style={styles.pair}><Txt style={styles.sectionTitle}>Today’s goals</Txt><Txt muted style={styles.small}>{monthKey(date)} · {readOnly?'Rewards not yet live':schedule?.source==='github'?'Live':schedule?.source==='cache'?'Cached':'Fallback'}</Txt></View>
   {active.length?active.map(goal=><DailyGoalCard g={g} goal={goal} act={act} clock={clock} readOnly={readOnly} key={goal.id}/>):<Card title="🎉 All of today’s goals claimed"/>}
   {giftClaimed||completed.length?<><Txt style={styles.sectionTitle}>Claimed</Txt>
    {giftClaimed?<View style={styles.claimedCard}><Txt>🎁</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Daily Puppy Gift</Txt><Txt muted style={styles.small}>Treats + 2 Bones + 3 Pup Coins</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>:null}
@@ -1012,7 +1012,7 @@ export function PuppyApp({betaMode=false}){
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay preview':cloudState==='NO_CLOUD_SAVE'?'Account synced · no save':'Profile editable')
+     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?'Account synced · live Play & Care':cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?'Account synced · no save':'Profile editable')
      :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
