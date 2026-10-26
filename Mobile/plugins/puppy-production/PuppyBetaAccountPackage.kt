@@ -172,7 +172,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
    putString("displayName",a.optString("displayName",a.getString("username")))
-   putString("playerId",player.getString("player_id",""));putString("friendCode",player.getString("friend_code",""))
+   putString("playerId",obj.optString("playerId",player.getString("player_id","")))
+   putString("friendCode",obj.optString("friendCode",player.getString("friend_code","")))
    putDouble("cloudRevision",save.optDouble("revision"));putString("guildRole",obj.optString("guildRole",""))
   }
  }
