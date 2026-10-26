@@ -28,7 +28,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </Pressable>{expanded===id?<View style={s.body}>{children}</View>:null}
  </View>;
  const group=title=><T style={s.group}>{title}</T>;
- const pending=<T muted>{betaMode?'Live Play and Care are signed and saved to the Kotlin Pup Account cloud. This other feature still needs its protected server-side implementation.':'Available after the original linked account and protected services are migrated. This preview has local guest progress.'}</T>;
+ const pending=<T muted>{betaMode?'Live gameplay is signed and saved to Pup Account. This specific feature is not yet available until its server-side implementation is verified.':'Available after the original linked account and protected services are migrated. This preview has local guest progress.'}</T>;
  return <View style={s.page}>
   <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
   <View style={s.identity}>
@@ -82,7 +82,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('anonymousDiagnosticsEnabled','Optional anonymous diagnostics','Record recent screen visits locally for troubleshooting. No telemetry is uploaded.')}
    {toggle('crashReportsEnabled','Optional crash reports','Save a local error summary when Android can finish writing it. No remote crash destination is configured.')}
    {toggle('supportIdentityEnabled','Include account identity in support reports','Include your local display name only when you choose to share a support report.')}
-   <T muted>{betaMode?'This beta never loads guest saves. Signed Play and Care changes are written to the existing Kotlin cloud save. Other protected features remain disabled until verified.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
+   <T muted>{betaMode?'Beta gameplay uses your authenticated Pup Account, not guest progression. Taps, care, shop, Gacha, daily rewards, XP and casino settlements use signed cloud writes; unsupported actions remain blocked.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
   </>)}
   {group('GAME')}
   {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
@@ -92,10 +92,10 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('compactNumbers','Compact numbers','Use K/M/B abbreviations for large values.')}
    {toggle('reducedMotion','Reduced visual effects','Uses the same reduced-motion preference as Appearance.')}
    {toggle('puppyPointerEnabled','Puppy mouse pointer','Original light/dark pointer for a connected mouse or trackpad.')}
-   <T muted>{betaMode?'Cloud-save writes: Live for Play and Care · revision-checked':'Auto-save: Active · local guest save'}</T>
+   <T muted>{betaMode?'Cloud-save writes: Signed gameplay and casino settlements · revision-checked':'Auto-save: Active · local guest save'}</T>
   </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Live Play/Care updates are signed; other gameplay saves are still restricted.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions use protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
     {!betaMode?<><Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action><Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action></>:<T muted>Destructive account actions are disabled in the beta.</T>}
