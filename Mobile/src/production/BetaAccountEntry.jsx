@@ -90,13 +90,14 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
    <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Connect Discord':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>{onboarding?'Passwordless Pup Account sign-in. Discord verifies your identity; Supabase stores your account and cloud progression. PupEye controls device access.':'This beta has its own secured Android identity. It never reads, uninstalls or overwrites your original Kotlin app.'}</Text>
+   <Text style={styles.body}>{onboarding?'Passwordless Pup Account sign-in. Discord verifies your identity; Supabase stores your account and cloud progression. PupEye controls device access.':'This beta has its own secured Android identity. It cannot read the Play app sandbox or overwrite its local save. Your existing Discord account can authorize a read-only beta companion.'}</Text>
    <View style={styles.card}>
     <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
     <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
     {verified?<><Text style={styles.body}>Discord: {state.username}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
-      <Text style={styles.body}>Revision: {state.cloudRevision}</Text></>:
+      <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
+      {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account in read-only beta mode. The Play installation stays active; no device transfer or guest progress was created.</Text>:null}</>:
       <Text style={styles.body}>Connect Discord to register a real PupEye session. No guest game is launched and no preview save is substituted.</Text>}
    </View>
    {problem?<View style={styles.error}><Text style={styles.body}>{problem}</Text></View>:null}
@@ -116,7 +117,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    </Pressable>
    {!onboarding?<View style={styles.card}>
     <Text style={styles.cardTitle}>About the beta</Text>
-    <Text style={styles.body}>The original Puppy Clicker remains installed. Discord and Supabase enforce one active PupEye installation for existing accounts; access to an existing account may need an authorized device transfer.</Text>
+    <Text style={styles.body}>The original Puppy Clicker remains installed and retains cloud-save write authority. Discord can authorize this beta as a read-only companion without changing the primary PupEye device.</Text>
     <Text style={styles.body}>Gameplay stays locked until the authenticated cloud state and signed economy are supported end to end. This is not a guest gameplay mode.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
