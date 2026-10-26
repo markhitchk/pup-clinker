@@ -429,10 +429,10 @@ function RosterScreen({g,act,registry,onUse}){
    </Pressable>)}
   </ScrollView>
   <Button compact secondary onPress={()=>setView('browser')}>Browse online V3+ and advanced filters</Button>
-  <Txt muted style={styles.small}>Guest preview collection; original Puppy Code and Discord entitlements are not connected.</Txt>
+  <Txt muted style={styles.small}>Puppy collection; protected Puppy Code and Discord entitlements require verified account services.</Txt>
  </View>;
  return <View style={styles.restoredRoster}>
-  <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={()=>Alert.alert('Puppy Exchange','Puppy Exchange requires the linked account and protected trading service. These are not connected in the local guest preview.')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
+  <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={()=>Alert.alert('Puppy Exchange','Puppy Exchange requires the linked account and protected trading service. This service requires authorized Pup Account access.')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
   <View style={styles.restoredRosterFilters}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.rosterStatus,status===id&&styles.rosterStatusSelected]}><Txt style={[styles.rosterControlText,status===id&&styles.rosterSelectedText]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍  Search puppies or ID" placeholderTextColor={C.muted} style={styles.rosterSearch} maxLength={64} value={search} onChangeText={setSearch}/>
   <View style={styles.restoredRosterFilters}>
@@ -592,7 +592,7 @@ function GachaScreen({g,act,state,registry,onBack}){
    Redeem-only and special locked puppies are excluded. Uses earned Treats or Common Upgrade Tickets only; no real money or cash-out.
   </Txt>
   <Txt muted style={[styles.tiny,{textAlign:'center'}]}>
-   React guest preview: offline rewards are not official PupEye-verified entitlements.
+   Rewards require authoritative PupEye verification before they can affect progression.
   </Txt>
   <Modal visible={stage===4&&Boolean(result?.success)} transparent
    animationType={g.reducedMotion||!g.animatedUi?'none':'fade'} onRequestClose={reset}>
@@ -617,7 +617,7 @@ function GachaScreen({g,act,state,registry,onBack}){
     <View style={styles.gachaRevealCard}>
      <Txt style={styles.heading}>ⓘ Gacha Info</Txt>
      <Txt muted>Turn the machine with Treats or a Common Upgrade Ticket, then open your capsule. New unrestricted puppies are awarded before duplicates.</Txt>
-     <Txt muted>Special event, developer, Discord-role and Puppy Code puppies are excluded. This is a local guest preview, not a verified cloud account.</Txt>
+     <Txt muted>Special event, developer, Discord-role and Puppy Code puppies are excluded. Unlocks must be verified by the authoritative Pup Account service.</Txt>
      <Button onPress={()=>setShowInfo(false)}>Got it</Button>
     </View>
    </PuppyPointer>
@@ -657,7 +657,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige}){
   <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎰</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Casino</Txt><Txt muted style={styles.small}>Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel</Txt></View><Button compact secondary onPress={()=>onOpen('casino')}>Open</Button></View>
   <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Prestige</Txt><Txt muted style={styles.small}>{g.prestigeCount} prestiges · {g.skillPoints} skill points</Txt></View><Button compact secondary onPress={onPrestige}>Open</Button></View>
   <Card title="🏆 ACHIEVEMENTS" subtitle={statuses.filter(s=>s.xpRewarded).length+' / '+ACHIEVEMENTS.length+' awarded'}>
-   <Txt muted style={styles.small}>Local preview achievements and XP are not production Android account rewards.</Txt>
+   <Txt muted style={styles.small}>Achievement rewards and XP changes require signed Pup Account integration.</Txt>
    {statuses.map(item=><View key={item.id} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{item.emoji} {item.title}</Txt><Txt muted style={styles.small}>{item.description}</Txt></View><Txt style={styles.small}>{item.xpRewarded?'✓ +50 XP':Math.min(item.progress,item.target)+' / '+item.target}</Txt></View>)}
   </Card>
  </View>;
@@ -830,7 +830,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
    </View>)}
    <Txt muted style={styles.small}>Dealer Blackjack is resolved immediately after the initial deal. Split aces cannot be resplit in this version.</Txt>
    <Txt muted style={styles.small}>Every deck position, hand, wager, split, double, and dealer draw is saved to the active casino round.</Txt>
-   <Txt muted style={styles.small}>Local guest preview only — Supabase/PupEye authoritative wagering is not enabled.</Txt>
+   <Txt muted style={styles.small}>PupEye authoritative wagering is not enabled in this beta.</Txt>
   </View>:null}
  </View>;
 }
