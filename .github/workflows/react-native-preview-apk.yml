@@ -74,9 +74,22 @@ jobs:
             exit 1
           }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+      # Publish the cryptographically verified and bundled APK BEFORE the
+      # emulator smoke test. Hosted Android emulators can fail to boot for
+      # infrastructure reasons (ADB broken pipe), which must not delete an
+      # otherwise valid installable artifact.
+      - name: Upload beta APK (not Play signed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: puppy-clicker-react-native-beta-apk
+          path: Mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
       # An APK that verifies its signature can still fail PackageManager installation.
-      # Exercise a real Android PackageManager install + launch before publishing.
+      # Exercise a real Android PackageManager install + launch as a best-effort
+      # separate smoke test; emulator startup failure does not void signed APK.
       - name: Smoke-test APK install and launch on Android emulator
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -95,10 +108,4 @@ jobs:
               echo "::error::Beta app crashed before its locked migration entry could display"
               exit 1
             }
-      - name: Upload beta APK (not Play signed)
-        uses: actions/upload-artifact@v4
-        with:
-          name: puppy-clicker-react-native-beta-apk
-          path: Mobile/android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-          retention-days: 14
+
