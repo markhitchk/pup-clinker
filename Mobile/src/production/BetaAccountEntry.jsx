@@ -148,7 +148,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
       <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
-      {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Profile changes are writable; gameplay progression still requires the signed economy port. Your Play installation remains active.</Text>:null}</>:
+      {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Signed Play and Care actions synchronize with Play. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
    {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
@@ -212,9 +212,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Text style={styles.secondaryText}>Retry account status</Text>
    </Pressable>
    {!onboarding?<View style={styles.card}>
-    <Text style={styles.cardTitle}>About the beta</Text>
-    <Text style={styles.body}>Your Pup Account profile is editable. The original Play installation still owns progression writes until signed React gameplay transactions are implemented.</Text>
-    <Text style={styles.body}>Gameplay stays locked until the authenticated cloud state and signed economy are supported end to end. This is not a guest gameplay mode.</Text>
+    <Text style={styles.cardTitle}>Live beta status</Text>
+    <Text style={styles.body}>Your Pup Account supports live, signed Play and Care transactions with the same cloud save used by Play. Keep your Play installation installed.</Text>
+    <Text style={styles.body}>Shop, casino, rewards, XP grants and protected entitlements are not yet live on beta. These actions remain locked until their server-side validation is complete.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
   </ScrollView>
