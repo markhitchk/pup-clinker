@@ -170,7 +170,7 @@ test('Cannot prestige while a Blackjack round or pending Scratcher is active',()
 });
 
 test('Client preview never executes Puppy Code redemption without verified save migration',()=>{
- assert.ok(shop.includes('preview code redemption is disabled'));
+ assert.ok(shop.includes('code redemption requires the signed live entitlement service'));
  assert.ok(!shop.includes("type:'redeem'"));
  assert.ok(!shop.includes('redeemCode('));
 });
