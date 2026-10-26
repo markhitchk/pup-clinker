@@ -92,6 +92,21 @@ async function linkLocalAccount(req: Request, admin: any, session: any): Promise
   const { data: byPlayer, error: playerError } = await admin.from("pup_accounts")
     .select("*").eq("player_uuid", session.player.id).maybeSingle();
   if (playerError) throw playerError;
+  // A verified email may already belong to a Discord-only Kotlin player.
+  // Email equality is a collision guard, NOT proof of ownership or authority
+  // to migrate that player's save. Require approved transfer/Discord linking.
+  if (!byPlayer) {
+    const escapedEmail = user.email.toLowerCase().replace(/[\\%_]/g, "\\  if (byPlayer?.auth_user_id && byPlayer.auth_user_id !== user.id) {");
+    const { data: legacyMatches, error: legacyError } = await admin
+      .from("pupeye_players").select("id")
+      .ilike("discord_email", escapedEmail)
+      .neq("id", session.player.id).limit(1);
+    if (legacyError) throw legacyError;
+    if (legacyMatches?.length) {
+      throw new HttpError(409, "PUP_ACCOUNT_ON_OTHER_DEVICE",
+        "An existing Discord-linked Puppy Clicker identity uses this email. Transfer or link the existing account; do not create a duplicate.");
+    }
+  }
   if (byPlayer?.auth_user_id && byPlayer.auth_user_id !== user.id) {
     throw new HttpError(409, "PUP_ACCOUNT_IDENTITY_CONFLICT",
       "This PupEye player already belongs to another email/password account.");
