@@ -8,6 +8,7 @@ import {GUEST_SAVE_KEY,parseGuestSave,serializeGuestSave} from './guestSave.js';
 import {MONTHLY_REWARDS_URL,MONTHLY_REWARDS_CACHE_KEY,MONTHLY_REWARDS_REFRESH_MS,monthKey,localEpochDay,fallbackSchedule,parseMonthlySchedule} from '../engine/monthlyRewards.js';
 
 const PUBLISHABLE_KEY=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
+const BETA_LIVE_ACTIONS=new Set(['tap','care']);
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
@@ -17,6 +18,8 @@ export function useGame({mode='guest'}={}){
  const liveVerified=useRef(false);
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
+ const pendingLiveWrites=useRef(0);
+ const signedWriteQueue=useRef(Promise.resolve());
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
@@ -44,7 +47,7 @@ export function useGame({mode='guest'}={}){
    liveVerified.current=true;
    cachedPreview.current=false;
    setAccount(active);
-   setCloudState(cloud?.exists?'SERVER_SNAPSHOT_READ_ONLY':'NO_CLOUD_SAVE');
+   setCloudState(cloud?.exists?(active.readOnly?'SERVER_SNAPSHOT_READ_ONLY':'LIVE_SYNCED'):'NO_CLOUD_SAVE');
    dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
    return true;
@@ -185,7 +188,44 @@ export function useGame({mode='guest'}={}){
    });
    return ()=>sub.remove();
  },[beta,write]);
+ // Signed server response is the only source of new gameplay balances.
+ // The queue prevents simultaneous taps from replaying one cloud revision.
+ useEffect(()=>{
+  if(!beta)return;
+  const timer=setInterval(()=>{
+   if(liveVerified.current&&pendingLiveWrites.current===0)void refreshAccount();
+  },15000);
+  const listener=AppState.addEventListener('change',status=>{
+   if(status==='active'&&liveVerified.current&&pendingLiveWrites.current===0)
+    void refreshAccount();
+  });
+  return ()=>{clearInterval(timer);listener.remove();};
+ },[beta,refreshAccount]);
  const act=useCallback(action=>{
+  if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
+   const native=NativeModules.PuppyBetaAccount;
+   if(!liveVerified.current||!native?.gameplayAction||cloudState==='NO_CLOUD_SAVE'){
+    if(ToastAndroid?.show)ToastAndroid.show('Live Pup Account progress is not available. Connect your cloud save.',ToastAndroid.SHORT);
+    return;
+   }
+   pendingLiveWrites.current++;
+   signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
+    const result=await native.gameplayAction(action.type,action.type==='care'?action.kind:'',PUBLISHABLE_KEY);
+    const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
+    ++currentRequest.current; // Ignore an older overlapping bootstrap reply.
+    dispatch({type:'hydrate',game,now:Date.now()});
+    setCloudState('LIVE_SYNCED');
+   }).catch(error=>{
+    const code=String(error?.code||'');
+    if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
+    const message=/CLOUD_SAVE_CONFLICT/.test(code)
+     ?'Cloud progress changed; refreshing before retry.'
+     :/GAMEPLAY_REJECTED/.test(code)?'Action rejected by PupEye or puppy care limits.'
+     :'Cloud action was not saved. Check your connection.';
+    if(ToastAndroid?.show)ToastAndroid.show(message,ToastAndroid.SHORT);
+   }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
+   return;
+  }
   if(beta&&!BETA_LOCAL_ONLY_ACTIONS.has(action.type)){
    // A read-only cloud snapshot cannot accept economy mutations. Use a short,
    // rate-limited native toast instead of repeatedly obscuring the game screen.
@@ -197,7 +237,7 @@ export function useGame({mode='guest'}={}){
    return;
   }
   dispatch(action);
- },[beta]);
+ },[beta,account?.displayName,account?.username,cloudState,refreshAccount]);
  const updateAccountName=useCallback(async displayName=>{
   if(!beta||account?.status!=='VERIFIED')throw new Error('Sign in before editing your Pup Account.');
   const updated=await NativeModules.PuppyBetaAccount.updateDisplayName(displayName,PUBLISHABLE_KEY);
