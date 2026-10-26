@@ -57,7 +57,13 @@ export function useGame({mode='guest'}={}){
    queue.current=queue.current.catch(()=>{}).then(()=>AsyncStorage.setItem(GUEST_SAVE_KEY,snapshot));
  },[beta]);
  useEffect(()=>{
-   if(beta){void refreshAccount();return;}
+   if(beta){
+    // Render the complete game navigation immediately, even on slow networks.
+    // This placeholder is display-only and cannot accept economy actions.
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    dispatch({type:'dismiss'});
+    void refreshAccount();return;
+   }
    let alive=true;
    AsyncStorage.getItem(GUEST_SAVE_KEY).then(raw=>{
      if(alive)dispatch({type:'hydrate',game:parseGuestSave(raw),now:Date.now()});
