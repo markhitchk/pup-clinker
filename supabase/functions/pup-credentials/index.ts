@@ -99,10 +99,9 @@ async function finishVerified(admin: any, session: any, user: LoginUser) {
         .eq("id", session.player.id).is("discord_user_id", null);
     }
 
-    if (account.discord_user_id && account.username.toLowerCase() !== pending.username.toLowerCase() &&
-        account.player_uuid !== session.player.id) {
-      // Adding a native credential to an existing Discord account does not
-      // rename its public identity or create another player.
+    if (account.username.toLowerCase() !== pending.username.toLowerCase()) {
+      throw new HttpError(409, "PUP_USERNAME_MISMATCH",
+        "When adding a password to an existing Pup Account, keep its current username.");
     }
     const { error: connectError } = await admin.from("pup_credential_links").insert({
       auth_user_id: user.id, account_uuid: account.id, email: user.email,
@@ -165,13 +164,18 @@ Deno.serve(async (req: Request) => {
       if (!EMAIL_RE.test(email) || email.length > 254 || password.length < 8 || password.length > 128) {
         throw new HttpError(400, "PUP_CREDENTIAL_INVALID", "Enter a valid email and password of 8–128 characters.");
       }
-      const [{ data: taken, error: takenError }, { data: reserved, error: reserveError }] = await Promise.all([
-        admin.from("pup_accounts").select("id").ilike("username", username).maybeSingle(),
+      const [{ data: taken, error: takenError }, { data: reserved, error: reserveError },
+        { data: companion, error: companionError }] = await Promise.all([
+        admin.from("pup_accounts").select("id,player_uuid").ilike("username", username).maybeSingle(),
         admin.from("pup_credential_pending").select("auth_user_id").ilike("username", username).maybeSingle(),
+        admin.from("pup_beta_account_links").select("account_uuid").eq("installation_uuid", session.installation.id).maybeSingle(),
       ]);
       if (takenError) throw takenError;
       if (reserveError) throw reserveError;
-      if (taken || reserved) throw new HttpError(409, "PUP_USERNAME_TAKEN", "This Pup username is unavailable.");
+      if (companionError) throw companionError;
+      if (reserved || (taken && taken.player_uuid !== session.player.id && taken.id !== companion?.account_uuid)) {
+        throw new HttpError(409, "PUP_USERNAME_TAKEN", "This Pup username is unavailable.");
+      }
 
       const { data, error } = await auth.auth.signUp({ email, password });
       if (error || !data.user || (data.user.identities && data.user.identities.length === 0)) {
