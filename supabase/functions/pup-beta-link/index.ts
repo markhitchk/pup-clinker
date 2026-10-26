@@ -185,9 +185,18 @@ Deno.serve(async (req: Request) => {
       if (!written) {
         throw new HttpError(409, "CLOUD_SAVE_CONFLICT", "Progress changed on Play or beta; refresh and retry.");
       }
-      await audit(admin, "BETA_LIVE_GAMEPLAY", "info",
-        { action: intent.type, kind: intent.type === "care" ? intent.kind : null, revision },
-        session.player.id, session.installation.id);
+      // A failed audit must never turn a committed save into an error response:
+      // retrying after a false-negative would double-apply the same action.
+      // Sample taps to keep the audit ledger manageable on busy installations.
+      if (intent.type !== "tap" || revision % 100 === 0) {
+        try {
+          await audit(admin, "BETA_LIVE_GAMEPLAY", "info",
+            { action: intent.type, kind: intent.type === "care" ? intent.kind : null, revision },
+            session.player.id, session.installation.id);
+        } catch (auditError) {
+          console.error("Beta save committed; follow-up audit unavailable", auditError);
+        }
+      }
       return json(200, { revision, saveData: written.save_data });
     }
     if (envelope.action === "beta-bootstrap") {
