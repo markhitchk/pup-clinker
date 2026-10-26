@@ -85,7 +85,10 @@ function careWrite(v:Dict,t:Dict,now:number){
  let bonds:Dict={};try{const j=JSON.parse(String(v.bond_by_puppy_v1??"{}"));if(isObj(j))bonds=j;}catch{/* leave corrupt legacy record untouched otherwise */}
  bonds[style]=num(v,"bond_v5",10);write(v,t,"bond_by_puppy_v1",JSON.stringify(bonds),"string");
 }
-function awardXp(v:Dict,t:Dict,n:number){addLong(v,t,"player_xp_v1",n);}
+function awardXp(v:Dict,t:Dict,n:number){
+ const base=num(v,"player_xp_v1",num(v,"lifetime_treats"));
+ setLong(v,t,"player_xp_v1",inc(base,n));
+}
 export function awardBetaXp(v:Dict,t:Dict,event:"MANUAL_TAP"|"CARE_ACTION"){
  awardXp(v,t,event==="MANUAL_TAP"?1:5);
 }
@@ -274,7 +277,7 @@ function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
  const current=v.beta_casino_round_v1;
  const round=typeof current==="string"&&current?requireObj(JSON.parse(current)):null;
  if(intent.type.endsWith("Start")){
-  expect(!round,"CASINO_ROUND_ALREADY_ACTIVE");
+  expect(!round&&!v.casino_active_round_v1,"CASINO_ROUND_ALREADY_ACTIVE");
   stakeAllowed(v,intent.wager);
   if(intent.type==="scratchStart")expect(Object.hasOwn(scratchCards,intent.wager as number),"UNSUPPORTED_SCRATCH_CARD");
   if(["plinkoStart","scratchStart","wheelStart"].includes(intent.type))
