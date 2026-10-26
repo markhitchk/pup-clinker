@@ -13,7 +13,7 @@ import {
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
-import { applyBetaEconomy } from "../_shared/beta-economy.ts";
+import { applyBetaEconomy, newBetaKotlinSave } from "../_shared/beta-economy.ts";
 import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
 
 // A beta app is a separate Android installation. This grants a deliberately
@@ -165,8 +165,18 @@ Deno.serve(async (req: Request) => {
         .from("pup_account_saves").select("*")
         .eq("player_uuid", account.player_uuid).maybeSingle();
       if (currentError) throw currentError;
-      if (!current || current.account_uuid !== account.id) {
-        throw new HttpError(409, "CLOUD_SAVE_REQUIRED", "Restore the existing Kotlin cloud save first.");
+      if (current && current.account_uuid !== account.id) {
+        throw new HttpError(409, "CLOUD_SAVE_OWNER_MISMATCH", "Cloud save account ownership must match.");
+      }
+      // Never initialize or replace an existing Play player's missing save
+      // from a secondary beta companion. A directly signed-in owner may
+      // initialize their own first live Kotlin-compatible save exactly once.
+      const maySeed = !current &&
+        session.player.id === account.player_uuid &&
+        session.installation.id === account.active_installation_uuid;
+      if (!current && !maySeed) {
+        throw new HttpError(409, "CLOUD_SAVE_REQUIRED",
+          "The Play installation must upload its existing save before companion gameplay.");
       }
       let next: Record<string, unknown>;
       try {
@@ -190,31 +200,56 @@ Deno.serve(async (req: Request) => {
             number: typeof (intent.bet as any).number === "number" ? (intent.bet as any).number : undefined,
           } : undefined,
         };
+        const before = current?.save_data ?? newBetaKotlinSave();
         next = intent.type === "tap" || intent.type === "care"
-          ? applyBetaLiveGameplay(current.save_data, clean)
+          ? applyBetaLiveGameplay(before, clean)
           : intent.type.startsWith("blackjack")
-            ? await applyBetaBlackjack(current.save_data, clean)
-            : await applyBetaEconomy(current.save_data, clean);
+            ? await applyBetaBlackjack(before, clean)
+            : await applyBetaEconomy(before, clean);
       } catch (error) {
         const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
         throw new HttpError(409, "BETA_GAMEPLAY_REJECTED", code);
       }
-      const revision = Number(current.revision) + 1;
-      const { data: written, error: writeError } = await admin
-        .from("pup_account_saves")
-        .update({
-          revision,
-          save_data: next,
-          payload_hash_sha256: sha256Hex(canonicalJson(next)),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("player_uuid", account.player_uuid)
-        .eq("account_uuid", account.id)
-        .eq("revision", current.revision)
-        .select("revision,save_data").maybeSingle();
-      if (writeError) throw writeError;
+      const revision = current ? Number(current.revision) + 1 : 1;
+      const persistedFields = {
+        revision,
+        save_data: next,
+        payload_hash_sha256: sha256Hex(canonicalJson(next)),
+        updated_at: new Date().toISOString(),
+      };
+      let written: { revision: number; save_data: Record<string, unknown> } | null = null;
+      if (current) {
+        const { data, error: writeError } = await admin
+          .from("pup_account_saves")
+          .update(persistedFields)
+          .eq("player_uuid", account.player_uuid)
+          .eq("account_uuid", account.id)
+          .eq("revision", current.revision)
+          .select("revision,save_data").maybeSingle();
+        if (writeError) throw writeError;
+        written = data;
+      } else {
+        // Unique player_uuid enforces insert-once. A concurrent Play seed or
+        // beta request loses with a conflict instead of resetting progress.
+        const { data, error: seedError } = await admin
+          .from("pup_account_saves")
+          .insert({
+            ...persistedFields,
+            player_uuid: session.player.id,
+            account_uuid: account.id,
+            installation_uuid: session.installation.id,
+            generation: envelope.generation,
+            save_schema: 1,
+          }).select("revision,save_data").maybeSingle();
+        if (seedError) {
+          throw new HttpError(409, "CLOUD_SAVE_CONFLICT",
+            "A cloud save was just initialized; refresh and try again.");
+        }
+        written = data;
+      }
       if (!written) {
-        throw new HttpError(409, "CLOUD_SAVE_CONFLICT", "Progress changed on Play or beta; refresh and retry.");
+        throw new HttpError(409, "CLOUD_SAVE_CONFLICT",
+          "Progress changed on Play or beta; refresh and retry.");
       }
       // A failed audit must never turn a committed save into an error response:
       // retrying after a false-negative would double-apply the same action.
