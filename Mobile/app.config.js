@@ -15,9 +15,15 @@ export default ({config})=>{
  return {
   ...config,
   name:beta?'Puppy Clicker [Beta]':config.name,
+  scheme:beta?'puppyclickerbeta':config.scheme,
   android:{
    ...config.android,
    package:beta?'com.harleytg.puppyclicker.beta':config.android.package,
+   intentFilters:beta?[{
+    action:'VIEW',
+    data:[{scheme:'discord-1547982688898777118',pathPrefix:'/authorize/callback'}],
+    category:['BROWSABLE','DEFAULT']
+   }]:config.android.intentFilters,
    versionCode:beta?requestedBetaCode:config.android.versionCode
   },
   extra:{...config.extra,migrationStatus:beta?'beta-account-migration-locked':'production-authentication-required'}
