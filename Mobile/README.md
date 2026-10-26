@@ -1,3 +1,13 @@
+## October 25 — Native Pup Account registration and sign-in
+
+Onboarding Step 2 now prioritizes **Pup Account**, with separate `Sign in with Pup Account` and `Create Pup Account` actions. Discord remains an optional alternative or connected identity. Native Pup credentials use a username (3–20 letters/numbers/`_`/`-`), email, and password (minimum 8 characters). Sign-in accepts username **or** email.
+
+A native Android module sends password operations to the `pup-credentials` signed Supabase Edge Function over HTTPS, and Supabase Auth handles password verification and confirmation emails. The game never stores passwords, hashes, or Supabase Auth tokens in the local guest state. Private username reservations and verified Auth-to-Pup Account links live in RLS-protected tables.
+
+The existing `pup_accounts` table now permits a null `discord_user_id` without changing existing Discord accounts. The signed `pup-account` endpoint accepts authenticated native accounts and does not rename them on Discord link. An existing account already attached to a different installation may sign in to the beta as an **expiring read-only companion**; the Play PupEye device, save authority and one-device rule remain unchanged.
+
+Native credential login does **not** mean write-enabled game parity is complete: the beta gameplay UI stays read-only until signed economy and Kotlin cloud-state reconciliation are finished.
+
 ## October 25 — Kotlin onboarding with Pup Account integration
 
 The beta now shows the original six-step first-run sequence before the game: Welcome → Set Up Your Account → Personalize → Permissions & Privacy → Notifications → Ready to Play. Setup uses native Discord/PupEye authorization, requires a successful account cloud read to continue, and rechecks the account at completion. It does not offer a guest nickname or `.pupsave` import/export.
