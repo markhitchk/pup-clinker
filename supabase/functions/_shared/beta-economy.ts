@@ -282,6 +282,7 @@ function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
   const created=newCasinoRound(intent.type,intent,now);
   setLong(v,t,"casino_chips_v7",num(v,"casino_chips_v7")-(intent.wager as number));
   write(v,t,"beta_casino_round_v1",JSON.stringify(created),"string");
+  write(v,t,"beta_last_casino_result_v1","","string");
  }else {
   const names:Record<string,string>={slotsReveal:"SLOTS",rouletteReveal:"ROULETTE",plinkoReveal:"PLINKO",scratchReveal:"SCRATCHERS",wheelReveal:"LUCKY_WHEEL"};
   expect(round&&round.game===names[intent.type] || round?.type===names[intent.type],"CASINO_ROUND_NOT_FOUND");
@@ -300,7 +301,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
  const nowDate=new Date(now),today=day(now),dayOfMonth=nowDate.getUTCDate();
  // Do not permit a client-controlled timestamp, balance, randomness or price.
  switch(intent.type){
-  case "purchase":rollDay(v,t,today);shopUpgrade(v,t,intent);break;
+  case "purchase":rollDay(v,t,today);shopUpgrade(v,t,intent);careWrite(v,t,now);break;
   case "ticket":ticketShop(v,t,intent);break;
   case "accessory":case "equip":accessories(v,t,intent);break;
   case "exchange":{
