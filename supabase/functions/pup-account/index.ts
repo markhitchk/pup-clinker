@@ -116,7 +116,7 @@ async function linkLocalAccount(req: Request, admin: any, session: any): Promise
     auth_user_id: user.id,
     local_username: username,
     // Do not replace an established Discord identity, Player ID or cloud save.
-    username: byPlayer?.username && byPlayer.discord_user_id ? byPlayer.username : username,
+    username,
     active_installation_uuid: session.installation.id,
     updated_at: new Date().toISOString(),
   };
