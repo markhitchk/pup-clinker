@@ -80,21 +80,54 @@ test('first-party Pup Account registration is available without Discord',async()
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
 
-test('email/password login verifies Pup Account and never calls Discord',async()=>{
- let renderer,verified=[];
+test('username/password login verifies Pup Account and never calls Discord',async()=>{
+ let renderer,verified=[],received=[];
  native.NativeModules.PuppyBetaAccount={
   status:async()=>({status:'NEEDS_LOGIN'}),
-  loginLocal:async(email,password)=>({status:'VERIFIED',username:'PuppyFan',accountId:'account-1',discordUserId:''}),
+  loginLocal:async(identifier,password)=>{received.push({identifier,password});return {status:'VERIFIED',username:'PuppyFan',accountId:'account-1',discordUserId:''};},
   beginDiscord:async()=>{throw new Error('Discord not requested')},
  };
  try{
   await act(async()=>{renderer=create(React.createElement(Entry,{onVerified:account=>verified.push(account)}));await flush();});
   await act(()=>{
-   renderer.root.findByProps({accessibilityLabel:'Pup Account email'}).props.onChangeText('test@example.com');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account username or email'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup Account password'}).props.onChangeText('somelongpassword');
   });
   await act(async()=>{renderer.root.findAllByType('Pressable').find(b=>b.findAllByType('Text').some(t=>t.props.children==='Sign in with Pup Account')).props.onPress();await flush();});
+  assert.equal(received.length,1);assert.equal(received[0].identifier,'PuppyFan');
   assert.equal(verified.length,1);assert.equal(verified[0].status,'VERIFIED');
   assert.match(contents(renderer),/Link Discord \(optional\)/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('existing email/password sign-in remains available in the same field',async()=>{
+ let renderer,received=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_LOGIN'}),
+  loginLocal:async(identifier)=>{received.push(identifier);return {status:'VERIFIED',username:'PuppyFan',accountId:'account-1'};},
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry));await flush();});
+  await act(()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup Account username or email'}).props.onChangeText('test@example.com');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account password'}).props.onChangeText('somelongpassword');
+  });
+  await act(async()=>{renderer.root.findAllByType('Pressable').find(b=>b.findAllByType('Text').some(t=>t.props.children==='Sign in with Pup Account')).props.onPress();await flush();});
+  assert.deepEqual(received,['test@example.com']);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('invalid short username fails locally before calling native auth',async()=>{
+ let renderer,calls=0;
+ native.NativeModules.PuppyBetaAccount={status:async()=>({status:'NEEDS_LOGIN'}),loginLocal:async()=>{calls++;}};
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry));await flush();});
+  await act(()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup Account username or email'}).props.onChangeText('a');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account password'}).props.onChangeText('somelongpassword');
+  });
+  await act(async()=>{renderer.root.findAllByType('Pressable').find(b=>b.findAllByType('Text').some(t=>t.props.children==='Sign in with Pup Account')).props.onPress();await flush();});
+  assert.equal(calls,0);
+  assert.match(contents(renderer),/Enter your username or email/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
