@@ -19,8 +19,8 @@ const main=(data:any)=>data.stores.puppy_clicker_save.values;
 Deno.test("signed beta tap recalculates reward from Kotlin upgrade counts",()=>{
  const before=source();const after=applyBetaLiveGameplay(before,{type:"tap"},1793041485658);
  const state=main(after);
- assertEquals(state.treats,1004); // 1 base + 2 upgrades + 1 wellness bonus
- assertEquals(state.lifetime_treats,2004);
+ assertEquals(state.treats,1003); // 1 base + 2 upgrades, no wellness bonus
+ assertEquals(state.lifetime_treats,2003);
  assertEquals(state.total_taps,1);
  assertEquals(state.legitimate_taps_v7,1);
  assertEquals(state.beta_last_tap_at_v1,1793041485658);
