@@ -211,13 +211,21 @@ export async function getAuthoritativeGoal(goalId:string,date:Date):Promise<Serv
 }
 function ticketTotal(v:Dict){return rarities.reduce((n,k)=>n+num(v,ticketKey(k)),0);}
 function priceUpgrade(u:typeof defs[number],owned:number,shopper:number):number{
- let c:number=u.base;
+ // Kotlin PuppyEconomyV7.growCost: exact ceil at every ownership level,
+ // saturating at Long.MAX_VALUE before applying the Smart Shopper discount.
+ const longMax=(1n<<63n)-1n;
+ const rate=BigInt(u.type==="COOKIE"?155:135);
+ let grown=BigInt(u.base);
  for(let i=0;i<owned;i++){
-  const multiplier=u.type==="COOKIE"?155:135;
-  c=Math.ceil(c*multiplier/100);
-  if(!Number.isSafeInteger(c)||c>=MAX/155)return MAX;
+  if(grown>(longMax-99n)/rate){grown=longMax;break;}
+  grown=(grown*rate+99n)/100n;
  }
- return Math.max(1,Math.floor(c*Math.max(75,100-shopper*5)/100));
+ const discount=BigInt(100-Math.min(5,shopper)*5);
+ const total=grown>longMax/discount?longMax:grown*discount/100n;
+ const price=total>0n?total:1n;
+ // The signed React bridge cannot faithfully serialize Kotlin Long
+ // balances above Number.MAX_SAFE_INTEGER: never round them into a cheap buy.
+ return price>BigInt(MAX)?MAX:Number(price);
 }
 function shopUpgrade(v:Dict,t:Dict,intent:BetaEconomyIntent){
  const u=defs.find(x=>x.id===intent.upgradeId);expect(u,"UNKNOWN_UPGRADE");
