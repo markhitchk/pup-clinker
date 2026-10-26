@@ -91,6 +91,10 @@ export const wheelResult=round=>(validPendingWheel(round)||validAuthoritativeWhe
  payout:round.payout,puppyStyleId:round.puppyStyleId
 }:null;
 export const wheelResultLabel=result=>{
+ if(result?.prize==='PUPPY_UNLOCK'&&WHEEL_PROTECTED_REWARD_POOL.includes(result.puppyStyleId)){
+  const puppy=result.puppyStyleId.replace(/^v2_/,'').replaceAll('_',' ');
+  return '🐶 '+puppy.replace(/\b[a-z]/g,c=>c.toUpperCase())+' unlocked · Added to Roster';
+ }
  const segment=WHEEL_SEGMENTS.find(s=>s.id===result?.prize);
  return segment?segment.description+' · '+result.payout+' Chips returned':'Choose a wager and spin.';
 };
