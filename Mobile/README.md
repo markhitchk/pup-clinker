@@ -1,3 +1,9 @@
+## October 25 — username OR email Pup Account sign-in (feature branch)
+
+Registration reserves the case-insensitively unique Pup Account username when Supabase Auth creates the email identity (including before email confirmation). The login screen accepts **username or email** plus the same password, and Discord remains optional. Username lookup occurs only in the private server function `pup-username-login`: the player's email is never revealed by the lookup API or JavaScript. The private index has RLS and no direct client access, and only a verified Auth JWT paired with a signed PupEye session may link an account.
+
+Deployment also requires the new `pup-username-login` function with `verify_jwt=false` and the updated SQL migration *before* this Android beta can log in by username. Never grant public read access to login handles. Email confirmation and an approved transfer for other installations remain mandatory.
+
 ## October 25 — standalone Pup Account credentials (feature branch)
 
 The beta now includes first-party **username + email + password** registration and **email + password** sign-in, with Discord OAuth as an optional alternative/link. Supabase Auth verifies passwords and (when configured) email confirmation; a signed PupEye installation session is required before the server attaches an Auth principal to a Pup Account. Login tokens are not persisted or returned to JavaScript by the native module. Same-account/same-install linking preserves Player ID and cloud save, but another existing installation is blocked pending an approved device transfer. Username format: 3–20 letters, numbers, dots, underscores and hyphens.
