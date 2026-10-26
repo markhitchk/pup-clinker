@@ -151,7 +151,7 @@ export async function getAuthoritativeGoal(goalId:string,date:Date):Promise<Serv
   const list=j.days?.[String(dayOfMonth)];
   if(!Array.isArray(list))throw Error("NO_SCHEDULE");
   const item=list.slice(0,12).find((x:unknown)=>isObj(x)&&x.id===goalId&&x.enabled!==false);
-  if(!isObj(item))return fallbackGoal(dayOfMonth,goalId);
+  if(!isObj(item))return undefined; // A published schedule may deliberately omit this goal.
   const metric=String(item.type||"").toLowerCase();
   const target=typeof item.target==="number"?item.target:NaN;
   const reward=typeof item.rewardTreats==="number"?item.rewardTreats:NaN;
