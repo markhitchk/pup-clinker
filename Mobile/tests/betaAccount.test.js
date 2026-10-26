@@ -63,3 +63,24 @@ test('beta package registers the Discord callback without altering Play configur
   }
  }
 });
+
+test('existing Play Pup Account can authorize read-only beta without device transfer',()=>{
+ const native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const beta=read('../src/production/BetaAccountEntry.jsx');
+ const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
+ const migration=read('../../supabase/migrations/20261025214600_pup_beta_companion_readonly.sql');
+ for(const action of ['beta-link-discord','beta-account-status','beta-cloud-read'])
+  assert.ok(native.includes(action)&&endpoint.includes(action),action);
+ assert.match(native,/linkedFromPlay/);
+ assert.match(native,/BETA_ACCOUNT_NOT_FOUND/);
+ assert.match(endpoint,/discord\.com\/api\/v10\/users\/@me/);
+ assert.match(endpoint,/authenticateSession\(req, admin, envelope\)/);
+ assert.match(endpoint,/verifyOwner\(admin, account/);
+ assert.match(endpoint,/assertGlobalEnforcementAllowed/);
+ assert.match(endpoint,/account\.active_installation_uuid/);
+ assert.match(endpoint,/MAX_BETA_GRANT_MS/);
+ assert.doesNotMatch(endpoint,/cloud-save-write|revoke.*installation|delete.*pup_account_saves/);
+ assert.match(migration,/enable row level security/);
+ assert.match(migration,/revoke all on table public\.pup_beta_account_links from anon, authenticated/);
+ assert.match(beta,/read-only beta mode/);
+});
