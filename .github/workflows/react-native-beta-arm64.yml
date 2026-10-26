@@ -44,6 +44,21 @@ jobs:
       - uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Install React Native NDK with retries
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK_VERSION="27.1.12297006"
+          for attempt in 1 2 3; do
+            if sdkmanager --install "ndk;${NDK_VERSION}"; then
+              test -f "${ANDROID_HOME}/ndk/${NDK_VERSION}/source.properties" && exit 0
+            fi
+            echo "::warning::NDK download failed (attempt ${attempt}); retrying clean installation"
+            rm -rf "${ANDROID_HOME}/ndk/${NDK_VERSION}" "${ANDROID_HOME}/.temp/PackageOperation"*
+            sleep 4
+          done
+          echo "::error::Android NDK ${NDK_VERSION} unavailable after 3 attempts"
+          exit 1
       - name: Set monotonic beta Android versionCode
         run: echo "PUPPY_BETA_VERSION_CODE=$(( $(date -u +%s) / 60 ))" >> "$GITHUB_ENV"
       - name: Install dependencies
