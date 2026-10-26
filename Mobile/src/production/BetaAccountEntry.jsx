@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 // This is the project's public publishable key, not an admin/service-role secret.
@@ -9,12 +9,19 @@ const api=()=>NativeModules.PuppyBetaAccount;
 const isCallback=url=>typeof url==='string'&&
  /^discord-1547982688898777118:\/authorize\/callback(?:\?|$)/.test(url);
 
-export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false}){
+export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false,initialMode='signin'}){
  const insets=useSafeAreaInsets();
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState('');
  const [cloud,setCloud]=useState(null);
+ const [mode,setMode]=useState(initialMode);
+ const [username,setUsername]=useState('');
+ const [email,setEmail]=useState('');
+ const [login,setLogin]=useState('');
+ const [password,setPassword]=useState('');
+ const [notice,setNotice]=useState('');
+ useEffect(()=>{if(visible){setMode(initialMode);setNotice('');setProblem('');}},[visible,initialMode]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -30,8 +37,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    // A device can have a valid PupEye session but no Discord link yet.
    // Do not manufacture gameplay credentials or progression from this.
    const message=[error?.code,error?.message].filter(Boolean).join(' ');
-   if(message.includes('PUP_ACCOUNT_DISCORD_REQUIRED')){
-    setState({status:'NEEDS_DISCORD'});return;
+   if(['PUP_ACCOUNT_DISCORD_REQUIRED','PUP_ACCOUNT_LOGIN_REQUIRED','BETA_LINK_REQUIRED'].some(code=>message.includes(code))){
+    setState({status:'NEEDS_ACCOUNT'});return;
    }
    if(message.includes('PUP_ACCOUNT_ON_OTHER_DEVICE')||message.includes('DISCORD_ALREADY_LINKED')){
     setState({status:'DEVICE_TRANSFER_REQUIRED'});
@@ -74,6 +81,45 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   catch{setProblem('Unable to open Discord. Check your connection and retry.');}
   finally{setBusy(false);}
  },[]);
+ const submit=useCallback(async()=>{
+  if(busy)return;
+  if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||!email.includes('@')||password.length<8)){
+   setProblem('Enter a 3–20 character username, valid email and password of at least 8 characters.');
+   return;
+  }
+  if(mode==='signin'&&(!login.trim()||!password)){
+   setProblem('Enter your Pup username or email and password.');return;
+  }
+  setBusy(true);setProblem('');setNotice('');
+  try{
+   const result=mode==='signup'
+    ?await api().createPupAccount(username.trim(),email.trim(),password,publishableKey)
+    :await api().signInPupAccount(login.trim(),password,publishableKey);
+   setPassword('');
+   if(result?.status==='VERIFY_EMAIL'){
+    setState({status:'VERIFY_EMAIL'});
+    setNotice('Check your email for a verification link. After confirming, return and sign in with your Pup Account.');
+    setMode('signin');
+    setLogin(email.trim());
+   }else{
+    setState(result);
+    if(result.status==='VERIFIED')onVerified?.(result);
+   }
+  }catch(error){
+   const code=String(error?.code||'').replace(/^BETA_/,'');
+   const messages={
+    PUP_USERNAME_TAKEN:'That Pup username is already taken. Choose another.',
+    PUP_EMAIL_UNVERIFIED:'Please verify your email, then sign in.',
+    PUP_SIGNIN_INVALID:'Incorrect username/email or password, or email verification is pending.',
+    PUP_SIGNUP_UNAVAILABLE:'Account registration failed. Try signing in or use another email.',
+    PUP_CREDENTIAL_ALREADY_LINKED:'This Pup Account already has a password login.',
+    PUP_ACCOUNT_RECOVERY_REQUIRED:'Pup Account recovery is required. Contact Support.',
+    PUP_ACCOUNT_SWITCH_BLOCKED:'This beta installation is already linked to another account.',
+    PUP_ACCOUNT_DEVICE_UNAVAILABLE:'The original PupEye installation is unavailable. Contact Support.'
+   };
+   setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
+  }finally{setBusy(false);}
+ },[busy,mode,username,email,login,password,onVerified]);
  const read=useCallback(async()=>{
   setBusy(true);setProblem('');
   try{
@@ -89,8 +135,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   <ScrollView contentContainerStyle={styles.content}>
    <Pressable accessibilityRole="button" onPress={onClose} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
-   <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Connect Discord':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>{onboarding?'Passwordless Pup Account sign-in. Discord verifies your identity; Supabase stores your account and cloud progression. PupEye controls device access.':'This beta has its own secured Android identity. It cannot read the Play app sandbox or overwrite its local save. Your existing Discord account can authorize a read-only beta companion.'}</Text>
+   <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
+   <Text style={styles.body}>{onboarding?'Use a Pup username, email and password, or connect Discord instead. PupEye protects your cloud progression.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
    <View style={styles.card}>
     <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
     <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
@@ -100,13 +146,51 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account in read-only beta mode. The Play installation stays active; no device transfer or guest progress was created.</Text>:null}</>:
       <Text style={styles.body}>Connect Discord to register a real PupEye session. No guest game is launched and no preview save is substituted.</Text>}
    </View>
-   {problem?<View style={styles.error}><Text style={styles.body}>{problem}</Text></View>:null}
+   {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
+   {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
    {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={onClose}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
-   {!verified?<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
-    disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
-    <Text style={styles.buttonText}>Connect with Discord</Text>
-   </Pressable>:<>
+   {!verified?<>
+    <View style={styles.modes}>
+     {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
+      accessibilityLabel={item==='signin'?'Sign in':item==='signup'?'Create account':'Discord login'}
+      onPress={()=>{setMode(item);setProblem('');setNotice('');setPassword('');}}
+      style={[styles.mode,mode===item&&styles.modeSelected]}>
+      <Text style={[styles.modeText,mode===item&&styles.modeSelectedText]}>{item==='signin'?'Sign in':item==='signup'?'Create account':'Discord'}</Text>
+     </Pressable>)}
+    </View>
+    {mode!=='discord'?<View style={styles.card}>
+     <Text style={styles.cardTitle}>{mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
+     {mode==='signup'?<>
+      <Text style={styles.label}>USERNAME</Text>
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+       placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
+       maxLength={20} value={username} onChangeText={setUsername} style={styles.input}/>
+      <Text style={styles.label}>EMAIL</Text>
+      <TextInput accessibilityLabel="Pup email" autoCapitalize="none" autoCorrect={false}
+       keyboardType="email-address" autoComplete="email" placeholder="you@example.com"
+       placeholderTextColor="#8AA1AF" value={email} onChangeText={setEmail} style={styles.input}/>
+     </>:<>
+      <Text style={styles.label}>USERNAME OR EMAIL</Text>
+      <TextInput accessibilityLabel="Pup username or email" autoCapitalize="none" autoCorrect={false}
+       placeholder="Username or email" placeholderTextColor="#8AA1AF"
+       value={login} onChangeText={setLogin} style={styles.input}/>
+     </>}
+     <Text style={styles.label}>PASSWORD</Text>
+     <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none"
+      autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
+      placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
+      value={password} onChangeText={setPassword} style={styles.input}/>
+     <Pressable accessibilityRole="button" accessibilityLabel={mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
+      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
+      <Text style={styles.buttonText}>{mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
+     </Pressable>
+     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is handled by Supabase Auth, not saved in Puppy Clicker.</Text>:null}
+    </View>:<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
+     disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
+     <Text style={styles.buttonText}>Connect with Discord</Text>
+    </Pressable>}
+   </>:<>
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
     </Pressable>
@@ -140,5 +224,9 @@ const styles=StyleSheet.create({
  buttonText:{color:'#0B1C29',fontSize:17,fontWeight:'900'},
  secondary:{borderRadius:14,borderWidth:1,borderColor:'#5D8CA9',padding:14,alignItems:'center'},
  secondaryText:{color:'#B0E5FF',fontWeight:'800'},
- disabled:{opacity:0.5}
+ disabled:{opacity:0.5},
+ modes:{flexDirection:'row',gap:8},mode:{flex:1,paddingVertical:12,paddingHorizontal:5,alignItems:'center',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12},
+ modeSelected:{backgroundColor:'#254C63',borderColor:'#87D6FF'},modeText:{fontSize:14,fontWeight:'800',color:'#B0E5FF'},
+ modeSelectedText:{color:'#FFFFFF'},
+ input:{color:'#FFFFFF',backgroundColor:'#152631',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12,paddingHorizontal:14,minHeight:52,fontSize:16}
 });
