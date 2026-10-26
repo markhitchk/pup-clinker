@@ -3,11 +3,12 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 const registration='add(com.harleytg.puppyproduction.PuppyProductionAuthorityPackage())';
+const betaRegistration='add(com.harleytg.puppyproduction.PuppyBetaAccountPackage())';
 function registerProductionAuthority(contents){
- if(contents.includes(registration))return contents;
+ if(contents.includes(registration)&&contents.includes(betaRegistration))return contents;
  const marker=/PackageList\(this\)\.packages\.apply\s*\{/;
  if(!marker.test(contents))throw Error('Pup Account: unsupported Kotlin MainApplication template');
- return contents.replace(marker,match=>match+'\n              '+registration);
+ return contents.replace(marker,match=>match+'\n              '+registration+'\n              '+betaRegistration);
 }
 function withPuppyProductionAuthority(config){
  config=withMainApplication(config,mod=>{
@@ -22,6 +23,10 @@ function withPuppyProductionAuthority(config){
   fs.copyFileSync(
    path.join(__dirname,'puppy-production/PuppyProductionAuthorityPackage.kt'),
    path.join(java,'PuppyProductionAuthorityPackage.kt')
+  );
+  fs.copyFileSync(
+   path.join(__dirname,'puppy-production/PuppyBetaAccountPackage.kt'),
+   path.join(java,'PuppyBetaAccountPackage.kt')
   );
   return mod;
  }]);
