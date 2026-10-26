@@ -5,6 +5,38 @@
  * Works on typed Kotlin SharedPreferences snapshots and preserves unknown keys.
  */
 type Dict=Record<string,unknown>;
+/** Fresh live account: an empty, Kotlin SecurePreferenceCodec-compatible save.
+ * Only called for the owner's active, authenticated installation; not a
+ * secondary Play companion. This seed is inserted once with a unique key.
+ */
+export function newBetaKotlinSave(now=Date.now()):Dict{
+ const today=Math.floor(now/86400000);
+ const values:Dict={
+  puppy_name:"Buddy",puppy_style:"classic",unlocked_puppies:["classic","golden","poodle","spotty"],
+  accessory:"None",owned_accessories_v7:["None"],
+  treats:0,lifetime_treats:0,bones_v7:0,pup_coins_v7:0,casino_chips_v7:0,
+  total_taps:0,legitimate_taps_v7:0,total_shop_purchases_v5:0,
+  total_tickets_found:0,care_actions_v5:0,player_xp_v1:0,
+  happiness:100,fullness:100,energy:100,cleanliness_v5:100,bond_v5:10,
+  daily_day_v5:today,daily_tap_start_v5:0,daily_care_start_v5:0,daily_shop_start_v5:0,
+  daily_streak_v5:0,daily_tasks_v5:[],achievement_rewarded_v1:[],
+  prestige_count_v6:0,prestige_skill_points_v6:0,prestige_total_points_v6:0,
+  park_active:false,park_ready_at:0,last_seen:now,
+ };
+ const types:Dict={};
+ for(const [key,val] of Object.entries(values)){
+  types[key]=Array.isArray(val)?"string_set":typeof val==="boolean"?"boolean":
+   typeof val==="string"?"string":
+   ["happiness","fullness","energy","cleanliness_v5","bond_v5","daily_streak_v5",
+    "prestige_count_v6","prestige_skill_points_v6"].includes(key)?"int":"long";
+ }
+ return {format:"puppy-clicker-cloud-save",version:1,savedAtEpochMs:now,
+  identity:{},stores:{
+   puppy_clicker_save:{values,types},
+   puppy_seasonal_v1:{values:{},types:{}},
+  }};
+}
+
 export type BetaEconomyIntent={type:string;kind?:string;upgradeId?:string;rarity?:string;name?:string;skill?:string;goalId?:string;amount?:number;wager?:number;bet?:{type?:string;number?:number};id?:string;payment?:string};
 const MAX=Number.MAX_SAFE_INTEGER;
 const defs=[
