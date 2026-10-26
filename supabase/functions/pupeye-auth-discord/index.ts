@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
       if (discordAccountError) throw discordAccountError;
 
-      if (accountByPlayer && accountByPlayer.discord_user_id !== discordId) {
+      if (accountByPlayer?.discord_user_id && accountByPlayer.discord_user_id !== discordId) {
         await audit(
           admin,
           "PUP_ACCOUNT_IDENTITY_REBIND_BLOCKED",
@@ -191,7 +191,8 @@ Deno.serve(async (req: Request) => {
       const accountValues = {
         player_uuid: session.player.id,
         discord_user_id: discordId,
-        username,
+        // Keep the player's own Pup Account username when Discord is connected.
+        username: accountByPlayer?.local_username ?? username,
         display_name: typeof profile.global_name === "string" ? profile.global_name : null,
         avatar_hash: typeof profile.avatar === "string" ? profile.avatar : null,
         active_installation_uuid: session.installation.id,

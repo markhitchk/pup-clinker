@@ -31,6 +31,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private val store get()=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
  private val random=SecureRandom()
  private val root="https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/"
+ private val authRoot="https://damcmyqusdxucwozkoeh.supabase.co/auth/v1/"
  private val redirect="discord-1547982688898777118:/authorize/callback"
  private val keyAlias="pupeye_install_signing_ec_v2"
  private val aesAlias="puppy_clicker_save_aes_v1"
@@ -115,14 +116,15 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    .put("nonce",nonce).put("publicKey",b64(pub)).put("payload",payload).put("signature",b64(sig))
  }
  private class ApiError(val code:String):Exception(code)
- private fun post(function:String,body:JSONObject,key:String,token:String?=null):JSONObject {
+ private fun post(function:String,body:JSONObject,key:String,token:String?=null,bearer:String?=null):JSONObject {
   publishable(key)
-  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account"))
+  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-username-login"))
   val c=URL(root+function).openConnection() as HttpURLConnection
   try {
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
    c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("apikey",key)
    if(token!=null)c.setRequestProperty("X-Pupeye-Session",token)
+    if(bearer!=null)c.setRequestProperty("Authorization","Bearer "+bearer)
    val bytes=body.toString().toByteArray()
    c.setFixedLengthStreamingMode(bytes.size)
    c.outputStream.use{it.write(bytes)}
@@ -161,6 +163,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
+    putString("discordUserId",a.optString("discordUserId",""))
    putString("displayName",a.optString("displayName",a.getString("username")))
    putString("playerId",player.getString("player_id",""));putString("friendCode",player.getString("friend_code",""))
    putDouble("cloudRevision",save.optDouble("revision"));putString("guildRole",obj.optString("guildRole",""))
@@ -171,12 +174,71 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   catch(e:ApiError){
    val message=if(e.code in setOf("PUP_ACCOUNT_ON_OTHER_DEVICE","DISCORD_ALREADY_LINKED"))
     "Your Discord Pup Account is on the Play app. An authorized device transfer is required."
-    else "PupEye server rejected login ("+e.code.take(64)+")."
+    else "Pup Account sign-in failed ("+e.code.take(64)+")."
    p.reject("BETA_"+e.code.take(64),message)
   }catch(e:Exception){p.reject("BETA_LOGIN_FAILED","Could not securely verify this beta login. Original progress was not changed.")}
  }.start()}
+ private fun authRequest(key:String,route:String,body:JSONObject):JSONObject {
+  publishable(key)
+  require(route=="signup"||route=="token?grant_type=password")
+  val c=URL(authRoot+route).openConnection() as HttpURLConnection
+  try{
+   c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=45000;c.doOutput=true
+   c.setRequestProperty("Content-Type","application/json")
+   c.setRequestProperty("apikey",key)
+   val bytes=body.toString().toByteArray()
+   c.setFixedLengthStreamingMode(bytes.size)
+   c.outputStream.use{it.write(bytes)}
+   val ok=c.responseCode in 200..299
+   val data=(if(ok)c.inputStream else c.errorStream)?.use{it.readNBytes(65537)}?:ByteArray(0)
+   require(data.size<=65536){"Authentication response too large"}
+   if(!ok)throw ApiError(if(route=="signup")"LOCAL_REGISTRATION_FAILED" else "LOCAL_INVALID_CREDENTIALS")
+   return JSONObject(String(data))
+  }finally{c.disconnect()}
+ }
+ private fun checkEmail(email:String):String {
+  val clean=email.trim().lowercase(java.util.Locale.ROOT)
+  require(clean.length in 6..254&&clean.contains("@")&&!clean.contains(" ")){"Invalid account email"}
+  return clean
+ }
+ private fun checkPassword(password:String) {
+  require(password.length in 8..128){"Password must contain 8–128 characters"}
+ }
+ private fun localAccount(key:String,jwt:String):WritableMap {
+  require(jwt.isNotBlank()&&jwt.length<=8192){"Missing Supabase Auth session"}
+  val token=session(key) // Signed device enrollment; never borrow the original Play session.
+  post("pup-account",envelope("auth-local",JSONObject()),key,token,jwt)
+  return account(key)
+ }
+ @ReactMethod fun registerLocal(username:String,email:String,password:String,key:String,p:Promise)=runAsync(p){
+  require(Regex("^[A-Za-z0-9_.-]{3,20}$").matches(username)){"Invalid Pup Account username"}
+  val mail=checkEmail(email);checkPassword(password)
+  // Supabase Auth owns password hashing, credential validation and email confirmation.
+  // Neither passwords nor Auth access tokens are persisted in JS or SharedPreferences.
+  val reply=authRequest(key,"signup",JSONObject().put("email",mail).put("password",password)
+   .put("data",JSONObject().put("puppy_username",username)))
+  val jwt=reply.optString("access_token","")
+  if(jwt.isBlank())Arguments.createMap().apply{putString("status","EMAIL_CONFIRMATION_REQUIRED")}
+  else localAccount(key,jwt)
+ }
+ @ReactMethod fun loginLocal(identifier:String,password:String,key:String,p:Promise)=runAsync(p){
+  checkPassword(password)
+  // Email and username are interchangeable sign-in identifiers. The user's
+  // private email is never resolved on the phone when signing in by username.
+  val name=identifier.trim()
+  val jwt=if(name.contains("@")){
+   val mail=checkEmail(name)
+   authRequest(key,"token?grant_type=password",
+    JSONObject().put("email",mail).put("password",password)).getString("access_token")
+  }else{
+   require(Regex("^[A-Za-z0-9_.-]{3,20}$").matches(name)){"Invalid Pup Account username"}
+   post("pup-username-login",JSONObject().put("username",name).put("password",password),
+    key).getString("accessToken")
+  }
+  localAccount(key,jwt)
+ }
  @ReactMethod fun status(key:String,p:Promise)=runAsync(p){
-  if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_DISCORD")}
+  if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_LOGIN")}
   else account(key)
  }
  @ReactMethod fun beginDiscord(p:Promise) {

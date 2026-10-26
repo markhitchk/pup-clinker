@@ -1,3 +1,11 @@
+## October 25 — case-insensitive username login
+
+Pup Account beta login accepts username **or** email with password. Supabase Auth reserves usernames at signup; only a protected Edge Function resolves usernames to emails for password verification. No email lookup endpoint or unsigned PupEye bypass is exposed. Requires new SQL trigger/index plus `pup-username-login` deployment; live registration/device verification still pending.
+
+## October 25 — optional first-party credentials
+
+Implemented on feature branch: native Pup Account username/email/password registration, email/password sign-in and optional Discord linking. Backend changes use Supabase Auth JWT verification plus a signed PupEye installation, preserve existing Player ID/saves, and reject attempts to bind an account on another installation. Schema and Edge Functions must be deployed in order, then tested live; no release-ready proof exists yet. Signed economy, safe existing-player transfer and Google Play upgrade remain blocked.
+
 ## October 25 — account onboarding restored
 
 The beta first-run entry now follows Kotlin's six screens and native Pup Account authorization. Account setup requires successful cloud activation; Ready independently rechecks the native account. UI/profile choices persist using original Kotlin preferences. Optional privacy stays off by default, and notifications may be declined. No guest profile or save import/export is offered. Original logos and offline legal documents are bundled.

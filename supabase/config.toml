@@ -37,8 +37,13 @@ verify_jwt = false
 
 
 
-# T0 Pup Accounts use Discord OAuth plus the existing signed PupEye session/device proof.
+# Pup Accounts support Supabase Auth email/password and optional Discord. Every request also requires a signed PupEye session/device proof.
 [functions.pup-account]
+verify_jwt = false
+
+# Username/password login uses a project-key check and Supabase GoTrue's
+# password verification, not an incoming user JWT.
+[functions.pup-username-login]
 verify_jwt = false
 
 # Discord bot only. Secret-authenticated developer gifts and system messages.
