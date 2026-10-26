@@ -14,7 +14,7 @@ Deno.test("Blackjack shoe is private, signed wager debits once and Stand settles
  let after=await applyBetaBlackjack(initial,{type:"blackjackStart",wager:100},1793041800000);
  assertEquals(get(after).casino_chips_v7,4900);
  assertEquals(get(initial).casino_chips_v7,5000);
- assertEquals(after.stores.puppy_seasonal_v1,initial.stores.puppy_seasonal_v1);
+ assertEquals((after.stores as any).puppy_seasonal_v1,initial.stores.puppy_seasonal_v1);
  if(get(after).beta_casino_round_v1){
   let round=JSON.parse(get(after).beta_casino_round_v1);
   assertEquals(round.dealerCards.length,1);
