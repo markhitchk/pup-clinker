@@ -77,7 +77,7 @@ test('all Settings destructive routes open the original hold confirmation withou
   for(const [label,hold] of [['Reset Settings','Hold to Reset Settings'],['Reset Game Progress','Hold to Reset Progress'],['Delete Local Save Data','Hold to Delete Local Data']]){
    const before=JSON.stringify(ui.state().game);
    await act(()=>buttonWith(ui.renderer.root,label).props.onPress());
-   assert.match(contents(ui.renderer.root),/DANGER ZONE/,'Plain Android alert still replaces the original danger modal');
+   assert.match(contents(ui.renderer.root),label==='Reset Settings'?/PREFERENCES/:/DANGER ZONE/,'The hold confirmation should identify its action clearly');
    assert.ok(ui.renderer.root.findAllByProps({accessibilityLabel:hold}).length);
    assert.equal(JSON.stringify(ui.state().game),before);
    await act(()=>buttonWith(ui.renderer.root,'Cancel').props.onPress());
