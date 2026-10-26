@@ -66,7 +66,7 @@ export function transition(state,action){
  if(action.type==='monthlySchedule')return {...state,monthlySchedule:action.schedule};
  if(action.type==='hydrate'){
   const game=action.game?clone(action.game):freshGame();
-  if(action.game)applyOfflineCare(game,action.now||Date.now());
+  if(action.game&&!action.readOnly)applyOfflineCare(game,action.now||Date.now());
   // Kotlin normalizes the active LocalDate on load. Daily progress must not
   // display the previous day's counters until the first minute timer fires.
   rollDailyDay(game,new Date(action.now||Date.now()));
@@ -78,7 +78,13 @@ export function transition(state,action){
   game.pendingRoulette=validPendingRoulette(game.pendingRoulette)?game.pendingRoulette:null;
   game.pendingPlinko=validPendingPlinko(game.pendingPlinko)?game.pendingPlinko:null;
   game.pendingWheel=validPendingWheel(game.pendingWheel)?game.pendingWheel:null;
-  return {...state,game,blackjack,blackjackDisplay:null,slotsDisplay:null,rouletteDisplay:null,plinkoDisplay:null,scratchDisplay:null,wheelDisplay:null,ready:true};
+  const last=game.betaLastCasinoResult;
+  return {...state,game,blackjack,blackjackDisplay:null,
+   slotsDisplay:last?.game==='SLOTS'?last:null,
+   rouletteDisplay:last?.game==='ROULETTE'?last:null,
+   plinkoDisplay:last?.game==='PLINKO'?last:null,
+   scratchDisplay:last?.type==='SCRATCHERS'?last:null,
+   wheelDisplay:last?.type==='LUCKY_WHEEL'?last:null,ready:true};
  }
  if(!state.ready)return state;
  const g=clone(state.game), no=()=>state;
