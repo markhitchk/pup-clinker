@@ -71,7 +71,7 @@ async function finishVerified(admin: any, session: any, user: LoginUser) {
     const { data: companion, error: companionError } = await admin.from("pup_beta_account_links")
       .select("*").eq("installation_uuid", session.installation.id).maybeSingle();
     if (companionError) throw companionError;
-    if (companion?.discord_user_id) {
+    if (companion?.discord_user_id && new Date(companion.expires_at).getTime() > Date.now()) {
       const { data, error } = await admin.from("pup_accounts")
         .select("*").eq("id", companion.account_uuid)
         .eq("discord_user_id", companion.discord_user_id).maybeSingle();
