@@ -221,7 +221,7 @@ export function useGame({mode='guest'}={}){
     const result=await native.gameplayAction(JSON.stringify(intent),PUBLISHABLE_KEY);
     const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
     ++currentRequest.current; // Ignore an older overlapping bootstrap reply.
-    dispatch({type:'hydrate',game,now:Date.now()});
+    dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
     setCloudState('LIVE_SYNCED');
    }).catch(error=>{
     const code=String(error?.code||'');
