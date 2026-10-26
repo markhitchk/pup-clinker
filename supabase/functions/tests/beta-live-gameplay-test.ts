@@ -26,9 +26,9 @@ Deno.test("signed beta tap recalculates reward from Kotlin upgrade counts",()=>{
  assertEquals(state.beta_last_tap_at_v1,1793041485658);
  assertEquals(state.care_profile_v1_classic_energy,70);
  assertEquals(state.protected_entitlement,"original-preserved");
- assertEquals(after.stores.puppy_seasonal_v1,before.stores.puppy_seasonal_v1);
+ assertEquals((after.stores as any).puppy_seasonal_v1,before.stores.puppy_seasonal_v1);
  assertEquals(main(before).treats,1000,"does not mutate the input save");
- assertEquals((after.stores.puppy_clicker_save as any).types.total_taps,"long");
+ assertEquals(((after.stores as any).puppy_clicker_save as any).types.total_taps,"long");
 });
 Deno.test("beta care matches Kotlin feed costs and preserves unrelated protected fields",()=>{
  const before=source();const after=applyBetaLiveGameplay(before,{type:"care",kind:"feed"},1793041486000);
