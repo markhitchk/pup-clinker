@@ -227,12 +227,12 @@ export function useGame({mode='guest'}={}){
    return;
   }
   if(beta&&!BETA_LOCAL_ONLY_ACTIONS.has(action.type)){
-   // A read-only cloud snapshot cannot accept economy mutations. Use a short,
+   // Unported reward and economy features cannot mint unsupported saves. Use a short,
    // rate-limited native toast instead of repeatedly obscuring the game screen.
    const now=Date.now();
    if(now-lastBlockedToast.current>4000){
     lastBlockedToast.current=now;
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud progress is read-only in this beta.',ToastAndroid.SHORT);
+    if(ToastAndroid?.show)ToastAndroid.show('That feature is not live yet. Play and Care sync to Pup Account.',ToastAndroid.SHORT);
    }
    return;
   }
