@@ -14,36 +14,55 @@ export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
  const [cloudState,setCloudState]=useState(beta?'NOT_LOADED':null);
+ const liveVerified=useRef(false);
+ const cachedPreview=useRef(false);
+ const currentRequest=useRef(0);
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
-  if(!native){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
-  try {
-   const active=incoming?.status==='VERIFIED'?incoming:await native.status(PUBLISHABLE_KEY);
-   setAccount(active);
+  if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
+  const request=++currentRequest.current;
+  if(incoming?.status==='VERIFIED')setAccount(incoming);
+  try{
+   // A single signed request replaces sequential account-status + cloud-read.
+   const result=await native.bootstrap(PUBLISHABLE_KEY);
+   if(request!==currentRequest.current)return false;
+   const active=result?.account;
    if(active?.status!=='VERIFIED'){
+    liveVerified.current=false;
+    cachedPreview.current=false;
+    setAccount(active||{status:'NEEDS_ACCOUNT'});
+    showCloud(null,emptyAccountView(),'account');
     setCloudState('SIGN_IN_REQUIRED');
-    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
-    dispatch({type:'dismiss'});
     return false;
    }
-   const cloud=await native.cloudRead(PUBLISHABLE_KEY);
-   if(!cloud?.exists){
-    setCloudState('NO_CLOUD_SAVE');
-    dispatch({type:'hydrate',game:emptyAccountView(active.displayName||active.username),now:Date.now(),readOnly:true});
-    dispatch({type:'dismiss'});
-    return true;
-   }
-   const game=projectKotlinCloudSave(cloud.saveJson,active.displayName||active.username);
-   setCloudState('SERVER_SNAPSHOT_READ_ONLY');
-   dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
+   const cloud=result.cloud;
+   const g=cloud?.exists
+    ?projectKotlinCloudSave(cloud.saveJson,active.displayName||active.username)
+    :emptyAccountView(active.displayName||active.username);
+   liveVerified.current=true;
+   cachedPreview.current=false;
+   setAccount(active);
+   setCloudState(cloud?.exists?'SERVER_SNAPSHOT_READ_ONLY':'NO_CLOUD_SAVE');
+   dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
    return true;
   }catch(error){
-   setAccount(old=>old?.status==='VERIFIED'?old:{status:'SIGN_IN_REQUIRED'});
-   setCloudState('UNVERIFIED_OR_UNSUPPORTED');
-   dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
-   dispatch({type:'dismiss'});
+   if(request!==currentRequest.current)return false;
+   const code=String(error?.code||'')+' '+String(error?.message||'');
+   const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   if(revoked){
+    cachedPreview.current=false;
+    liveVerified.current=false;
+    void native.clearCachedBootstrap?.().catch(()=>{});
+   }
+   if(cachedPreview.current&&!revoked){
+    setCloudState('CACHED_OFFLINE');
+    return false; // Keep last known encrypted preview visible; never grant writes.
+   }
+   setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
+   setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
+   if(!liveVerified.current)dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    return false;
   }
  },[beta]);
@@ -65,6 +84,23 @@ export function useGame({mode='guest'}={}){
     // This placeholder is display-only and cannot accept economy actions.
     dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     dispatch({type:'dismiss'});
+    const native=NativeModules.PuppyBetaAccount;
+    // Last signed snapshot is a visual-only head start during live verification.
+    // Delayed cache reads cannot replace a newer server-verified response.
+    if(native?.cachedBootstrap)void native.cachedBootstrap().then(result=>{
+     if(liveVerified.current||result?.account?.status!=='CACHED')return;
+     try{
+      const account=result.account;
+      const cloud=result.cloud;
+      const g=cloud?.exists
+       ?projectKotlinCloudSave(cloud.saveJson,account.displayName||account.username)
+       :emptyAccountView(account.displayName||account.username);
+      cachedPreview.current=true;
+      setAccount(account);
+      setCloudState('CACHED_VERIFYING');
+      dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
+     }catch{/* Invalid cached projection never replaces a fresh server result. */}
+    }).catch(()=>{});
     void refreshAccount();return;
    }
    let alive=true;
