@@ -10,7 +10,7 @@ import commonjs from '@babel/plugin-transform-modules-commonjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
-const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','View'].map(name=>[name,name]));
+const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
 native.NativeModules={};
 native.Linking={
@@ -53,5 +53,48 @@ test('account status uses the native code to identify a transfer block',async()=
   await act(async()=>{renderer=create(React.createElement(Entry));await flush();});
   assert.match(contents(renderer),/DEVICE TRANSFER REQUIRED/);
   assert.doesNotMatch(contents(renderer),/server could not verify/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('first-party Pup Account registration is available without Discord',async()=>{
+ let renderer,verified=0,calls=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_LOGIN'}),
+  registerLocal:async(...args)=>{calls.push(args);return {status:'EMAIL_CONFIRMATION_REQUIRED'};},
+  loginLocal:async()=>{throw new Error('should not log in')},
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{onVerified:()=>verified++}));await flush();});
+  await act(()=>renderer.root.findByProps({accessibilityLabel:'Register a Pup Account'}).props.onPress());
+  await act(()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup Account username'}).props.onChangeText('PuppyFan');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account email'}).props.onChangeText('test@example.com');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account password'}).props.onChangeText('somelongpassword');
+  });
+  await act(async()=>{renderer.root.findAllByType('Pressable').find(b=>b.findAllByType('Text').some(t=>t.props.children==='Register Pup Account')).props.onPress();await flush();});
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],'PuppyFan');
+  assert.equal(calls[0][1],'test@example.com');
+  assert.match(contents(renderer),/Check your email/);
+  assert.equal(verified,0);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('email/password login verifies Pup Account and never calls Discord',async()=>{
+ let renderer,verified=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_LOGIN'}),
+  loginLocal:async(email,password)=>({status:'VERIFIED',username:'PuppyFan',accountId:'account-1',discordUserId:''}),
+  beginDiscord:async()=>{throw new Error('Discord not requested')},
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{onVerified:account=>verified.push(account)}));await flush();});
+  await act(()=>{
+   renderer.root.findByProps({accessibilityLabel:'Pup Account email'}).props.onChangeText('test@example.com');
+   renderer.root.findByProps({accessibilityLabel:'Pup Account password'}).props.onChangeText('somelongpassword');
+  });
+  await act(async()=>{renderer.root.findAllByType('Pressable').find(b=>b.findAllByType('Text').some(t=>t.props.children==='Sign in with Pup Account')).props.onPress();await flush();});
+  assert.equal(verified.length,1);assert.equal(verified[0].status,'VERIFIED');
+  assert.match(contents(renderer),/Link Discord \(optional\)/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
