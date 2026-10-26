@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
       const intent = envelope.payload;
       const allowed = new Set([
         "tap", "care", "purchase", "ticket", "accessory", "equip", "exchange", "skill",
-        "daily", "claimDailyGoal", "parkStart", "parkClaim",
+        "daily", "claimDailyGoal", "parkStart", "parkClaim", "prestige",
         "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
         "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
         "wheelStart", "wheelReveal", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
