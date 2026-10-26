@@ -143,7 +143,7 @@ export function useGame({mode='guest'}={}){
  // Kotlin MonthlyRewards: cache one validated month, refresh every 15 minutes,
  // never accept executable content or trust guest rewards as server-authoritative.
  useEffect(()=>{
-  if(beta)return;
+  // Monthly reward definitions are display data; beta uses the same validated feed as Play.
   let alive=true;
   let activeMonth='';
   let busy=false;
