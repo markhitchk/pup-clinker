@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useReducer,useRef,useState} from 'react';
-import {AppState,NativeModules} from 'react-native';
+import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,6 +50,7 @@ export function useGame({mode='guest'}={}){
  const [state,dispatch]=useReducer(transition,undefined,initialState);
  const latest=useRef(state);
  const queue=useRef(Promise.resolve());
+ const lastBlockedToast=useRef(0);
  latest.current=state;
  const write=useCallback(()=>{
    if(beta)return; // Never persist a beta session as guest-only progression.
@@ -149,7 +150,13 @@ export function useGame({mode='guest'}={}){
  },[beta,write]);
  const act=useCallback(action=>{
   if(beta&&!BETA_LOCAL_ONLY_ACTIONS.has(action.type)){
-   dispatch({type:'betaActionBlocked'});
+   // A read-only cloud snapshot cannot accept economy mutations. Use a short,
+   // rate-limited native toast instead of repeatedly obscuring the game screen.
+   const now=Date.now();
+   if(now-lastBlockedToast.current>4000){
+    lastBlockedToast.current=now;
+    if(ToastAndroid?.show)ToastAndroid.show('Cloud progress is read-only in this beta.',ToastAndroid.SHORT);
+   }
    return;
   }
   dispatch(action);
