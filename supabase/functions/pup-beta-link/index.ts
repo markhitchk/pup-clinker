@@ -13,6 +13,7 @@ import {
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
+import { applyBetaEconomy } from "../_shared/beta-economy.ts";
 
 // A beta app is a separate Android installation. This grants a deliberately
 // read-only, expiring companion link after Discord proves account ownership.
@@ -146,10 +147,17 @@ Deno.serve(async (req: Request) => {
       return json(200, { updated: true, displayName: changed.display_name, gameplayReadOnly: true });
     }
     if (envelope.action === "beta-gameplay") {
-      // Only server-computed Play and Care actions are enabled. Never accept
+      // Only server-computed authenticated gameplay actions are enabled. Never accept
       // arbitrary client balances, XP, shop inventory or Kotlin save blobs.
       const intent = envelope.payload;
-      if (intent.type !== "tap" && intent.type !== "care") {
+      const allowed = new Set([
+        "tap", "care", "purchase", "ticket", "accessory", "equip", "exchange", "skill",
+        "daily", "claimDailyGoal", "parkStart", "parkClaim",
+        "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
+        "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
+        "wheelStart", "wheelReveal",
+      ]);
+      if (typeof intent.type !== "string" || !allowed.has(intent.type)) {
         throw new HttpError(400, "BETA_GAMEPLAY_NOT_PORTED", "This gameplay action is not yet live.");
       }
       const { data: current, error: currentError } = await admin
@@ -161,9 +169,27 @@ Deno.serve(async (req: Request) => {
       }
       let next: Record<string, unknown>;
       try {
-        next = applyBetaLiveGameplay(current.save_data, {
-          type: intent.type, kind: typeof intent.kind === "string" ? intent.kind : undefined,
-        });
+        // Whitelist intent fields. The server ignores every client-provided
+        // RNG sample, deck, reward amount, price, XP and save JSON.
+        const clean = {
+          type: intent.type,
+          kind: typeof intent.kind === "string" ? intent.kind : undefined,
+          upgradeId: typeof intent.upgradeId === "string" ? intent.upgradeId : undefined,
+          rarity: typeof intent.rarity === "string" ? intent.rarity : undefined,
+          name: typeof intent.name === "string" ? intent.name : undefined,
+          skill: typeof intent.skill === "string" ? intent.skill : undefined,
+          goalId: typeof intent.goalId === "string" ? intent.goalId : undefined,
+          amount: typeof intent.amount === "number" ? intent.amount : undefined,
+          wager: typeof intent.wager === "number" ? intent.wager : undefined,
+          bet: typeof intent.bet === "object" && intent.bet !== null &&
+            !Array.isArray(intent.bet) ? {
+            type: typeof (intent.bet as any).type === "string" ? (intent.bet as any).type : undefined,
+            number: typeof (intent.bet as any).number === "number" ? (intent.bet as any).number : undefined,
+          } : undefined,
+        };
+        next = intent.type === "tap" || intent.type === "care"
+          ? applyBetaLiveGameplay(current.save_data, clean)
+          : await applyBetaEconomy(current.save_data, clean);
       } catch (error) {
         const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
         throw new HttpError(409, "BETA_GAMEPLAY_REJECTED", code);
