@@ -41,6 +41,11 @@ verify_jwt = false
 [functions.pup-account]
 verify_jwt = false
 
+# Username/password login uses a project-key check and Supabase GoTrue's
+# password verification, not an incoming user JWT.
+[functions.pup-username-login]
+verify_jwt = false
+
 # Discord bot only. Secret-authenticated developer gifts and system messages.
 [functions.pup-bot-gift]
 verify_jwt = false
