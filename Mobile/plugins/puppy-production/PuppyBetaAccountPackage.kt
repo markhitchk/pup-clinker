@@ -68,7 +68,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   cipher.updateAAD("PuppyClicker/device-save/v1".toByteArray())
   return JSONObject(String(cipher.doFinal(bytes.copyOfRange(16,bytes.size))))
  }
- private fun initialize() {
+ private fun initializeBetaIdentity() {
   beta()
   if(!store.containsAlias(keyAlias)){
    val gen=KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC,"AndroidKeyStore")
@@ -134,7 +134,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   }finally{c.disconnect()}
  }
  private fun register(key:String):String {
-  initialize()
+  initializeBetaIdentity()
   val s=read(stateFile)
   val pub=store.getCertificate(keyAlias).publicKey.encoded
   val support=hex(sha((s.getString("installationId")+"|"+hex(sha(pub))).toByteArray())).take(12).uppercase()
