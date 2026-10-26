@@ -118,7 +118,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private class ApiError(val code:String):Exception(code)
  private fun post(function:String,body:JSONObject,key:String,token:String?=null,bearer:String?=null):JSONObject {
   publishable(key)
-  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account"))
+  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-username-login"))
   val c=URL(root+function).openConnection() as HttpURLConnection
   try {
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
@@ -221,10 +221,21 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(jwt.isBlank())Arguments.createMap().apply{putString("status","EMAIL_CONFIRMATION_REQUIRED")}
   else localAccount(key,jwt)
  }
- @ReactMethod fun loginLocal(email:String,password:String,key:String,p:Promise)=runAsync(p){
-  val mail=checkEmail(email);checkPassword(password)
-  val reply=authRequest(key,"token?grant_type=password",JSONObject().put("email",mail).put("password",password))
-  localAccount(key,reply.getString("access_token"))
+ @ReactMethod fun loginLocal(identifier:String,password:String,key:String,p:Promise)=runAsync(p){
+  checkPassword(password)
+  // Email and username are interchangeable sign-in identifiers. The user's
+  // private email is never resolved on the phone when signing in by username.
+  val name=identifier.trim()
+  val jwt=if(name.contains("@")){
+   val mail=checkEmail(name)
+   authRequest(key,"token?grant_type=password",
+    JSONObject().put("email",mail).put("password",password)).getString("access_token")
+  }else{
+   require(Regex("^[A-Za-z0-9_.-]{3,20}$").matches(name)){"Invalid Pup Account username"}
+   post("pup-username-login",JSONObject().put("username",name).put("password",password),
+    key).getString("accessToken")
+  }
+  localAccount(key,jwt)
  }
  @ReactMethod fun status(key:String,p:Promise)=runAsync(p){
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_LOGIN")}
