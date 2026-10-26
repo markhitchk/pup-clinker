@@ -1,4 +1,5 @@
 import {freshGame,sanitizeGame,UPGRADES,RARITIES,PRESTIGE_SKILLS} from '../engine/game.js';
+import {validAuthoritativeWheel} from '../engine/wheelV6.js';
 
 // Read-only compatibility projection. It must never be uploaded as a Kotlin
 // Pup Account save: unknown Kotlin fields, PupEye signatures, and entitlement
@@ -105,7 +106,11 @@ export function projectKotlinCloudSave(raw,username=''){
  // Suppress mutating offline-care restoration during read-only projection.
  g.lastActiveAt=Date.now();
  const projected=sanitizeGame(g);
- projected.betaLastCasinoResult=last;
+ // The guest sanitizer deliberately rejects protected puppy prizes. Keep
+ // verified signed wheel rounds for display/reveal without relaxing guest rules.
+ const secureWheel=pending?.type==='LUCKY_WHEEL'?{...pending,authority:'PUPEYE'}:null;
+ if(validAuthoritativeWheel(secureWheel))projected.pendingWheel=secureWheel;
+ projected.betaLastCasinoResult=last?.type==='LUCKY_WHEEL'?{...last,authority:'PUPEYE'}:last;
  projected.betaLastGachaResult=parseRecord(string('beta_last_gacha_result_v1'));
  projected.betaBlackjackDisplay=lastBlackjack?.state?{...lastBlackjack,state:publicBlackjackState(lastBlackjack.state)}:null;
  return projected;
