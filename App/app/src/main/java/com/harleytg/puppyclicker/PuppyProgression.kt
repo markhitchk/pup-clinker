@@ -45,16 +45,21 @@ internal object PuppyProgression {
         return PuppyBondMilestone.entries.last { value >= it.minimum }
     }
 
-    fun seedXpFromLifetimeTreats(lifetimeTreats: Long): Long = lifetimeTreats.coerceAtLeast(0L)
+    const val MAX_PLAYER_LEVEL = 100
+    const val MAX_PLAYER_XP = 250_000L
+    private const val XP_SQUARE_STEP = 25.0
+
+    // Preserve gameplay balances: only player XP is bounded by the new curve.
+    fun seedXpFromLifetimeTreats(lifetimeTreats: Long): Long =
+        lifetimeTreats.coerceIn(0L, MAX_PLAYER_XP)
 
     fun levelForXp(xp: Long): Int =
-        1 + sqrt(xp.coerceAtLeast(0L).toDouble() / 100.0).toInt()
+        (1 + sqrt(xp.coerceIn(0L, MAX_PLAYER_XP).toDouble() / XP_SQUARE_STEP).toInt())
+            .coerceIn(1, MAX_PLAYER_LEVEL)
 
-    fun addXp(current: Long, event: PuppyXpEvent): Long {
-        val base = current.coerceAtLeast(0L)
-        val amount = event.amount.coerceAtLeast(0L)
-        return if (base > Long.MAX_VALUE - amount) Long.MAX_VALUE else base + amount
-    }
+    fun addXp(current: Long, event: PuppyXpEvent): Long =
+        (current.coerceIn(0L, MAX_PLAYER_XP) + event.amount.coerceAtLeast(0L))
+            .coerceAtMost(MAX_PLAYER_XP)
 }
 
 data class PuppyXpSettlementResult(
