@@ -42,7 +42,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
     setProfileBusy(true);setProfileMessage('');
     Promise.resolve(onUpdateAccountName?.(name.trim()))
      .then(()=>setProfileMessage('✓ Display name saved to your Pup Account.'))
-     .catch(error=>setProfileMessage(error?.message||'Unable to save. Reconnect and retry.'))
+     .catch(error=>setProfileMessage('Unable to save. Reconnect and retry.'))
      .finally(()=>setProfileBusy(false));
    }}>{profileBusy?'Saving…':'Save Display Name'}</Action>
     {profileMessage?<T accessibilityRole="alert" muted>{profileMessage}</T>:null}
