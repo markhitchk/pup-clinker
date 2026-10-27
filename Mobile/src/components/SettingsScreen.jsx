@@ -98,7 +98,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions require protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    {betaMode?<View style={{gap:7}}>
     <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
-    <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED'].includes(syncStatus?.state)?C.danger:C.text}]}>
+    <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
      {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
      {Number.isSafeInteger(syncStatus?.revision)&&syncStatus.revision>0?' · Revision '+syncStatus.revision:''}
     </T>
