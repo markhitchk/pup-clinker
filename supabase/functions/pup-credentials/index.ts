@@ -178,6 +178,12 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data, error } = await auth.auth.signUp({ email, password });
+      // Auth can reject all email registrations at the project level. Do not
+      // misreport a provider configuration failure as a duplicate email.
+      if (error?.code === "email_provider_disabled" || error?.code === "signup_disabled") {
+        throw new HttpError(503, "PUP_EMAIL_SIGNUP_DISABLED",
+          "Email/password registration is disabled. Sign in with Discord for now; Support must enable email signups.");
+      }
       if (error || !data.user || (data.user.identities && data.user.identities.length === 0)) {
         throw new HttpError(400, "PUP_SIGNUP_UNAVAILABLE", "Unable to create this Pup Account. Try signing in or use a different email.");
       }
