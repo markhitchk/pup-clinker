@@ -303,7 +303,6 @@ export function useGame({mode='guest'}={}){
      setCloudState('ACCESS_RESTRICTED');
     }
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    if(ToastAndroid?.show)ToastAndroid.show('Unable to save progress. Check your connection.',ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
    return;
   }
