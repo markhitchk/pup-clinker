@@ -24,11 +24,11 @@ export function useNotifications({game,ready,act,onOpen}){
    await channels();const status=await Notifications.requestPermissionsAsync();
    setPermission(status.granted?'granted':status.canAskAgain?'undetermined':'denied');
    return status.granted;
-  }catch(e){setError('Could not request notification permission. '+e.message);return false;}
+  }catch(e){setError('Could not request Android notification permission.');return false;}
  },[channels]);
  useEffect(()=>{
   if(!ready)return;
-  const check=()=>{act({type:'checkNotifications',now:Date.now()});void refreshPermission().catch(e=>setError(e.message));};
+  const check=()=>{act({type:'checkNotifications',now:Date.now()});void refreshPermission().catch(e=>setError('Could not check Android notification settings.'));};
   check();
   const sub=AppState.addEventListener('change',status=>{if(status==='active'){setAwayAt(0);check();}else if(status==='background'){setAwayAt(Date.now());}});
   const timer=setInterval(()=>act({type:'checkNotifications',now:Date.now()}),60000);
@@ -66,7 +66,7 @@ export function useNotifications({game,ready,act,onOpen}){
      :{type:Notifications.SchedulableTriggerInputTypes.DATE,date:new Date(item.at),channelId:item.category};
     await Notifications.scheduleNotificationAsync({identifier:item.id,content:{title:item.title,body:item.body,data:{category:item.category}},trigger});
    }
-  }).catch(e=>setError('Notification scheduling failed. '+e.message));
+  }).catch(e=>setError('Some reminders could not be scheduled. Check Android notification settings.'));
  },[ready,permission,awayAt,game.dailyRewardNotifications,game.gameEventNotifications,game.puppyAttentionNotifications,game.parkActive,game.parkReadyAtMs,game.lastDailyClaimDay,channels]);
  const publish=useCallback(async({id,category='system',title='Puppy Clicker',body='',toast=false,tray=true})=>{
   const note={id:id||'event:'+Date.now(),category:['system','reward','pup'].includes(category)?category:'system',
@@ -86,7 +86,7 @@ export function useNotifications({game,ready,act,onOpen}){
   try{
    if(!await refreshPermission()){setError('Test added to your inbox. Allow Android notifications to show it outside the app.');return;}
    await channels();await Notifications.scheduleNotificationAsync({content:{title:'Puppy Clicker',body:'Test notification — notifications are working.'},trigger:{channelId:'system'}});setError('');
-  }catch(e){setError('Test saved to inbox; Android delivery failed. '+e.message);}
+  }catch(e){setError('Test saved to the panel; Android notification delivery failed.');}
  },[act,channels,refreshPermission]);
  return {permission,error,request,sendTest,publish,openSystemSettings:()=>Linking.openSettings(),check:()=>act({type:'checkNotifications',now:Date.now()})};
 }
