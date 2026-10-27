@@ -236,12 +236,21 @@ export function useGame({mode='guest'}={}){
     const result=await native.gameplayAction(JSON.stringify(intent),PUBLISHABLE_KEY);
     if(result.saved!==true||!Number.isSafeInteger(result.revision)||result.revision<=0)
      throw Object.assign(new Error('No confirmed cloud save receipt'),{code:'SAVE_RECEIPT_MISSING'});
-    const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
+    // Supabase has already committed at this point. Never misreport a
+    // projection/UI error as a failed write or encourage a double-spend retry.
     ++currentRequest.current;
-    dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
     setCloudState('LIVE_SYNCED');
     setSyncStatus({state:'SAVED',revision:result.revision,
      savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
+    try {
+     const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
+     dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
+    }catch{
+     setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
+      savedAt:result.savedAt||new Date().toISOString(),
+      errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
+     if(ToastAndroid?.show)ToastAndroid.show('Supabase saved revision '+result.revision+'; display refresh failed.',ToastAndroid.LONG);
+    }
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
     setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
