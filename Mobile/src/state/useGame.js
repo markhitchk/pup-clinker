@@ -31,6 +31,7 @@ export function useGame({mode='guest'}={}){
  const bootstrapInFlight=useRef(false);
  const lastServerTreats=useRef(null);
  const notificationOwner=useRef(null);
+ const loadedNoticeOwner=useRef(null);
  const signedWriteQueue=useRef(Promise.resolve());
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
