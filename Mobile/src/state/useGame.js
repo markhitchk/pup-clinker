@@ -259,7 +259,6 @@ export function useGame({mode='guest'}={}){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
      !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
     setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
-    if(ToastAndroid?.show)ToastAndroid.show('Reconnect your Pup Account to save progress.',ToastAndroid.LONG);
     return;
    }
    pendingLiveWrites.current++;
