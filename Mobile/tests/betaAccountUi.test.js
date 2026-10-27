@@ -56,11 +56,11 @@ test('account status uses the native code to identify a transfer block',async()=
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
 
-test('email-signup configuration errors show the server setting instead of recommending another email',async()=>{
+test('username password setup errors do not require SMTP or another email',async()=>{
  let renderer;
  native.NativeModules.PuppyBetaAccount={
   status:async()=>({status:'NEEDS_ACCOUNT'}),
-  createPupAccount:async()=>{throw Object.assign(new Error('disabled'),{code:'BETA_PUP_EMAIL_SIGNUP_DISABLED'});}
+  createPupAccount:async()=>{throw Object.assign(new Error('disabled'),{code:'BETA_PUP_PASSWORD_SETUP_UNAVAILABLE'});}
  };
  try{
   await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signup'}));await flush();});
@@ -68,10 +68,11 @@ test('email-signup configuration errors show the server setting instead of recom
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
    renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Create Pup Account'}).props.onPress();await flush();});
-  assert.match(contents(renderer),/registration is currently disabled on the server/);
-  assert.match(contents(renderer),/administrator must enable email signups/);
+  assert.match(contents(renderer),/Password registration is unavailable/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
 
@@ -79,8 +80,8 @@ test('Discord account offers linking to the same Pup username',async()=>{
  let renderer;
  const calls=[];
  native.NativeModules.PuppyBetaAccount={
-  status:async()=>({status:'VERIFIED',username:'max_puppy4',guildRole:'Member',cloudSaveExists:true}),
-  createPupAccount:async(...args)=>{calls.push(args);return {status:'VERIFY_EMAIL'};}
+  status:async()=>({status:'VERIFIED',legalAccepted:true,username:'max_puppy4',guildRole:'Member',cloudSaveExists:true}),
+  createPupAccount:async(...args)=>{calls.push(args);return {status:'VERIFIED',legalAccepted:true,username:'max_puppy4'};}
  };
  try{
   await act(async()=>{renderer=create(React.createElement(Entry));await flush();});
@@ -92,10 +93,11 @@ test('Discord account offers linking to the same Pup username',async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
    renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
   });
+  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();});
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Add password to Pup Account'}).props.onPress();await flush();});
   assert.equal(calls.length,1);
   assert.equal(calls[0][0],'max_puppy4');
-  assert.match(contents(renderer),/verification link/);
+  assert.match(contents(renderer),/Pup Account connected/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
 
@@ -104,7 +106,7 @@ test('Pup Account signup and username/password signin use their own native metho
  const calls=[];
  native.NativeModules.PuppyBetaAccount={
   status:async()=>({status:'NEEDS_ACCOUNT'}),
-  createPupAccount:async(...args)=>{calls.push(['signup',...args]);return {status:'VERIFY_EMAIL'};},
+  createPupAccount:async(...args)=>{calls.push(['signup',...args]);return {status:'VERIFIED',legalAccepted:true,username:'PuppyFan',accountId:'acc1'};},
   signInPupAccount:async(...args)=>{calls.push(['signin',...args]);return {status:'VERIFIED',username:'PuppyFan',accountId:'acc1',cloudSaveExists:false};}
  };
  try{
@@ -113,17 +115,15 @@ test('Pup Account signup and username/password signin use their own native metho
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
    renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Create Pup Account'}).props.onPress();await flush();});
   assert.equal(calls[0][0],'signup');
   assert.equal(calls[0][1],'PuppyFan');
-  assert.match(contents(renderer),/verification link/);
-  await act(async()=>{
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
-  });
-  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();await flush();});
-  assert.equal(calls[1][0],'signin');
-  assert.equal(calls[1][1],'pup@example.com');
+  assert.match(contents(renderer),/Pup Account connected/);
+  assert.equal(calls[0][4],true);
+  assert.equal(calls[0][5],true);
   assert.equal(verified,1);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
