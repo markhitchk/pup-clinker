@@ -17,6 +17,7 @@ const BETA_LIVE_ACTIONS=new Set([
  'gacha','switch','rename'
 ]);
 const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','checkNotifications','testNotification','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha','addNotification']);
+function withLocalNotices(g,old){g.notificationInbox=old?.notificationInbox||[];g.notificationSeenIds=old?.notificationSeenIds||[];return g;}
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
