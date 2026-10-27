@@ -142,8 +142,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
    <Text style={styles.body}>{onboarding?'Use a Pup username, email and password, or connect Discord instead. PupEye protects your cloud progression.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
    <View style={styles.card}>
-    <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
-    <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
+    <Text style={styles.label}>ACCOUNT CONNECTION</Text>
+    <Text style={styles.value}>{verified?'Connected':state.status==='CHECKING'?'Checking account':state.status==='VERIFY_EMAIL'?'Email verification required':'Sign in required'}</Text>
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
@@ -196,7 +196,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
       <Text style={styles.buttonText}>{mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
      </Pressable>
-     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is handled by Supabase Auth, not saved in Puppy Clicker.</Text>:null}
+     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is securely managed and is not saved in Puppy Clicker.</Text>:null}
     </View>:<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
