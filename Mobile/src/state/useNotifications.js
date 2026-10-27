@@ -35,7 +35,7 @@ export function useNotifications({game,ready,act,onOpen}){
   return ()=>{sub.remove();clearInterval(timer);};
  },[ready,act,refreshPermission]);
  useEffect(()=>{
-  if(Platform.OS!=='android'||!ready)return;
+  if(Platform.OS!=='android')return;
   Notifications.setNotificationHandler({handleNotification:async()=>({shouldShowBanner:true,shouldShowList:true,shouldPlaySound:false,shouldSetBadge:false})});
   const received=Notifications.addNotificationReceivedListener(()=>latest.current.act({type:'checkNotifications',now:Date.now()}));
   const open=()=>{latest.current.act({type:'checkNotifications',now:Date.now()});latest.current.onOpen();};
@@ -64,10 +64,10 @@ export function useNotifications({game,ready,act,onOpen}){
   latest.current.act({type:'addNotification',notification:note});
   if(toast&&Platform.OS==='android'&&AppState.currentState==='active')
    ToastAndroid.show(note.body,ToastAndroid.SHORT);
-  if(tray&&ready&&Platform.OS==='android'&&permission==='granted'){
+  if(tray&&Platform.OS==='android'&&permission==='granted'){
    try{
     await channels();
-    await Notifications.scheduleNotificationAsync({content:{title:note.title,body:note.body,data:{category:note.category}},trigger:null});
+    await Notifications.scheduleNotificationAsync({content:{title:note.title,body:note.body,data:{category:note.category,noticeId:note.id}},trigger:null});
    }catch{setError('Android notification could not be delivered. Check your notification settings.');}
   }
  },[channels,permission,ready]);
