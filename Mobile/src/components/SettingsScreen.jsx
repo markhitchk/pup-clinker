@@ -37,7 +37,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T muted>{betaMode?'Pup Account · Signed gameplay saves directly to Supabase and syncs between verified installations.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
+   <T muted>{betaMode?'Pup Account · Progress is protected and saved online.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
     if(!betaMode){act({type:'onboardPlayer',name});return;}
     setProfileBusy(true);setProfileMessage('');
     Promise.resolve(onUpdateAccountName?.(name.trim()))
@@ -74,7 +74,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('gameEventNotifications','Game Events','Dog Park Adventure completion alerts.')}
    {toggle('updateNotifications','App Updates','Keep update notices in the notification inbox when available.')}
    {toggle('puppyAttentionNotifications','Puppy Attention',"Every two hours while away, using your puppy's care status when scheduled.")}
-   <T muted>{betaMode?'PupEye notification delivery and original Kotlin history are not yet ported to this beta.':'Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.'}</T>
+   <T muted>{betaMode?'New alerts appear in the notification panel and Android notifications when permitted. Previous Kotlin history is not imported.':'Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.'}</T>
    {notifications.error?<T style={{color:C.danger}}>{notifications.error}</T>:null}
    <Action onPress={()=>{notifications.check();onOpen('notifications');}}>Check Notifications Now</Action><Action onPress={notifications.sendTest}>Send Test Notification</Action>
   </>)}
@@ -105,7 +105,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
     
     
     <T muted style={s.small}>Check Save Connection tests whether cloud saving is working. It does not spend Treats or change XP.</T>
-    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Saving to Supabase…':'Check Save Connection'}</Action>
+    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Checking connection…':'Check Save Connection'}</Action>
     <Action onPress={()=>{void onRefreshAccount?.();}}>Refresh Account</Action>
    </View>:null}
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
