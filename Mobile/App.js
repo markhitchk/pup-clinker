@@ -955,7 +955,7 @@ export default function App(){return <SafeAreaProvider>{NativeModules.PuppyBetaA
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,act:gameAct,account,cloudState,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
+ const {state,act:gameAct,account,cloudState,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
  const onboarding=useAccountOnboarding({enabled:betaMode,account,activateAccount:refreshAccount});
  const act=useCallback(action=>{
   gameAct(action);
@@ -985,7 +985,7 @@ export function PuppyApp({betaMode=false}){
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
-  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState}/>;
+  if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
@@ -1009,6 +1009,11 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
+  {betaMode&&['ERROR','BLOCKED'].includes(syncStatus?.state)?<Pressable
+    accessibilityRole="button" accessibilityLabel="Open cloud sync diagnostic"
+    onPress={()=>setSecondary('settings')} style={[styles.notice,{borderColor:C.danger,borderWidth:1}]}>
+    <Txt style={styles.small}>⚠ Cloud save not confirmed · {syncStatus.errorCode||'UNKNOWN_ERROR'} · Open Settings → Data Management</Txt>
+   </Pressable>:null}
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
