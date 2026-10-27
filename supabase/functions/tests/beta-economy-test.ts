@@ -1,5 +1,5 @@
 import {assert,assertEquals,assertRejects} from "jsr:@std/assert@1";
-import {applyBetaEconomy,newBetaKotlinSave} from "../_shared/beta-economy.ts";
+import {applyBetaEconomy,applyBetaSyncProbe,newBetaKotlinSave} from "../_shared/beta-economy.ts";
 import {applyBetaLiveGameplay} from "../_shared/beta-live-gameplay.ts";
 function make(){
  return {format:"puppy-clicker-cloud-save",version:1,savedAtEpochMs:1,
@@ -96,4 +96,18 @@ Deno.test("fresh Pup Account receives a Kotlin-restorable typed save and immedia
  assertEquals((tapped.stores as any).puppy_clicker_save.values.total_taps,1);
  assertEquals((tapped.stores as any).puppy_clicker_save.values.player_xp_v1>=1,true);
  assertEquals(main.values.total_taps,0);
+});
+
+Deno.test("signed beta sync probe writes only a typed save receipt and no economy reward",()=>{
+ const source=make(),initial=JSON.stringify(source);
+ const result=applyBetaSyncProbe(source,NOW+14000);
+ const original=data(source),next=data(result);
+ assertEquals(original.treats,next.treats);
+ assertEquals(original.lifetime_treats,next.lifetime_treats);
+ assertEquals(original.player_xp_v1,next.player_xp_v1);
+ assertEquals(original.casino_chips_v7,next.casino_chips_v7);
+ assertEquals(next.beta_last_sync_probe_at_v1,NOW+14000);
+ assertEquals((result.stores as any).puppy_clicker_save.types.beta_last_sync_probe_at_v1,"long");
+ assertEquals((result.stores as any).puppy_seasonal_v1,(source.stores as any).puppy_seasonal_v1);
+ assertEquals(JSON.stringify(source),initial,"do not mutate authoritative old revision in place");
 });
