@@ -27,11 +27,16 @@ export function useGame({mode='guest'}={}){
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
  const pendingLiveWrites=useRef(0);
+ const bootstrapInFlight=useRef(false);
+ const lastServerTreats=useRef(null);
  const signedWriteQueue=useRef(Promise.resolve());
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
   if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
+  if(bootstrapInFlight.current)return false;
+  bootstrapInFlight.current=true;
+  const previouslyVerified=liveVerified.current;
   const request=++currentRequest.current;
   if(incoming?.status==='VERIFIED')setAccount(incoming);
   try{
@@ -54,6 +59,7 @@ export function useGame({mode='guest'}={}){
     :emptyAccountView(active.displayName||active.username);
    liveVerified.current=true;
    cachedPreview.current=false;
+   lastServerTreats.current=g.treats;
    setAccount(active);
    setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
    setSyncStatus(previous=>{
@@ -68,22 +74,29 @@ export function useGame({mode='guest'}={}){
   }catch(error){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
+   const errorCode=String(error?.code||'').replace(/^BETA_/,'').replace(/[^A-Z0-9_]/g,'').slice(0,64)||'BOOTSTRAP_DISPLAY_FAILED';
+   const errorDetail=String(error?.message||'Cloud projection or bootstrap failed').slice(0,120);
    const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   liveVerified.current=false; // Failed verification cannot authorize gameplay writes.
+   setSyncStatus(current=>({...current,state:'ERROR',
+    errorCode:revoked?'SESSION_REVOKED':errorCode,errorDetail}));
    if(revoked){
     cachedPreview.current=false;
-    liveVerified.current=false;
+    lastServerTreats.current=null;
     void native.clearCachedBootstrap?.().catch(()=>{});
    }
-   if(cachedPreview.current&&!revoked){
+   if((cachedPreview.current||previouslyVerified)&&!revoked){
+    cachedPreview.current=true;
+    setAccount(previous=>previous?.status==='VERIFIED'?{...previous,status:'CACHED',gameplayWritable:false}:previous);
     setCloudState('CACHED_OFFLINE');
-    return false; // Keep last known encrypted preview visible; never grant writes.
+    return false; // Preserve encrypted snapshot for display, never writes.
    }
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
-   setSyncStatus(current=>({...current,state:'ERROR',
-    errorCode:revoked?'SESSION_REVOKED':'BOOTSTRAP_FAILED'}));
-   if(!liveVerified.current)dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+   dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    return false;
+  }finally{
+   bootstrapInFlight.current=false;
   }
  },[beta]);
  const [state,dispatch]=useReducer(transition,undefined,initialState);
@@ -209,18 +222,18 @@ export function useGame({mode='guest'}={}){
  useEffect(()=>{
   if(!beta)return;
   const timer=setInterval(()=>{
-   if(liveVerified.current&&pendingLiveWrites.current===0)void refreshAccount();
+   if(AppState.currentState==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED')void refreshAccount();
   },15000);
   const listener=AppState.addEventListener('change',status=>{
-   if(status==='active'&&liveVerified.current&&pendingLiveWrites.current===0)
+   if(status==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED')
     void refreshAccount();
   });
   return ()=>{clearInterval(timer);listener.remove();};
- },[beta,refreshAccount]);
+ },[beta,cloudState,refreshAccount]);
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
    const native=NativeModules.PuppyBetaAccount;
-   if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true){
+   if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true||account?.status!=='VERIFIED'){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
      !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
     setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
@@ -240,10 +253,17 @@ export function useGame({mode='guest'}={}){
     // projection/UI error as a failed write or encourage a double-spend retry.
     ++currentRequest.current;
     setCloudState('LIVE_SYNCED');
+    const savedAt=result.savedAt||new Date().toISOString();
     setSyncStatus({state:'SAVED',revision:result.revision,
-     savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
+     savedAt,errorCode:null,lastAction:action.type,lastTapGain:null});
     try {
      const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
+     const previousTreats=lastServerTreats.current;
+     lastServerTreats.current=game.treats;
+     const lastTapGain=action.type==='tap'&&Number.isSafeInteger(previousTreats)
+      ?Math.max(0,game.treats-previousTreats):null;
+     setSyncStatus({state:'SAVED',revision:result.revision,
+      savedAt,errorCode:null,lastAction:action.type,lastTapGain});
      dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
     }catch{
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
