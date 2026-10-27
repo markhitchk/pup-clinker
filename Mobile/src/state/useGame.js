@@ -313,7 +313,7 @@ export function useGame({mode='guest'}={}){
    const now=Date.now();
    if(now-lastBlockedToast.current>4000){
     lastBlockedToast.current=now;
-    if(ToastAndroid?.show)ToastAndroid.show('That feature is not live yet. Play and Care sync to Pup Account.',ToastAndroid.SHORT);
+    if(ToastAndroid?.show)setSyncStatus(current=>({...current,state:'ACTION_UNAVAILABLE',errorCode:'FEATURE_UNAVAILABLE'}));
    }
    return;
   }
