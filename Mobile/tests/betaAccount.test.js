@@ -26,7 +26,7 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{!liveGameplayReady\}/);
  assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
- assert.match(hook,/ToastAndroid\.show\(/);
+ assert.match(hook,/ACTION_UNAVAILABLE/);
  assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });
 
