@@ -1013,6 +1013,15 @@ export function PuppyApp({betaMode=false}){
  const access=betaMode?startupAccess({account,cloudState,syncStatus,ready:state.ready}):{phase:'ready'};
  const [inboxOpen,setInboxOpen]=useState(false);
  const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete&&(!betaMode||access.phase==='ready'),act,onOpen:()=>setInboxOpen(true)});
+ const lastAlert=useRef('');
+ useEffect(()=>{
+  if(!betaMode||syncStatus?.state!=='ERROR')return;
+  const id=String(syncStatus.errorCode||'connection');
+  if(lastAlert.current===id)return;
+  lastAlert.current=id;
+  void notifications.publish({id:'system:'+id,title:'Connection notice',
+   body:'Puppy Clicker could not confirm your latest progress. Please retry.',toast:true});
+ },[betaMode,syncStatus?.state,syncStatus?.errorCode,notifications.publish]);
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
