@@ -104,10 +104,11 @@ data class V6GameState(
     val prestigeSkills: Map<PrestigeSkill, Int> = PrestigeSkill.entries.associateWith { 0 },
     val totalPrestigePointsEarned: Long = 0,
 
-    val afkLastClaimed: Long = 0
+    val afkLastClaimed: Long = 0,
+    val playerXp: Long = 0L
 ) {
     val level: Int
-        get() = 1 + sqrt(lifetimeTreats.coerceAtLeast(0).toDouble() / 100.0).toInt()
+        get() = PuppyProgression.levelForXp(playerXp)
 
     val careScore: Int
         get() = ((happiness + fullness + energy + cleanliness) / 4).coerceIn(0, 100)
@@ -2414,7 +2415,12 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             prestigeCount = prefs.getInt(KEY_PRESTIGE_COUNT, 0).coerceAtLeast(0),
             skillPoints = prefs.getInt(KEY_SKILL_POINTS, 0).coerceAtLeast(0),
             prestigeSkills = skills,
-            totalPrestigePointsEarned = prefs.getLong(KEY_TOTAL_PRESTIGE_POINTS, 0L).coerceAtLeast(0L)
+            totalPrestigePointsEarned = prefs.getLong(KEY_TOTAL_PRESTIGE_POINTS, 0L).coerceAtLeast(0L),
+            playerXp = PuppyProgressionStore.migrateXp(
+                prefs.getLong(PuppyProgressionStore.KEY_PLAYER_XP, 0L)
+                    .takeIf { prefs.contains(PuppyProgressionStore.KEY_PLAYER_XP) },
+                prefs.getLong(KEY_LIFETIME_TREATS, 0L)
+            ).coerceAtMost(PuppyProgression.MAX_PLAYER_XP)
         )
     }
 
