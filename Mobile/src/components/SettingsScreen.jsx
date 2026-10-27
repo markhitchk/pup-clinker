@@ -11,7 +11,7 @@ const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
-export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,onConnectAccount,onUpdateAccountName,onUpdateBirthday,cloudState}){
+export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,onConnectAccount,onUpdateAccountName,onUpdateBirthday,cloudState,syncStatus,onRefreshAccount}){
  const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [profileBusy,setProfileBusy]=useState(false),[profileMessage,setProfileMessage]=useState('');
@@ -37,7 +37,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T muted>{betaMode?'Pup Account · Live Play and Care save securely and sync to Play.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
+   <T muted>{betaMode?'Pup Account · Signed gameplay saves directly to Supabase and syncs between verified installations.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
     if(!betaMode){act({type:'onboardPlayer',name});return;}
     setProfileBusy(true);setProfileMessage('');
     Promise.resolve(onUpdateAccountName?.(name.trim()))
@@ -46,7 +46,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
      .finally(()=>setProfileBusy(false));
    }}>{profileBusy?'Saving…':'Save Display Name'}</Action>
     {profileMessage?<T accessibilityRole="alert" muted>{profileMessage}</T>:null}
-   <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={betaMode||!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
+   <T style={s.bold}>Puppy name</T><TextInput accessibilityLabel="Puppy name" value={puppy} onChangeText={setPuppy} maxLength={18} style={s.input}/><Action disabled={!puppy.trim()} onPress={()=>act({type:'rename',name:puppy})}>Save Puppy Name</Action>
    <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={!validBirthday(Number(month),Number(day))} onPress={()=>{
      if(betaMode){void onUpdateBirthday?.({birthdayMonth:Number(month),birthdayDay:Number(day)}).then(ok=>setProfileMessage(ok?'✓ Birthday saved securely on this device.':'Unable to save birthday.')).catch(()=>setProfileMessage('Unable to save birthday.'));}
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
@@ -95,7 +95,19 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T muted>{betaMode?'Cloud-save writes: Signed gameplay and casino settlements · revision-checked':'Auto-save: Active · local guest save'}</T>
   </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions use protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions require protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+   {betaMode?<View style={{gap:7}}>
+    <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
+    <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED'].includes(syncStatus?.state)?C.danger:C.text}]}>
+     {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
+     {Number.isSafeInteger(syncStatus?.revision)&&syncStatus.revision>0?' · Revision '+syncStatus.revision:''}
+    </T>
+    {syncStatus?.savedAt?<T muted style={s.small}>{'Last confirmed update: '+(Number.isFinite(Date.parse(syncStatus.savedAt))?new Date(syncStatus.savedAt).toLocaleString():String(syncStatus.savedAt))}</T>:null}
+    {syncStatus?.errorCode?<T style={[s.small,{color:C.danger}]}>{'Save error: '+syncStatus.errorCode}</T>:null}
+    <T muted style={s.small}>Test Cloud Save sends a signed, non-economic write to Supabase and verifies the committed revision. It never spends Treats or changes XP.</T>
+    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Saving to Supabase…':'Test Cloud Save'}</Action>
+    <Action onPress={()=>{void onRefreshAccount?.();}}>Reload Cloud Save</Action>
+   </View>:null}
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
     {!betaMode?<><Action danger onPress={()=>setDangerAction('progress')}>Reset Game Progress</Action><Action danger onPress={()=>setDangerAction('delete')}>Delete Local Save Data</Action></>:<T muted>Destructive account actions are disabled in the beta.</T>}
