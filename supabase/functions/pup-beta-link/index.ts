@@ -20,6 +20,7 @@ import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
 // read-only, expiring companion link after Discord proves account ownership.
 // The primary PupEye installation, player and cloud-write authority never move.
 const MAX_BETA_GRANT_MS = 7 * 24 * 60 * 60 * 1000;
+const hasLegalConsent = (a: any) => Number(a.terms_version) >= 1 && Number(a.privacy_version) >= 1 && Boolean(a.terms_accepted_at) && Boolean(a.privacy_accepted_at);
 const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-bootstrap", "beta-gameplay"]);
 
 Deno.serve(async (req: Request) => {
@@ -148,6 +149,9 @@ Deno.serve(async (req: Request) => {
       return json(200, { updated: true, displayName: changed.display_name, gameplayReadOnly: true });
     }
     if (envelope.action === "beta-gameplay") {
+      if (!hasLegalConsent(account)) {
+        throw new HttpError(403, "PUP_LEGAL_ACCEPTANCE_REQUIRED", "Accept the Terms of Use and Privacy Policy to play.");
+      }
       // Only server-computed authenticated gameplay actions are enabled. Never accept
       // arbitrary client balances, XP, shop inventory or Kotlin save blobs.
       const intent = envelope.payload;
@@ -279,6 +283,7 @@ Deno.serve(async (req: Request) => {
         gameplayWritable: Boolean(save) || session.player.id === account.player_uuid,
         accountWritable: true,
         linkedFromPlay: true,
+        legalAccepted: hasLegalConsent(account),
         playerId: owner.player_id,
         friendCode: owner.friend_code,
         guildRole: owner.guild_role ?? null,
@@ -326,6 +331,7 @@ Deno.serve(async (req: Request) => {
       readOnly: true,
       linkedFromPlay: true,
       accountWritable: true,
+      legalAccepted: hasLegalConsent(account),
       playerId: owner.player_id,
       friendCode: owner.friend_code,
       guildRole: owner.guild_role ?? null,
