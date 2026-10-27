@@ -121,7 +121,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     PUP_ACCOUNT_SWITCH_BLOCKED:'This beta installation is already linked to another account.',
     PUP_ACCOUNT_DEVICE_UNAVAILABLE:'The original PupEye installation is unavailable. Contact Support.'
    };
-   setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
+   setProblem(messages[code]||'Pup Account sign-in could not complete. Please retry or contact Support.');
   }finally{setBusy(false);}
  },[busy,mode,username,email,login,password,onVerified,linkNative]);
  const read=useCallback(async()=>{
