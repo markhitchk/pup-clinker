@@ -201,7 +201,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
       placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
       value={password} onChangeText={setPassword} style={styles.input}/>
-     <Pressable accessibilityRole="button" accessibilityLabel={mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
+     <Pressable accessibilityRole="button" accessibilityLabel={linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
       <Text style={styles.buttonText}>{linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
      </Pressable>
