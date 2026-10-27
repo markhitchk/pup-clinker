@@ -57,6 +57,7 @@ export function useAccountOnboarding({enabled,account,activateAccount}){
    const s=current.current;if(s.setupComplete||s.setupStep>=5)return;
    if(s.setupStep===1){
     if(account?.status!=='VERIFIED'){setProblem('Sign in to your Pup Account before continuing.');return;}
+    if(account.legalAccepted!==true){setProblem('Accept the Terms of Use and Privacy Policy in your Pup Account first.');return;}
     if(!await activateAccount(account)){setProblem('Unable to load your Pup Account cloud save. Check your connection and try again.');return;}
    }
    if(s.setupStep===2&&!validBirthday(s.birthdayMonth,s.birthdayDay)){setProblem('Choose both a valid month and day, or skip birthday.');return;}
@@ -76,7 +77,7 @@ export function useAccountOnboarding({enabled,account,activateAccount}){
  const finish=useCallback(async()=>{
   const s=current.current;
   if(working.current||!ready||s.setupComplete||s.setupStep!==5)return;
-  if(account?.status!=='VERIFIED'||s.privacyConsentVersion<5||!validBirthday(s.birthdayMonth,s.birthdayDay)){
+  if(account?.status!=='VERIFIED'||account.legalAccepted!==true||s.privacyConsentVersion<5||!validBirthday(s.birthdayMonth,s.birthdayDay)){
    setProblem('Review your account and setup before continuing.');return;
   }
   working.current=true;setBusy(true);setProblem('');
