@@ -99,11 +99,11 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {betaMode?<View style={{gap:7}}>
     <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
     <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
-     {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
+     {syncStatus?.state==='SAVED'?'Progress saved':syncStatus?.state==='SAVING'?'Saving progress…':['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?'Unable to confirm progress. Please retry.':'Account connected'}
     </T>
     {syncStatus?.savedAt?<T muted style={s.small}>{'Last confirmed update: '+(Number.isFinite(Date.parse(syncStatus.savedAt))?new Date(syncStatus.savedAt).toLocaleString():String(syncStatus.savedAt))}</T>:null}
-    {syncStatus?.errorCode?<T style={[s.small,{color:C.danger}]}>{'Save error: '+syncStatus.errorCode}</T>:null}
-    {syncStatus?.errorDetail?<T muted style={s.small}>{syncStatus.errorDetail}</T>:null}
+    
+    
     <T muted style={s.small}>Test Cloud Save sends a signed, non-economic write to Supabase and verifies the committed revision. It never spends Treats or changes XP.</T>
     <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Saving to Supabase…':'Test Cloud Save'}</Action>
     <Action onPress={()=>{void onRefreshAccount?.();}}>Reload Cloud Save</Action>
