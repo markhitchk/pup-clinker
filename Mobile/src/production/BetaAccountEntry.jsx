@@ -127,6 +127,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
  },[busy,mode,username,email,login,password,tos,privacy,onVerified,linkNative]);
+ const saveSupportContact=useCallback(async()=>{
+  if(busy)return;
+  setBusy(true);setProblem('');setNotice('');
+  try{const result=await api().updateContactEmail(contactEmail,publishableKey);
+   setState(result);setContactEmail(result.contactEmail||'');
+   setNotice('Support contact saved. No verification mail was sent.');
+  }catch{setProblem('Could not update your optional support contact email.');}
+  finally{setBusy(false);}
+ },[busy,contactEmail]);
  const consent=useCallback(async()=>{
   if(!tos||!privacy||busy){setProblem('Accept both policies first.');return;}
   setBusy(true);setProblem('');
@@ -175,6 +184,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
    {verified&&!consentNeeded&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={close}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
+   {verified&&!consentNeeded&&!linkNative?<View style={styles.card}><Text style={styles.cardTitle}>Support contact (optional)</Text><Text style={styles.body}>Staff may reply manually using a developer or support member's personal email address. This address is not verified or used for account access.</Text><TextInput accessibilityLabel="Support contact email" autoCapitalize="none" keyboardType="email-address" value={contactEmail} onChangeText={setContactEmail} placeholder="Optional contact email" placeholderTextColor="#8AA1AF" style={styles.input}/><Pressable accessibilityRole="button" accessibilityLabel="Save support contact" style={styles.secondary} disabled={busy} onPress={()=>void saveSupportContact()}><Text style={styles.secondaryText}>Save support contact</Text></Pressable></View>:null}
    {verified&&!consentNeeded&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
     <Text style={styles.secondaryText}>Link Discord (optional)</Text>
    </Pressable>:null}
