@@ -162,9 +162,9 @@ test('beta cloud save exposes signed commit receipt and safe non-economic verifi
  const settings=read('../src/components/SettingsScreen.jsx'),native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
  const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
  const economy=read('../../supabase/functions/_shared/beta-economy.ts');
- assert.match(settings,/Test Cloud Save/);
- assert.match(settings,/Last confirmed update/);
- assert.match(settings,/Save error/);
+ assert.match(settings,/Check Save Connection/);
+ assert.doesNotMatch(settings,/Last confirmed update/);
+ assert.doesNotMatch(settings,/Save error:/);
  assert.match(hook,/result\.saved!==true/);
  assert.match(hook,/setSyncStatus/);
  assert.match(hook,/syncProbe/);
