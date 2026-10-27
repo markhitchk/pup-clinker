@@ -59,8 +59,9 @@ test('trillion-scale Pup Account Treats remain visibly responsive without changi
  const next=stored+1_588_842;
  assert.equal(v6Format(stored,true),v6Format(next,true),'legacy format hides million-Treat gains');
  assert.notEqual(v6WalletFormat(stored,true),v6WalletFormat(next,true),'live wallet must update after server confirms each tap');
- assert.equal(v6WalletFormat(stored,true),'9000.000010T');
- assert.equal(v6WalletFormat(next,true),'9000.000012T');
+ assert.notEqual(v6WalletFormat(stored,true),v6WalletFormat(stored+10_000,true),'balanced 10k payout must remain visible each tap');
+ assert.equal(v6WalletFormat(stored,true),'9000.000010024T');
+ assert.equal(v6WalletFormat(next,true),'9000.000011613T');
  assert.equal(v6WalletFormat(stored,false),'9,000,000,010,023,864');
  assert.equal(v6WalletFormat(1_234_567_890,true),'1.2346B');
  assert.equal(v6WalletFormat(NaN,true),'0');
