@@ -1022,6 +1022,9 @@ export function PuppyApp({betaMode=false}){
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
+ // Completed onboarding never waives explicit server-side policy acceptance.
+ if(betaMode&&onboarding.ready&&onboarding.setup.setupComplete&&account?.status==='VERIFIED'&&account.legalAccepted===false)
+  return <BetaAccountEntry visible initialMode="signin" onboarding onVerified={refreshAccount} onClose={()=>{}}/>;
  if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
   <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={openAccount}/>
   <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
