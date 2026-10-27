@@ -641,7 +641,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
  const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
  const giftClaimed=g.lastDailyClaimDay===today;
  const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
- const giftReward=150+Math.min(30,nextStreak)*25+level(g)*10;
+ const giftReward=150+Math.min(365,nextStreak)*25+level(g)*10;
  const statuses=achievementStatuses(g);
  const park=parkPreview(g,clock);
  return <View style={styles.gamePage}>
