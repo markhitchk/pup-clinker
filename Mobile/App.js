@@ -1020,7 +1020,7 @@ export function PuppyApp({betaMode=false}){
   if(lastAlert.current===id)return;
   lastAlert.current=id;
   const restricted=access.phase==='banned'||access.phase==='review';
-  void notifications.publish({id:'system:'+id,title:restricted?'Account access notice':'Connection notice',
+  void notifications.publish({id:'system:'+id,title:restricted?'Account access notice':syncStatus?.state==='ACTION_UNAVAILABLE'?'Feature notice':'Connection notice',
    body:restricted?'Your Pup Account needs Support review.':['BLOCKED','ACTION_UNAVAILABLE'].includes(syncStatus?.state)?'Some actions are not available right now.':'Puppy Clicker could not confirm your latest progress. Please retry.',toast:!restricted,tray:!restricted});
  },[betaMode,syncStatus?.state,syncStatus?.errorCode,access.phase,notifications.publish]);
  useEffect(()=>{
