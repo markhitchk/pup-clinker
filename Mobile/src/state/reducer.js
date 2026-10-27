@@ -39,6 +39,17 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
+ if(action.type==='addNotification'){
+  if(!state.ready)return state;
+  const note=action.notification;
+  if(!note||typeof note.id!=='string'||!['system','reward','pup'].includes(note.category))return state;
+  const game=clone(state.game);
+  if(game.notificationInbox.some(item=>item.id===note.id))return state;
+  game.notificationInbox=[{id:note.id,category:note.category,title:String(note.title||'Puppy Clicker').slice(0,80),
+   body:String(note.body||'').slice(0,240),createdAt:Number.isFinite(note.createdAt)?note.createdAt:Date.now(),
+   action:null,read:false},...game.notificationInbox].slice(0,60);
+  return {...state,game};
+ }
  if(action.type==='betaActionBlocked')return {...state,notice:'🔒 PupEye-protected gameplay requires signed cloud-save and economy support. This beta cannot change your live progress.'};
  // Kotlin V6 ViewModel's 1-second loop expires combos after 1600 ms.
  // This transient UI update must never reset the puppy's care clock.
