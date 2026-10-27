@@ -9,7 +9,7 @@ import {MONTHLY_REWARDS_URL,MONTHLY_REWARDS_CACHE_KEY,MONTHLY_REWARDS_REFRESH_MS
 
 const PUBLISHABLE_KEY=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||'sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
 const BETA_LIVE_ACTIONS=new Set([
- 'tap','care','purchase','ticket','accessory','equip','exchange','skill','daily',
+ 'syncProbe','tap','care','purchase','ticket','accessory','equip','exchange','skill','daily',
  'claimDailyGoal','parkStart','parkClaim','prestige',
  'slotsStart','slotsReveal','rouletteStart','rouletteReveal','plinkoStart','plinkoReveal',
  'scratchStart','scratchReveal','wheelStart','wheelReveal',
@@ -22,6 +22,7 @@ export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
  const [cloudState,setCloudState]=useState(beta?'NOT_LOADED':null);
+ const [syncStatus,setSyncStatus]=useState({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null});
  const liveVerified=useRef(false);
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
@@ -54,7 +55,13 @@ export function useGame({mode='guest'}={}){
    liveVerified.current=true;
    cachedPreview.current=false;
    setAccount(active);
-   setCloudState(cloud?.exists?(active.readOnly?'SERVER_SNAPSHOT_READ_ONLY':'LIVE_SYNCED'):'NO_CLOUD_SAVE');
+   setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
+   setSyncStatus(previous=>{
+    if(previous.state==='SAVED'&&cloud?.revision===previous.revision)return previous;
+    return {state:active.gameplayWritable===true?'READY':'BLOCKED',
+     revision:Number.isFinite(cloud?.revision)?cloud.revision:null,
+     savedAt:cloud?.updatedAt||null,errorCode:active.gameplayWritable===true?null:'ACCOUNT_READ_ONLY'};
+   });
    dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
    return true;
@@ -73,6 +80,8 @@ export function useGame({mode='guest'}={}){
    }
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
+   setSyncStatus(current=>({...current,state:'ERROR',
+    errorCode:revoked?'SESSION_REVOKED':'BOOTSTRAP_FAILED'}));
    if(!liveVerified.current)dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    return false;
   }
@@ -211,28 +220,33 @@ export function useGame({mode='guest'}={}){
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
    const native=NativeModules.PuppyBetaAccount;
-   if(!liveVerified.current||!native?.gameplayAction||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable!==true)){
-    if(ToastAndroid?.show)ToastAndroid.show('Live Pup Account progress is not available. Connect your cloud save.',ToastAndroid.SHORT);
+   if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true){
+    const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
+     !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
+    setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
+    if(ToastAndroid?.show)ToastAndroid.show('Cloud save blocked: '+reason,ToastAndroid.LONG);
     return;
    }
    pendingLiveWrites.current++;
+   setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null}));
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
     const intent=Object.fromEntries(
      ['type','kind','id','payment','upgradeId','rarity','name','skill','goalId','amount','wager','bet'].filter(k=>action[k]!==undefined).map(k=>[k,action[k]])
     );
     const result=await native.gameplayAction(JSON.stringify(intent),PUBLISHABLE_KEY);
+    if(result.saved!==true||!Number.isSafeInteger(result.revision)||result.revision<=0)
+     throw Object.assign(new Error('No confirmed cloud save receipt'),{code:'SAVE_RECEIPT_MISSING'});
     const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
-    ++currentRequest.current; // Ignore an older overlapping bootstrap reply.
+    ++currentRequest.current;
     dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
     setCloudState('LIVE_SYNCED');
+    setSyncStatus({state:'SAVED',revision:result.revision,
+     savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
    }).catch(error=>{
-    const code=String(error?.code||'');
+    const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
+    setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code}));
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    const message=/CLOUD_SAVE_CONFLICT/.test(code)
-     ?'Cloud progress changed; refreshing before retry.'
-     :/GAMEPLAY_REJECTED/.test(code)?'Action rejected: insufficient funds, ineligible reward or account restrictions.'
-     :'Cloud action was not saved. Check your connection.';
-    if(ToastAndroid?.show)ToastAndroid.show(message,ToastAndroid.SHORT);
+    if(ToastAndroid?.show)ToastAndroid.show('Cloud save failed: '+code,ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
    return;
   }
@@ -255,5 +269,5 @@ export function useGame({mode='guest'}={}){
   await refreshAccount(updated);
   return updated;
  },[beta,account?.status,refreshAccount]);
- return {state,act,account,cloudState,refreshAccount,updateAccountName};
+ return {state,act,account,cloudState,syncStatus,refreshAccount,updateAccountName};
 }
