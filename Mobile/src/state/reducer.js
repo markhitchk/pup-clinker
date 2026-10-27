@@ -39,6 +39,20 @@ function scoreBlackjack(player,dealer,wager){
 // Pure reducer: randomness/timestamps are supplied on the dispatched action.
 // Thus React may batch taps or re-evaluate the reducer without dropping input.
 export function transition(state,action){
+ if(action.type==='restoreNotifications'){
+  if(!state.ready)return state;
+  const game=clone(state.game);
+  const incoming=Array.isArray(action.items)?action.items:[];
+  const seen=new Set(game.notificationInbox.map(item=>item.id));
+  for(const note of incoming){
+   if(!note||typeof note.id!=='string'||seen.has(note.id)||!['system','reward','pup'].includes(note.category))continue;
+   seen.add(note.id);
+   game.notificationInbox.push({id:note.id,category:note.category,title:String(note.title||'Puppy Clicker').slice(0,80),
+    body:String(note.body||'').slice(0,220),createdAt:Number(note.createdAt)||Date.now(),action:null,read:note.read===true});
+  }
+  game.notificationInbox=game.notificationInbox.sort((a,b)=>b.createdAt-a.createdAt).slice(0,60);
+  return {...state,game};
+ }
  if(action.type==='addNotification'){
   if(!state.ready)return state;
   const note=action.notification;
