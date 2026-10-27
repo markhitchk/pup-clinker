@@ -147,7 +147,6 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
-      <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Signed progression, shop, rewards, and casino actions synchronize with Play. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
