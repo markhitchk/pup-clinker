@@ -30,7 +30,7 @@ Deno.test("production save with quadrillion currency receives reasonable XP and 
  assertEquals(next.upgrade_better_treats,999);
  assertEquals(next.upgrade_legendary_snacks,999);
  assertEquals(values(existing).treats,previous.treats);
- assertEquals(updated.stores.puppy_seasonal_v1,existing.stores.puppy_seasonal_v1);
+ assertEquals((updated.stores as any).puppy_seasonal_v1,existing.stores.puppy_seasonal_v1);
 });
 Deno.test("new upgrades above fair cap are not sold but existing inventory is preserved",async()=>{
  const old=build();const before=values(old).treats;
