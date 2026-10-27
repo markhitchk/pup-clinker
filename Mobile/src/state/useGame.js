@@ -16,7 +16,7 @@ const BETA_LIVE_ACTIONS=new Set([
  'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit',
  'gacha','switch','rename'
 ]);
-const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha']);
+const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','checkNotifications','testNotification','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha']);
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
@@ -76,10 +76,12 @@ export function useGame({mode='guest'}={}){
    const code=String(error?.code||'')+' '+String(error?.message||'');
    const errorCode=String(error?.code||'').replace(/^BETA_/,'').replace(/[^A-Z0-9_]/g,'').slice(0,64)||'BOOTSTRAP_DISPLAY_FAILED';
    const errorDetail=String(error?.message||'Cloud projection or bootstrap failed').slice(0,120);
-   const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   const banned=['GLOBAL_BANNED','PUP_ACCOUNT_BLOCKED','DEVICE_BANNED','INSTALLATION_BANNED'].includes(errorCode);
+   const review=errorCode==='REVIEW_REQUIRED';
+   const revoked=banned||review||/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
    liveVerified.current=false; // Failed verification cannot authorize gameplay writes.
    setSyncStatus(current=>({...current,state:'ERROR',
-    errorCode:revoked?'SESSION_REVOKED':errorCode,errorDetail}));
+    errorCode:banned?'GLOBAL_BANNED':review?'REVIEW_REQUIRED':revoked?'SESSION_REVOKED':errorCode,errorDetail}));
    if(revoked){
     cachedPreview.current=false;
     lastServerTreats.current=null;
@@ -91,8 +93,8 @@ export function useGame({mode='guest'}={}){
     setCloudState('CACHED_OFFLINE');
     return false; // Preserve encrypted snapshot for display, never writes.
    }
-   setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
-   setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
+   setAccount({status:banned?'BANNED':review?'REVIEW_REQUIRED':revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
+   setCloudState(banned||review?'ACCESS_RESTRICTED':revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    return false;
   }finally{
@@ -222,10 +224,10 @@ export function useGame({mode='guest'}={}){
  useEffect(()=>{
   if(!beta)return;
   const timer=setInterval(()=>{
-   if(AppState.currentState==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED')void refreshAccount();
+   if(AppState.currentState==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED'&&cloudState!=='ACCESS_RESTRICTED')void refreshAccount();
   },15000);
   const listener=AppState.addEventListener('change',status=>{
-   if(status==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED')
+   if(status==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED'&&cloudState!=='ACCESS_RESTRICTED')
     void refreshAccount();
   });
   return ()=>{clearInterval(timer);listener.remove();};
