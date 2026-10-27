@@ -20,7 +20,7 @@ import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
-import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
+import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,MAX_REWARD_STREAK_DAYS,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
@@ -640,8 +640,8 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
  const claimed=(goal)=>g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
  const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
  const giftClaimed=g.lastDailyClaimDay===today;
- const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
- const giftReward=150+Math.min(365,nextStreak)*25+level(g)*10;
+ const nextStreak=g.lastDailyClaimDay===today-1?Math.min(MAX_REWARD_STREAK_DAYS,g.dailyStreak+1):1;
+ const giftReward=150+Math.min(MAX_REWARD_STREAK_DAYS,nextStreak)*25+level(g)*10;
  const statuses=achievementStatuses(g);
  const park=parkPreview(g,clock);
  return <View style={styles.gamePage}>
@@ -666,7 +666,7 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
   <View style={styles.streakCard}>
    <Txt style={{fontSize:42}}>🔥</Txt>
    <View style={{flex:1,gap:8}}><Txt style={styles.heading}>{g.dailyStreak} day streak</Txt>
-    <Txt muted style={styles.small}>Keep going! Consistent care unlocks bigger rewards.</Txt>
+    <Txt muted style={styles.small}>Yearly gift bonus · {"up to "+MAX_REWARD_STREAK_DAYS+" consecutive days"}</Txt>
     <View style={{flexDirection:'row',gap:6}}>{Array.from({length:7},(_,index)=><View key={index} style={[styles.streakDot,index<g.dailyStreak&&styles.streakDotFilled]}><Txt style={styles.small}>{index<g.dailyStreak?'✓':''}</Txt></View>)}</View>
    </View>
   </View>
