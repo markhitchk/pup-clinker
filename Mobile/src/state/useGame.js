@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useReducer,useRef,useState} from 'react';
-import {AppState,NativeModules,ToastAndroid} from 'react-native';
+import {AppState,NativeModules} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -311,7 +311,7 @@ export function useGame({mode='guest'}={}){
    const now=Date.now();
    if(now-lastBlockedToast.current>4000){
     lastBlockedToast.current=now;
-    if(ToastAndroid?.show)setSyncStatus(current=>({...current,state:'ACTION_UNAVAILABLE',errorCode:'FEATURE_UNAVAILABLE'}));
+    setSyncStatus(current=>({...current,state:'ACTION_UNAVAILABLE',errorCode:'FEATURE_UNAVAILABLE'}));
    }
    return;
   }
