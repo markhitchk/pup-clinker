@@ -244,7 +244,8 @@ export function useGame({mode='guest'}={}){
      savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
-    setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code}));
+    setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
+     errorDetail:String(error?.message||'').slice(0,120)}));
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
     if(ToastAndroid?.show)ToastAndroid.show('Cloud save failed: '+code,ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
