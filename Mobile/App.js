@@ -20,7 +20,7 @@ import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
-import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
+import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
@@ -302,18 +302,18 @@ function ShopScreen({g,act,onOpen}){
       <View style={styles.shopLabel}>
        <Txt style={styles.itemName}>{u.name}</Txt>
        <Txt muted style={styles.small}>{text}</Txt>
-       <Txt muted style={styles.small}>Owned {o.owned}</Txt>
+       <Txt muted style={styles.small}>Owned {o.owned} · Effective {Math.min(MAX_UPGRADES_PER_ITEM,o.owned)}/{MAX_UPGRADES_PER_ITEM}</Txt>
       </View>
       {rarity?<Txt style={styles.shopRarity}>{rarity.emoji} {rarity.name}</Txt>:
        <Button compact disabled={!o.canBuy}
-        onPress={()=>act({type:'purchase',upgradeId:u.id})}>{v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Button>}
+        onPress={()=>act({type:'purchase',upgradeId:u.id})} >{o.owned>=MAX_UPGRADES_PER_ITEM?'MAX':v6Format(o.treats,compact)+' 🍪 + '+o.bones+' 🦴'}</Button>}
      </View>
      {rarity?<View style={styles.shopUpgradeFooter}>
       <View style={styles.shopLabel}>
        <Txt style={styles.itemName}>Need {o.tickets} · you have {g.ticketInventory[u.rarity]||0}</Txt>
-       <Txt muted style={styles.small}>+ {v6Format(o.treats,compact)} 🍪 + {o.bones} 🦴</Txt>
+       <Txt muted style={styles.small}>{o.owned>=MAX_UPGRADES_PER_ITEM?'Maximum effective upgrade reached':'+ '+v6Format(o.treats,compact)+' 🍪 + '+o.bones+' 🦴'}</Txt>
       </View>
-      <Button compact disabled={!o.canBuy} onPress={()=>act({type:'purchase',upgradeId:u.id})}>Upgrade</Button>
+      <Button compact disabled={!o.canBuy} onPress={()=>act({type:'purchase',upgradeId:u.id})}>{o.owned>=MAX_UPGRADES_PER_ITEM?'MAX':'Upgrade'}</Button>
      </View>:null}
     </View>;
    })}
