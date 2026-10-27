@@ -37,7 +37,17 @@ export function useNotifications({game,ready,act,onOpen}){
  useEffect(()=>{
   if(Platform.OS!=='android')return;
   Notifications.setNotificationHandler({handleNotification:async()=>({shouldShowBanner:true,shouldShowList:true,shouldPlaySound:false,shouldSetBadge:false})});
-  const received=Notifications.addNotificationReceivedListener(()=>latest.current.act({type:'checkNotifications',now:Date.now()}));
+  const received=Notifications.addNotificationReceivedListener(notification=>{
+   latest.current.act({type:'checkNotifications',now:Date.now()});
+   const content=notification?.request?.content;
+   if(!content)return;
+   const data=content.data||{};
+   latest.current.act({type:'addNotification',notification:{
+    id:String(data.noticeId||notification.request.identifier||('android:'+Date.now())),
+    category:['reward','pup','system'].includes(data.category)?data.category:'system',
+    title:String(content.title||'Puppy Clicker'),body:String(content.body||''),createdAt:Date.now()
+   }});
+  });
   const open=()=>{latest.current.act({type:'checkNotifications',now:Date.now()});latest.current.onOpen();};
   const response=Notifications.addNotificationResponseReceivedListener(()=>{open();void Notifications.clearLastNotificationResponseAsync();});
   let alive=true;
