@@ -316,6 +316,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putBoolean("exists",save!=null)
    if(save!=null){
     putDouble("revision",save.optDouble("revision",0.0))
+    putString("updatedAt",save.optString("updatedAt",summary?.optString("updatedAt","")?:""))
     putString("saveJson",save.getJSONObject("saveData").toString())
    }
   }
