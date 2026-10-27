@@ -1,6 +1,5 @@
 package com.harleytg.puppyclicker
 
-import kotlin.math.sqrt
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -37,12 +36,16 @@ class PuppyProgressionTest {
     fun levelBoundariesMatchApprovedCurve() {
         val cases = mapOf(
             0L to 1,
-            99L to 1,
-            100L to 2,
-            399L to 2,
-            400L to 3,
-            899L to 3,
-            900L to 4
+            24L to 1,
+            25L to 2,
+            99L to 2,
+            100L to 3,
+            624L to 5,
+            625L to 6,
+            886L to 6,
+            900L to 7,
+            245_025L to 100,
+            Long.MAX_VALUE to 100
         )
         cases.forEach { (xp, expected) ->
             assertEquals("xp=$xp", expected, PuppyProgression.levelForXp(xp))
@@ -53,20 +56,16 @@ class PuppyProgressionTest {
     fun xpAdditionIsMonotonicAndOverflowSafe() {
         assertEquals(1L, PuppyProgression.addXp(0L, PuppyXpEvent.MANUAL_TAP))
         assertEquals(5L, PuppyProgression.addXp(0L, PuppyXpEvent.CARE_ACTION))
-        assertEquals(Long.MAX_VALUE, PuppyProgression.addXp(Long.MAX_VALUE - 10L, PuppyXpEvent.NEW_PUPPY))
+        assertEquals(250_000L, PuppyProgression.addXp(Long.MAX_VALUE - 10L, PuppyXpEvent.NEW_PUPPY))
         assertEquals(PuppyXpEvent.EVENT_REWARD.amount, PuppyProgression.addXp(-500L, PuppyXpEvent.EVENT_REWARD))
     }
 
     @Test
-    fun migratedXpPreservesLegacyLevelForRepresentativeValues() {
-        val values = listOf(0L, 1L, 99L, 100L, 399L, 400L, 1_000L, 10_000L, 1_000_000L)
-        values.forEach { lifetime ->
-            val oldLevel = 1 + sqrt(lifetime.toDouble() / 100.0).toInt()
-            assertEquals(
-                "lifetime=$lifetime",
-                oldLevel,
-                PuppyProgression.levelForXp(PuppyProgression.seedXpFromLifetimeTreats(lifetime))
-            )
-        }
+    fun legacyBalancesRemainSafeButXpAndLevelsUseBoundedCurve() {
+        assertEquals(250_000L, PuppyProgression.seedXpFromLifetimeTreats(Long.MAX_VALUE))
+        assertEquals(100, PuppyProgression.levelForXp(9_000_000_010_023_864L))
+        assertEquals(6, PuppyProgression.levelForXp(886L))
+        assertEquals(250_000L, PuppyProgression.addXp(249_999L, PuppyXpEvent.MANUAL_TAP))
+        assertEquals(250_000L, PuppyProgression.addXp(250_000L, PuppyXpEvent.NEW_PUPPY))
     }
 }
