@@ -62,6 +62,8 @@ export function useGame({mode='guest'}={}){
    liveVerified.current=true;
    cachedPreview.current=false;
    lastServerTreats.current=g.treats;
+   const existingNotices=notificationOwner.current===active.accountId?latest.current.game:null;
+   notificationOwner.current=active.accountId;
    setAccount(active);
    setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
    setSyncStatus(previous=>{
@@ -70,7 +72,7 @@ export function useGame({mode='guest'}={}){
      revision:Number.isFinite(cloud?.revision)?cloud.revision:null,
      savedAt:cloud?.updatedAt||null,errorCode:active.gameplayWritable===true?null:'ACCOUNT_READ_ONLY'};
    });
-   dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
+   dispatch({type:'hydrate',game:withLocalNotices(g,existingNotices),now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
    return true;
   }catch(error){
