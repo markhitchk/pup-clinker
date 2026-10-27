@@ -1,5 +1,7 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
+import StartupGate from './src/production/StartupGate.jsx';
+import {startupAccess} from './src/production/startupAccess.js';
 import AccountOnboarding from './src/production/AccountOnboarding.jsx';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
