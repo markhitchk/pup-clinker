@@ -1,4 +1,5 @@
 import {awardBetaXp,rollBetaDay,settleBetaAchievements} from "./beta-economy.ts";
+import {MAX_UPGRADES_PER_ITEM,cappedTapReward,cappedActiveBonus} from "./beta-progression.ts";
 /**
  * Server-authoritative subset of the Kotlin V6 economy. The client submits
  * intent only. Never accept client-provided balances, RNG, XP or save data.
@@ -60,13 +61,15 @@ export function applyBetaLiveGameplay(raw:unknown,intent:LiveIntent,now=Date.now
   let clickPower=1,activeBonus=0;
   for(const [id,amount,effect] of upgrades){
    const owned=int(values,"upgrade_"+id);
-   if(owned>1000)throw new Error("INVALID_UPGRADE_COUNT");
-   if(effect==="CLICK")clickPower+=(amount+tapSkill)*owned;
-   else activeBonus+=(amount+autoSkill)*owned;
+   // Existing high counts remain in cloud history, but only a bounded
+   // number contributes to new Treat rewards.
+   const effective=Math.min(MAX_UPGRADES_PER_ITEM,owned);
+   if(effect==="CLICK")clickPower+=(amount+tapSkill)*effective;
+   else activeBonus+=(amount+autoSkill)*effective;
   }
   const wellness=Math.floor((int(values,"happiness",100)+int(values,"fullness",100)+int(values,"energy",100)+int(values,"cleanliness_v5",100))/4);
   const bonus=wellness>=85&&int(values,"bond_v5",10)>=50?2:wellness>=70?1:0;
-  const payout=clickPower+bonus+(legitimate%10===0?activeBonus:0);
+  const payout=cappedTapReward(clickPower+bonus+(legitimate%10===0?cappedActiveBonus(activeBonus):0));
   if(!Number.isSafeInteger(payout)||payout<1)throw new Error("INVALID_TAP_REWARD");
   setLong(values,types,"treats",add(int(values,"treats"),payout));
   setLong(values,types,"lifetime_treats",add(int(values,"lifetime_treats"),payout));
