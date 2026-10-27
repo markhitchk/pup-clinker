@@ -270,7 +270,7 @@ export function useGame({mode='guest'}={}){
       ?Math.max(0,game.treats-previousTreats):null;
      setSyncStatus({state:'SAVED',revision:result.revision,
       savedAt,errorCode:null,lastAction:action.type,lastTapGain});
-     dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
+     dispatch({type:'hydrate',game:withLocalNotices(game,account?.accountId===notificationOwner.current?latest.current.game:null),now:Date.now(),readOnly:true});
     }catch{
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
