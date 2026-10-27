@@ -205,7 +205,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
     </Pressable>
-    {cloud?<Text style={styles.body}>Cloud response: {cloud.exists?'Save available at revision '+cloud.revision:'No authoritative save yet'}</Text>:null}
+    {cloud?<Text style={styles.body}>Cloud response: {cloud.exists?'Save available':'No authoritative save yet'}</Text>:null}
    </>}
    <Pressable accessibilityRole="button" disabled={busy} style={styles.secondary} onPress={()=>void check()}>
     <Text style={styles.secondaryText}>Retry account status</Text>
