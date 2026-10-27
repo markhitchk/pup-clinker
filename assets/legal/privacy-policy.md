@@ -1,10 +1,18 @@
 # Puppy Clicker — Privacy Policy
 
-> **Effective date:** September 24, 2026
+> **Effective date:** October 27, 2026
 
 This Privacy Policy explains how **Puppy Clicker**, provided by **Harley's Studios**, handles information in the Android app.
 
 ---
+
+## Pup Account login, support email, and policy acceptance
+
+Pup Accounts use a unique player username and password or optional Discord sign-in. Supabase Auth processes and secures passwords under an internal non-routable account email identifier that is not a user's address; no SMTP or verification emails are required. A support contact email is **optional and unverified** and is stored separately from authentication credentials. It is not used for login, automatic verification, password reset, or automatic email campaigns.
+
+Only authorized Harley's Studios developers/support staff should access the contact address for account/support matters. Staff can choose to reply manually from their own personal email accounts, which makes their sender address visible to the player. Players should not send passwords or other secrets to staff, and a support email address alone never proves account ownership. Users can update or clear the support email through the account interface. Operational moderation webhooks do not include the contact email.
+
+Puppy Clicker records the version and timestamp of each player's separate affirmative Terms of Use and Privacy Policy acceptance. Both agreements are required for beta gameplay. Optional diagnostics, crash reporting, and notification choices are separate and not required.
 
 ## 1. Local Game Data
 
@@ -120,7 +128,7 @@ That information is handled under the hosting provider's own policies.
 
 ## 8. Discord Signup
 
-Puppy Clicker uses **Discord OAuth** for player signup and community features. The authorization flow requests the following scopes:
+Puppy Clicker supports **Discord OAuth** as optional sign-in and for community features. The authorization flow requests the following scopes:
 
 - `identify`
 - `email`
@@ -137,6 +145,8 @@ After successful authorization, Puppy Clicker may read account identity informat
 - Email address, when Discord returns it for the authorized account
 
 The account identity metadata used by Puppy Clicker is stored locally and may also be stored in the Puppy Clicker Supabase project. Discord authorization is verified by a Puppy Clicker Supabase Edge Function before the account or configured Puppy Clicker server role is trusted. The app stores only the derived verified role tier, configured server ID, and verification time for this feature; it does not persist the Discord OAuth access token or the full server member response.
+
+Discord email information is not automatically stored as the optional support contact email and is not used for Pup Account password sign-in.
 
 The Discord account does not replace Puppy Clicker's device-bound **Player ID** or **Friend Code**. Those local identifiers continue to be used for Puppy Clicker trading, gifting, save ownership, and related local game features.
 
