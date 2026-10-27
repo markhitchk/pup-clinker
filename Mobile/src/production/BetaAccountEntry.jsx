@@ -90,6 +90,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    setProblem('Enter a 3–20 character username, valid email and password of at least 8 characters.');
    return;
   }
+  if(linkNative&&mode==='signup'&&state.status==='VERIFIED'&&username.trim().toLowerCase()!==String(state.username||'').toLowerCase()){
+   setProblem('Keep your existing Pup username when adding password sign-in.');return;
+  }
   if(mode==='signin'&&(!login.trim()||!password)){
    setProblem('Enter your Pup username or email and password.');return;
   }
@@ -100,7 +103,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     :await api().signInPupAccount(login.trim(),password,publishableKey);
    setPassword('');
    if(result?.status==='VERIFY_EMAIL'){
-    if(!linkNative)setState({status:'VERIFY_EMAIL'});
+    setState({status:'VERIFY_EMAIL'});
+    setLinkNative(false);
     setNotice('Check your email for a verification link. After confirming, return and sign in with your Pup Account.');
     setMode('signin');
     setLogin(email.trim());
@@ -115,7 +119,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     PUP_USERNAME_TAKEN:'That Pup username is already taken. Choose another.',
     PUP_EMAIL_UNVERIFIED:'Please verify your email, then sign in.',
     PUP_SIGNIN_INVALID:'Incorrect username/email or password, or email verification is pending.',
-    PUP_SIGNUP_UNAVAILABLE:'Account registration failed. Try signing in or use another email.',
+    PUP_SIGNUP_UNAVAILABLE:'Registration could not complete. If you already use Discord, sign in with Discord first and add password login to your existing Pup Account.',
+    PUP_EMAIL_SIGNUP_DISABLED:'Email/password registration is currently disabled on the server. Sign in with Discord. An administrator must enable email signups in Supabase.',
     PUP_CREDENTIAL_ALREADY_LINKED:'This Pup Account already has a password login.',
     PUP_ACCOUNT_RECOVERY_REQUIRED:'Pup Account recovery is required. Contact Support.',
     PUP_ACCOUNT_SWITCH_BLOCKED:'This beta installation is already linked to another account.',
@@ -160,24 +165,27 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    </Pressable>:null}
    {verified&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Add Pup Account password login" disabled={busy} style={styles.secondary}
     onPress={()=>{setUsername(state.username||'');setLinkNative(true);setMode('signup');setNotice('');setProblem('');}}>
-    <Text style={styles.secondaryText}>Add username/email password login</Text>
+    <Text style={styles.secondaryText}>Add email/password sign-in to this Pup Account</Text>
    </Pressable>:null}
    {(!verified||linkNative)?<>
-    <View style={styles.modes}>
+    {!linkNative?<View style={styles.modes}>
      {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
       accessibilityLabel={item==='signin'?'Sign in':item==='signup'?'Create account':'Discord login'}
       onPress={()=>{setMode(item);setProblem('');setNotice('');setPassword('');}}
       style={[styles.mode,mode===item&&styles.modeSelected]}>
       <Text style={[styles.modeText,mode===item&&styles.modeSelectedText]}>{item==='signin'?'Sign in':item==='signup'?'Create account':'Discord'}</Text>
      </Pressable>)}
-    </View>
+    </View>:<Pressable accessibilityRole="button" style={styles.secondary} onPress={()=>{setLinkNative(false);setPassword('');setProblem('');}}>
+     <Text style={styles.secondaryText}>← Back to your Pup Account</Text>
+    </Pressable>}
     {mode!=='discord'?<View style={styles.card}>
-     <Text style={styles.cardTitle}>{mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
+     <Text style={styles.cardTitle}>{linkNative?'Add email/password sign-in':mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
+     {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, XP, and cloud save stay on the same account.</Text>:null}
      {mode==='signup'?<>
       <Text style={styles.label}>USERNAME</Text>
       <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
        placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
-       maxLength={20} value={username} onChangeText={setUsername} style={styles.input}/>
+       maxLength={20} editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
       <Text style={styles.label}>EMAIL</Text>
       <TextInput accessibilityLabel="Pup email" autoCapitalize="none" autoCorrect={false}
        keyboardType="email-address" autoComplete="email" placeholder="you@example.com"
@@ -195,9 +203,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       value={password} onChangeText={setPassword} style={styles.input}/>
      <Pressable accessibilityRole="button" accessibilityLabel={mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
-      <Text style={styles.buttonText}>{mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
+      <Text style={styles.buttonText}>{linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
      </Pressable>
      {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is handled by Supabase Auth, not saved in Puppy Clicker.</Text>:null}
+     {mode==='signup'&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="I already use Discord" onPress={()=>{setMode('discord');setProblem('');setPassword('');}}>
+      <Text style={styles.secondaryText}>Already use Discord? Sign in with Discord first, then add a password to your existing account.</Text>
+     </Pressable>:null}
     </View>:<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
