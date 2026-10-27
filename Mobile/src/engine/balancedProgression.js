@@ -12,7 +12,7 @@ export const XP_PER_LEVEL_SQUARE=25;
 export const MAX_UPGRADES_PER_ITEM=100;
 export const MAX_TAP_REWARD=10_000;
 export const MAX_ACTIVE_TAP_BONUS=2_500;
-export const MAX_REWARD_STREAK_DAYS=30;
+export const MAX_REWARD_STREAK_DAYS=365;
 export const levelXp=level=>XP_PER_LEVEL_SQUARE*(Math.max(1,Math.min(MAX_PLAYER_LEVEL,Math.floor(level||1)))-1)**2;
 export const boundedXp=value=>Number.isSafeInteger(value)&&value>0?Math.min(MAX_PLAYER_XP,value):0;
 export const xpLevel=value=>Math.min(MAX_PLAYER_LEVEL,1+Math.floor(Math.sqrt(boundedXp(value)/XP_PER_LEVEL_SQUARE)));
