@@ -105,6 +105,8 @@ test('native Pup Account credentials are independent from Discord and never stor
  assert.match(screen,/CREATE|Create Pup Account/);
  assert.match(endpoint,/signInWithPassword/);
  assert.match(endpoint,/auth\.signUp/);
+ assert.match(endpoint,/email_provider_disabled/);
+ assert.match(endpoint,/PUP_EMAIL_SIGNUP_DISABLED/);
  assert.match(endpoint,/email_confirmed_at/);
  assert.match(endpoint,/assertGlobalEnforcementAllowed/);
  assert.match(endpoint,/pup_credential_links/);
