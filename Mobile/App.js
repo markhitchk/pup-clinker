@@ -31,7 +31,7 @@ import SlotsV6 from './src/components/SlotsV6.jsx';
 import RouletteV6 from './src/components/RouletteV6.jsx';
 import PlinkoV6 from './src/components/PlinkoV6.jsx';
 import LuckyWheelV6 from './src/components/LuckyWheelV6.jsx';
-import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
+import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6WalletFormat,v6CooldownSeconds,v6PlayTapLabel} from './src/engine/playV6.js';
 import {V6_CARE_LAYOUT,canPerformCare,dailyGiftPreview,parkPreview} from './src/engine/careV6.js';
 import {TICKET_RARITY_PRESENTATION,PRESTIGE_SKILL_PRESENTATION,upgradesForShopTab,upgradeOffer,ticketShopOffer,accessoryOffer,prestigeOffer,canBuySkill} from './src/engine/shopV6.js';
 import {LEGACY_V6_PUPPIES,legacyRosterSections,unlockedLegacyCount} from './src/engine/rosterV6.js';
@@ -49,7 +49,7 @@ const shuffledBlackjackDeck=()=>{
  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
  return deck;
 };
-function Txt({children,muted=false,style={},numberOfLines}){return <Text numberOfLines={numberOfLines} style={[styles.text,muted&&styles.muted,style]}>{children}</Text>;}
+function Txt({children,muted=false,style={},numberOfLines,...textProps}){return <Text {...textProps} numberOfLines={numberOfLines} style={[styles.text,muted&&styles.muted,style]}>{children}</Text>;}
 function Card({title,children,subtitle}){return <View style={styles.card}><View style={styles.cardTitle}><Txt style={styles.heading}>{title}</Txt>{subtitle?<Txt muted style={styles.tiny}>{subtitle}</Txt>:null}</View>{children}</View>;}
 const AnimatedPressable=Animated.createAnimatedComponent(Pressable);
 function Button({children,onPress,secondary=false,disabled=false,compact=false,danger=false}){
@@ -104,7 +104,15 @@ function PageHeader({title,subtitle,action,withLogo=false}){
 function Wallet({game}){
  return <View style={styles.wallet}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
-   <View style={styles.walletCell} key={label}><Txt style={styles.walletEmoji}>{icon}</Txt><Txt numberOfLines={1} style={styles.walletNumber}>{v6Format(value,game.compactNumbers!==false)}</Txt><Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt></View>)}
+   <Pressable key={label} accessibilityRole="button"
+    accessibilityLabel={label+' exact balance: '+Number(value).toLocaleString('en-US')}
+    onPress={()=>Alert.alert(label+' · Exact balance',Number(value).toLocaleString('en-US')+' '+label)}
+    style={styles.walletCell}>
+    <Txt style={styles.walletEmoji}>{icon}</Txt>
+    <Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}
+     style={styles.walletNumber}>{v6WalletFormat(value,game.compactNumbers!==false)}</Txt>
+    <Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt>
+   </Pressable>)}
  </View>;
 }
 function NeedPill({icon,value}){
