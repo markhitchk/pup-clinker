@@ -151,6 +151,8 @@ async function ensureAccount(admin: any, session: any): Promise<any> {
   return account;
 }
 
+const hasLegalConsent = (a: any) => Number(a.terms_version) >= 1 && Number(a.privacy_version) >= 1 && Boolean(a.terms_accepted_at) && Boolean(a.privacy_accepted_at);
+
 Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
@@ -192,6 +194,7 @@ Deno.serve(async (req: Request) => {
       if (saveError) throw saveError;
       return json(200, {
         readOnly: false, accountWritable: true, linkedFromPlay: false,
+        legalAccepted: hasLegalConsent(account),
         playerId: session.player.player_id ?? null,
         friendCode: session.player.friend_code ?? null,
         guildRole: session.player.guild_role ?? null,
@@ -221,6 +224,7 @@ Deno.serve(async (req: Request) => {
 
       return json(200, {
         realtimeTopic: `pup-account:${account.realtime_topic}`,
+        legalAccepted: hasLegalConsent(account),
         guildRole: session.player.guild_role ?? null,
         guildVerifiedAt: session.player.guild_verified_at ?? null,
         account: {
