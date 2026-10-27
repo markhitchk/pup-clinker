@@ -281,6 +281,11 @@ export function useGame({mode='guest'}={}){
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
     setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
      errorDetail:String(error?.message||'').slice(0,120)}));
+    if(code==='GLOBAL_BANNED'||code==='PUP_ACCOUNT_BLOCKED'){
+     liveVerified.current=false;
+     setAccount({status:'BANNED'});
+     setCloudState('ACCESS_RESTRICTED');
+    }
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
     if(ToastAndroid?.show)ToastAndroid.show('Unable to save progress. Check your connection.',ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
