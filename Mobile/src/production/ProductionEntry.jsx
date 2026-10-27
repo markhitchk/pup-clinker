@@ -41,6 +41,15 @@ function OriginalEntry(){
    setDetails({username:account.username,hasSave:account.cloudSaveExists===true});
    setState(classifyVerifiedAccount(account));
   }catch(err){
+   const code=String(err?.code||'').replace(/^BETA_/,'');
+   if(['GLOBAL_BANNED','PUP_ACCOUNT_BLOCKED'].includes(code)){
+    setState({status:'BANNED',canPlay:false,message:'Puppy Clicker access is restricted for this account or device. Contact Support for a review.'});
+    return;
+   }
+   if(code==='REVIEW_REQUIRED'){
+    setState({status:'REVIEW_REQUIRED',canPlay:false,message:'PupEye requires a Support review before access can continue.'});
+    return;
+   }
    // Do not display tokens, identities, signed envelopes, or raw exception data.
    setState({status:'ACCOUNT_VERIFICATION_BLOCKED',canPlay:false,
     message:'PupEye account verification could not complete. Your Kotlin data has not been overwritten. Reopen the original app or use the official account recovery process.'});
