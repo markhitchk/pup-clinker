@@ -1029,6 +1029,11 @@ export function PuppyApp({betaMode=false}){
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
+ if(betaMode&&access.phase!=='ready')return <>
+  <StartupGate access={access} onRetry={()=>void refreshAccount()} onSignIn={()=>openAccount('signin')} onNotifications={()=>setInboxOpen(true)}/>
+  <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)}/>
+  <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
+ </>;
  if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
   <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={openAccount}/>
   <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
