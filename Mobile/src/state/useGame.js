@@ -37,7 +37,7 @@ export function useGame({mode='guest'}={}){
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
   if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
-  if(bootstrapInFlight.current)return false;
+  if(bootstrapInFlight.current&&incoming?.status!=='VERIFIED')return false;
   bootstrapInFlight.current=true;
   const previouslyVerified=liveVerified.current;
   const request=++currentRequest.current;
