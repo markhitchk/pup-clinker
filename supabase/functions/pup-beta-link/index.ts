@@ -13,7 +13,7 @@ import {
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
-import { applyBetaEconomy, newBetaKotlinSave } from "../_shared/beta-economy.ts";
+import { applyBetaEconomy, applyBetaSyncProbe, newBetaKotlinSave } from "../_shared/beta-economy.ts";
 import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
 
 // A beta app is a separate Android installation. This grants a deliberately
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
       // arbitrary client balances, XP, shop inventory or Kotlin save blobs.
       const intent = envelope.payload;
       const allowed = new Set([
-        "tap", "care", "purchase", "ticket", "accessory", "equip", "exchange", "skill",
+        "syncProbe", "tap", "care", "purchase", "ticket", "accessory", "equip", "exchange", "skill",
         "daily", "claimDailyGoal", "parkStart", "parkClaim", "prestige",
         "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
         "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
@@ -201,11 +201,13 @@ Deno.serve(async (req: Request) => {
           } : undefined,
         };
         const before = current?.save_data ?? newBetaKotlinSave();
-        next = intent.type === "tap" || intent.type === "care"
-          ? applyBetaLiveGameplay(before, clean)
-          : intent.type.startsWith("blackjack")
-            ? await applyBetaBlackjack(before, clean)
-            : await applyBetaEconomy(before, clean);
+        next = intent.type === "syncProbe"
+          ? applyBetaSyncProbe(before)
+          : intent.type === "tap" || intent.type === "care"
+            ? applyBetaLiveGameplay(before, clean)
+            : intent.type.startsWith("blackjack")
+              ? await applyBetaBlackjack(before, clean)
+              : await applyBetaEconomy(before, clean);
       } catch (error) {
         const code = error instanceof Error ? error.message : "BETA_GAMEPLAY_REJECTED";
         throw new HttpError(409, "BETA_GAMEPLAY_REJECTED", code);
@@ -263,7 +265,7 @@ Deno.serve(async (req: Request) => {
           console.error("Beta save committed; follow-up audit unavailable", auditError);
         }
       }
-      return json(200, { revision, saveData: written.save_data });
+      return json(200, { saved: true, revision, savedAt: persistedFields.updated_at, saveData: written.save_data });
     }
     if (envelope.action === "beta-bootstrap") {
       // Single signed startup response: account identity and snapshot share the
