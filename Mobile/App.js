@@ -20,6 +20,7 @@ import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
+import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
@@ -640,11 +641,28 @@ function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
  const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
  const giftClaimed=g.lastDailyClaimDay===today;
  const nextStreak=g.lastDailyClaimDay===today-1?Math.min(365,g.dailyStreak+1):1;
- const giftReward=150+nextStreak*25+level(g)*10;
+ const giftReward=150+Math.min(30,nextStreak)*25+level(g)*10;
  const statuses=achievementStatuses(g);
  const park=parkPreview(g,clock);
  return <View style={styles.gamePage}>
   <PageHeader title="Rewards" subtitle="Daily goals, adventures and permanent progression."/>
+  <View style={styles.dailyGiftCard}>
+   <Txt style={{fontSize:30}}>⭐</Txt>
+   <View style={{flex:1,gap:5}}>
+    <Txt style={styles.itemName}>{'Player Level '+level(g)+' / '+MAX_PLAYER_LEVEL}</Txt>
+    <Txt muted style={styles.small}>
+     {level(g)>=MAX_PLAYER_LEVEL?'MAX LEVEL · XP '+MAX_PLAYER_XP.toLocaleString('en-US'):
+      g.xp.toLocaleString('en-US')+' / '+nextXpTarget(g.xp).toLocaleString('en-US')+' XP'}
+    </Txt>
+    <View accessibilityRole="progressbar" accessibilityLabel="Player XP"
+     accessibilityValue={{min:0,max:100,
+      now:level(g)>=MAX_PLAYER_LEVEL?100:Math.min(100,Math.floor(100*(g.xp-levelXp(level(g)))/Math.max(1,nextXpTarget(g.xp)-levelXp(level(g))))) }}
+     style={[styles.track,{height:7}]}>
+     <View style={[styles.fill,{height:7,width:
+      (level(g)>=MAX_PLAYER_LEVEL?100:Math.min(100,100*(g.xp-levelXp(level(g)))/Math.max(1,nextXpTarget(g.xp)-levelXp(level(g)))))+'%'}]}/>
+    </View>
+   </View>
+  </View>
   <View style={styles.streakCard}>
    <Txt style={{fontSize:42}}>🔥</Txt>
    <View style={{flex:1,gap:8}}><Txt style={styles.heading}>{g.dailyStreak} day streak</Txt>
