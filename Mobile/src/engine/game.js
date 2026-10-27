@@ -1,3 +1,4 @@
+import {MAX_UPGRADES_PER_ITEM,MAX_REWARD_STREAK_DAYS,xpLevel,boundedXp,cappedTapReward,cappedActiveBonus} from "./balancedProgression.js";
 import {sanitizeInbox} from './inbox.js';
 import {sanitizeCasinoTicketLedger} from './casinoTicketRewards.js';
 // Android-derived V7 browser engine from Puppy-Clicker merge ddadb7f; provisional, not authoritative.
@@ -84,6 +85,7 @@ export function sanitizeGame(input){
   for(const key of Object.keys(b))if(Object.hasOwn(input,key))b[key]=input[key];
   const counters=['treats','lifetimeTreats','bones','pupCoins','casinoChips','clickPower','activeBonus','legitimateTaps','totalTicketsFound','ticketDropSerial','casinoRoundSerial','totalTaps','combo','bestCombo','lastTapMs','careActions','totalShopPurchases','xp','gachaPulls','onboardingStep','prestigeCount','skillPoints','totalPrestigePointsEarned','lastActiveAt','parkReadyAtMs','cooldownUntilMs','dailyStreak','dailyTapStart','dailyCareStart','dailyShopStart'];
   for(const key of counters)b[key]=cap(b[key],key==='clickPower'?1:0);
+  b.xp=boundedXp(b.xp);
   for(const key of careFields)b[key]=cap(b[key],0,100);
   const ids=new Set(ROSTER.map(p=>p.id));
   // Kotlin loadState unions saved entitlements with DEFAULT_V6_PUPPIES.
@@ -98,7 +100,7 @@ export function sanitizeGame(input){
   b.puppyNames=Object.fromEntries(Object.entries(names).filter(([id,name])=>ids.has(id)&&typeof name==='string').map(([id,name])=>[id,name.trim().replace(/\n/g,' ').slice(0,18).trim()]).filter(([,name])=>name));
   if(!b.puppyNames[b.puppyStyle])b.puppyNames[b.puppyStyle]=b.puppyName;
   b.puppyName=b.puppyNames[b.puppyStyle];
-  b.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,cap(b.upgrades?.[u.id],0,1000)]));
+  b.upgrades=Object.fromEntries(UPGRADES.map(u=>[u.id,cap(b.upgrades?.[u.id],0,1000)])); // Preserve legacy ownership.
   b.ticketInventory=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketInventory?.[r],0,MAX_TICKETS_PER_RARITY)]));
   b.ticketShopPurchases=Object.fromEntries(RARITIES.map(r=>[r,cap(b.ticketShopPurchases?.[r])]));
   b.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,cap(b.prestigeSkills?.[s],0,5)]));
@@ -124,8 +126,8 @@ export function sanitizeGame(input){
   // Kotlin PuppyClickerV6ViewModel.loadState derives tap strength from the
   // purchased CLICK upgrades and permanent TAP_TRAINING skill, never a stored
   // clickPower field. Rebuild it on every guest load as Kotlin does.
-  b.clickPower=1+UPGRADES.filter(u=>u.effect==='CLICK').reduce((n,u)=>n+(u.amount+b.prestigeSkills.TAP_TRAINING)*b.upgrades[u.id],0);
-  b.activeBonus=UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*b.upgrades[u.id],0);
+  b.clickPower=cappedTapReward(1+UPGRADES.filter(u=>u.effect==='CLICK').reduce((n,u)=>n+(u.amount+b.prestigeSkills.TAP_TRAINING)*Math.min(MAX_UPGRADES_PER_ITEM,b.upgrades[u.id]),0));
+  b.activeBonus=cappedActiveBonus(UPGRADES.filter(u=>u.effect==='AUTO').reduce((n,u)=>n+(u.amount+b.prestigeSkills.AUTO_TRAINING)*Math.min(MAX_UPGRADES_PER_ITEM,b.upgrades[u.id]),0));
   if(b.dailyDay!==null)b.dailyDay=cap(b.dailyDay);
   if(b.lastDailyClaimDay!==null)b.lastDailyClaimDay=cap(b.lastDailyClaimDay);
   b.casinoTicketLedger=sanitizeCasinoTicketLedger(b.casinoTicketLedger);
@@ -136,7 +138,7 @@ export function sanitizeGame(input){
   b.pendingWheel=validPendingWheel(b.pendingWheel)?b.pendingWheel:null;
   return b;
 }
-export const level=g=>1+Math.floor(Math.sqrt(g.lifetimeTreats/100));
+export const level=g=>xpLevel(g.xp);
 export const wellness=g=>Math.floor((g.happiness+g.fullness+g.energy+g.cleanliness)/4);
 export const careTapBonus=g=>wellness(g)>=85&&g.bond>=50?2:wellness(g)>=70?1:0;
 export const mood=g=>wellness(g)>=90&&g.bond>=70?'Best friend':wellness(g)>=85?'Thrilled':wellness(g)>=65?'Happy':wellness(g)>=40?'Okay':wellness(g)>=20?'Needs care':'Very tired';
@@ -149,7 +151,7 @@ export function tap(g,now=Date.now(),rng=Math.random){
   g.combo=now-g.lastTapMs<=900?Math.min(50,g.combo+1):1;
   g.bestCombo=Math.max(g.bestCombo,g.combo);g.lastTapMs=now;
   const bonus=g.legitimateTaps%10===0?g.activeBonus:0;
-  withGain(g,g.clickPower+careTapBonus(g)+bonus);
+  withGain(g,cappedTapReward(g.clickPower+careTapBonus(g)+bonus));
   if(g.legitimateTaps%20===0)g.bones=cap(g.bones+1);
   if(g.legitimateTaps%250===0)g.pupCoins=cap(g.pupCoins+1);
   if(next%12===0)g.energy=Math.max(0,g.energy-1);
@@ -270,7 +272,7 @@ export function buyAccessory(g,name){
 export function claimDailyReward(g,epochDay=Math.floor(Date.now()/86400000)){
   if(g.lastDailyClaimDay===epochDay)return false;
   const streak=g.lastDailyClaimDay===epochDay-1?Math.min(365,g.dailyStreak+1):1;
-  const reward=150+streak*25+level(g)*10;
+  const reward=150+Math.min(MAX_REWARD_STREAK_DAYS,streak)*25+level(g)*10;
   withGain(g,reward);g.bones=cap(g.bones+2);g.pupCoins=cap(g.pupCoins+3);
   g.lastDailyClaimDay=epochDay;g.dailyStreak=streak;g.happiness=Math.min(100,g.happiness+8);g.bond=Math.min(100,g.bond+1);
   return true;
