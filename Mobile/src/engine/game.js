@@ -196,14 +196,14 @@ export function purchase(g,selected){
   // Always use the canonical V5 source-derived upgrade. Guest UI data must
   // never be able to invent an effect, currency price or amount.
   const u=UPGRADES.find(item=>item.id===selected?.id);
-  if(!u||(g.upgrades[u.id]||0)>=1000)return false;
+  if(!u||(g.upgrades[u.id]||0)>=MAX_UPGRADES_PER_ITEM)return false;
   const amount=cost(g,u),bones=boneCost(u),tickets=ticketCost(g,u);
   if(!Number.isSafeInteger(amount)||amount<=0||g.treats<amount||g.bones<bones||(u.rarity&&(g.ticketInventory[u.rarity]||0)<tickets))return false;
   g.treats-=amount;g.bones-=bones;if(u.rarity)g.ticketInventory[u.rarity]-=tickets;
   g.upgrades[u.id]=(g.upgrades[u.id]||0)+1;
   const tapSkill=cap(g.prestigeSkills?.TAP_TRAINING,0,5),activeSkill=cap(g.prestigeSkills?.AUTO_TRAINING,0,5);
-  if(u.effect==='CLICK')g.clickPower+=u.amount+tapSkill;
-  g.activeBonus=UPGRADES.filter(x=>x.effect==='AUTO').reduce((sum,x)=>sum+(x.amount+activeSkill)*g.upgrades[x.id],0);
+  if(u.effect==='CLICK')g.clickPower=cappedTapReward(g.clickPower+u.amount+tapSkill);
+  g.activeBonus=cappedActiveBonus(UPGRADES.filter(x=>x.effect==='AUTO').reduce((sum,x)=>sum+(x.amount+activeSkill)*Math.min(MAX_UPGRADES_PER_ITEM,g.upgrades[x.id]),0));
   g.autoPerSecond=0;g.totalShopPurchases++;g.happiness=Math.min(100,g.happiness+2);
   return true;
 }
