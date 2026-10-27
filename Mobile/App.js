@@ -1015,7 +1015,7 @@ export function PuppyApp({betaMode=false}){
  const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete&&(!betaMode||access.phase==='ready'),act,onOpen:()=>setInboxOpen(true)});
  const lastAlert=useRef('');
  useEffect(()=>{
-  if(!betaMode||!['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state))return;
+  if(!betaMode||!['ERROR','BLOCKED','SAVED_DISPLAY_ERROR','ACTION_UNAVAILABLE'].includes(syncStatus?.state))return;
   const id=String(syncStatus?.state)+':'+String(syncStatus.errorCode||'connection');
   if(lastAlert.current===id)return;
   lastAlert.current=id;
