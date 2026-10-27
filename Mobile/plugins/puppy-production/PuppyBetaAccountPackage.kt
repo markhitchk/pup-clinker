@@ -178,6 +178,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
    putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
+   putString("contactEmail",obj.optString("contactEmail",""))
    putBoolean("readOnly",obj.optBoolean("readOnly",false))
    putBoolean("accountWritable",true)
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
@@ -329,6 +330,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putString("status",if(cached)"CACHED" else "VERIFIED")
    putString("username",a.getString("username"))
    putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
+   putString("contactEmail",obj.optString("contactEmail",""))
    putString("displayName",a.optString("displayName",a.getString("username")))
    putString("accountId",a.getString("id"))
    putBoolean("readOnly",obj.optBoolean("readOnly",true))
