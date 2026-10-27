@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import legal from '../../assets/legal/documents.json';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -22,7 +23,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [password,setPassword]=useState('');
  const [notice,setNotice]=useState('');
  const [linkNative,setLinkNative]=useState(false);
- useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');}},[visible,initialMode]);
+ const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
+ const [contactEmail,setContactEmail]=useState('');
+ useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
  const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
@@ -34,7 +37,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   try{
    const result=await native.status(publishableKey);
    setState(result);
-   if(result.status==='VERIFIED')onVerified?.(result);
+   if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
   }catch(error){
    // A device can have a valid PupEye session but no Discord link yet.
    // Do not manufacture gameplay credentials or progression from this.
@@ -59,7 +62,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   try{
    const result=await api().completeDiscord(url,publishableKey);
    setState(result);
-   if(result.status==='VERIFIED')onVerified?.(result);
+   if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
   }catch(error){
    const message=[error?.code,error?.message].filter(Boolean).join(' ');
    if(message.includes('PUP_ACCOUNT_ON_OTHER_DEVICE')||message.includes('DISCORD_ALREADY_LINKED')){
@@ -86,41 +89,36 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  },[]);
  const submit=useCallback(async()=>{
   if(busy)return;
-  if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||!email.includes('@')||password.length<8)){
-   setProblem('Enter a 3–20 character username, valid email and password of at least 8 characters.');
-   return;
+  if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||password.length<8||(email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())))){
+   setProblem('Enter a valid username, password of at least 8 characters, and optional support contact email.');return;
   }
+  if(mode==='signup'&&(!tos||!privacy)){setProblem('Accept both the Terms of Use and Privacy Policy.');return;}
   if(linkNative&&mode==='signup'&&state.status==='VERIFIED'&&username.trim().toLowerCase()!==String(state.username||'').toLowerCase()){
    setProblem('Keep your existing Pup username when adding password sign-in.');return;
   }
   if(mode==='signin'&&(!login.trim()||!password)){
-   setProblem('Enter your Pup username or email and password.');return;
+   setProblem('Enter your Pup username and password.');return;
   }
   setBusy(true);setProblem('');setNotice('');
   try{
    const result=mode==='signup'
-    ?await api().createPupAccount(username.trim(),email.trim(),password,publishableKey)
+    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
    setPassword('');
-   if(result?.status==='VERIFY_EMAIL'){
-    setState({status:'VERIFY_EMAIL'});
-    setLinkNative(false);
-    setNotice('Check your email for a verification link. After confirming, return and sign in with your Pup Account.');
-    setMode('signin');
-    setLogin(email.trim());
-   }else{
-    setState(result);
-    setLinkNative(false);
-    if(result.status==='VERIFIED')onVerified?.(result);
-   }
+   setState(result);setLinkNative(false);
+   setContactEmail(result.contactEmail||email.trim());
+   if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
   }catch(error){
    const code=String(error?.code||'').replace(/^BETA_/,'');
    const messages={
     PUP_USERNAME_TAKEN:'That Pup username is already taken. Choose another.',
     PUP_EMAIL_UNVERIFIED:'Please verify your email, then sign in.',
-    PUP_SIGNIN_INVALID:'Incorrect username/email or password, or email verification is pending.',
-    PUP_SIGNUP_UNAVAILABLE:'Registration could not complete. If you already use Discord, sign in with Discord first and add password login to your existing Pup Account.',
-    PUP_EMAIL_SIGNUP_DISABLED:'Email/password registration is currently disabled on the server. Sign in with Discord. An administrator must enable email signups in Supabase.',
+    PUP_SIGNIN_INVALID:'Incorrect Pup username or password.',
+    PUP_SIGNUP_UNAVAILABLE:'Could not register Pup Account. You can sign in with Discord instead.',
+    PUP_PASSWORD_SETUP_UNAVAILABLE:'Password registration is unavailable; Discord sign-in remains available.',
+    PUP_PASSWORD_LOGIN_DISABLED:'Enable password authentication in Supabase Auth. No SMTP is needed.',
+    PUP_LEGAL_ACCEPTANCE_REQUIRED:'Accept both required legal policies.',
+    PUP_CONTACT_INVALID:'Enter a valid optional support contact email.',
     PUP_CREDENTIAL_ALREADY_LINKED:'This Pup Account already has a password login.',
     PUP_ACCOUNT_RECOVERY_REQUIRED:'Pup Account recovery is required. Contact Support.',
     PUP_ACCOUNT_SWITCH_BLOCKED:'This beta installation is already linked to another account.',
@@ -128,7 +126,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    };
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
- },[busy,mode,username,email,login,password,onVerified,linkNative]);
+ },[busy,mode,username,email,login,password,tos,privacy,onVerified,linkNative]);
+ const consent=useCallback(async()=>{
+  if(!tos||!privacy||busy){setProblem('Accept both policies first.');return;}
+  setBusy(true);setProblem('');
+  try{const r=await api().acceptPolicies(tos,privacy,publishableKey);setState(r);
+   if(r.status==='VERIFIED'&&r.legalAccepted===true)onVerified?.(r);
+  }catch{setProblem('Could not save legal acceptance. Please retry.');}
+  finally{setBusy(false);}
+ },[tos,privacy,busy,onVerified]);
  const read=useCallback(async()=>{
   setBusy(true);setProblem('');
   try{
@@ -138,6 +144,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   finally{setBusy(false);}
  },[]);
  const verified=state.status==='VERIFIED';
+ const consentNeeded=verified&&state.legalAccepted!==true;
+ const agreements=<View style={styles.card}>
+  <Text style={styles.cardTitle}>Required agreements</Text>
+  <Pressable accessibilityRole="checkbox" accessibilityLabel="Accept Terms of Use" accessibilityState={{checked:tos}} onPress={()=>setTos(v=>!v)}><Text style={styles.body}>{tos?'☑':'☐'} I accept the Terms of Use (version 1)</Text></Pressable>
+  <Pressable accessibilityRole="button" accessibilityLabel="Read Terms of Use" onPress={()=>setPolicy('terms')}><Text style={styles.secondaryText}>Read Terms of Use</Text></Pressable>
+  <Pressable accessibilityRole="checkbox" accessibilityLabel="Accept Privacy Policy" accessibilityState={{checked:privacy}} onPress={()=>setPrivacy(v=>!v)}><Text style={styles.body}>{privacy?'☑':'☐'} I have read and accept the Privacy Policy (version 1)</Text></Pressable>
+  <Pressable accessibilityRole="button" accessibilityLabel="Read Privacy Policy" onPress={()=>setPolicy('privacy')}><Text style={styles.secondaryText}>Read Privacy Policy</Text></Pressable>
+  <Text style={styles.body}>Optional diagnostics and notifications are separate choices.</Text>
+ </View>;
  return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={close}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
@@ -159,14 +174,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {problem?<View style={styles.error}><Text accessibilityRole="alert" style={styles.body}>{problem}</Text></View>:null}
    {notice?<View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{notice}</Text></View>:null}
    {busy?<ActivityIndicator color="#85D4FF" accessibilityLabel="Checking Discord and PupEye"/>:null}
-   {verified&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={close}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
-   {verified&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
+   {verified&&!consentNeeded&&onboarding?<Pressable accessibilityRole="button" style={styles.button} onPress={close}><Text style={styles.buttonText}>Use this Pup Account</Text></Pressable>:null}
+   {verified&&!consentNeeded&&!state.guildRole?<Pressable accessibilityRole="button" accessibilityLabel="Link Discord (optional)" disabled={busy} style={styles.secondary} onPress={()=>void signin()}>
     <Text style={styles.secondaryText}>Link Discord (optional)</Text>
    </Pressable>:null}
-   {verified&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Add Pup Account password login" disabled={busy} style={styles.secondary}
+   {verified&&!consentNeeded&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Add Pup Account password login" disabled={busy} style={styles.secondary}
     onPress={()=>{setUsername(state.username||'');setLinkNative(true);setMode('signup');setNotice('');setProblem('');}}>
-    <Text style={styles.secondaryText}>Add email/password sign-in to this Pup Account</Text>
+    <Text style={styles.secondaryText}>Add username/password sign-in to this Pup Account</Text>
    </Pressable>:null}
+   {consentNeeded?<>{agreements}<Pressable accessibilityRole="button" accessibilityLabel="Accept both policies" disabled={!tos||!privacy||busy} style={styles.button} onPress={()=>void consent()}><Text style={styles.buttonText}>Accept and continue</Text></Pressable></>:null}
    {(!verified||linkNative)?<>
     {!linkNative?<View style={styles.modes}>
      {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
@@ -179,21 +195,21 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      <Text style={styles.secondaryText}>← Back to your Pup Account</Text>
     </Pressable>}
     {mode!=='discord'?<View style={styles.card}>
-     <Text style={styles.cardTitle}>{linkNative?'Add email/password sign-in':mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
+     <Text style={styles.cardTitle}>{linkNative?'Add username/password sign-in':mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
      {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, XP, and cloud save stay on the same account.</Text>:null}
      {mode==='signup'?<>
       <Text style={styles.label}>USERNAME</Text>
       <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
        placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
        maxLength={20} editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
-      <Text style={styles.label}>EMAIL</Text>
+      <Text style={styles.label}>SUPPORT CONTACT EMAIL (OPTIONAL)</Text>
       <TextInput accessibilityLabel="Pup email" autoCapitalize="none" autoCorrect={false}
-       keyboardType="email-address" autoComplete="email" placeholder="you@example.com"
+       keyboardType="email-address" autoComplete="email" placeholder="Not used for sign-in or verification"
        placeholderTextColor="#8AA1AF" value={email} onChangeText={setEmail} style={styles.input}/>
      </>:<>
-      <Text style={styles.label}>USERNAME OR EMAIL</Text>
-      <TextInput accessibilityLabel="Pup username or email" autoCapitalize="none" autoCorrect={false}
-       placeholder="Username or email" placeholderTextColor="#8AA1AF"
+      <Text style={styles.label}>PUP USERNAME</Text>
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+       placeholder="Pup username" placeholderTextColor="#8AA1AF"
        value={login} onChangeText={setLogin} style={styles.input}/>
      </>}
      <Text style={styles.label}>PASSWORD</Text>
@@ -201,11 +217,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
       placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
       value={password} onChangeText={setPassword} style={styles.input}/>
+     {mode==='signup'?agreements:null}
      <Pressable accessibilityRole="button" accessibilityLabel={linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
       <Text style={styles.buttonText}>{linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
      </Pressable>
-     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is handled by Supabase Auth, not saved in Puppy Clicker.</Text>:null}
+     {mode==='signup'?<Text style={styles.body}>No verification email or SMTP is required. Contact email is optional and used only for support; password is handled by Supabase Auth.</Text>:null}
      {mode==='signup'&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="I already use Discord" onPress={()=>{setMode('discord');setProblem('');setPassword('');}}>
       <Text style={styles.secondaryText}>Already use Discord? Sign in with Discord first, then add a password to your existing account.</Text>
      </Pressable>:null}
@@ -229,6 +246,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
   </ScrollView>
+  <Modal visible={Boolean(policy)} animationType="slide" onRequestClose={()=>setPolicy(null)}><View style={[styles.root,{paddingTop:insets.top+20,paddingBottom:insets.bottom+20,paddingHorizontal:20}]}><Text style={styles.title}>{policy==='terms'?'Terms of Use':'Privacy Policy'}</Text><ScrollView style={{flex:1}}><Text style={styles.body} selectable>{policy?legal[policy]:''}</Text></ScrollView><Pressable accessibilityRole="button" accessibilityLabel="Close policy" style={styles.button} onPress={()=>setPolicy(null)}><Text style={styles.buttonText}>Close</Text></Pressable></View></Modal>
  </View>
  </Modal>;
 }
