@@ -197,7 +197,10 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     else -> "PupEye server rejected login ("+e.code.take(64)+")."
    }
    p.reject("BETA_"+e.code.take(64),message)
-  }catch(e:Exception){p.reject("BETA_LOGIN_FAILED","Could not securely verify this beta login. Original progress was not changed.")}
+  }catch(e:Exception){
+   p.reject("BETA_TRANSPORT_FAILURE",
+    "PupEye request failed ("+e.javaClass.simpleName.take(32)+"). Check connectivity and retry.")
+  }
  }.start()}
  @ReactMethod fun status(key:String,p:Promise)=runAsync(p){
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
@@ -375,7 +378,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val payload=JSONObject(intentJson)
   val action=payload.optString("type")
   require(action in setOf(
-   "tap","care","purchase","ticket","accessory","equip","exchange","skill",
+   "syncProbe","tap","care","purchase","ticket","accessory","equip","exchange","skill",
    "daily","claimDailyGoal","parkStart","parkClaim","prestige",
    "slotsStart","slotsReveal","rouletteStart","rouletteReveal",
    "plinkoStart","plinkoReveal","scratchStart","scratchReveal",
@@ -385,6 +388,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val answer=post("pup-beta-link",envelope("beta-gameplay",payload),key,session(key))
   Arguments.createMap().apply{
    putDouble("revision",answer.getDouble("revision"))
+   putBoolean("saved",answer.optBoolean("saved",false))
+   putString("savedAt",answer.optString("savedAt",""))
    putString("saveJson",answer.getJSONObject("saveData").toString())
   }
  }
