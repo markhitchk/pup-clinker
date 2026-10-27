@@ -291,7 +291,7 @@ export function useGame({mode='guest'}={}){
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
       errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
-     if(ToastAndroid?.show)ToastAndroid.show('Progress saved, but the screen could not refresh.',ToastAndroid.LONG);
+
     }
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
