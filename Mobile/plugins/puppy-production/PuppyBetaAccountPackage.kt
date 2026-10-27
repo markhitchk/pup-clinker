@@ -116,7 +116,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    .put("deviceKeyId",keyId).put("generation",gen).put("timestampEpochMs",time)
    .put("nonce",nonce).put("publicKey",b64(pub)).put("payload",payload).put("signature",b64(sig))
  }
- private class ApiError(val code:String):Exception(code)
+ private class ApiError(val code:String,val reason:String=""):Exception(code)
  private fun post(function:String,body:JSONObject,key:String,token:String?=null):JSONObject {
   publishable(key)
   require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link","pup-credentials"))
@@ -132,7 +132,14 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    val data=(if(ok)c.inputStream else c.errorStream)?.use{it.readNBytes(2097153)}?:ByteArray(0)
    require(data.size<=2097152){"Response too large"}
    val obj=runCatching{JSONObject(String(data))}.getOrDefault(JSONObject())
-   if(!ok)throw ApiError(obj.optString("code","HTTP_"+c.responseCode))
+   if(!ok){
+     val code=obj.optString("code","HTTP_"+c.responseCode).take(64)
+     // Only forward machine-readable validation reasons; never leak database
+     // messages, credentials, request JSON or stack traces to the UI.
+     val candidate=obj.optString("message","").take(64)
+     val reason=if(candidate.matches(Regex("[A-Z][A-Z0-9_]{2,63}")))candidate else ""
+     throw ApiError(code,reason)
+    }
    return obj
   }finally{c.disconnect()}
  }
@@ -194,6 +201,10 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     "PUP_ACCOUNT_RECOVERY_REQUIRED" -> "Account recovery is required. Contact Support."
     "PUP_SIGNUP_UNAVAILABLE" -> "Could not register. Check your email or sign in."
     "BETA_OWNER_DEVICE_UNAVAILABLE" -> "Original Play app must have an active verified PupEye installation."
+    "BETA_GAMEPLAY_REJECTED" -> "Gameplay write rejected: "+(e.reason.ifBlank{"GAMEPLAY_VALIDATION_FAILED"})
+    "CLOUD_SAVE_CONFLICT" -> "A newer cloud save exists. Reload it before retrying."
+    "CLOUD_SAVE_REQUIRED" -> "The original Play cloud save must be synced first."
+    "BETA_GAMEPLAY_NOT_PORTED" -> "This gameplay action is not yet implemented."
     else -> "PupEye server rejected login ("+e.code.take(64)+")."
    }
    p.reject("BETA_"+e.code.take(64),message)
