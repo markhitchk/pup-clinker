@@ -1,8 +1,9 @@
+import {xpLevel,addBoundedXp} from "./balancedProgression.js";
 // Source parity: PuppyAchievementsV6.kt and PuppyProgression.kt.
 // This XP belongs solely to the isolated, untrusted guest preview.
 const bounded=n=>Number.isFinite(n)?Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,Math.trunc(n))):0;
 const eventXp={MANUAL_TAP:1,CARE_ACTION:5,DAILY_TASK:25,ACHIEVEMENT:50,NEW_PUPPY:100,EVENT_REWARD:50};
-export const guestLevel=g=>1+Math.floor(Math.sqrt(bounded(g.xp)/100));
+export const guestLevel=g=>xpLevel(g.xp);
 export const ACHIEVEMENTS=[
  {id:'first_treat',title:'First Treat',emoji:'🐾',target:1,description:'Earn your first lifetime Treat.',progress:g=>g.lifetimeTreats},
  {id:'snack_stash',title:'Snack Stash',emoji:'🍪',target:100,description:'Earn 100 lifetime Treats.',progress:g=>g.lifetimeTreats},
@@ -17,7 +18,7 @@ export const ACHIEVEMENTS=[
 export function grantGuestXp(g,event){
  const amount=eventXp[event];
  if(!amount)return false;
- g.xp=bounded(bounded(g.xp)+amount);
+ g.xp=addBoundedXp(g.xp,amount);
  return true;
 }
 export const achievementStatuses=g=>{
