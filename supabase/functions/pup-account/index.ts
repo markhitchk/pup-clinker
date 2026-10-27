@@ -195,6 +195,7 @@ Deno.serve(async (req: Request) => {
       return json(200, {
         readOnly: false, accountWritable: true, linkedFromPlay: false,
         legalAccepted: hasLegalConsent(account),
+        contactEmail: account.contact_email ?? null,
         playerId: session.player.player_id ?? null,
         friendCode: session.player.friend_code ?? null,
         guildRole: session.player.guild_role ?? null,
@@ -225,6 +226,7 @@ Deno.serve(async (req: Request) => {
       return json(200, {
         realtimeTopic: `pup-account:${account.realtime_topic}`,
         legalAccepted: hasLegalConsent(account),
+        contactEmail: account.contact_email ?? null,
         guildRole: session.player.guild_role ?? null,
         guildVerifiedAt: session.player.guild_verified_at ?? null,
         account: {
