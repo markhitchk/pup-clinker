@@ -20,7 +20,7 @@ function load(){
  return module.exports.useAccountOnboarding;
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
-async function mount(snapshot={},activation=true,account={status:'VERIFIED',accountId:'account-1',username:'PuppyFan'}){
+async function mount(snapshot={},activation=true,account={status:'VERIFIED',legalAccepted:true,accountId:'account-1',username:'PuppyFan'}){
  const writes=[];let finished=0;
  native={readSetup:async()=>snapshot,saveSetup:async json=>{writes.push(JSON.parse(json));},finishSetup:async()=>{finished++;return account;}};
  bridge.NativeModules.PuppyBetaAccount=native;
