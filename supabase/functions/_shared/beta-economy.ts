@@ -354,6 +354,19 @@ async function casino(v:Dict,t:Dict,intent:BetaEconomyIntent,now:number){
   write(v,t,"beta_last_casino_result_v1",JSON.stringify({...round,bonus}),"string");
  }
 }
+/**
+ * Signed, non-economic cloud write diagnostic. This intentionally does not
+ * call settleBetaAchievements; pressing Test Cloud Save must not mint XP or
+ * alter currencies, puppies, achievements, care or casino state.
+ */
+export function applyBetaSyncProbe(raw:unknown,now=Date.now()):Dict{
+ const source=requireObj(raw);
+ expect(source.format==="puppy-clicker-cloud-save"&&source.version===1,"UNSUPPORTED_KOTLIN_SAVE");
+ const stores=requireObj(source.stores),main=requireObj(stores.puppy_clicker_save);
+ const values={...requireObj(main.values)},types={...requireObj(main.types)};
+ setLong(values,types,"beta_last_sync_probe_at_v1",now);
+ return {...source,savedAtEpochMs:now,stores:{...stores,puppy_clicker_save:{...main,values,types}}};
+}
 /** Handles rewards, shops and casino using *only* the stored server-signed Kotlin save. */
 export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=Date.now()):Promise<Dict>{
  const source=requireObj(raw);expect(source.format==="puppy-clicker-cloud-save"&&source.version===1,"UNSUPPORTED_KOTLIN_SAVE");
