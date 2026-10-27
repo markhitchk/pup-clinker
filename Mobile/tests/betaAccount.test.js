@@ -21,7 +21,8 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
  assert.match(hook,/projectKotlinCloudSave/);
- assert.match(root,/Account synced · live gameplay/);
+ assert.match(root,/Cloud saved · revision/);
+  assert.match(root,/Cloud loaded · verify saving in Settings/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{betaMode&&!\(cloudState==='LIVE_SYNCED'/);
  assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
@@ -149,4 +150,23 @@ test('startup uses one signed bootstrap and an encrypted display-only cache',()=
  assert.match(endpoint,/beta-bootstrap/);
  assert.match(own,/account-bootstrap/);
  assert.match(hook,/CACHED_OFFLINE/);
+});
+
+test('beta cloud save exposes signed commit receipt and safe non-economic verification',()=>{
+ const root=read('../App.js'),hook=read('../src/state/useGame.js');
+ const settings=read('../src/components/SettingsScreen.jsx'),native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
+ const economy=read('../../supabase/functions/_shared/beta-economy.ts');
+ assert.match(settings,/Test Cloud Save/);
+ assert.match(settings,/Last confirmed update/);
+ assert.match(settings,/Save error/);
+ assert.match(hook,/result\.saved!==true/);
+ assert.match(hook,/setSyncStatus/);
+ assert.match(hook,/syncProbe/);
+ assert.match(native,/putBoolean\("saved"/);
+ assert.match(native,/putString\("savedAt"/);
+ assert.match(endpoint,/applyBetaSyncProbe/);
+ assert.match(endpoint,/saved: true, revision/);
+ assert.match(economy,/beta_last_sync_probe_at_v1/);
+ assert.doesNotMatch(root,/Account synced · live gameplay/);
 });
