@@ -33,14 +33,14 @@ export function v6Format(value,compact=true){
 /**
  * The original Kotlin wallet's two decimals hide legitimate live changes
  * when a Pup Account holds trillions. Keep v6Format unchanged for Kotlin
- * screen parity elsewhere, but show six decimals in the compact wallet.
- * An active high-level tap of ~1.5 million Treats now visibly changes the
+ * screen parity elsewhere, but show nine decimals in the compact wallet.
+ * A capped tap of 10,000 Treats now visibly changes the
  * balance, without mutating or locally inventing server-owned currency.
  */
 export function v6WalletFormat(value,compact=true){
  const n=Number.isSafeInteger(value)&&value>=0?value:0;
  if(!compact)return n.toLocaleString('en-US');
- if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(6)+'T';
+ if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(9)+'T';
  if(n>=1_000_000_000)return (n/1_000_000_000).toFixed(4)+'B';
  if(n>=1_000_000)return (n/1_000_000).toFixed(3)+'M';
  return v6Format(n,true);
