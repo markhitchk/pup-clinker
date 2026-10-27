@@ -1,3 +1,4 @@
+import {MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,MAX_REWARD_STREAK_DAYS,xpLevel,addBoundedXp,boundedXp} from "./beta-progression.ts";
 import {grantCasinoBonuses,canWheelUnlock,unownedCasinoPuppies} from "./beta-casino-rewards.ts";
 /**
  * Server-owned Puppy Clicker economy for signed beta intentions.
@@ -115,7 +116,7 @@ function secureInt(limit:number):number {
  return bytes[0]%limit;
 }
 function own(v:Dict,k:string):string[]{const x=v[k];return Array.isArray(x)?x.filter(y=>typeof y==="string") as string[]:[];}
-const level=(v:Dict)=>1+Math.floor(Math.sqrt(num(v,"player_xp_v1",num(v,"lifetime_treats"))/100));
+const level=(v:Dict)=>xpLevel(num(v,"player_xp_v1",num(v,"lifetime_treats")));
 const careScore=(v:Dict)=>Math.floor((num(v,"happiness",100)+num(v,"fullness",100)+num(v,"energy",100)+num(v,"cleanliness_v5",100))/4);
 const ticketKey=(r:string)=>"upgrade_ticket_"+r;
 const skillKey=(r:string)=>"prestige_skill_"+r.toLowerCase()+"_v6";
@@ -130,8 +131,12 @@ function careWrite(v:Dict,t:Dict,now:number){
  bonds[style]=num(v,"bond_v5",10);write(v,t,"bond_by_puppy_v1",JSON.stringify(bonds),"string");
 }
 function awardXp(v:Dict,t:Dict,n:number){
- const base=num(v,"player_xp_v1",num(v,"lifetime_treats"));
- setLong(v,t,"player_xp_v1",inc(base,n));
+ const old=num(v,"player_xp_v1",num(v,"lifetime_treats"));
+ // Preserve historic overflowed XP for support/recovery. Do not overwrite
+ // existing Treats or reset anything in the cloud account.
+ if(old>MAX_PLAYER_XP&&v.player_xp_legacy_backup_v1===undefined)
+  setLong(v,t,"player_xp_legacy_backup_v1",old);
+ setLong(v,t,"player_xp_v1",addBoundedXp(old,n));
 }
 export function awardBetaXp(v:Dict,t:Dict,event:"MANUAL_TAP"|"CARE_ACTION"){
  awardXp(v,t,event==="MANUAL_TAP"?1:5);
@@ -230,7 +235,7 @@ function priceUpgrade(u:typeof defs[number],owned:number,shopper:number):number{
 function shopUpgrade(v:Dict,t:Dict,intent:BetaEconomyIntent){
  const u=defs.find(x=>x.id===intent.upgradeId);expect(u,"UNKNOWN_UPGRADE");
  const owned=num(v,"upgrade_"+u.id),treats=num(v,"treats"),bones=num(v,"bones_v7");
- expect(owned<1000,"UPGRADE_MAXED");
+ expect(owned<MAX_UPGRADES_PER_ITEM,"UPGRADE_MAXED");
  const treatPrice=priceUpgrade(u,owned,Math.min(5,num(v,skillKey("smart_shopper"))));
  const boneBase=u.power>=100?12:u.power>=25?7:u.power>=5?3:1;
  const bonePrice=boneBase*(u.type==="TICKET"?2:1);
@@ -484,7 +489,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
   case "daily":{
    expect(Number(v.daily_claim_day??0)!==today&&Number(v.daily_claim_day??0)<today,"DAILY_ALREADY_CLAIMED");
    const last=Number(v.daily_claim_day??0),streak=last===today-1?Math.min(365,num(v,"daily_streak_v5")+1):1;
-   const gameLevel=1+Math.floor(Math.sqrt(num(v,"lifetime_treats")/100)),reward=150+streak*25+gameLevel*10;
+   const gameLevel=level(v),reward=150+Math.min(MAX_REWARD_STREAK_DAYS,streak)*25+gameLevel*10;
    earned(v,t,reward);addLong(v,t,"bones_v7",2);addLong(v,t,"pup_coins_v7",3);
    setLong(v,t,"daily_claim_day",today);setInt(v,t,"daily_streak_v5",streak);
    setInt(v,t,"happiness",cap100(num(v,"happiness",100)+8));setInt(v,t,"bond_v5",cap100(num(v,"bond_v5",10)+1));
