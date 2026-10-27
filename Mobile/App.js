@@ -1010,6 +1010,7 @@ export function PuppyApp({betaMode=false}){
   const liveGameplayReady=!betaMode||(account?.status==='VERIFIED'&&account?.gameplayWritable===true&&
    (cloudState==='LIVE_SYNCED'||cloudState==='NO_CLOUD_SAVE')&&
    !['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state));
+ const access=betaMode?startupAccess({account,cloudState,syncStatus,ready:state.ready}):{phase:'ready'};
  const [inboxOpen,setInboxOpen]=useState(false);
  const notifications=useNotifications({game:saved,ready:!betaMode&&state.ready&&saved.onboardingComplete,act,onOpen:()=>setInboxOpen(true)});
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
