@@ -224,6 +224,15 @@ export function useGame({mode='guest'}={}){
    });
    return ()=>sub.remove();
  },[beta,write]);
+ useEffect(()=>{
+  if(!beta||account?.status!=='VERIFIED'||!account.accountId)return;
+  const id=account.accountId;
+  if(loadedNoticeOwner.current===id)return;
+  void AsyncStorage.getItem('pup-inbox:'+id).then(raw=>{
+   if(notificationOwner.current===id)dispatch({type:'restoreNotifications',items:raw?JSON.parse(raw):[]});
+   loadedNoticeOwner.current=id;
+  }).catch(()=>{loadedNoticeOwner.current=id;});
+ },[beta,account?.status,account?.accountId]);
  // Signed server response is the only source of new gameplay balances.
  // The queue prevents simultaneous taps from replaying one cloud revision.
  useEffect(()=>{
