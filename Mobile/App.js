@@ -192,7 +192,7 @@ function PlayScreen({g,act,clock,schedule,viewportHeight,readOnly=false,syncStat
    </Pressable>
    <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
    <Pressable accessibilityRole="button" disabled={readOnly||cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},(readOnly||cooldown>0)&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
-   {syncStatus?.state==='SAVED'&&syncStatus.lastAction==='tap'&&syncStatus.lastTapGain!==null?<Txt accessibilityLiveRegion="polite" style={styles.small}>✓ Pup Account saved +{format(syncStatus.lastTapGain)} Treats · revision {syncStatus.revision}</Txt>:null}
+   {syncStatus?.state==='SAVED'&&syncStatus.lastAction==='tap'&&syncStatus.lastTapGain!==null?<Txt accessibilityLiveRegion="polite" style={styles.small}>✓ +{format(syncStatus.lastTapGain)} Treats saved</Txt>:null}
   </View>
   <View style={styles.restoredNextReward}>
    <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
@@ -1047,15 +1047,10 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
-  {betaMode&&['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?<Pressable
-    accessibilityRole="button" accessibilityLabel="Open cloud sync diagnostic"
-    onPress={()=>setSecondary('settings')} style={[styles.notice,{borderColor:C.danger,borderWidth:1}]}>
-    <Txt style={styles.small}>⚠ Cloud save not confirmed · {syncStatus.errorCode||'UNKNOWN_ERROR'} · Open Settings → Data Management</Txt>
-   </Pressable>:null}
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?(syncStatus?.state==='SAVED'?'Cloud saved · revision '+syncStatus.revision:'Cloud loaded · verify saving in Settings'):cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
+     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?(syncStatus?.state==='SAVED'?'Progress saved':'Account connected'):cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
      :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
