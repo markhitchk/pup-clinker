@@ -150,6 +150,11 @@ test('startup uses one signed bootstrap and an encrypted display-only cache',()=
  assert.match(endpoint,/beta-bootstrap/);
  assert.match(own,/account-bootstrap/);
  assert.match(hook,/CACHED_OFFLINE/);
+ assert.match(hook,/bootstrapInFlight/);
+ assert.match(hook,/previouslyVerified/);
+ assert.match(hook,/lastServerTreats/);
+ assert.match(hook,/BOOTSTRAP_DISPLAY_FAILED/);
+ assert.match(hook,/cloudState!=='SIGN_IN_REQUIRED'/);
 });
 
 test('beta cloud save exposes signed commit receipt and safe non-economic verification',()=>{
