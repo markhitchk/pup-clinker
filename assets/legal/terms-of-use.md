@@ -1,6 +1,6 @@
 # Puppy Clicker — Terms of Use
 
-> **Effective date:** September 24, 2026
+> **Effective date:** October 27, 2026
 
 These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**. By using Puppy Clicker, you agree to these terms.
 
@@ -10,7 +10,11 @@ These Terms of Use apply to **Puppy Clicker**, provided by **Harley's Studios**.
 
 Puppy Clicker is provided for personal entertainment.
 
-New player setup uses **Discord OAuth** to verify a Discord account and support community features. The authorization flow may request `identify`, `email`, `guilds`, `guilds.join`, and `guilds.members.read`. Existing local saves may continue to use their existing device-bound Puppy Clicker identity.
+Pup Accounts support a unique username and password, or Discord authorization as an alternative sign-in method. The username, not a personal email address, is the login identifier. Passwords are handled by Supabase Auth using an internal non-deliverable account identifier and are not saved in plaintext by Puppy Clicker. Discord authorization may request `identify`, `email`, `guilds`, `guilds.join`, and `guilds.members.read`. An existing Discord player may link password sign-in to the same Pup Account without replacing gameplay progress.
+
+A contact email is optional, is **not verified**, and is used only for manual support replies. It is never used to log in, send automated emails, or automatically reset passwords. Support may require separate proof of account ownership to help with access or device issues.
+
+New and existing beta players must separately and affirmatively accept both the Terms of Use (version 1) and Privacy Policy (version 1) before signed beta gameplay. The app records each accepted document version and acceptance time on the player's account. Optional telemetry and notification settings are independent from these agreements. Existing Play installation/account ownership and cloud saves are not transferred merely by accepting.
 
 Discord signup does **not** replace the local:
 
@@ -94,7 +98,7 @@ Puppy Clicker may connect to services such as **GitHub** to retrieve streamed as
 
 **Supabase** provides Puppy Clicker's backend account, installation-registration, save-generation, protected-transaction, and device-migration infrastructure.
 
-**Discord OAuth** is used for player signup and community-role verification and is also subject to Discord's terms and privacy practices. Discord authorization results are verified through Puppy Clicker's Supabase backend before privileged role access is trusted.
+**Discord OAuth** is used for optional sign-in and community-role verification and is also subject to Discord's terms and privacy practices. Discord authorization results are verified through Puppy Clicker's Supabase backend before privileged role access is trusted.
 
 ## 8. Availability and Changes
 
