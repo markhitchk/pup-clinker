@@ -1009,7 +1009,7 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
-  {betaMode&&['ERROR','BLOCKED'].includes(syncStatus?.state)?<Pressable
+  {betaMode&&['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?<Pressable
     accessibilityRole="button" accessibilityLabel="Open cloud sync diagnostic"
     onPress={()=>setSecondary('settings')} style={[styles.notice,{borderColor:C.danger,borderWidth:1}]}>
     <Txt style={styles.small}>⚠ Cloud save not confirmed · {syncStatus.errorCode||'UNKNOWN_ERROR'} · Open Settings → Data Management</Txt>
