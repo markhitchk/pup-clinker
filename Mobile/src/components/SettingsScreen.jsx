@@ -100,7 +100,6 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
     <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
     <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
      {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
-     {Number.isSafeInteger(syncStatus?.revision)&&syncStatus.revision>0?' · Revision '+syncStatus.revision:''}
     </T>
     {syncStatus?.savedAt?<T muted style={s.small}>{'Last confirmed update: '+(Number.isFinite(Date.parse(syncStatus.savedAt))?new Date(syncStatus.savedAt).toLocaleString():String(syncStatus.savedAt))}</T>:null}
     {syncStatus?.errorCode?<T style={[s.small,{color:C.danger}]}>{'Save error: '+syncStatus.errorCode}</T>:null}
