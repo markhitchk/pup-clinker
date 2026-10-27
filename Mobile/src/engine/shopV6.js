@@ -1,3 +1,4 @@
+import {MAX_UPGRADES_PER_ITEM} from "./balancedProgression.js";
 // Part 3: Kotlin V6Shop/PuppyPupCoinShop/V6PrestigeCenter presentation
 // and guest-only transaction guards. Source: PuppyClickerV6Activity.kt,
 // PuppyMainScreensRevamp.kt, PuppyEconomyV7.kt, PuppyClickerV6ViewModel.kt.
@@ -29,7 +30,7 @@ export function upgradeOffer(g,upgradeId){
  const inStock=!u.rarity||(g.ticketInventory[u.rarity]||0)>=tickets;
  const skill=g.prestigeSkills?.[u.effect==='CLICK'?'TAP_TRAINING':'AUTO_TRAINING']||0;
  return {upgrade:u,owned,treats,bones,tickets,skill,actualAmount:u.amount+skill,
-  canBuy:inStock&&g.treats>=treats&&g.bones>=bones&&owned<1000};
+  canBuy:inStock&&g.treats>=treats&&g.bones>=bones&&owned<MAX_UPGRADES_PER_ITEM};
 }
 export function ticketShopOffer(g,rarity){
  if(!RARITIES.includes(rarity))return null;
