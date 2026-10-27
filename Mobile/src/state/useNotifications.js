@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {AppState,Linking,Platform} from 'react-native';
+import {AppState,Linking,Platform,ToastAndroid} from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {reminderPlan} from '../engine/inbox.js';
 
@@ -58,6 +58,19 @@ export function useNotifications({game,ready,act,onOpen}){
    }
   }).catch(e=>setError('Notification scheduling failed. '+e.message));
  },[ready,permission,awayAt,game.dailyRewardNotifications,game.gameEventNotifications,game.puppyAttentionNotifications,game.parkActive,game.parkReadyAtMs,game.lastDailyClaimDay,channels]);
+ const publish=useCallback(async({id,category='system',title='Puppy Clicker',body='',toast=false,tray=true})=>{
+  const note={id:id||'event:'+Date.now(),category:['system','reward','pup'].includes(category)?category:'system',
+   title:String(title).slice(0,80),body:String(body).slice(0,220),createdAt:Date.now()};
+  latest.current.act({type:'addNotification',notification:note});
+  if(toast&&Platform.OS==='android'&&AppState.currentState==='active')
+   ToastAndroid.show(note.body,ToastAndroid.SHORT);
+  if(tray&&ready&&Platform.OS==='android'&&permission==='granted'){
+   try{
+    await channels();
+    await Notifications.scheduleNotificationAsync({content:{title:note.title,body:note.body,data:{category:note.category}},trigger:null});
+   }catch{setError('Android notification could not be delivered. Check your notification settings.');}
+  }
+ },[channels,permission,ready]);
  const sendTest=useCallback(async()=>{
   act({type:'testNotification',now:Date.now()});
   try{
@@ -65,5 +78,5 @@ export function useNotifications({game,ready,act,onOpen}){
    await channels();await Notifications.scheduleNotificationAsync({content:{title:'Puppy Clicker',body:'Test notification — notifications are working.'},trigger:{channelId:'system'}});setError('');
   }catch(e){setError('Test saved to inbox; Android delivery failed. '+e.message);}
  },[act,channels,refreshPermission]);
- return {permission,error,request,sendTest,openSystemSettings:()=>Linking.openSettings(),check:()=>act({type:'checkNotifications',now:Date.now()})};
+ return {permission,error,request,sendTest,publish,openSystemSettings:()=>Linking.openSettings(),check:()=>act({type:'checkNotifications',now:Date.now()})};
 }
