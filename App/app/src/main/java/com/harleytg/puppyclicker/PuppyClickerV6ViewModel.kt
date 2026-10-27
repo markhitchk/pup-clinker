@@ -2419,7 +2419,7 @@ class PuppyClickerV6ViewModel(application: Application) : AndroidViewModel(appli
             playerXp = PuppyProgressionStore.migrateXp(
                 prefs.getLong(PuppyProgressionStore.KEY_PLAYER_XP, 0L)
                     .takeIf { prefs.contains(PuppyProgressionStore.KEY_PLAYER_XP) },
-                prefs.getLong(KEY_LIFETIME_TREATS, 0L)
+                prefs.getLong(KEY_LIFETIME, 0L)
             ).coerceAtMost(PuppyProgression.MAX_PLAYER_XP)
         )
     }
