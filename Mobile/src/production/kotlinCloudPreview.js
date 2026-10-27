@@ -1,3 +1,4 @@
+import {boundedXp} from "../engine/balancedProgression.js";
 import {freshGame,sanitizeGame,UPGRADES,RARITIES,PRESTIGE_SKILLS} from '../engine/game.js';
 import {validAuthoritativeWheel} from '../engine/wheelV6.js';
 
@@ -50,7 +51,7 @@ export function projectKotlinCloudSave(raw,username=''){
  g.skillPoints=number('prestige_skill_points_v6');
  g.totalPrestigePointsEarned=number('prestige_total_points_v6');
  g.prestigeSkills=Object.fromEntries(PRESTIGE_SKILLS.map(s=>[s,number('prestige_skill_'+s.toLowerCase()+'_v6')]));
- g.xp=number('player_xp_v1',number('lifetime_treats'));
+ g.xp=boundedXp(number('player_xp_v1',number('lifetime_treats')));
  g.gachaPulls=number('beta_gacha_pulls_v1');
  g.parkActive=values.park_active===true;
  const active=g.puppyStyle;
