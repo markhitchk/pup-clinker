@@ -67,10 +67,10 @@ export default function AccountOnboarding({flow,account,notifications,onConnect}
      {legalLinks}<T muted style={[styles.small,{textAlign:'center'}]}>Puppy Clicker is in active development. Features and balance may change.</T>
     </View>:null}
     {step===1?<>
-     <T muted style={styles.small}>Choose how to sign in. Create a free Pup Account with a username, email and password, or use Discord. Discord is optional; Supabase protects account credentials and PupEye protects game progress.</T>
+     <T muted style={styles.small}>Choose a Pup username and password, or sign in with Discord. Email is optional and used only for manual support contact. Both legal policies require separate acceptance.</T>
      <Card>
       <View style={styles.row}><Image source={require('../../assets/logos/puppy_clicker.png')} accessibilityLabel="Pup Account" resizeMode="contain" style={styles.featureIcon}/><View style={{flex:1}}><T style={styles.cardTitle}>Pup Account</T><T muted style={styles.small}>{connected?'@'+account.username:'The game’s own account system'}</T></View><T style={styles.badge}>{connected?'CONNECTED':'PUP ID'}</T></View>
-      <T muted style={styles.small}>{connected?'Your Pup Account is connected and protected by PupEye.':'Register with a username, email and password, or sign in using your username or email. Your progression is stored securely in the cloud.'}</T>
+      <T muted style={styles.small}>{connected?'Your Pup Account is connected and protected by PupEye.':'Register or sign in using only your Pup username and password. Your progression is stored securely in the cloud.'}</T>
       {connected?<><Button disabled={disabled} label="Continue with Pup Account" onPress={()=>void next()}>{busy?'Loading Pup Account…':'Continue with @'+account.username}</Button><Button secondary disabled={disabled} onPress={()=>onConnect('signin')}>Manage Pup Account</Button></>:
        <><Button disabled={disabled} label="Sign in with Pup Account" onPress={()=>onConnect('signin')}>Sign in with Pup Account</Button>
         <Button secondary disabled={disabled} label="Create Pup Account" onPress={()=>onConnect('signup')}>Create Pup Account</Button></>}
