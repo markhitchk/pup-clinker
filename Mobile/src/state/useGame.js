@@ -1,7 +1,8 @@
-import {useCallback,useEffect,useReducer,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from 'react';
 import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
+import {projectPendingTapDisplay} from './optimisticTaps.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {initialState,transition} from './reducer.js';
 import {GUEST_SAVE_KEY,parseGuestSave,serializeGuestSave} from './guestSave.js';
@@ -28,6 +29,8 @@ export function useGame({mode='guest'}={}){
  const currentRequest=useRef(0);
  const pendingLiveWrites=useRef(0);
  const signedWriteQueue=useRef(Promise.resolve());
+ const nextTapIntentId=useRef(0);
+ const [pendingTapIntents,setPendingTapIntents]=useState([]);
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
@@ -40,6 +43,7 @@ export function useGame({mode='guest'}={}){
    if(request!==currentRequest.current)return false;
    const active=result?.account;
    if(active?.status!=='VERIFIED'){
+    setPendingTapIntents([]);
     liveVerified.current=false;
     cachedPreview.current=false;
     setAccount(active||{status:'NEEDS_ACCOUNT'});
@@ -224,9 +228,13 @@ export function useGame({mode='guest'}={}){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
      !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
     setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save blocked: '+reason,ToastAndroid.LONG);
+    if(ToastAndroid?.show)ToastAndroid.show('Action unavailable. Sign in or reconnect to your Pup Account.',ToastAndroid.LONG);
     return;
    }
+   // Instantly preview accepted input while the signed request is queued.
+   // Only the native/server response can commit balances, XP and rewards.
+   const tapIntentId=action.type==='tap'?++nextTapIntentId.current:null;
+   if(tapIntentId!==null)setPendingTapIntents(current=>[...current,{id:tapIntentId,at:Number.isSafeInteger(action.now)?action.now:Date.now()}]);
    pendingLiveWrites.current++;
    setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null}));
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
@@ -249,15 +257,19 @@ export function useGame({mode='guest'}={}){
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
       errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
-     if(ToastAndroid?.show)ToastAndroid.show('Supabase saved revision '+result.revision+'; display refresh failed.',ToastAndroid.LONG);
+     if(ToastAndroid?.show)ToastAndroid.show('Saved, but the latest balance could not be displayed. Reconnecting…',ToastAndroid.LONG);
+     void refreshAccount();
     }
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
     setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
      errorDetail:String(error?.message||'').slice(0,120)}));
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save failed: '+code,ToastAndroid.LONG);
-   }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
+    if(ToastAndroid?.show)ToastAndroid.show('Could not save the action. Check your connection and try again.',ToastAndroid.LONG);
+   }).finally(()=>{
+    if(tapIntentId!==null)setPendingTapIntents(current=>current.filter(item=>item.id!==tapIntentId));
+    pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);
+   });
    return;
   }
   if(beta&&!BETA_LOCAL_ONLY_ACTIONS.has(action.type)){
@@ -266,7 +278,7 @@ export function useGame({mode='guest'}={}){
    const now=Date.now();
    if(now-lastBlockedToast.current>4000){
     lastBlockedToast.current=now;
-    if(ToastAndroid?.show)ToastAndroid.show('That feature is not live yet. Play and Care sync to Pup Account.',ToastAndroid.SHORT);
+    if(ToastAndroid?.show)ToastAndroid.show('This feature is temporarily unavailable.',ToastAndroid.SHORT);
    }
    return;
   }
@@ -279,5 +291,6 @@ export function useGame({mode='guest'}={}){
   await refreshAccount(updated);
   return updated;
  },[beta,account?.status,refreshAccount]);
- return {state,act,account,cloudState,syncStatus,refreshAccount,updateAccountName};
+ const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
+ return {state,gameForDisplay,act,account,cloudState,syncStatus,refreshAccount,updateAccountName};
 }

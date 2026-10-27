@@ -981,7 +981,7 @@ export default function App(){return <SafeAreaProvider>{NativeModules.PuppyBetaA
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,act:gameAct,account,cloudState,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
+ const {state,gameForDisplay,act:gameAct,account,cloudState,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
  const onboarding=useAccountOnboarding({enabled:betaMode,account,activateAccount:refreshAccount});
  const act=useCallback(action=>{
   gameAct(action);
@@ -1000,7 +1000,7 @@ export function PuppyApp({betaMode=false}){
  const [contentHeight,setContentHeight]=useState(600);
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!secondary)return false;setSecondary(null);return true;});return ()=>sub.remove();},[secondary]);
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
- const saved=betaMode?{...state.game,...Object.fromEntries(Object.keys(DEFAULT_PREFERENCES).map(name=>[name,onboarding.setup[name]??state.game[name]])),birthdayMonth:onboarding.setup.birthdayMonth,birthdayDay:onboarding.setup.birthdayDay}:state.game;
+ const saved=betaMode?{...gameForDisplay,...Object.fromEntries(Object.keys(DEFAULT_PREFERENCES).map(name=>[name,onboarding.setup[name]??state.game[name]])),birthdayMonth:onboarding.setup.birthdayMonth,birthdayDay:onboarding.setup.birthdayDay}:state.game;
  applyAppearance(saved,systemDark);
  const motion=effectiveMotion(saved);
  const g={...saved,animationsEnabled:motion.casino,tapAnimationsEnabled:motion.tap,idleAnimationsEnabled:motion.decorative&&saved.animationsEnabled,buttonMotionEnabled:motion.buttons};
@@ -1035,16 +1035,12 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
-  {betaMode&&['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?<Pressable
-    accessibilityRole="button" accessibilityLabel="Open cloud sync diagnostic"
-    onPress={()=>setSecondary('settings')} style={[styles.notice,{borderColor:C.danger,borderWidth:1}]}>
-    <Txt style={styles.small}>⚠ Cloud save not confirmed · {syncStatus.errorCode||'UNKNOWN_ERROR'} · Open Settings → Data Management</Txt>
-   </Pressable>:null}
+  {/* Pup Account is navigable here; cloud revisions and internal save errors stay off the Play screen. */}
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
-    <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?(syncStatus?.state==='SAVED'?'Cloud saved · revision '+syncStatus.revision:'Cloud loaded · verify saving in Settings'):cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
-     :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
+    <Txt style={styles.small}>{account?.status==='VERIFIED'||account?.status==='CACHED'
+     ?'🔐 '+(account.username||'Pup Account')
+     :account?.status==='CONNECTION_ERROR'?'🔐 Pup Account · Reconnect':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
   {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
