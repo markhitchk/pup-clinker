@@ -1023,6 +1023,12 @@ export function PuppyApp({betaMode=false}){
   void notifications.publish({id:'system:'+id,title:restricted?'Account access notice':'Connection notice',
    body:restricted?'Your Pup Account needs Support review.':'Puppy Clicker could not confirm your latest progress. Please retry.',toast:!restricted,tray:!restricted});
  },[betaMode,syncStatus?.state,syncStatus?.errorCode,access.phase,notifications.publish]);
+ useEffect(()=>{
+  const message=state.notice;
+  if(betaMode||!message||message.startsWith('Local guest mode'))return;
+  void notifications.publish({category:'pup',title:'Puppy Clicker',body:message,toast:true});
+  gameAct({type:'dismiss'});
+ },[betaMode,state.notice,notifications.publish,gameAct]);
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
