@@ -239,7 +239,7 @@ export function useGame({mode='guest'}={}){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
      !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
     setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save blocked: '+reason,ToastAndroid.LONG);
+    if(ToastAndroid?.show)ToastAndroid.show('Reconnect your Pup Account to save progress.',ToastAndroid.LONG);
     return;
    }
    pendingLiveWrites.current++;
@@ -271,14 +271,14 @@ export function useGame({mode='guest'}={}){
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
       errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
-     if(ToastAndroid?.show)ToastAndroid.show('Supabase saved revision '+result.revision+'; display refresh failed.',ToastAndroid.LONG);
+     if(ToastAndroid?.show)ToastAndroid.show('Progress saved, but the screen could not refresh.',ToastAndroid.LONG);
     }
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
     setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
      errorDetail:String(error?.message||'').slice(0,120)}));
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save failed: '+code,ToastAndroid.LONG);
+    if(ToastAndroid?.show)ToastAndroid.show('Unable to save progress. Check your connection.',ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
    return;
   }
