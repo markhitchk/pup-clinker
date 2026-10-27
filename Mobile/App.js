@@ -1015,13 +1015,13 @@ export function PuppyApp({betaMode=false}){
  const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete&&(!betaMode||access.phase==='ready'),act,onOpen:()=>setInboxOpen(true)});
  const lastAlert=useRef('');
  useEffect(()=>{
-  if(!betaMode||syncStatus?.state!=='ERROR')return;
-  const id=String(syncStatus.errorCode||'connection');
+  if(!betaMode||!['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state))return;
+  const id=String(syncStatus?.state)+':'+String(syncStatus.errorCode||'connection');
   if(lastAlert.current===id)return;
   lastAlert.current=id;
   const restricted=access.phase==='banned'||access.phase==='review';
   void notifications.publish({id:'system:'+id,title:restricted?'Account access notice':'Connection notice',
-   body:restricted?'Your Pup Account needs Support review.':'Puppy Clicker could not confirm your latest progress. Please retry.',toast:!restricted,tray:!restricted});
+   body:restricted?'Your Pup Account needs Support review.':syncStatus?.state==='BLOCKED'?'That action is unavailable until your account is ready.':'Puppy Clicker could not confirm your latest progress. Please retry.',toast:!restricted,tray:!restricted});
  },[betaMode,syncStatus?.state,syncStatus?.errorCode,access.phase,notifications.publish]);
  useEffect(()=>{
   const message=state.notice;
