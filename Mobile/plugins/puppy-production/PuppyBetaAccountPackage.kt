@@ -177,6 +177,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val save=obj.getJSONObject("cloudSave")
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
+   putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
    putBoolean("readOnly",obj.optBoolean("readOnly",false))
    putBoolean("accountWritable",true)
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
@@ -199,7 +200,11 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     "PUP_SIGNIN_INVALID" -> "Incorrect username/email or password."
     "PUP_CREDENTIAL_ALREADY_LINKED" -> "This Pup Account already has a password login."
     "PUP_ACCOUNT_RECOVERY_REQUIRED" -> "Account recovery is required. Contact Support."
-    "PUP_SIGNUP_UNAVAILABLE" -> "Could not register. Check your email or sign in."
+    "PUP_SIGNUP_UNAVAILABLE" -> "Could not register this Pup Account."
+    "PUP_PASSWORD_SETUP_UNAVAILABLE" -> "Password registration is temporarily unavailable. Sign in with Discord."
+    "PUP_PASSWORD_LOGIN_DISABLED" -> "Password sign-in needs to be enabled in Supabase Auth. No SMTP is required."
+    "PUP_LEGAL_ACCEPTANCE_REQUIRED" -> "Accept both the Terms of Use and Privacy Policy."
+    "PUP_CONTACT_INVALID" -> "Enter a valid optional support contact email."
     "BETA_OWNER_DEVICE_UNAVAILABLE" -> "Original Play app must have an active verified PupEye installation."
     "BETA_GAMEPLAY_REJECTED" -> "Gameplay write rejected: "+(e.reason.ifBlank{"GAMEPLAY_VALIDATION_FAILED"})
     "CLOUD_SAVE_CONFLICT" -> "A newer cloud save exists. Reload it before retrying."
@@ -217,20 +222,32 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
  }
- @ReactMethod fun createPupAccount(username:String,email:String,password:String,key:String,p:Promise)=runAsync(p){
+ @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
   require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
-  require(email.length<=254 && email.contains("@") && password.length in 8..128){"Invalid Pup account input"}
-  val body=JSONObject().put("username",username).put("email",email.trim()).put("password",password)
-  val result=post("pup-credentials",envelope("native-sign-up",body),key,session(key))
-  if(result.optString("status")=="VERIFY_EMAIL")Arguments.createMap().apply{
-   putString("status","VERIFY_EMAIL")
-   putString("message","Check your email to verify your Pup Account, then sign in.")
-  } else account(key)
+  require(password.length in 8..128){"Invalid Pup password"}
+  require(contactEmail.length<=254 && (contactEmail.isBlank()||contactEmail.contains("@"))){"Invalid optional support email"}
+  require(termsAccepted&&privacyAccepted){"Both legal policies must be accepted"}
+  val body=JSONObject().put("username",username).put("contactEmail",contactEmail.trim())
+   .put("password",password).put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)
+  post("pup-credentials",envelope("native-sign-up",body),key,session(key))
+  account(key)
  }
  @ReactMethod fun signInPupAccount(login:String,password:String,key:String,p:Promise)=runAsync(p){
-  require(login.isNotBlank()&&login.length<=254&&password.length in 1..128){"Invalid Pup login"}
+  require(login.matches(Regex("[A-Za-z0-9_-]{3,20}"))&&password.length in 1..128){"Invalid Pup login"}
   post("pup-credentials",envelope("native-sign-in",
    JSONObject().put("login",login.trim()).put("password",password)),key,session(key))
+  account(key)
+ }
+ @ReactMethod fun acceptPolicies(termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
+  require(termsAccepted&&privacyAccepted){"Both legal policies must be accepted"}
+  post("pup-credentials",envelope("native-accept-legal",
+   JSONObject().put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)),key,session(key))
+  account(key)
+ }
+ @ReactMethod fun updateContactEmail(email:String,key:String,p:Promise)=runAsync(p){
+  require(email.length<=254 && (email.isBlank()||email.contains("@"))){"Invalid support contact email"}
+  post("pup-credentials",envelope("native-contact-update",
+   JSONObject().put("contactEmail",email.trim())),key,session(key))
   account(key)
  }
  @ReactMethod fun beginDiscord(p:Promise) {
@@ -311,6 +328,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val account=Arguments.createMap().apply{
    putString("status",if(cached)"CACHED" else "VERIFIED")
    putString("username",a.getString("username"))
+   putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
    putString("displayName",a.optString("displayName",a.getString("username")))
    putString("accountId",a.getString("id"))
    putBoolean("readOnly",obj.optBoolean("readOnly",true))
@@ -455,6 +473,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   require(setup.getInt("setup_step",0)==5&&setup.getInt("privacy_consent_version",0)>=5)
   require(validBirthday(setup.getInt("birthday_month",0),setup.getInt("birthday_day",0)))
   val verified=account(key)
+  require(verified.getBoolean("legalAccepted")){"Terms and Privacy Policy must be accepted before setup finishes"}
   check(setup.edit().putBoolean("setup_complete",true).putInt("setup_step",5).putInt("setup_flow_version",5).commit())
   verified
  }
