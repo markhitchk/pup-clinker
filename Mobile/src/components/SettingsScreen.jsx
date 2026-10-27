@@ -92,22 +92,22 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('compactNumbers','Compact numbers','Use K/M/B abbreviations for large values.')}
    {toggle('reducedMotion','Reduced visual effects','Uses the same reduced-motion preference as Appearance.')}
    {toggle('puppyPointerEnabled','Puppy mouse pointer','Original light/dark pointer for a connected mouse or trackpad.')}
-   <T muted>{betaMode?'Cloud-save writes: Signed gameplay and casino settlements · revision-checked':'Auto-save: Active · local guest save'}</T>
+   <T muted>{betaMode?'Automatic cloud backup: Enabled':'Auto-save: Active · local guest save'}</T>
   </>)}
-  {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions require protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+  {section('data','💾','Data Management','Cloud backup and local data',<>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Your game progress is stored securely in Pup Account after confirmed actions.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    {betaMode?<View style={{gap:7}}>
-    <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
+    <T style={s.bold}>CLOUD BACKUP</T>
     <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
-     {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
-     {Number.isSafeInteger(syncStatus?.revision)&&syncStatus.revision>0?' · Revision '+syncStatus.revision:''}
+     {['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)
+      ?'A recent action could not be confirmed. Please reconnect and try again.'
+      :syncStatus?.state==='SAVING'?'Saving your progress…'
+      :syncStatus?.state==='SAVED'?'Cloud backup working.'
+      :'Cloud backup is available after sign-in.'}
     </T>
-    {syncStatus?.savedAt?<T muted style={s.small}>{'Last confirmed update: '+(Number.isFinite(Date.parse(syncStatus.savedAt))?new Date(syncStatus.savedAt).toLocaleString():String(syncStatus.savedAt))}</T>:null}
-    {syncStatus?.errorCode?<T style={[s.small,{color:C.danger}]}>{'Save error: '+syncStatus.errorCode}</T>:null}
-    {syncStatus?.errorDetail?<T muted style={s.small}>{syncStatus.errorDetail}</T>:null}
-    <T muted style={s.small}>Test Cloud Save sends a signed, non-economic write to Supabase and verifies the committed revision. It never spends Treats or changes XP.</T>
-    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Saving to Supabase…':'Test Cloud Save'}</Action>
-    <Action onPress={()=>{void onRefreshAccount?.();}}>Reload Cloud Save</Action>
+    <T muted style={s.small}>Check Cloud Backup verifies your save connection without spending Treats or changing XP.</T>
+    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Checking…':'Check Cloud Backup'}</Action>
+    <Action onPress={()=>{void onRefreshAccount?.();}}>Refresh Game Progress</Action>
    </View>:null}
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>
