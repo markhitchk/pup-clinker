@@ -12,7 +12,14 @@ Deno.test("Blackjack shoe is private, signed wager debits once and Stand settles
  seed();
  const initial=original();
  let after=await applyBetaBlackjack(initial,{type:"blackjackStart",wager:100},1793041800000);
- assertEquals(get(after).casino_chips_v7,4900);
+ // A natural Blackjack can settle immediately on deal. In that case
+ // the wallet includes the one-and-only legitimate payout already.
+ const startedRound=Boolean(get(after).beta_casino_round_v1);
+ if(startedRound)assertEquals(get(after).casino_chips_v7,4900);
+ else{
+  const outcome=JSON.parse(get(after).beta_last_blackjack_result_v1).outcome;
+  assertEquals(get(after).casino_chips_v7,4900+outcome.totalPayout);
+ }
  assertEquals(get(initial).casino_chips_v7,5000);
  assertEquals((after.stores as any).puppy_seasonal_v1,initial.stores.puppy_seasonal_v1);
  if(get(after).beta_casino_round_v1){
