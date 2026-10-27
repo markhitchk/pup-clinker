@@ -97,17 +97,17 @@ test('native Pup Account credentials are independent from Discord and never stor
  const endpoint=read('../../supabase/functions/pup-credentials/index.ts');
  const account=read('../../supabase/functions/pup-account/index.ts');
  const migration=read('../../supabase/migrations/20261025221000_pup_native_credentials.sql');
- for(const required of ['createPupAccount','signInPupAccount','native-sign-up','native-sign-in'])
+ for(const required of ['createPupAccount','signInPupAccount','native-sign-up','native-sign-in','native-accept-legal'])
   assert.ok(bridge.includes(required)||endpoint.includes(required),required);
  assert.match(bridge,/post\("pup-credentials"/);
  assert.match(screen,/secureTextEntry/);
  assert.match(screen,/USERNAME OR EMAIL/);
  assert.match(screen,/CREATE|Create Pup Account/);
  assert.match(endpoint,/signInWithPassword/);
- assert.match(endpoint,/auth\.signUp/);
+ assert.match(endpoint,/auth\.admin\.createUser/);
  assert.match(endpoint,/email_provider_disabled/);
- assert.match(endpoint,/PUP_EMAIL_SIGNUP_DISABLED/);
- assert.match(endpoint,/email_confirmed_at/);
+ assert.match(endpoint,/PUP_PASSWORD_SETUP_UNAVAILABLE/);
+ assert.match(endpoint,/terms_accepted_at/);
  assert.match(endpoint,/assertGlobalEnforcementAllowed/);
  assert.match(endpoint,/pup_credential_links/);
  assert.match(endpoint,/pup_beta_account_links/);
