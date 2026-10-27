@@ -12,7 +12,7 @@ test('manual tap 1 XP, care 5 XP, puppy unlock 100 XP and level curve',()=>{
  const g=freshGame();
  grantGuestXp(g,'MANUAL_TAP');grantGuestXp(g,'CARE_ACTION');grantGuestXp(g,'NEW_PUPPY');
  assert.equal(g.xp,106);
- assert.equal(guestLevel(g),2);
+ assert.equal(guestLevel(g),3); // XP 106 reaches level 3 on new 25×(L-1)² curve
 });
 test('achievements are settled once even when score repeats or reloads',()=>{
  const g=freshGame();g.lifetimeTreats=100;
