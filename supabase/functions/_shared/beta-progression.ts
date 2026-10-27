@@ -7,7 +7,7 @@ export const XP_PER_LEVEL_SQUARE=25;
 export const MAX_UPGRADES_PER_ITEM=100;
 export const MAX_TAP_REWARD=10_000;
 export const MAX_ACTIVE_TAP_BONUS=2_500;
-export const MAX_REWARD_STREAK_DAYS=30;
+export const MAX_REWARD_STREAK_DAYS=365;
 export const boundedXp=(n:number):number=>Number.isSafeInteger(n)&&n>0?Math.min(MAX_PLAYER_XP,n):0;
 export const xpLevel=(n:number):number=>Math.min(MAX_PLAYER_LEVEL,1+Math.floor(Math.sqrt(boundedXp(n)/XP_PER_LEVEL_SQUARE)));
 export const addBoundedXp=(xp:number,award:number):number=>Math.min(MAX_PLAYER_XP,boundedXp(xp)+(Number.isSafeInteger(award)&&award>0?award:0));
