@@ -21,12 +21,12 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(beta,/Modal visible=\{visible\}/);
  assert.match(hook,/if\(beta\)return; \/\/ Never persist a beta session as guest-only progression/);
  assert.match(hook,/projectKotlinCloudSave/);
- assert.match(root,/Cloud saved · revision/);
-  assert.match(root,/Cloud loaded · verify saving in Settings/);
+ assert.match(root,/Progress saved/);
+  assert.match(root,/Account connected/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
- assert.match(root,/readOnly=\{betaMode&&!\(cloudState==='LIVE_SYNCED'/);
+ assert.match(root,/readOnly=\{!liveGameplayReady\}/);
  assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
- assert.match(hook,/ToastAndroid\.show\(/);
+ assert.match(hook,/ACTION_UNAVAILABLE/);
  assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });
 
@@ -150,6 +150,11 @@ test('startup uses one signed bootstrap and an encrypted display-only cache',()=
  assert.match(endpoint,/beta-bootstrap/);
  assert.match(own,/account-bootstrap/);
  assert.match(hook,/CACHED_OFFLINE/);
+ assert.match(hook,/bootstrapInFlight/);
+ assert.match(hook,/previouslyVerified/);
+ assert.match(hook,/lastServerTreats/);
+ assert.match(hook,/BOOTSTRAP_DISPLAY_FAILED/);
+ assert.match(hook,/cloudState!=='SIGN_IN_REQUIRED'/);
 });
 
 test('beta cloud save exposes signed commit receipt and safe non-economic verification',()=>{
@@ -157,9 +162,9 @@ test('beta cloud save exposes signed commit receipt and safe non-economic verifi
  const settings=read('../src/components/SettingsScreen.jsx'),native=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
  const endpoint=read('../../supabase/functions/pup-beta-link/index.ts');
  const economy=read('../../supabase/functions/_shared/beta-economy.ts');
- assert.match(settings,/Test Cloud Save/);
- assert.match(settings,/Last confirmed update/);
- assert.match(settings,/Save error/);
+ assert.match(settings,/Check Save Connection/);
+ assert.doesNotMatch(settings,/Last confirmed update/);
+ assert.doesNotMatch(settings,/Save error:/);
  assert.match(hook,/result\.saved!==true/);
  assert.match(hook,/setSyncStatus/);
  assert.match(hook,/syncProbe/);

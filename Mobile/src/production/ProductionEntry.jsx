@@ -38,10 +38,18 @@ function OriginalEntry(){
     return;
    }
    const account=await native.accountStatus(key);
-   setDetails({username:account.username,revision:account.cloudRevision,
-    hasSave:account.cloudSaveExists===true});
+   setDetails({username:account.username,hasSave:account.cloudSaveExists===true});
    setState(classifyVerifiedAccount(account));
   }catch(err){
+   const code=String(err?.code||'').replace(/^BETA_/,'');
+   if(['GLOBAL_BANNED','PUP_ACCOUNT_BLOCKED'].includes(code)){
+    setState({status:'BANNED',canPlay:false,message:'Puppy Clicker access is restricted for this account or device. Contact Support for a review.'});
+    return;
+   }
+   if(code==='REVIEW_REQUIRED'){
+    setState({status:'REVIEW_REQUIRED',canPlay:false,message:'PupEye requires a Support review before access can continue.'});
+    return;
+   }
    // Do not display tokens, identities, signed envelopes, or raw exception data.
    setState({status:'ACCOUNT_VERIFICATION_BLOCKED',canPlay:false,
     message:'PupEye account verification could not complete. Your Kotlin data has not been overwritten. Reopen the original app or use the official account recovery process.'});
@@ -57,14 +65,14 @@ function OriginalEntry(){
    <Text style={styles.heading}>Pup Account migration</Text>
    <Text style={styles.body}>Your existing Pup Account, cloud progress and PupEye device identity must be verified before the React Native game can replace Kotlin.</Text>
    <View style={styles.status}>
-    <Text style={styles.statusTitle}>{state.status.replaceAll('_',' ')}</Text>
+    <Text style={styles.statusTitle}>{busy?'Checking account':state.canPlay?'Account ready':'Account verification'}</Text>
     <Text style={styles.body}>{state.message}</Text>
     {busy?<ActivityIndicator size="small" color="#84D1FF" accessibilityLabel="Verifying Pup Account"/>:null}
    </View>
    {details?<View style={styles.status}>
     <Text style={styles.label}>Server-verified Pup Account</Text>
     <Text style={styles.username}>{details.username}</Text>
-    <Text style={styles.body}>Cloud revision: {details.revision}</Text>
+    
     <Text style={styles.body}>Original cloud save: {details.hasSave?'Found':'Not found'}</Text>
    </View>:null}
    <View style={styles.status}>

@@ -22,7 +22,7 @@ native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {
 native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
 let fixture={},latestState;
 let setupComplete=true;
-function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch};}
+function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch,account:{status:'VERIFIED',gameplayWritable:true},cloudState:'LIVE_SYNCED',syncStatus:{state:'READY'}};}
 const file=new URL('../App.js',import.meta.url),require=createRequire(file),module={exports:{}};
 const source=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
 new Function('require','module','exports',source)(id=>{
@@ -30,12 +30,13 @@ new Function('require','module','exports',source)(id=>{
  if(id==='react-native-safe-area-context')return {SafeAreaProvider:({children})=>children,useSafeAreaInsets:()=>({top:24,bottom:24})};
  if(id.endsWith('/theme.js'))return theme;
  if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
+ if(id==='./src/production/StartupGate.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Loading Puppy Clicker')};
  if(id==='./src/production/BetaAccountEntry.jsx')return {__esModule:true,default:()=>null};
  if(id==='./src/production/useAccountOnboarding.js')return {useAccountOnboarding:()=>({ready:true,setup:{setupComplete}})};
  if(id==='./src/production/AccountOnboarding.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Set Up Your Account')};
  if(id==='./src/state/useGame.js')return {useGame};
  if(id==='./src/state/useRoster.js')return {useRoster:()=>({items:mergeRoster(),source:'bundled',categories:categoriesForRoster(mergeRoster()),refresh(){},clearCache(){}})};
- if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
+ if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){},publish(){}})};
  if(id==='./src/state/useLocalDiagnostics.js')return {useLocalDiagnostics:()=>({summary:'',clear(){}})};
  if(id==='./src/assets/puppies.js')return {PUPPY_IMAGES:Object.fromEntries(ROSTER.map(p=>[p.id,1]))};
  if(id==='./src/assets/gacha.js')return {GACHA_ART:{}};

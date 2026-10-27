@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useReducer,useRef,useState} from 'react';
-import {AppState,NativeModules,ToastAndroid} from 'react-native';
+import {AppState,NativeModules} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,7 +16,8 @@ const BETA_LIVE_ACTIONS=new Set([
  'blackjackStart','blackjackHit','blackjackStand','blackjackDouble','blackjackSplit',
  'gacha','switch','rename'
 ]);
-const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha']);
+const BETA_LOCAL_ONLY_ACTIONS=new Set(['setPreference','resetSettings','dismiss','checkNotifications','testNotification','markNotificationsRead','clearReadNotifications','openNotification','dismissGacha','addNotification']);
+function withLocalNotices(g,old){g.notificationInbox=old?.notificationInbox||[];g.notificationSeenIds=old?.notificationSeenIds||[];return g;}
 function emptyAccountView(displayName='Pup Account'){const game=freshGame();game.onboardingComplete=true;game.onboardingStep=5;game.guestName=displayName;return game;}
 export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
@@ -27,11 +28,18 @@ export function useGame({mode='guest'}={}){
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
  const pendingLiveWrites=useRef(0);
+ const bootstrapInFlight=useRef(false);
+ const lastServerTreats=useRef(null);
+ const notificationOwner=useRef(null);
+ const loadedNoticeOwner=useRef(null);
  const signedWriteQueue=useRef(Promise.resolve());
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
   if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
+  if(bootstrapInFlight.current&&incoming?.status!=='VERIFIED')return false;
+  bootstrapInFlight.current=true;
+  const previouslyVerified=liveVerified.current;
   const request=++currentRequest.current;
   if(incoming?.status==='VERIFIED')setAccount(incoming);
   try{
@@ -54,6 +62,9 @@ export function useGame({mode='guest'}={}){
     :emptyAccountView(active.displayName||active.username);
    liveVerified.current=true;
    cachedPreview.current=false;
+   lastServerTreats.current=g.treats;
+   const existingNotices=notificationOwner.current===active.accountId?latest.current.game:null;
+   notificationOwner.current=active.accountId;
    setAccount(active);
    setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
    setSyncStatus(previous=>{
@@ -62,28 +73,37 @@ export function useGame({mode='guest'}={}){
      revision:Number.isFinite(cloud?.revision)?cloud.revision:null,
      savedAt:cloud?.updatedAt||null,errorCode:active.gameplayWritable===true?null:'ACCOUNT_READ_ONLY'};
    });
-   dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
+   dispatch({type:'hydrate',game:withLocalNotices(g,existingNotices),now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
    return true;
   }catch(error){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
-   const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   const errorCode=String(error?.code||'').replace(/^BETA_/,'').replace(/[^A-Z0-9_]/g,'').slice(0,64)||'BOOTSTRAP_DISPLAY_FAILED';
+   const errorDetail=String(error?.message||'Cloud projection or bootstrap failed').slice(0,120);
+   const banned=['GLOBAL_BANNED','PUP_ACCOUNT_BLOCKED','DEVICE_BANNED','INSTALLATION_BANNED'].includes(errorCode);
+   const review=errorCode==='REVIEW_REQUIRED';
+   const revoked=banned||review||/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   liveVerified.current=false; // Failed verification cannot authorize gameplay writes.
+   setSyncStatus(current=>({...current,state:'ERROR',
+    errorCode:banned?'GLOBAL_BANNED':review?'REVIEW_REQUIRED':revoked?'SESSION_REVOKED':errorCode,errorDetail}));
    if(revoked){
     cachedPreview.current=false;
-    liveVerified.current=false;
+    lastServerTreats.current=null;
     void native.clearCachedBootstrap?.().catch(()=>{});
    }
-   if(cachedPreview.current&&!revoked){
+   if((cachedPreview.current||previouslyVerified)&&!revoked){
+    cachedPreview.current=true;
+    setAccount(previous=>previous?.status==='VERIFIED'?{...previous,status:'CACHED',gameplayWritable:false}:previous);
     setCloudState('CACHED_OFFLINE');
-    return false; // Keep last known encrypted preview visible; never grant writes.
+    return false; // Preserve encrypted snapshot for display, never writes.
    }
-   setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
-   setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
-   setSyncStatus(current=>({...current,state:'ERROR',
-    errorCode:revoked?'SESSION_REVOKED':'BOOTSTRAP_FAILED'}));
-   if(!liveVerified.current)dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+   setAccount({status:banned?'BANNED':review?'REVIEW_REQUIRED':revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
+   setCloudState(banned||review?'ACCESS_RESTRICTED':revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
+   dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
    return false;
+  }finally{
+   bootstrapInFlight.current=false;
   }
  },[beta]);
  const [state,dispatch]=useReducer(transition,undefined,initialState);
@@ -204,27 +224,41 @@ export function useGame({mode='guest'}={}){
    });
    return ()=>sub.remove();
  },[beta,write]);
+ useEffect(()=>{
+  if(!beta||account?.status!=='VERIFIED'||!account.accountId)return;
+  const id=account.accountId;
+  if(loadedNoticeOwner.current===id)return;
+  void AsyncStorage.getItem('pup-inbox:'+id).then(raw=>{
+   if(notificationOwner.current===id)dispatch({type:'restoreNotifications',items:raw?JSON.parse(raw):[]});
+   loadedNoticeOwner.current=id;
+  }).catch(()=>{loadedNoticeOwner.current=id;});
+ },[beta,account?.status,account?.accountId]);
+ useEffect(()=>{
+  const id=account?.accountId;
+  if(!beta||account?.status!=='VERIFIED'||!id||loadedNoticeOwner.current!==id)return;
+  const items=state.game.notificationInbox.slice(0,60);
+  queue.current=queue.current.catch(()=>{}).then(()=>AsyncStorage.setItem('pup-inbox:'+id,JSON.stringify(items)));
+ },[beta,account?.status,account?.accountId,state.game.notificationInbox]);
  // Signed server response is the only source of new gameplay balances.
  // The queue prevents simultaneous taps from replaying one cloud revision.
  useEffect(()=>{
   if(!beta)return;
   const timer=setInterval(()=>{
-   if(liveVerified.current&&pendingLiveWrites.current===0)void refreshAccount();
+   if(AppState.currentState==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED'&&cloudState!=='ACCESS_RESTRICTED')void refreshAccount();
   },15000);
   const listener=AppState.addEventListener('change',status=>{
-   if(status==='active'&&liveVerified.current&&pendingLiveWrites.current===0)
+   if(status==='active'&&pendingLiveWrites.current===0&&cloudState!=='SIGN_IN_REQUIRED'&&cloudState!=='ACCESS_RESTRICTED')
     void refreshAccount();
   });
   return ()=>{clearInterval(timer);listener.remove();};
- },[beta,refreshAccount]);
+ },[beta,cloudState,refreshAccount]);
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
    const native=NativeModules.PuppyBetaAccount;
-   if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true){
+   if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true||account?.status!=='VERIFIED'){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
      !native?.gameplayAction?'NATIVE_SAVE_BRIDGE_MISSING':'ACCOUNT_NOT_WRITABLE';
     setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:reason}));
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save blocked: '+reason,ToastAndroid.LONG);
     return;
    }
    pendingLiveWrites.current++;
@@ -240,23 +274,34 @@ export function useGame({mode='guest'}={}){
     // projection/UI error as a failed write or encourage a double-spend retry.
     ++currentRequest.current;
     setCloudState('LIVE_SYNCED');
+    const savedAt=result.savedAt||new Date().toISOString();
     setSyncStatus({state:'SAVED',revision:result.revision,
-     savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
+     savedAt,errorCode:null,lastAction:action.type,lastTapGain:null});
     try {
      const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
-     dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
+     const previousTreats=lastServerTreats.current;
+     lastServerTreats.current=game.treats;
+     const lastTapGain=action.type==='tap'&&Number.isSafeInteger(previousTreats)
+      ?Math.max(0,game.treats-previousTreats):null;
+     setSyncStatus({state:'SAVED',revision:result.revision,
+      savedAt,errorCode:null,lastAction:action.type,lastTapGain});
+     dispatch({type:'hydrate',game:withLocalNotices(game,account?.accountId===notificationOwner.current?latest.current.game:null),now:Date.now(),readOnly:true});
     }catch{
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
       errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
-     if(ToastAndroid?.show)ToastAndroid.show('Supabase saved revision '+result.revision+'; display refresh failed.',ToastAndroid.LONG);
+
     }
    }).catch(error=>{
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
     setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
      errorDetail:String(error?.message||'').slice(0,120)}));
+    if(code==='GLOBAL_BANNED'||code==='PUP_ACCOUNT_BLOCKED'){
+     liveVerified.current=false;
+     setAccount({status:'BANNED'});
+     setCloudState('ACCESS_RESTRICTED');
+    }
     if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    if(ToastAndroid?.show)ToastAndroid.show('Cloud save failed: '+code,ToastAndroid.LONG);
    }).finally(()=>{pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);});
    return;
   }
@@ -266,7 +311,7 @@ export function useGame({mode='guest'}={}){
    const now=Date.now();
    if(now-lastBlockedToast.current>4000){
     lastBlockedToast.current=now;
-    if(ToastAndroid?.show)ToastAndroid.show('That feature is not live yet. Play and Care sync to Pup Account.',ToastAndroid.SHORT);
+    setSyncStatus(current=>({...current,state:'ACTION_UNAVAILABLE',errorCode:'FEATURE_UNAVAILABLE'}));
    }
    return;
   }

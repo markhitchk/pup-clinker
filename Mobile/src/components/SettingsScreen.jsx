@@ -37,12 +37,12 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </View>
   {group('ACCOUNT')}
   {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
-   <T muted>{betaMode?'Pup Account · Signed gameplay saves directly to Supabase and syncs between verified installations.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
+   <T muted>{betaMode?'Pup Account · Progress is protected and saved online.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
     if(!betaMode){act({type:'onboardPlayer',name});return;}
     setProfileBusy(true);setProfileMessage('');
     Promise.resolve(onUpdateAccountName?.(name.trim()))
      .then(()=>setProfileMessage('✓ Display name saved to your Pup Account.'))
-     .catch(error=>setProfileMessage(error?.message||'Unable to save. Reconnect and retry.'))
+     .catch(error=>setProfileMessage('Unable to save. Reconnect and retry.'))
      .finally(()=>setProfileBusy(false));
    }}>{profileBusy?'Saving…':'Save Display Name'}</Action>
     {profileMessage?<T accessibilityRole="alert" muted>{profileMessage}</T>:null}
@@ -74,7 +74,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('gameEventNotifications','Game Events','Dog Park Adventure completion alerts.')}
    {toggle('updateNotifications','App Updates','Keep update notices in the notification inbox when available.')}
    {toggle('puppyAttentionNotifications','Puppy Attention',"Every two hours while away, using your puppy's care status when scheduled.")}
-   <T muted>{betaMode?'PupEye notification delivery and original Kotlin history are not yet ported to this beta.':'Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.'}</T>
+   <T muted>{betaMode?'New alerts appear in the notification panel and Android notifications when permitted. Previous Kotlin history is not imported.':'Local reminders are enabled for this preview. Remote update notices and the original Kotlin notification history still need account integration.'}</T>
    {notifications.error?<T style={{color:C.danger}}>{notifications.error}</T>:null}
    <Action onPress={()=>{notifications.check();onOpen('notifications');}}>Check Notifications Now</Action><Action onPress={notifications.sendTest}>Send Test Notification</Action>
   </>)}
@@ -92,22 +92,21 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('compactNumbers','Compact numbers','Use K/M/B abbreviations for large values.')}
    {toggle('reducedMotion','Reduced visual effects','Uses the same reduced-motion preference as Appearance.')}
    {toggle('puppyPointerEnabled','Puppy mouse pointer','Original light/dark pointer for a connected mouse or trackpad.')}
-   <T muted>{betaMode?'Cloud-save writes: Signed gameplay and casino settlements · revision-checked':'Auto-save: Active · local guest save'}</T>
+   <T muted>{betaMode?'Saved progression and game actions':'Auto-save: Active · local guest save'}</T>
   </>)}
   {section('data','💾','Data Management','Save status, backups, resets and local data',<>
-   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Pup Account: '+String(cloudState||'Not loaded').replaceAll('_',' ')+'. Progression, rewards, purchases and casino actions require protected cloud writes.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
+   <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Your Pup Account protects game progress and keeps supported actions synced.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    {betaMode?<View style={{gap:7}}>
-    <T style={s.bold}>SUPABASE CLOUD-SAVE VERIFICATION</T>
+    <T style={s.bold}>SAVE CONNECTION</T>
     <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
-     {'Status: '+String(syncStatus?.state||'NOT_VERIFIED').replaceAll('_',' ')}
-     {Number.isSafeInteger(syncStatus?.revision)&&syncStatus.revision>0?' · Revision '+syncStatus.revision:''}
+     {syncStatus?.state==='SAVED'?'Progress saved':syncStatus?.state==='SAVING'?'Saving progress…':['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?'Unable to confirm progress. Please retry.':'Account connected'}
     </T>
-    {syncStatus?.savedAt?<T muted style={s.small}>{'Last confirmed update: '+(Number.isFinite(Date.parse(syncStatus.savedAt))?new Date(syncStatus.savedAt).toLocaleString():String(syncStatus.savedAt))}</T>:null}
-    {syncStatus?.errorCode?<T style={[s.small,{color:C.danger}]}>{'Save error: '+syncStatus.errorCode}</T>:null}
-    {syncStatus?.errorDetail?<T muted style={s.small}>{syncStatus.errorDetail}</T>:null}
-    <T muted style={s.small}>Test Cloud Save sends a signed, non-economic write to Supabase and verifies the committed revision. It never spends Treats or changes XP.</T>
-    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Saving to Supabase…':'Test Cloud Save'}</Action>
-    <Action onPress={()=>{void onRefreshAccount?.();}}>Reload Cloud Save</Action>
+    
+    
+    
+    <T muted style={s.small}>Check Save Connection tests whether cloud saving is working. It does not spend Treats or change XP.</T>
+    <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Checking connection…':'Check Save Connection'}</Action>
+    <Action onPress={()=>{void onRefreshAccount?.();}}>Refresh Account</Action>
    </View>:null}
    <Action onPress={()=>setDanger(!danger)}>Danger Zone {danger?'⌃':'⌄'}</Action>{danger?<>
     <Action danger onPress={()=>setDangerAction('settings')}>Reset Settings</Action>

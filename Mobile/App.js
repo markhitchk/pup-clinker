@@ -1,5 +1,7 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
+import StartupGate from './src/production/StartupGate.jsx';
+import {startupAccess} from './src/production/startupAccess.js';
 import AccountOnboarding from './src/production/AccountOnboarding.jsx';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
@@ -20,7 +22,7 @@ import {useRoster} from './src/state/useRoster.js';
 import {ROSTER,UPGRADES,RARITIES,PRESTIGE_SKILLS,format,level,wellness,mood,careTapBonus,cost,boneCost,ticketCost,ticketShopCost,accessoryPrices,prestigePointsAvailable,skillCost,handValue} from './src/engine/game.js';
 import {SCRATCHERS} from './src/engine/casinoV7.js';
 import {ACHIEVEMENTS,achievementStatuses,guestLevel} from './src/engine/progression.js';
-import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,MAX_REWARD_STREAK_DAYS,levelXp,nextXpTarget} from './src/engine/balancedProgression.js';
+import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,MAX_UPGRADES_PER_ITEM,MAX_REWARD_STREAK_DAYS,levelXp,nextXpTarget,cappedTapReward} from './src/engine/balancedProgression.js';
 import {gachaPool,GACHA_TREAT_COST} from './src/engine/gacha.js';
 import {cardLabel,handTotal,canHit,canStand,canDouble,canSplit} from './src/engine/blackjack.js';
 import {blackjackTable,blackjackFan,blackjackSharedCardWidth} from './src/engine/blackjackLayout.js';
@@ -146,7 +148,7 @@ function DailyGoalCard({g,goal,act,clock,readOnly=false}){
   </View>
  </View>;
 }
-function PlayScreen({g,act,clock,schedule,viewportHeight}){
+function PlayScreen({g,act,clock,schedule,viewportHeight,readOnly=false,syncStatus=null}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
  const layout=revampedPlayLayout(viewportHeight);
  const next=nextPlayReward(g,schedule,clock),cooldown=v6CooldownSeconds(g,clock),bonus=careTapBonus(g);
@@ -164,7 +166,7 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
   const timer=setTimeout(()=>setTicketVisible(false),2750);return ()=>clearTimeout(timer);
  },[g.ticketDropSerial,g.lastTicketDrop]);
  const doTap=()=>{
-  if(v6CooldownSeconds(g,Date.now()))return;
+  if(readOnly||v6CooldownSeconds(g,Date.now()))return;
   if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care to keep playing.');return;}
   act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
   if(g.hapticsEnabled)Vibration.vibrate(12);
@@ -178,18 +180,19 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
   ]).start();
  };
  const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
- const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
+ const label=readOnly?'🔒 Reconnect Pup Account to play':cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+cappedTapReward(g.clickPower+bonus);
  return <View style={[styles.restoredPlay,{height:Math.max(420,viewportHeight),gap:layout.gap}]}>
   <PageHeader title="Play" subtitle={layout.compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
   <Wallet game={g}/>
   <View style={[styles.restoredStage,{backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
-   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
+   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:readOnly||cooldown>0}} disabled={readOnly||cooldown>0} onPress={doTap}>
     <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
      <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
     </Animated.View>
    </Pressable>
    <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
-   <Pressable accessibilityRole="button" disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
+   <Pressable accessibilityRole="button" disabled={readOnly||cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},(readOnly||cooldown>0)&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
+   {syncStatus?.state==='SAVED'&&syncStatus.lastAction==='tap'&&syncStatus.lastTapGain!==null?<Txt accessibilityLiveRegion="polite" style={styles.small}>✓ +{format(syncStatus.lastTapGain)} Treats saved</Txt>:null}
   </View>
   <View style={styles.restoredNextReward}>
    <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
@@ -1004,8 +1007,28 @@ export function PuppyApp({betaMode=false}){
  applyAppearance(saved,systemDark);
  const motion=effectiveMotion(saved);
  const g={...saved,animationsEnabled:motion.casino,tapAnimationsEnabled:motion.tap,idleAnimationsEnabled:motion.decorative&&saved.animationsEnabled,buttonMotionEnabled:motion.buttons};
+  const liveGameplayReady=!betaMode||(account?.status==='VERIFIED'&&account?.gameplayWritable===true&&
+   (cloudState==='LIVE_SYNCED'||cloudState==='NO_CLOUD_SAVE')&&
+   !['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state));
+ const access=betaMode?startupAccess({account,cloudState,syncStatus,ready:state.ready}):{phase:'ready'};
  const [inboxOpen,setInboxOpen]=useState(false);
- const notifications=useNotifications({game:saved,ready:!betaMode&&state.ready&&saved.onboardingComplete,act,onOpen:()=>setInboxOpen(true)});
+ const notifications=useNotifications({game:saved,ready:state.ready&&saved.onboardingComplete&&(!betaMode||access.phase==='ready'),act,onOpen:()=>setInboxOpen(true)});
+ const lastAlert=useRef('');
+ useEffect(()=>{
+  if(!betaMode||!['ERROR','BLOCKED','SAVED_DISPLAY_ERROR','ACTION_UNAVAILABLE'].includes(syncStatus?.state))return;
+  const id=String(syncStatus?.state)+':'+String(syncStatus.errorCode||'connection');
+  if(lastAlert.current===id)return;
+  lastAlert.current=id;
+  const restricted=access.phase==='banned'||access.phase==='review';
+  void notifications.publish({id:'system:'+id,title:restricted?'Account access notice':syncStatus?.state==='ACTION_UNAVAILABLE'?'Feature notice':'Connection notice',
+   body:restricted?'Your Pup Account needs Support review.':['BLOCKED','ACTION_UNAVAILABLE'].includes(syncStatus?.state)?'Some actions are not available right now.':'Puppy Clicker could not confirm your latest progress. Please retry.',toast:!restricted,tray:!restricted});
+ },[betaMode,syncStatus?.state,syncStatus?.errorCode,access.phase,notifications.publish]);
+ useEffect(()=>{
+  const message=state.notice;
+  if(betaMode||!message||message.startsWith('Local guest mode'))return;
+  void notifications.publish({category:'pup',title:'Puppy Clicker',body:message,toast:true});
+  gameAct({type:'dismiss'});
+ },[betaMode,state.notice,notifications.publish,gameAct]);
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
@@ -1017,11 +1040,16 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6} readOnly={!liveGameplayReady} syncStatus={betaMode?syncStatus:null}/>;
   if(tab==='care')return <CareScreen g={g} act={act} viewportHeight={contentHeight-6}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
+ if(betaMode&&access.phase!=='ready')return <>
+  <StartupGate access={access} onRetry={()=>void refreshAccount()} onSignIn={()=>openAccount('signin')} onNotifications={()=>setInboxOpen(true)}/>
+  <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)}/>
+  <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
+ </>;
  if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
   <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={openAccount}/>
   <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
@@ -1035,18 +1063,12 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
-  {betaMode&&['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?<Pressable
-    accessibilityRole="button" accessibilityLabel="Open cloud sync diagnostic"
-    onPress={()=>setSecondary('settings')} style={[styles.notice,{borderColor:C.danger,borderWidth:1}]}>
-    <Txt style={styles.small}>⚠ Cloud save not confirmed · {syncStatus.errorCode||'UNKNOWN_ERROR'} · Open Settings → Data Management</Txt>
-   </Pressable>:null}
   {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
     onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
     <Txt style={styles.small}>{account?.status==='VERIFIED'
-     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?(syncStatus?.state==='SAVED'?'Cloud saved · revision '+syncStatus.revision:'Cloud loaded · verify saving in Settings'):cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
+     ?'🔐 '+account.username+' · '+(cloudState==='CACHED_VERIFYING'?'Cached · verifying…':cloudState==='CACHED_OFFLINE'?'Offline snapshot · reconnect':cloudState==='LIVE_SYNCED'?(syncStatus?.state==='SAVED'?'Progress saved':'Account connected'):cloudState==='SERVER_SNAPSHOT_READ_ONLY'?'Account synced · gameplay unavailable':cloudState==='NO_CLOUD_SAVE'?(account.gameplayWritable?'Account verified · start live gameplay':'Waiting for original Play save'):'Profile editable')
      :account?.status==='CACHED'?'🔐 '+account.username+' · checking secure session…':account?.status==='CONNECTION_ERROR'?'⚠️ Unable to reach Pup Account · retry':'🔒 Sign in to Pup Account'}  ›</Txt>
    </Pressable>:null}
-  {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}

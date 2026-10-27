@@ -121,7 +121,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     PUP_ACCOUNT_SWITCH_BLOCKED:'This beta installation is already linked to another account.',
     PUP_ACCOUNT_DEVICE_UNAVAILABLE:'The original PupEye installation is unavailable. Contact Support.'
    };
-   setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
+   setProblem(messages[code]||'Pup Account sign-in could not complete. Please retry or contact Support.');
   }finally{setBusy(false);}
  },[busy,mode,username,email,login,password,onVerified,linkNative]);
  const read=useCallback(async()=>{
@@ -142,12 +142,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
    <Text style={styles.body}>{onboarding?'Use a Pup username, email and password, or connect Discord instead. PupEye protects your cloud progression.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
    <View style={styles.card}>
-    <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
-    <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
+    <Text style={styles.label}>ACCOUNT CONNECTION</Text>
+    <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':state.status==='CHECKING'?'Checking account':state.status==='VERIFY_EMAIL'?'Email verification required':'Sign in required'}</Text>
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
-      <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Signed progression, shop, rewards, and casino actions synchronize with Play. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
@@ -197,7 +196,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
       <Text style={styles.buttonText}>{mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
      </Pressable>
-     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is handled by Supabase Auth, not saved in Puppy Clicker.</Text>:null}
+     {mode==='signup'?<Text style={styles.body}>A verification email may be required. Your password is securely managed and is not saved in Puppy Clicker.</Text>:null}
     </View>:<Pressable accessibilityRole="button" accessibilityLabel="Connect Discord to Pup Account"
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
@@ -206,7 +205,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
     </Pressable>
-    {cloud?<Text style={styles.body}>Cloud response: {cloud.exists?'Save available at revision '+cloud.revision:'No authoritative save yet'}</Text>:null}
+    {cloud?<Text style={styles.body}>Cloud response: {cloud.exists?'Save available':'No authoritative save yet'}</Text>:null}
    </>}
    <Pressable accessibilityRole="button" disabled={busy} style={styles.secondary} onPress={()=>void check()}>
     <Text style={styles.secondaryText}>Retry account status</Text>
