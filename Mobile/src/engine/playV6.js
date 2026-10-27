@@ -30,19 +30,16 @@ export function v6Format(value,compact=true){
  if(n>=1_000)return (n/1_000).toFixed(1)+'K';
  return String(n);
 }
-/**
- * The original Kotlin wallet's two decimals hide legitimate live changes
- * when a Pup Account holds trillions. Keep v6Format unchanged for Kotlin
- * screen parity elsewhere, but show nine decimals in the compact wallet.
- * A capped tap of 10,000 Treats now visibly changes the
- * balance, without mutating or locally inventing server-owned currency.
+/** Keep compact wallet values legible even at quadrillion scale.
+ * Small changes are shown with a server-confirmed tap receipt, not nine decimals.
  */
 export function v6WalletFormat(value,compact=true){
  const n=Number.isSafeInteger(value)&&value>=0?value:0;
  if(!compact)return n.toLocaleString('en-US');
- if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(9)+'T';
- if(n>=1_000_000_000)return (n/1_000_000_000).toFixed(4)+'B';
- if(n>=1_000_000)return (n/1_000_000).toFixed(3)+'M';
+ if(n>=1_000_000_000_000_000)return (n/1_000_000_000_000_000).toFixed(2)+'Qa';
+ if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(2)+'T';
+ if(n>=1_000_000_000)return (n/1_000_000_000).toFixed(2)+'B';
+ if(n>=1_000_000)return (n/1_000_000).toFixed(2)+'M';
  return v6Format(n,true);
 }
 export function v6CooldownSeconds(game,now=Date.now()){
