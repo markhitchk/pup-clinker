@@ -10,7 +10,7 @@ const api=()=>NativeModules.PuppyBetaAccount;
 const isCallback=url=>typeof url==='string'&&
  /^discord-1547982688898777118:\/authorize\/callback(?:\?|$)/.test(url);
 
-export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false,initialMode='signin'}){
+export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false,initialMode='signin',requiredAtStartup=false}){
  const insets=useSafeAreaInsets();
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
@@ -162,21 +162,20 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   <Pressable accessibilityRole="button" accessibilityLabel="Read Privacy Policy" onPress={()=>setPolicy('privacy')}><Text style={styles.secondaryText}>Read Privacy Policy</Text></Pressable>
   <Text style={styles.body}>Optional diagnostics and notifications are separate choices.</Text>
  </View>;
- return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={close}>
+ return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={requiredAtStartup?()=>{}:close}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
   <ScrollView contentContainerStyle={styles.content}>
-   <Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>
+   {!requiredAtStartup?<Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>:null}
    <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
    <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>{onboarding?'Use a Pup username, email and password, or connect Discord instead. PupEye protects your cloud progression.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
+   <Text style={styles.body}>{onboarding?'Use a Pup username and password, or connect Discord instead. A support email is optional.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
    <View style={styles.card}>
-    <Text style={styles.label}>PUPEYE ACCOUNT STATUS</Text>
-    <Text style={styles.value}>{state.status.replaceAll('_',' ')}</Text>
+    <Text style={styles.label}>PUP ACCOUNT</Text>
+    <Text style={styles.value}>{verified?'Connected':'Sign-in required'}</Text>
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
-      <Text style={styles.body}>Revision: {state.cloudRevision}</Text>
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Signed progression, shop, rewards, and casino actions synchronize with Play. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
