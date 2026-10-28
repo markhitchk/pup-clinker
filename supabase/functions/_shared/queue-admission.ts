@@ -3,7 +3,7 @@ import type { Buffer as NodeBuffer } from "node:buffer";
 import { HttpError, createAdminClient } from "./pupeye.ts";
 
 /** Queue proof is tied to the existing PupEye Android Keystore P-256 key. */
-const ACTIONS=new Set(["bootstrap","status","admit","release"]);
+const ACTIONS=new Set(["bootstrap","status","heartbeat","admit","release"]);
 const HEADER="X-Puppy-Queue-Ticket";
 export function verifyQueueProof(raw: Record<string,unknown>) {
  const action=raw.action;
@@ -106,7 +106,7 @@ export function publicQueueResponse(raw:Record<string,unknown>){
   playersAhead:typeof raw.playersAhead==="number"&&Number.isSafeInteger(raw.playersAhead)&&raw.playersAhead>=0?raw.playersAhead:null,
   estimatedWaitSeconds:null, // no invented ETA before load-calibrated throughput
   retryAfterMs:retryMs,
-  code:typeof raw.code==="string"&&/^PC-Q00[1-9]|PC-Q010$/.test(raw.code)?raw.code:null,
+  code:typeof raw.code==="string"&&/^PC-Q(?:00[1-9]|010)$/.test(raw.code)?raw.code:null,
   protocol:1,
  };
 }
