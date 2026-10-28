@@ -73,6 +73,6 @@ test('quadrillion-scale Pup Account balances fit four wallet cells without losin
  assert.match(wallet,/v6WalletFormat\(value/);
  assert.match(wallet,/Exact balance/);
  assert.match(wallet,/adjustsFontSizeToFit/);
- assert.match(reactPlay,/Progress saved to Pup Account/);
- assert.match(reactPlay,/Checking last save/);
+ assert.doesNotMatch(reactPlay,/Progress saved to Pup Account/);
+ assert.doesNotMatch(reactPlay,/Checking last save/);
 });
