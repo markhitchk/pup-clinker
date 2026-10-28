@@ -22,15 +22,19 @@ export function useAccountOnboarding({enabled,account,activateAccount}){
  const [ready,setReady]=useState(!enabled),[busy,setBusy]=useState(false),[problem,setProblem]=useState('');
  const current=useRef(setup),committed=useRef(setup),queue=useRef(Promise.resolve()),working=useRef(false);
  const native=()=>NativeModules.PuppyBetaAccount;
- useEffect(()=>{
-  if(!enabled)return;
-  let alive=true;
-  void (async()=>{
-   try{const snapshot=normalize(await native().readSetup());if(alive){current.current=snapshot;committed.current=snapshot;setSetup(snapshot);setReady(true);}}
-   catch{if(alive)setProblem('Could not load setup. Reopen Puppy Clicker to retry.');}
-  })();
-  return ()=>{alive=false;};
+ const reload=useCallback(async()=>{
+  if(!enabled)return true;
+  setProblem('');
+  try{
+   const snapshot=normalize(await native().readSetup());
+   current.current=snapshot;committed.current=snapshot;setSetup(snapshot);setReady(true);
+   return true;
+  }catch{
+   setProblem('Unable to load startup settings. Tap Try Again.');
+   return false;
+  }
  },[enabled]);
+ useEffect(()=>{if(enabled)void reload();},[enabled,reload]);
  const persist=useCallback(patch=>{
   const next={...current.current,...patch};current.current=next;setSetup(next);
   const write=queue.current.catch(()=>{}).then(async()=>{
@@ -89,5 +93,5 @@ export function useAccountOnboarding({enabled,account,activateAccount}){
   }catch{setProblem('Pup Account verification or setup could not complete. Please retry.');}
   finally{working.current=false;setBusy(false);}
  },[ready,account,activateAccount]);
- return {setup,ready,busy,problem,update,next,back,review,finish};
+ return {setup,ready,busy,problem,reload,update,next,back,review,finish};
 }
