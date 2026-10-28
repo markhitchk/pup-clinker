@@ -14,7 +14,12 @@ export default class PuppyErrorBoundary extends React.Component {
  }
  retry=()=>{
   // Do not wipe PupEye sessions or local settings on errors.
-  this.setState(s=>({failed:false,retryIndex:s.retryIndex+1}));
+  // Clear only the operational crash marker after an explicit retry.
+  try{
+   Promise.resolve(NativeModules.PuppyBetaAccount?.clearStartupCrash?.())
+    .catch(()=>{})
+    .finally(()=>this.setState(s=>({failed:false,retryIndex:s.retryIndex+1})));
+  }catch{this.setState(s=>({failed:false,retryIndex:s.retryIndex+1}));}
  };
  render(){
   if(this.state.failed)return <PuppyStartupScreen phase="crash" issue={publicStartupIssue('PUPPY-CRASH-902')} retry={this.retry}/>;
