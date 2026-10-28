@@ -56,6 +56,44 @@ async function identity(admin:any,session:any){
  });
  return {account,player:player.data};
 }
+// Web sessions never impersonate Android installations or create signed envelopes.
+// They map a verified Supabase user to the same authoritative Pup Account
+// and pass through the existing identity/standing/ownership checks.
+const WEB_ORIGINS=new Set([
+ "https://puppy-clicker.vercel.app",
+ "http://localhost:5173",
+ "http://127.0.0.1:4173"
+]);
+async function identityFromWebSession(admin:any,req:Request){
+ if(!WEB_ORIGINS.has(req.headers.get("origin")||""))
+  throw new HttpError(403,"EXCHANGE_WEB_ORIGIN_INVALID","Unrecognized website origin.");
+ const bearer=req.headers.get("authorization")||"";
+ if(!/^Bearer\\s+\\S+$/.test(bearer))
+  throw new HttpError(401,"EXCHANGE_WEB_SESSION_REQUIRED","Sign in to your Pup Account.");
+ // getUser(token) checks the signature, expiry and current Auth user on the server.
+ const {data:session,error:authError}=await admin.auth.getUser(bearer.replace(/^Bearer\\s+/,""));
+ if(authError||!session?.user||session.user.is_anonymous)
+  throw new HttpError(401,"EXCHANGE_WEB_SESSION_REQUIRED","Sign in to your Pup Account.");
+ const link=await admin.from("pup_web_auth_links").select("account_uuid")
+  .eq("auth_user_id",session.user.id).maybeSingle();
+ requireOk(link.error);
+ if(!link.data)
+  throw new HttpError(403,"EXCHANGE_ACCOUNT_UNAVAILABLE","Link your existing Pup Account.");
+ const owner=await admin.from("pup_accounts")
+  .select("id,player_uuid,active_installation_uuid")
+  .eq("id",link.data.account_uuid).maybeSingle();
+ requireOk(owner.error);
+ if(!owner.data?.player_uuid||!owner.data?.active_installation_uuid)
+  throw new HttpError(403,"EXCHANGE_ACCOUNT_UNAVAILABLE","Pup Account ownership is unavailable.");
+ const verified=await identity(admin,{
+  player:{id:owner.data.player_uuid},
+  installation:{id:owner.data.active_installation_uuid}
+ });
+ if(verified.account.id!==link.data.account_uuid)
+  throw new HttpError(403,"EXCHANGE_ACCOUNT_UNAVAILABLE","Pup Account link mismatch.");
+ return verified;
+}
+
 async function peerByCode(admin:any,code:string){
  if(!codePattern.test(code))throw new HttpError(400,"EXCHANGE_FRIEND_CODE_INVALID","Enter a valid Friend Code.");
  const p=await admin.from("pupeye_players").select("id,friend_code,status")
@@ -222,19 +260,30 @@ async function snapshot(admin:any,who:any,player:any){
   }))
  };
 }
-Deno.serve(async(req:Request)=>{
+async function exchangeRequest(req:Request):Promise<Response>{
  try{
   if(req.method!=="POST")throw new HttpError(405,"EXCHANGE_METHOD_INVALID","POST required.");
   assertPublishableRequest(req);
-  const envelope=verifyEnvelope(await req.json(),"puppy-exchange");
-  const action=s(envelope.payload.operation,32);
-  if(!allowed.has(action))throw new HttpError(400,"EXCHANGE_ACTION_INVALID","Invalid Exchange action.");
+  const body=await req.json();
+  const web=body&&typeof body==="object"&&!Array.isArray(body)&&
+   typeof body.operation==="string";
   const admin=createAdminClient();
-  const session=await authenticateSession(req,admin,envelope);
-  // Signed PupEye session and global ban checks are always required.
-  // The separately staged queue admission RPC is not live in production yet.
-  const {account,player}=await identity(admin,session);
-  const me=account.id,params=envelope.payload;
+  let params:any,verified:any;
+  if(web){
+   verified=await identityFromWebSession(admin,req);
+   params=body;
+  }else{
+   // Preserve the Android PupEye signature, nonce, device and session path.
+   const envelope=verifyEnvelope(body,"puppy-exchange");
+   const session=await authenticateSession(req,admin,envelope);
+   verified=await identity(admin,session);
+   params=envelope.payload;
+  }
+  const action=s(params.operation,32);
+  if(!allowed.has(action))throw new HttpError(400,"EXCHANGE_ACTION_INVALID","Invalid Exchange action.");
+  // Both transports share the exact same server-side exchange policy and RPC.
+  const {account,player}=verified;
+  const me=account.id;
   if(action==="profile")return json(200,await snapshot(admin,account,player));
   if(action==="lookup"){
    const target=await peerByCode(admin,s(params.friendCode,30).toUpperCase());
@@ -336,5 +385,25 @@ Deno.serve(async(req:Request)=>{
    }
   }
   throw new HttpError(400,"EXCHANGE_ACTION_INVALID","Invalid exchange action.");
- }catch(error){return errorResponse(error);}
+  }catch(error){return errorResponse(error);}
+}
+// Native signed requests do not have browser CORS; allow only the official web
+// origin (and local development) to send authenticated browser requests.
+Deno.serve(async(req:Request)=>{
+ const origin=req.headers.get("origin")||"";
+ const web=WEB_ORIGINS.has(origin);
+ if(req.method==="OPTIONS"){
+  return new Response(null,{status:web?204:403,
+   headers:web?{
+    "access-control-allow-origin":origin,
+    "access-control-allow-methods":"POST,OPTIONS",
+    "access-control-allow-headers":"authorization,apikey,content-type,x-client-info",
+    "access-control-max-age":"600",
+    "vary":"Origin"
+   }:{"cache-control":"no-store"}});
+ }
+ const response=await exchangeRequest(req);
+ if(web){response.headers.set("access-control-allow-origin",origin);
+  response.headers.set("vary","Origin");}
+ return response;
 });
