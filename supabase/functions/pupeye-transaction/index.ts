@@ -11,9 +11,9 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 
-Deno.serve(async (req: Request) => {
 import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
 
+Deno.serve(async (req: Request) => {
 
   try {
     assertPublishableRequest(req);
