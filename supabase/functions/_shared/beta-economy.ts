@@ -39,7 +39,7 @@ export function newBetaKotlinSave(now=Date.now()):Dict{
   }};
 }
 
-type AfkNotice={id:string;amount:number;createdAt:number;claimed:boolean};
+type AfkNotice={id:string;amount:number;createdAt:number;claimed:boolean;read?:boolean};
 function readAfkInbox(v:Dict):AfkNotice[]{
  const value=v.beta_afk_notifications_v1;
  if(value===undefined||value===null||value==="")return [];
@@ -50,7 +50,7 @@ function readAfkInbox(v:Dict):AfkNotice[]{
   expect(isObj(item)&&typeof item.id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(item.id)&&
    typeof item.amount==="number"&&Number.isSafeInteger(item.amount)&&item.amount>=1&&item.amount<=7000&&
    typeof item.createdAt==="number"&&Number.isSafeInteger(item.createdAt)&&item.createdAt>0&&
-   typeof item.claimed==="boolean","INVALID_AFK_HISTORY");
+   typeof item.claimed==="boolean"&&(item.read===undefined||typeof item.read==="boolean"),"INVALID_AFK_HISTORY");
  }
  return raw as AfkNotice[];
 }
@@ -474,7 +474,7 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
      const end=start+elapsed;
      const id="afk:"+start+":"+end;
      if(!history.some(n=>n.id===id)){
-      history.unshift({id,amount,createdAt:now,claimed:false});
+      history.unshift({id,amount,createdAt:now,claimed:false,read:false});
       write(v,t,key,JSON.stringify(history.slice(0,100)),"string");
      }
     }
@@ -489,7 +489,22 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    const item=history.find(n=>n.id===id);
    expect(item&&!item.claimed,"AFK_ALREADY_CLAIMED");
    earned(v,t,item.amount);
-   write(v,t,"beta_afk_notifications_v1",JSON.stringify(history.map(n=>n.id===id?{...n,claimed:true}:n)),"string");
+   write(v,t,"beta_afk_notifications_v1",JSON.stringify(history.map(n=>n.id===id?{...n,claimed:true,read:true}:n)),"string");
+   break;
+  }
+  case "afkOpen":{
+   const id=intent.id;
+   expect(typeof id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(id),"INVALID_AFK_ID");
+   write(v,t,"beta_afk_notifications_v1",JSON.stringify(readAfkInbox(v).map(n=>n.id===id?{...n,read:true}:n)),"string");
+   break;
+  }
+  case "afkMarkAllRead":{
+   write(v,t,"beta_afk_notifications_v1",JSON.stringify(readAfkInbox(v).map(n=>({...n,read:true}))),"string");
+   break;
+  }
+  case "afkClearRead":{
+   // Never delete an unclaimed award simply because its notification was read.
+   write(v,t,"beta_afk_notifications_v1",JSON.stringify(readAfkInbox(v).filter(n=>!n.claimed||n.read!==true)),"string");
    break;
   }
   case "favorite":{
