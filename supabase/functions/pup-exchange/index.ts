@@ -3,6 +3,7 @@ import {
   errorResponse,json,verifyEnvelope
 } from "../_shared/pupeye.ts";
 import {requirePlayerAdmission} from "../_shared/queue-admission.ts";
+import {assertGlobalEnforcementAllowed} from "../_shared/global-enforcement.ts";
 
 // All requests are signed by the Android PupEye key and bound to its active
 // session. No account UUID, owner, balance or entitlement supplied by the app
@@ -39,10 +40,20 @@ async function identity(admin:any,session:any){
  }
  if(!account||account.status!=="active"||!consent(account))
    throw new HttpError(403,"EXCHANGE_ACCOUNT_UNAVAILABLE","Pup Account verification is required.");
- const player=await admin.from("pupeye_players").select("id,friend_code,player_id,status")
+ const player=await admin.from("pupeye_players").select("*")
    .eq("id",account.player_uuid).single();
  requireOk(player.error);
  if(player.data.status!=="active")throw new HttpError(403,"EXCHANGE_ACCOUNT_UNAVAILABLE","Pup Account is unavailable.");
+ const installation=await admin.from("pupeye_installations").select("*")
+   .eq("id",account.active_installation_uuid).maybeSingle();
+ requireOk(installation.error);
+ if(!installation.data||!installation.data.active||installation.data.revoked_at||
+    installation.data.player_uuid!==account.player_uuid)
+  throw new HttpError(403,"EXCHANGE_OWNER_UNAVAILABLE","The original PupEye installation is unavailable.");
+ await assertGlobalEnforcementAllowed(admin,{
+  player:player.data,installation:installation.data,
+  discordUserId:account.discord_user_id,requestAction:"puppy-exchange"
+ });
  return {account,player:player.data};
 }
 async function peerByCode(admin:any,code:string){
