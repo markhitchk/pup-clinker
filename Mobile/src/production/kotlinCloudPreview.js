@@ -26,6 +26,7 @@ export function projectKotlinCloudSave(raw,username=''){
   if(key.startsWith('puppy_name_for_')&&typeof val==='string')
    g.puppyNames[key.slice('puppy_name_for_'.length)]=val;
  g.unlockedPuppies=set('unlocked_puppies',g.unlockedPuppies);
+ g.favoritePuppies=set('favorite_puppies');
  g.accessory=string('accessory','None');
  g.ownedAccessories=set('owned_accessories_v7',[]);
  g.treats=number('treats');
