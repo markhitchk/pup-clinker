@@ -52,7 +52,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
     }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
-  {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>The original Play app and beta have separate Android identities. An authorized companion link provides access without replacing the Play installation.</T></>:pending)}
+  {section('discord','🔐','Pup Account & Discord','Manage sign-in, support contact and Discord',betaMode?<><Action onPress={onConnectAccount}>Manage Pup Account</Action><T muted>Sign-in and cloud progress load automatically at startup. Manage Discord or optional support contact here.</T></>:pending)}
   {group('APP & EXPERIENCE')}
   {section('appearance','🎨','Appearance','Theme, accent color, scale, contrast and motion',<>
    <Choices label="THEME" value={g.themeMode} items={[["light","Light"],["dark","Dark"],["system","Follow System"]]} onChange={v=>pref('themeMode',v)}/>
