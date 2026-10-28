@@ -175,7 +175,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':'Sign-in required'}</Text>
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
-      <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
+      {!onboarding&&!requiredAtStartup?<Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>:null}
       {state.linkedFromPlay?<Text style={styles.body}>Connected to your original Pup Account. Signed progression, shop, rewards, and casino actions synchronize with Play. Your Play installation remains active.</Text>:null}</>:
       <Text style={styles.body}>Sign in with your Pup Account or Discord. PupEye requires a verified account; no guest save is substituted.</Text>}
    </View>
@@ -205,7 +205,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     </Pressable>}
     {mode!=='discord'?<View style={styles.card}>
      <Text style={styles.cardTitle}>{linkNative?'Add username/password sign-in':mode==='signup'?'Create a Pup Account':'Sign in to your Pup Account'}</Text>
-     {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, XP, and cloud save stay on the same account.</Text>:null}
+     {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, and XP stay on the same account.</Text>:null}
      {mode==='signup'?<>
       <Text style={styles.label}>USERNAME</Text>
       <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
@@ -239,12 +239,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
     </Pressable>}
-   </>:<>
+   </>:(!onboarding&&!requiredAtStartup)?<>
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
     </Pressable>
     {cloud?<Text style={styles.body}>Cloud response: {cloud.exists?'Save available at revision '+cloud.revision:'No authoritative save yet'}</Text>:null}
-   </>}
+   </>:null}
    <Pressable accessibilityRole="button" disabled={busy} style={styles.secondary} onPress={()=>void check()}>
     <Text style={styles.secondaryText}>Retry account status</Text>
    </Pressable>
