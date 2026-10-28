@@ -31,19 +31,28 @@ export function v6Format(value,compact=true){
  return String(n);
 }
 /**
- * The original Kotlin wallet's two decimals hide legitimate live changes
- * when a Pup Account holds trillions. Keep v6Format unchanged for Kotlin
- * screen parity elsewhere, but show nine decimals in the compact wallet.
- * A capped tap of 10,000 Treats now visibly changes the
- * balance, without mutating or locally inventing server-owned currency.
+ * Wallet-only formatter for very large, server-owned account balances.
+ * A nine-decimal T value can overflow the four-column wallet (e.g. 9000T).
+ * Use the next conventional unit, with at most two visible decimals.
+ * Actual progress is confirmed independently by a signed save receipt;
+ * rounding display values must never round or mutate the stored economy.
  */
+const WALLET_UNITS=[
+ [1_000_000_000_000_000,'Qa'],
+ [1_000_000_000_000,'T'],
+ [1_000_000_000,'B'],
+ [1_000_000,'M'],
+ [1_000,'K'],
+];
 export function v6WalletFormat(value,compact=true){
  const n=Number.isSafeInteger(value)&&value>=0?value:0;
  if(!compact)return n.toLocaleString('en-US');
- if(n>=1_000_000_000_000)return (n/1_000_000_000_000).toFixed(9)+'T';
- if(n>=1_000_000_000)return (n/1_000_000_000).toFixed(4)+'B';
- if(n>=1_000_000)return (n/1_000_000).toFixed(3)+'M';
- return v6Format(n,true);
+ const unit=WALLET_UNITS.find(([minimum])=>n>=minimum);
+ if(!unit)return String(n);
+ const [scale,suffix]=unit;
+ const amount=n/scale;
+ const decimals=amount<10?2:amount<100?1:0;
+ return amount.toFixed(decimals).replace(/\\.0+$|(?<=\\.\\d*[1-9])0+$/g,'')+suffix;
 }
 export function v6CooldownSeconds(game,now=Date.now()){
  const until=Number(game?.cooldownUntilMs)||0;
