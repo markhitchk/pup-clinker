@@ -125,7 +125,7 @@ export function transition(state,action){
   case 'checkNotifications':checkInbox(g,action.now||Date.now());break;
   case 'testNotification':addTestNotification(g,action.now||Date.now());break;
   case 'markNotificationsRead':g.notificationInbox=g.notificationInbox.map(n=>({...n,read:true}));break;
-  case 'clearReadNotifications':g.notificationInbox=g.notificationInbox.filter(n=>!n.read);break;
+  case 'clearReadNotifications':g.notificationInbox=g.notificationInbox.filter(n=>!n.read||n.action==='afkClaim');break;
   case 'openNotification':g.notificationInbox=g.notificationInbox.map(n=>n.id===action.id?{...n,read:true}:n);break;
   case 'resetSettings':Object.assign(g,DEFAULT_PREFERENCES);notice='Interface settings reset';break;
   case 'onboardNotifications':
