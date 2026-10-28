@@ -1,6 +1,8 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
 import AccountOnboarding from './src/production/AccountOnboarding.jsx';
+import PuppyStartupScreen from './src/production/PuppyStartupScreen.jsx';
+import {startupGate} from './src/production/startupGate.js';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -1036,10 +1038,19 @@ export function PuppyApp({betaMode=false}){
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
  };
- // Completed onboarding never waives explicit server-side policy acceptance.
- if(betaMode&&onboarding.ready&&onboarding.setup.setupComplete&&account?.status==='VERIFIED'&&account.legalAccepted===false)
-  return <BetaAccountEntry visible initialMode="signin" onboarding onVerified={refreshAccount} onClose={()=>{}}/>;
- if(betaMode&&(!onboarding.ready||!onboarding.setup.setupComplete))return <>
+ // Restore an existing signed session and its cloud save on the startup screen.
+ // No account banner, cached preview or unverified account can enter gameplay.
+ const startPhase=betaMode?startupGate({account,cloudState,setupReady:onboarding.ready,
+  setupProblem:onboarding.problem,gameReady:state.ready}):'ready';
+ if(betaMode&&(startPhase==='loading'||startPhase==='connection-error'||startPhase==='setup-error'))
+  return <PuppyStartupScreen phase={startPhase} busy={onboarding.busy}
+   retry={()=>{void Promise.all([refreshAccount(),onboarding.reload()]);}}/>;
+ if(betaMode&&(startPhase==='signin'||startPhase==='legal'))return <>
+  <PuppyStartupScreen phase="loading"/>
+  <BetaAccountEntry visible requiredAtStartup initialMode="signin" onboarding
+   onVerified={refreshAccount} onClose={()=>{}}/>
+ </>;
+ if(betaMode&&!onboarding.setup.setupComplete)return <>
   <AccountOnboarding flow={onboarding} account={account} notifications={notifications} onConnect={openAccount}/>
   <BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onboarding onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>
  </>;
@@ -1052,14 +1063,7 @@ export function PuppyApp({betaMode=false}){
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
 
-  {/* Pup Account is navigable here; cloud revisions and internal save errors stay off the Play screen. */}
-  {betaMode?<Pressable accessibilityRole="button" accessibilityLabel="Open Pup Account"
-    onPress={()=>setAccountOpen(true)} style={[styles.notice,{borderRadius:12,borderWidth:1,borderColor:C.line,marginBottom:4}]}>
-    <Txt style={styles.small}>{account?.status==='VERIFIED'||account?.status==='CACHED'
-     ?'🔐 '+(account.username||'Pup Account')
-     :account?.status==='CONNECTION_ERROR'?'🔐 Pup Account · Reconnect':'🔒 Sign in to Pup Account'}  ›</Txt>
-   </Pressable>:null}
-  {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
+{state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
