@@ -14,6 +14,7 @@ Only authorized Harley's Studios developers/support staff should access the cont
 
 Puppy Clicker records the version and timestamp of each player's separate affirmative Terms of Use and Privacy Policy acceptance. Both agreements are required for beta gameplay. Optional diagnostics, crash reporting, and notification choices are separate and not required.
 
+\nThe beta's startup recovery system may store a **local error code and timestamp** when the app crashes or cannot start. This safety marker contains no password, token, cloud save, stack trace, or account identifier. It stays on the device, expires after seven days, and is cleared when you acknowledge the crash by retrying. It is **not uploaded automatically**, regardless of the separate optional crash-reporting preference. You may choose to share the public error code with Support.\n
 ## 1. Local Game Data
 
 Puppy Clicker stores the following information on the user's device:
