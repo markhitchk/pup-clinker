@@ -247,8 +247,6 @@ export function useGame({mode='guest'}={}){
  },[beta,refreshAccount]);
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
-   // One AFK receipt can be pending only once, even when the notification
-   // button is pressed rapidly or the device network is slow.
    const claimId=action.type==='afkClaim'?String(action.id||''):null;
    if(claimId!==null&&pendingAfkClaims.current.has(claimId))return;
    const native=NativeModules.PuppyBetaAccount;
