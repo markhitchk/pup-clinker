@@ -5,26 +5,34 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import PuppyPointer from './PuppyPointer.jsx';
 const tabs=[['all','All'],['reward','🎁 Reward'],['pup','🐾 Pup'],['system','⚙️ System']];
 const dayStart=value=>{const d=new Date(value);d.setHours(0,0,0,0);return d.getTime();};
-export default function NotificationInbox({visible,g,act,onClose}){
+export default function NotificationInbox({visible,g,act,onClose,onNavigate}){
  const [filter,setFilter]=useState('all');
  const insets=useSafeAreaInsets(),{height}=useWindowDimensions();
  const short=height-insets.top-insets.bottom<700;
- const items=g.notificationInbox.filter(n=>filter==='all'||n.category===filter);
+ const items=g.notificationInbox.filter(n=>filter==='all'||n.category===filter).sort((a,b)=>b.createdAt-a.createdAt);
  const today=dayStart(Date.now()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
  const groups=[['Today',items.filter(n=>n.createdAt>=today)],['Yesterday',items.filter(n=>n.createdAt>=yesterday.getTime()&&n.createdAt<today)],['Earlier',items.filter(n=>n.createdAt<yesterday.getTime())]];
  const unread=g.notificationInbox.filter(n=>!n.read).length;
+ const hasRead=g.notificationInbox.some(n=>n.read);
+ const openItem=n=>{
+  act({type:'openNotification',id:n.id});
+  if(n.action==='daily'||n.action==='parkClaim'){
+   onClose();onNavigate?.('rewards');
+  }
+ };
+ const dateLabel=ms=>new Date(ms).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'});
  return <Modal visible={visible} transparent statusBarTranslucent navigationBarTranslucent animationType={g.reducedMotion||!g.animatedUi?'none':'fade'} onRequestClose={onClose}>
   <PuppyPointer enabled={g.puppyPointerEnabled} style={[s.scrim,{paddingTop:insets.top+18,paddingBottom:insets.bottom+18}]}>
    <View accessibilityViewIsModal style={[s.panel,{height:short?'96%':'90%'}]}>
     <View style={s.header}><Image source={require('../../assets/logos/puppy_clicker.png')} resizeMode="contain" style={s.logo}/><Text style={s.heading}>Notifications</Text><Pressable accessibilityRole="button" accessibilityLabel="Close notifications" onPress={onClose} style={s.close}><Text style={s.closeText}>×</Text></Pressable></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filters} contentContainerStyle={s.filterContent}>{tabs.map(([id,title])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:filter===id}} onPress={()=>setFilter(id)} style={[s.tab,filter===id&&s.selected]}><Text style={s.tabText}>{title}</Text>{id==='all'&&unread?<View style={s.unreadBadge}><Text style={s.unreadCount}>{Math.min(99,unread)}</Text></View>:null}</Pressable>)}</ScrollView>
     <ScrollView style={{flex:1}} contentContainerStyle={s.content}>{items.length===0?<View style={s.empty}><Text style={s.emptyTitle}>All caught up!</Text><Text style={s.emptyText}>Your rewards, puppy reminders and system notices appear here.</Text></View>:groups.map(([title,list])=>list.length?<View key={title} style={{gap:8}}><Text style={s.day}>{title}</Text>{list.map(n=><View key={n.id} style={[s.item,n.action&&s.claimable]}>
-     <Pressable accessibilityRole="button" accessibilityLabel={n.title+(n.read?'':', unread')} onPress={()=>act({type:'openNotification',id:n.id})} style={s.itemHead}>
+     <Pressable accessibilityRole="button" accessibilityLabel={n.title+(n.read?'':', unread')} onPress={()=>openItem(n)} style={s.itemHead}>
       <View style={s.emojiBox}><Text style={{fontSize:23}}>{n.category==='reward'?'🎁':n.category==='pup'?'🐶':'⚙️'}</Text></View>
-      <View style={{flex:1,gap:4}}><View style={s.titleRow}><Text numberOfLines={2} style={s.itemTitle}>{n.title}</Text><View style={s.timeRow}><Text style={s.time}>{new Date(n.createdAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</Text>{!n.read?<View style={s.dot}/>:null}</View></View><Text style={s.itemBody}>{n.body}</Text></View>
-     </Pressable>{n.action?<View style={s.claimRow}><Pressable accessibilityRole="button" accessibilityLabel={'Claim '+n.title} style={s.claim} onPress={()=>{act({type:'openNotification',id:n.id});act({type:n.action,now:Date.now()});}}><Text style={s.claimText}>🦴 Claim</Text></Pressable></View>:null}
+      <View style={{flex:1,gap:4}}><View style={s.titleRow}><Text numberOfLines={2} style={s.itemTitle}>{n.title}</Text><View style={s.timeRow}><Text style={s.time}>{dateLabel(n.createdAt)}</Text>{!n.read?<View style={s.dot}/>:null}</View></View><Text style={s.itemBody}>{n.body}</Text></View>
+     </Pressable>{n.action==='afkClaim'?<View style={s.claimRow}><Pressable accessibilityRole="button" accessibilityLabel={'Claim '+n.title} style={s.claim} onPress={()=>act({type:'afkClaim',id:n.id})}><Text style={s.claimText}>🦴 Claim</Text></Pressable></View>:null}
     </View>)}</View>:null)}</ScrollView>
-    <View style={s.footer}><Pressable accessibilityRole="button" onPress={()=>act({type:'clearReadNotifications'})} style={s.footerButton}><Text style={s.footerText}>🗑 Clear Read</Text></Pressable><Pressable accessibilityRole="button" onPress={()=>act({type:'markNotificationsRead'})} style={[s.footerButton,s.markAll]}><Text style={[s.footerText,{color:'#FFFFFF'}]}>✓ Mark All Read</Text></Pressable></View>
+    <View style={s.footer}><Pressable accessibilityRole="button" disabled={!hasRead} accessibilityState={{disabled:!hasRead}} onPress={()=>act({type:'clearReadNotifications'})} style={[s.footerButton,!hasRead&&{opacity:.55}]}><Text style={s.footerText}>🗑 Clear Read</Text></Pressable><Pressable accessibilityRole="button" disabled={!unread} accessibilityState={{disabled:!unread}} onPress={()=>act({type:'markNotificationsRead'})} style={[s.footerButton,s.markAll,!unread&&{opacity:.55}]}><Text style={[s.footerText,{color:'#FFFFFF'}]}>✓ Mark All Read</Text></Pressable></View>
    </View>
   </PuppyPointer>
  </Modal>;
