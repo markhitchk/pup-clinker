@@ -65,6 +65,7 @@ verify_jwt = false
 [functions.pup-credentials]
 verify_jwt = false
 
-# PupEye signed installation + active session, no Supabase Auth JWT.
+# Puppy Exchange accepts signed native PupEye sessions or verified Pup Account
+# browser JWTs; each request enforces ownership and account standing on the server.
 [functions.pup-exchange]
 verify_jwt = false
