@@ -1,6 +1,6 @@
 import {assertEquals,assertRejects} from "jsr:@std/assert@1";
 import {createSign,generateKeyPairSync,createHash} from "node:crypto";
-import {verifyQueueProof,publicQueueResponse,requirePlayerAdmission} from "../_shared/queue-admission.ts";
+import {verifyQueueProof,publicQueueResponse,requirePlayerAdmission,queueDispatch} from "../_shared/queue-admission.ts";
 function proof(action="bootstrap",at=Date.now()){
  const {privateKey,publicKey}=generateKeyPairSync("ec",{namedCurve:"prime256v1"});
  const pub=publicKey.export({type:"spki",format:"der"}).toString("base64");
@@ -31,8 +31,45 @@ Deno.test("Only bounded public fields leave the queue Edge Function",()=>{
  assertEquals(safe.estimatedWaitSeconds,null);
 });
 Deno.test("Server rejects gameplay without verified live admission",async()=>{
- const session={player:{id:"p"},installation:{id:"i",device_key_id:"a".repeat(64)}};
+ const session={session:{id:"s"},player:{id:"p"},installation:{id:"i",device_key_id:"a".repeat(64)}};
  const admin={rpc:async()=>({data:null,error:{message:"QUEUE_ADMISSION_REQUIRED"}})};
  const req=new Request("https://localhost/save");
  await assertRejects(()=>requirePlayerAdmission(req,admin,session,"save-checkpoint"));
+});
+
+Deno.test("Polling reads status without locking the capacity dispatcher",async()=>{
+ const calls:string[]=[];
+ const admin={rpc:async(name:string,payload:Record<string,unknown>)=>{
+  calls.push(name);
+  if(name==="pup_queue_status"){
+   assertEquals(payload.p_ticket,"00000000-0000-4000-8000-000000000084");
+   return {data:{state:"WAITING",playersAhead:2},error:null};
+  }
+  return {data:null,error:{message:"QUEUE_REQUEST_INVALID"}};
+ }};
+ const response=await queueDispatch(admin,"status","a".repeat(64),
+  "00000000-0000-4000-8000-000000000084");
+ assertEquals(response.state,"WAITING");
+ assertEquals(calls,["pup_queue_status"]);
+ await queueDispatch({rpc:async(name:string)=>{
+  assertEquals(name,"pup_queue_dispatch");
+  return {data:{state:"READY"},error:null};
+ }},"heartbeat","a".repeat(64),null);
+});
+
+Deno.test("Admission guard passes the server-authenticated session ID",async()=>{
+ const args:Record<string,unknown>[]=[];
+ const admin={rpc:async(name:string,payload:Record<string,unknown>)=>{
+  assertEquals(name,"pup_queue_guard");
+  args.push(payload);
+  return {data:true,error:null};
+ }};
+ const req=new Request("https://localhost/save",{
+  headers:{"X-Puppy-Queue-Ticket":"00000000-0000-4000-8000-000000000084"}
+ });
+ const session={session:{id:"server-session"},player:{id:"player"},
+  installation:{id:"installation",device_key_id:"a".repeat(64)}};
+ await requirePlayerAdmission(req,admin,session,"save-checkpoint");
+ assertEquals(args[0].p_session,"server-session");
+ assertEquals(args[0].p_player,"player");
 });
