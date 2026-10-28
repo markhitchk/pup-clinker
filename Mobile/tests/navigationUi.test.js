@@ -32,6 +32,7 @@ new Function('require','module','exports',source)(id=>{
  if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
  if(id==='./src/production/BetaAccountEntry.jsx')return {__esModule:true,default:()=>null};
  if(id==='./src/production/PuppyStartupScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Loading Pup Account…')};
+ if(id==='./src/production/PuppyErrorBoundary.jsx')return {__esModule:true,default:({children})=>children};
  if(id==='./src/production/useAccountOnboarding.js')return {useAccountOnboarding:()=>({ready:true,setup:{setupComplete}})};
  if(id==='./src/production/AccountOnboarding.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Set Up Your Account')};
  if(id==='./src/state/useGame.js')return {useGame};
