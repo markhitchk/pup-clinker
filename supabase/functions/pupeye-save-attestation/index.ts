@@ -7,6 +7,7 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 import { HttpError } from "../_shared/http.ts";
+import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
 import {
   createSupabaseAttestationStore,
   processSaveAttestation,
@@ -35,6 +36,7 @@ Deno.serve(async (req: Request) => {
 
     const admin = createAdminClient();
     const session = await authenticateSession(req, admin, envelope);
+    await requirePlayerAdmission(req,admin,session,"save-attestation");
     const store = createSupabaseAttestationStore(admin, session, envelope);
     const result = await processSaveAttestation(store, input);
     return json(result.status, result.body);
