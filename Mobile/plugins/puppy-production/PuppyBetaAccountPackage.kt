@@ -245,7 +245,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private fun queueRequest(action:String,apiUrl:String,key:String):WritableMap{
   initializeQueueIdentity()
   publishable(key)
-  require(action in setOf("bootstrap","status","admit","release"))
+  require(action in setOf("bootstrap","status","heartbeat","admit","release"))
   val url=URL(apiUrl)
   require(url.protocol=="https"&&url.host.endsWith(".supabase.co")&&
    url.path.endsWith("/functions/v1/pup-queue")){"Unsupported queue endpoint"}
@@ -302,6 +302,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   }
  @ReactMethod fun queueBootstrap(url:String,key:String,p:Promise)=runAsync(p){queueSafely("bootstrap",url,key)}
  @ReactMethod fun queueStatus(url:String,key:String,p:Promise)=runAsync(p){queueSafely("status",url,key)}
+ @ReactMethod fun queueHeartbeat(url:String,key:String,p:Promise)=runAsync(p){queueSafely("heartbeat",url,key)}
  @ReactMethod fun queueAdmit(url:String,key:String,p:Promise)=runAsync(p){queueSafely("admit",url,key)}
  @ReactMethod fun queueRelease(url:String,key:String,p:Promise)=runAsync(p){queueSafely("release",url,key)}
 
