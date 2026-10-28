@@ -31,8 +31,9 @@ select is((public.pup_queue_dispatch('admit',repeat('a',64),
  'ADMITTED','repeated admit returns same reservation, not a second slot');
 select is((select slots_used from pup_queue.control where id=1),2,
  'replayed admission does not consume another slot');
-select is((public.pup_queue_dispatch('status',repeat('a',64),
- (select id from pup_queue.tickets where binding_hash=repeat('a',64)))->>'code'),'PC-Q002',
+select throws_ok($select public.pup_queue_dispatch('status',repeat('a',64),
+ (select id from pup_queue.tickets where binding_hash=repeat('a',64)))$,
+ '22023','QUEUE_REQUEST_INVALID',
  'capacity RPC rejects status polling; status has separate read-only path');
 select is((public.pup_queue_status(repeat('c',64),
  (select id from pup_queue.tickets where binding_hash=repeat('c',64)))->>'state'),'WAITING',
