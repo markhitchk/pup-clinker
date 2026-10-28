@@ -185,8 +185,22 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   return if(s!=null&&s.optLong("expiresAtEpochMs")>System.currentTimeMillis()+5000)
    s.getString("token") else register(key)
  }
+ // A remote revocation/expiry can happen before the encrypted local
+ // expiresAtEpochMs. Renew the *same* PupEye installation session only after
+ // an explicit 401 session-invalid rejection, then re-sign the request with a
+ // new nonce. Never auto-retry a timed-out gameplay write: it might have
+ // committed already, and replaying would award/spend currency twice.
+ private fun signedPost(function:String,action:String,payload:JSONObject,key:String):JSONObject{
+  val first= envelope(action,payload)
+  return try{post(function,first,key,session(key))}
+   catch(e:ApiError){
+    if(e.code !in setOf("PUPEYE_SESSION_INVALID","PUPEYE_SESSION_REQUIRED"))throw e
+    val renewed=register(key)
+    post(function,envelope(action,payload),key,renewed)
+   }
+ }
  private fun betaRead(key:String,action:String):JSONObject =
-  post("pup-beta-link",envelope(action,JSONObject()),key,session(key))
+  signedPost("pup-beta-link",action,JSONObject(),key)
  private fun account(key:String):WritableMap {
   // A Play account may authorize a read-only beta companion using Discord
   // without revoking or transferring its original PupEye installation.
@@ -474,7 +488,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    val obj=try{betaRead(key,"beta-bootstrap")}
     catch(e:ApiError){
      if(e.code!="BETA_LINK_REQUIRED")throw e
-     post("pup-account",envelope("account-bootstrap",JSONObject()),key,session(key))
+     signedPost("pup-account","account-bootstrap",JSONObject(),key)
     }
    require(obj.getJSONObject("account").getString("status")=="active")
    // Persist successful authenticated snapshots only, never an unverified response.
@@ -492,7 +506,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val obj=try{betaRead(key,"beta-cloud-read")}
    catch(e:ApiError){
     if(e.code!="BETA_LINK_REQUIRED")throw e
-    post("pup-account",envelope("cloud-save-read",JSONObject()),key,session(key))
+    signedPost("pup-account","cloud-save-read",JSONObject(),key)
    }
   val save=obj.optJSONObject("save")
   Arguments.createMap().apply {
@@ -515,7 +529,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    "wheelStart","wheelReveal","gacha","switch","rename","favorite","afkStart","afkSettle","afkClaim","afkOpen","afkMarkAllRead","afkClearRead",
    "blackjackStart","blackjackHit","blackjackStand","blackjackDouble","blackjackSplit"
   )){"Unsupported live gameplay action"}
-  val answer=post("pup-beta-link",envelope("beta-gameplay",payload),key,session(key))
+  val answer=signedPost("pup-beta-link","beta-gameplay",payload,key)
   Arguments.createMap().apply{
    putDouble("revision",answer.getDouble("revision"))
    putBoolean("saved",answer.optBoolean("saved",false))
