@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
         "daily", "claimDailyGoal", "parkStart", "parkClaim", "prestige",
         "slotsStart", "slotsReveal", "rouletteStart", "rouletteReveal",
         "plinkoStart", "plinkoReveal", "scratchStart", "scratchReveal",
-        "wheelStart", "wheelReveal", "gacha", "switch", "rename", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
+        "wheelStart", "wheelReveal", "gacha", "switch", "rename", "favorite", "blackjackStart", "blackjackHit", "blackjackStand", "blackjackDouble", "blackjackSplit",
       ]);
       if (typeof intent.type !== "string" || !allowed.has(intent.type)) {
         throw new HttpError(400, "BETA_GAMEPLAY_NOT_PORTED", "This gameplay action is not yet live.");
