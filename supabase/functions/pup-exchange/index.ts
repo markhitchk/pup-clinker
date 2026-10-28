@@ -88,7 +88,67 @@ async function accessibleOffer(admin:any,id:string,me:string){
  if(!q.data)throw new HttpError(404,"EXCHANGE_OFFER_NOT_FOUND","Offer unavailable.");
  return q.data;
 }
+
+async function canGiftAnyCatalogPuppy(admin:any,accountId:string):Promise<boolean>{
+ const q=await admin.from("pup_exchange_privileged_gifters")
+  .select("enabled").eq("account_uuid",accountId).maybeSingle();
+ requireOk(q.error);
+ return q.data?.enabled===true;
+}
+// Dynamic puppies must be published in the game's official catalog. Never
+// allow the app to mint arbitrary puppy IDs, even with the owner gift role.
+// New V3+ manifest IDs are registered as bound/non-transferable by default,
+// which allows gifts only by explicitly privileged accounts.
+async function registerPublishedPuppies(admin:any,missing:string[]){
+ if(!missing.length)return;
+ const base="https://raw.githubusercontent.com/markhitchk/pup-clinker/main/assets";
+ const getJson=async(url:string,maxBytes:number)=>{
+  let response:Response;
+  try{
+   response=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)});
+  }catch{throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","The official puppy catalog is temporarily unavailable.");}
+  if(!response.ok)throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","The official puppy catalog is temporarily unavailable.");
+  const content=await response.text();
+  if(content.length>maxBytes)throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","Invalid official puppy catalog.");
+  try{return JSON.parse(content);}catch{throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","Invalid official puppy catalog.");}
+ };
+ const index=await getJson("https://api.github.com/repos/markhitchk/pup-clinker/contents/assets?ref=main",512*1024);
+ if(!Array.isArray(index))throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","Invalid official puppy catalog.");
+ const folders=index.filter((x:any)=>x?.type==="dir"&&
+   (["v2","test","discord_rewards"].includes(x.name)||/^v[3-9][0-9]*$/.test(x.name)))
+  .map((x:any)=>x.name).slice(0,30);
+ const recognized=new Set<string>();
+ for(const folder of folders){
+  const manifest=await getJson(base+"/"+folder+"/manifest.json",256*1024);
+  if(!Array.isArray(manifest?.puppies)||manifest.puppies.length>500)
+   throw new HttpError(503,"EXCHANGE_CATALOG_UNAVAILABLE","Invalid official puppy catalog.");
+  const prefix=folder==="test"?"test_":folder==="discord_rewards"?"v2_":folder+"_";
+  for(const item of manifest.puppies){
+   if(typeof item?.asset_id!=="string"||typeof item?.file!=="string")continue;
+   const id=item.asset_id.trim();
+   if(idPattern.test(id)&&id.startsWith(prefix)&&
+      /^[A-Za-z0-9._-]{1,128}\\.png$/.test(item.file.trim()))recognized.add(id);
+  }
+  if(missing.every(id=>recognized.has(id)))break;
+ }
+ if(missing.some(id=>!recognized.has(id)))
+  throw new HttpError(409,"EXCHANGE_UNKNOWN_PUPPY","This puppy is not in the published official roster.");
+ const inserted=await admin.from("pup_exchange_transfer_policy")
+  .upsert(missing.map(puppy_id=>({
+   puppy_id,giftable:false,tradeable:false,bound:true,source_copy:false
+  })),{onConflict:"puppy_id",ignoreDuplicates:true});
+ requireOk(inserted.error);
+}
+
 async function eligible(admin:any,account:any,ids:string[],type:"gift"|"trade"){
+ const privileged=type==="gift"&&await canGiftAnyCatalogPuppy(admin,account);
+ if(privileged){
+  const rows=await admin.from("pup_exchange_transfer_policy").select("puppy_id").in("puppy_id",ids);
+  requireOk(rows.error);
+  const missing=ids.filter(id=>!rows.data.some((x:any)=>x.puppy_id===id));
+  await registerPublishedPuppies(admin,missing);
+  return;
+ }
  const cloud=await admin.from("pup_account_saves")
    .select("save_data").eq("account_uuid",account).maybeSingle();
  requireOk(cloud.error);
@@ -122,6 +182,7 @@ async function snapshot(admin:any,who:any,player:any){
  const players=accounts.data.length?await admin.from("pupeye_players")
    .select("id,friend_code").in("id",accounts.data.map((a:any)=>a.player_uuid)):{data:[],error:null};
  requireOk(players.error);
+ const canGiftAll=await canGiftAnyCatalogPuppy(admin,who.id);
  const names=new Map(accounts.data.map((a:any)=>[a.id,{
   name:a.display_name||a.username,
   code:players.data.find((p:any)=>p.id===a.player_uuid)?.friend_code||""
@@ -129,7 +190,7 @@ async function snapshot(admin:any,who:any,player:any){
  return {
   policies:(policies.data||[]).filter((p:any)=>p.giftable||p.tradeable)
     .map((p:any)=>({id:p.puppy_id,giftable:p.giftable,tradeable:p.tradeable})),
-  profile:{username:who.display_name||who.username,friendCode:player.friend_code},
+  profile:{username:who.display_name||who.username,friendCode:player.friend_code,canGiftAll},
   connections:(c.data||[]).map((x:any)=>({
    id:x.id,peer:names.get(x.requester===who.id?x.recipient:x.requester),
    incoming:x.recipient===who.id,state:x.state,blockedByMe:x.blocked_by===who.id
