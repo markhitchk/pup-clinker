@@ -32,6 +32,7 @@ export function useGame({mode='guest'}={}){
  const needsReceiptRecheck=useRef(false);
  const signedWriteQueue=useRef(Promise.resolve());
  const nextTapIntentId=useRef(0);
+ const pendingAfkClaims=useRef(new Set());
  const [pendingTapIntents,setPendingTapIntents]=useState([]);
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
@@ -246,6 +247,10 @@ export function useGame({mode='guest'}={}){
  },[beta,refreshAccount]);
  const act=useCallback(action=>{
   if(beta&&BETA_LIVE_ACTIONS.has(action.type)){
+   // One AFK receipt can be pending only once, even when the notification
+   // button is pressed rapidly or the device network is slow.
+   const claimId=action.type==='afkClaim'?String(action.id||''):null;
+   if(claimId!==null&&pendingAfkClaims.current.has(claimId))return;
    const native=NativeModules.PuppyBetaAccount;
    if(!liveVerified.current||!native?.gameplayAction||account?.gameplayWritable!==true){
     const reason=!liveVerified.current?'ACCOUNT_NOT_VERIFIED':
@@ -258,6 +263,7 @@ export function useGame({mode='guest'}={}){
    // Only the native/server response can commit balances, XP and rewards.
    const tapIntentId=action.type==='tap'?++nextTapIntentId.current:null;
    if(tapIntentId!==null)setPendingTapIntents(current=>[...current,{id:tapIntentId,at:Number.isSafeInteger(action.now)?action.now:Date.now()}]);
+   if(claimId!==null)pendingAfkClaims.current.add(claimId);
    pendingLiveWrites.current++;
    setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null}));
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
@@ -298,6 +304,7 @@ export function useGame({mode='guest'}={}){
      rejected?'Action rejected. No new progress was saved.':'Save confirmation lost. Checking Pup Account before another action.',
      ToastAndroid.LONG);
    }).finally(()=>{
+    if(claimId!==null)pendingAfkClaims.current.delete(claimId);
     if(tapIntentId!==null)setPendingTapIntents(current=>current.filter(item=>item.id!==tapIntentId));
     pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);
     if(pendingLiveWrites.current===0&&needsReceiptRecheck.current){
