@@ -3,6 +3,9 @@
 const noChangeReasons=new Map([
  ['UPGRADE_MAXED','That upgrade has reached its maximum level. No progress was lost.'],
  ['TICKET_CAP','That ticket inventory is full. No progress was lost.'],
+ ['DAILY_ALREADY_CLAIMED','Today’s reward has already been claimed. Your progress is unchanged.'],
+ ['GOAL_ALREADY_CLAIMED','That goal reward was already claimed. Your progress is unchanged.'],
+ ['CASINO_ROUND_ALREADY_ACTIVE','Finish the current casino round before starting another. Your progress is unchanged.'],
  ['SKILL_MAXED','That skill has reached its maximum level. No progress was lost.'],
  ['PRESTIGE_NOT_AVAILABLE','Prestige is not available yet. Your cloud progress is unchanged.'],
  ['GACHA_NO_PUPPIES','There are no eligible puppies for this draw. Your cloud progress is unchanged.'],
