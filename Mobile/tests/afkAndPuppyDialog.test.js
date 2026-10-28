@@ -54,6 +54,8 @@ test('AFK server uses signed server time, caps rewards, and marks claims exactly
   assert.ok(bridge.includes('"'+intent+'"'));
  }
  assert.match(econ,/Math\.min\(7000/);
- assert.match(econ,/AFK_ALREADY_CLAIMED/);
+ assert.match(econ,/AFK_REWARD_NOT_FOUND/);
+ assert.match(econ,/if\(item.claimed\)break;/);
+ assert.match(econ,/earned\(v,t,item.amount\)/);
  assert.doesNotMatch(econ,/intent\.amount\b[^\n]*earned/);
 });
