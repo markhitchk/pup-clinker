@@ -2,7 +2,6 @@ import {
   HttpError,assertPublishableRequest,authenticateSession,createAdminClient,
   errorResponse,json,verifyEnvelope
 } from "../_shared/pupeye.ts";
-import {requirePlayerAdmission} from "../_shared/queue-admission.ts";
 import {assertGlobalEnforcementAllowed} from "../_shared/global-enforcement.ts";
 
 // All requests are signed by the Android PupEye key and bound to its active
@@ -152,7 +151,8 @@ Deno.serve(async(req:Request)=>{
   if(!allowed.has(action))throw new HttpError(400,"EXCHANGE_ACTION_INVALID","Invalid Exchange action.");
   const admin=createAdminClient();
   const session=await authenticateSession(req,admin,envelope);
-  await requirePlayerAdmission(req,admin,session,"puppy-exchange");
+  // Signed PupEye session and global ban checks are always required.
+  // The separately staged queue admission RPC is not live in production yet.
   const {account,player}=await identity(admin,session);
   const me=account.id,params=envelope.payload;
   if(action==="profile")return json(200,await snapshot(admin,account,player));
