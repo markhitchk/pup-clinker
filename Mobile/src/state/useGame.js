@@ -23,6 +23,7 @@ export function useGame({mode='guest'}={}){
  const beta=mode==='beta';
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
  const [cloudState,setCloudState]=useState(beta?'NOT_LOADED':null);
+ const [startupError,setStartupError]=useState(null);
  const [syncStatus,setSyncStatus]=useState({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null});
  const liveVerified=useRef(false);
  const cachedPreview=useRef(false);
@@ -34,7 +35,7 @@ export function useGame({mode='guest'}={}){
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
-  if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('CONNECTION_ERROR');return false;}
+  if(!native?.bootstrap){setStartupError({code:'PUPPY_NATIVE_MODULE_MISSING'});setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('CONNECTION_ERROR');return false;}
   const request=++currentRequest.current;
   if(incoming?.status==='VERIFIED'){
   setAccount(incoming);
@@ -48,6 +49,7 @@ export function useGame({mode='guest'}={}){
    if(request!==currentRequest.current)return false;
    const active=result?.account;
    if(active?.status!=='VERIFIED'){
+    setStartupError(null);
     setPendingTapIntents([]);
     liveVerified.current=false;
     cachedPreview.current=false;
@@ -63,6 +65,7 @@ export function useGame({mode='guest'}={}){
     :emptyAccountView(active.displayName||active.username);
    liveVerified.current=true;
    cachedPreview.current=false;
+   setStartupError(null);
    setAccount(active);
    setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
    setSyncStatus(previous=>{
@@ -78,6 +81,10 @@ export function useGame({mode='guest'}={}){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
    const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   // Projected cloud parse errors are recognized locally; no exception text
+   // is handed to the splash screen or persisted as diagnostics.
+   const projectionError=/^(INVALID_CLOUD_SAVE|MISSING_KOTLIN_PROGRESS|UNSUPPORTED_CLOUD_SAVE|UNSUPPORTED_KOTLIN_SAVE)/.test(String(error?.message||''));
+   const safeFailure={code:projectionError?'INVALID_CLOUD_SAVE':String(error?.code||'BETA_TRANSPORT_FAILURE').slice(0,72)};
    if(revoked){
     cachedPreview.current=false;
     liveVerified.current=false;
@@ -92,9 +99,11 @@ export function useGame({mode='guest'}={}){
     return false;
    }
    if(cachedPreview.current&&!revoked){
+    setStartupError(safeFailure);
     setCloudState('CACHED_OFFLINE');
     return false; // Cached snapshots alone never authorize gameplay.
    }
+   setStartupError(safeFailure);
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
    setSyncStatus(current=>({...current,state:'ERROR',
@@ -317,5 +326,5 @@ export function useGame({mode='guest'}={}){
   return updated;
  },[beta,account?.status,refreshAccount]);
  const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
- return {state,gameForDisplay,act,account,cloudState,syncStatus,refreshAccount,updateAccountName};
+ return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,updateAccountName};
 }
