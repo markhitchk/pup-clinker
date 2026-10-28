@@ -12,6 +12,7 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
+import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
 import { applyBetaEconomy, applyBetaSyncProbe, newBetaKotlinSave } from "../_shared/beta-economy.ts";
 import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
@@ -32,6 +33,12 @@ Deno.serve(async (req: Request) => {
     }
     const admin = createAdminClient();
     const session = await authenticateSession(req, admin, envelope);
+
+    // Expensive cloud/gameplay paths require a valid anonymous admission lease
+    // bound to this verified PupEye key. Account/recovery paths stay available.
+    if (["beta-bootstrap","beta-cloud-read","beta-gameplay"].includes(envelope.action)) {
+      await requirePlayerAdmission(req,admin,session,envelope.action);
+    }
 
     // This endpoint never authorizes gameplay or transfer. Reject other clients
     // so the production app keeps using its existing account/auth endpoints.
