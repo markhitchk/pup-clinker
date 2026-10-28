@@ -108,13 +108,14 @@ begin
      or (o.kind='trade' and (p_actor<>o.sender or o.state<>'countered')) then
     raise exception 'EXCHANGE_CONFIRMATION_REQUIRED';
   end if;
-  select exists (
-    select 1 from public.pup_exchange_connections c
-    where c.state='accepted'
-      and ((c.requester=o.sender and c.recipient=o.recipient)
-        or (c.requester=o.recipient and c.recipient=o.sender))
-  ) into connection_exists;
-  if not connection_exists then raise exception 'EXCHANGE_FRIENDSHIP_REQUIRED'; end if;
+  -- Lock the friendship while completing the transfer. A concurrent block
+  -- cannot revoke consent between its validation and the save mutation.
+  perform 1 from public.pup_exchange_connections c
+   where c.state='accepted'
+     and ((c.requester=o.sender and c.recipient=o.recipient)
+       or (c.requester=o.recipient and c.recipient=o.sender))
+   for share;
+  if not found then raise exception 'EXCHANGE_FRIENDSHIP_REQUIRED'; end if;
   if not exists(select 1 from public.pup_accounts
      where id=o.sender and status='active' and terms_version>=1 and privacy_version>=1)
     or not exists(select 1 from public.pup_accounts
@@ -128,6 +129,13 @@ begin
   select * into r from public.pup_account_saves where account_uuid=o.recipient;
   if s.account_uuid is null or r.account_uuid is null then
     raise exception 'EXCHANGE_CLOUD_SAVE_REQUIRED';
+  end if;
+  if s.save_schema<>1 or r.save_schema<>1
+     or s.save_data->>'format'<>'puppy-clicker-cloud-save'
+     or r.save_data->>'format'<>'puppy-clicker-cloud-save'
+     or s.save_data->>'version'<>'1'
+     or r.save_data->>'version'<>'1' then
+    raise exception 'EXCHANGE_CLOUD_SAVE_UNSUPPORTED';
   end if;
   sv=s.save_data; rv=r.save_data;
   sl=sv #> '{stores,puppy_clicker_save,values,unlocked_puppies}';
@@ -181,13 +189,18 @@ begin
   select sl || to_jsonb(requested) into sl;
   select rl || to_jsonb(offered) into rl;
 
-  -- Prevent a transferred-out current puppy from becoming an invalid equip.
+  -- Reset transferred-out current puppies to the permanent Classic style
+  -- including the visible name and equipped care state.
   if o.kind='trade' then
     if (sv #>> '{stores,puppy_clicker_save,values,puppy_style}')=any(offered) then
       sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,puppy_style}','"classic"'::jsonb);
+      sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,puppy_name}',
+        coalesce(sv #> '{stores,puppy_clicker_save,values,puppy_name_for_classic}','"Buddy"'::jsonb),true);
     end if;
     if (rv #>> '{stores,puppy_clicker_save,values,puppy_style}')=any(requested) then
       rv=jsonb_set(rv,'{stores,puppy_clicker_save,values,puppy_style}','"classic"'::jsonb);
+      rv=jsonb_set(rv,'{stores,puppy_clicker_save,values,puppy_name}',
+        coalesce(rv #> '{stores,puppy_clicker_save,values,puppy_name_for_classic}','"Buddy"'::jsonb),true);
     end if;
   end if;
   sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,unlocked_puppies}',sl);
