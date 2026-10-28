@@ -12,6 +12,6 @@ test('Android web handoff forwards codes only using the one allowed redirect',()
  const account=read('src/production/BetaAccountEntry.jsx');
  assert.match(handoff,/discord-1547982688898777118/);
  assert.match(handoff,/relay-submit/);
- assert.doesNotMatch(handoff,/PupEye|deviceKey|accessToken/);
+ assert.doesNotMatch(handoff,/NativeModules\.PuppyBetaAccount|device_key|access_token/);
  assert.match(account,/if\(isWebDiscordCallback\(url\)\|\|/);
 });
