@@ -91,7 +91,7 @@ declare
  ahead integer;
  active_mode boolean;
  begin
- if p_action not in ('bootstrap','status','admit','release') or
+ if p_action not in ('bootstrap','heartbeat','admit','release') or
     p_binding_hash is null or p_binding_hash !~ '^[a-f0-9]{64}$'
  then raise exception 'QUEUE_REQUEST_INVALID' using errcode='22023'; end if;
  select * into c from pup_queue.control where id=1 for update;
@@ -110,6 +110,9 @@ declare
  if c.mode='automatic' and (c.health_trustworthy is not true or
     c.health_checked_at is null or c.health_checked_at < v_now-interval '90 seconds')
  then return jsonb_build_object('state','UNAVAILABLE','code','PC-Q005','retryAfterMs',30000);
+ end if;
+ if c.mode='automatic' and c.automatic_active=false then
+   return jsonb_build_object('state','ALLOW','retryAfterMs',10000,'protocol',1);
  end if;
  -- Retire a bounded number of expired reservations per call. The slot counter is
  -- decreased exactly once inside this serialized transaction.
@@ -205,6 +208,107 @@ declare
 end $$;
 revoke all on function public.pup_queue_dispatch(text,text,uuid) from public,anon,authenticated;
 grant execute on function public.pup_queue_dispatch(text,text,uuid) to service_role;
+
+-- Low-cost polling never locks the global capacity-control row and never
+-- writes to Postgres. Only every fourth/fifth poll needs a heartbeat.
+create or replace function public.pup_queue_status(
+ p_binding_hash text,p_ticket uuid
+) returns jsonb language plpgsql security definer
+set search_path=pg_catalog as $
+declare c pup_queue.control%rowtype; t pup_queue.tickets%rowtype; ahead integer;
+begin
+ if p_binding_hash is null or p_binding_hash !~ '^[a-f0-9]{64}
+-- that owns the signing key. Anonymous tickets convey zero player permissions.
+create or replace function public.pup_queue_guard(
+ p_ticket uuid, p_binding_hash text, p_player uuid, p_installation uuid,
+ p_touch boolean default true
+) returns boolean language plpgsql security definer
+set search_path=pg_catalog as $$
+declare c pup_queue.control%rowtype; t pup_queue.tickets%rowtype;
+begin
+ select * into c from pup_queue.control where id=1;
+ if c.mode='disabled' then return true; end if;
+ if c.mode='maintenance' then raise exception 'QUEUE_MAINTENANCE' using errcode='P0001';end if;
+ if p_ticket is null or p_binding_hash is null or p_player is null or p_installation is null
+ then raise exception 'QUEUE_ADMISSION_REQUIRED' using errcode='P0001'; end if;
+ select * into t from pup_queue.tickets where id=p_ticket for update;
+ if not found or t.binding_hash<>p_binding_hash or t.state<>'ADMITTED' or
+    t.lease_until<=clock_timestamp()
+ then raise exception 'QUEUE_ADMISSION_INVALID' using errcode='P0001'; end if;
+ if t.bound_player_uuid is not null and t.bound_player_uuid<>p_player then
+  raise exception 'QUEUE_ACCOUNT_MISMATCH' using errcode='P0001';end if;
+ if t.bound_installation_uuid is not null and t.bound_installation_uuid<>p_installation then
+  raise exception 'QUEUE_INSTALLATION_MISMATCH' using errcode='P0001';end if;
+ if p_touch and (t.last_seen_at<clock_timestamp()-interval '45 seconds' or
+   t.bound_player_uuid is null or t.bound_installation_uuid is null) then
+  update pup_queue.tickets set last_seen_at=clock_timestamp(),
+   lease_until=clock_timestamp()+interval '30 minutes',
+   bound_player_uuid=p_player,bound_installation_uuid=p_installation
+   where id=t.id;
+ end if;
+ return true;
+end $$;
+revoke all on function public.pup_queue_guard(uuid,text,uuid,uuid,boolean) from public,anon,authenticated;
+grant execute on function public.pup_queue_guard(uuid,text,uuid,uuid,boolean) to service_role;
+
+-- Only the role-restricted admin Edge Function may invoke this privileged RPC.
+create or replace function public.pup_queue_admin_update(
+ p_actor uuid,p_mode text,p_capacity integer,p_rate integer
+) returns jsonb language plpgsql security definer set search_path=pg_catalog as $$
+declare c pup_queue.control%rowtype; revised bigint;
+begin
+ if p_actor is null or p_mode not in ('disabled','manual','automatic','maintenance')
+ then raise exception 'QUEUE_ADMIN_INVALID' using errcode='22023';end if;
+ select * into c from pup_queue.control where id=1 for update;
+ if p_mode in ('manual','automatic') and
+  (p_capacity is null or p_capacity<1 or p_rate is null or p_rate<1)
+ then raise exception 'QUEUE_CAPACITY_UNMEASURED' using errcode='22023';end if;
+ if p_capacity is not null and (p_capacity>200000 or p_capacity<c.slots_used)
+ then raise exception 'QUEUE_CAPACITY_BELOW_ACTIVE_LEASES' using errcode='22023';end if;
+ if p_rate is not null and p_rate>100000 then raise exception 'QUEUE_RATE_INVALID' using errcode='22023';end if;
+ revised:=c.revision+1;
+ update pup_queue.control set mode=p_mode,capacity=p_capacity,
+   max_admits_per_minute=p_rate,revision=revised,changed_at=clock_timestamp()
+   where id=1;
+ insert into pup_queue.audit(actor_player,action,old_mode,new_mode,
+  old_revision,new_revision,details) values
+  (p_actor,'QUEUE_CONFIG_CHANGE',c.mode,p_mode,c.revision,revised,
+   jsonb_build_object('capacity_changed',c.capacity is distinct from p_capacity,
+                     'rate_changed',c.max_admits_per_minute is distinct from p_rate));
+ return jsonb_build_object('ok',true,'revision',revised,'mode',p_mode);
+end $$;
+revoke all on function public.pup_queue_admin_update(uuid,text,integer,integer) from public,anon,authenticated;
+grant execute on function public.pup_queue_admin_update(uuid,text,integer,integer) to service_role;
+
+comment on schema pup_queue is 'PRIVATE stage-only admission control. Never expose via Data API.';
+ then
+  raise exception 'QUEUE_PROOF_INVALID' using errcode='22023';end if;
+ select * into c from pup_queue.control where id=1;
+ if c.mode='disabled' or (c.mode='automatic' and c.automatic_active=false
+    and c.health_trustworthy=true and c.health_checked_at>clock_timestamp()-interval '90 seconds')
+ then return jsonb_build_object('state','ALLOW','retryAfterMs',10000);end if;
+ if c.mode='maintenance' then
+  return jsonb_build_object('state','MAINTENANCE','code','PC-Q007','retryAfterMs',30000);end if;
+ if c.mode='automatic' and (c.health_trustworthy=false or c.health_checked_at is null or
+    c.health_checked_at<clock_timestamp()-interval '90 seconds')
+ then return jsonb_build_object('state','UNAVAILABLE','code','PC-Q005','retryAfterMs',30000);end if;
+ if p_ticket is null then
+  return jsonb_build_object('state','EXPIRED','code','PC-Q003','retryAfterMs',15000);end if;
+ select * into t from pup_queue.tickets where id=p_ticket;
+ if not found or t.binding_hash<>p_binding_hash then
+  return jsonb_build_object('state','REVOKED','code','PC-Q008','retryAfterMs',15000);
+ end if;
+ if t.state='WAITING' then
+  select count(*)::integer into ahead from pup_queue.tickets
+    where state='WAITING' and sequence_id<t.sequence_id;
+ end if;
+ return jsonb_build_object('state',t.state,'ticketId',t.id,
+  'playersAhead',case when t.state='WAITING' then ahead else 0 end,
+  'retryAfterMs',case when t.state='WAITING' then 12000 else 10000 end,
+  'protocol',1);
+end $;
+revoke all on function public.pup_queue_status(text,uuid) from public,anon,authenticated;
+grant execute on function public.pup_queue_status(text,uuid) to service_role;
 
 -- Binding is established only AFTER PupEye authenticates the same installation
 -- that owns the signing key. Anonymous tickets convey zero player permissions.
