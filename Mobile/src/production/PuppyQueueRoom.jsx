@@ -11,18 +11,20 @@ export default function PuppyQueueRoom({native,endpoint,publishableKey,onAdmitte
  const [status,setStatus]=useState({state:'CHECKING',playersAhead:null,code:null,retryAfterMs:12000});
  const [busy,setBusy]=useState(false);
  const mounted=useRef(true),generation=useRef(0),attempts=useRef(0),timer=useRef(null);
- const active=useRef(true),inFlight=useRef(false);
+ const active=useRef(true),inFlight=useRef(false),lastHeartbeat=useRef(0);
  const stop=()=>{generation.current++;if(timer.current)clearTimeout(timer.current);timer.current=null;};
  const step=useCallback(async(kind='bootstrap')=>{
   if(inFlight.current||!mounted.current||!active.current)return;
   inFlight.current=true;setBusy(true);const issued=++generation.current;
   try{
    if(!native||!endpoint||!publishableKey)throw Error('QUEUE_UNCONFIGURED');
-   const method=kind==='admit'?'queueAdmit':kind==='status'?'queueStatus':'queueBootstrap';
+   const method=kind==='admit'?'queueAdmit':kind==='heartbeat'?'queueHeartbeat':
+    kind==='status'?'queueStatus':'queueBootstrap';
    if(typeof native[method]!=='function')throw Error('QUEUE_BRIDGE_UNAVAILABLE');
    const result=normalizeQueueResponse(await native[method](endpoint,publishableKey));
    if(!mounted.current||issued!==generation.current)return;
    attempts.current=0;setStatus(result);
+   if(kind==='heartbeat'||kind==='bootstrap')lastHeartbeat.current=Date.now();
    if(result.state==='ADMITTED'||result.state==='ALLOW'){
     onAdmitted();return;
    }
@@ -37,8 +39,10 @@ export default function PuppyQueueRoom({native,endpoint,publishableKey,onAdmitte
     return;
    }
    if(result.state==='MAINTENANCE')return; // manual retry only
-   timer.current=setTimeout(()=>{inFlight.current=false;void step(kind==='bootstrap'?'status':'status');},
-    nextQueueDelay(result.retryAfterMs,0));
+   timer.current=setTimeout(()=>{
+    inFlight.current=false;
+    void step(Date.now()-lastHeartbeat.current>60000?'heartbeat':'status');
+   },nextQueueDelay(result.retryAfterMs,0));
   }catch{
    if(!mounted.current||issued!==generation.current)return;
    attempts.current++;
@@ -49,7 +53,7 @@ export default function PuppyQueueRoom({native,endpoint,publishableKey,onAdmitte
   }finally{if(issued===generation.current)setBusy(false);}
  },[native,endpoint,publishableKey,onAdmitted]);
  useEffect(()=>{
-  mounted.current=true;active.current=AppState.currentState==='active';
+  mounted.current=true;active.current=AppState.currentState!=='background';
   void step('bootstrap');
   const sub=AppState.addEventListener('change',state=>{
    if(state!=='active'){active.current=false;stop();inFlight.current=false;}
