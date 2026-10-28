@@ -32,6 +32,16 @@ create table if not exists public.pup_exchange_transfer_policy (
   updated_at timestamptz not null default now(),
   check (not bound or (not giftable and not tradeable))
 );
+-- The two freely obtainable Gacha crash-test puppies are approved for
+-- exchange testing. No developer, Discord, code-exclusive or premium puppy
+-- becomes transferable without a separately reviewed server policy.
+insert into public.pup_exchange_transfer_policy
+ (puppy_id,giftable,tradeable,bound,source_copy)
+values
+ ('test_v1_crash_dummy',true,true,false,false),
+ ('test_v2_crash_dummy',true,true,false,false)
+on conflict (puppy_id) do nothing;
+
 create table if not exists public.pup_exchange_offers (
   id uuid primary key default gen_random_uuid(),
   sender uuid not null references public.pup_accounts(id) on delete cascade,
