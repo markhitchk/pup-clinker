@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(29);
 select ok(to_regclass('public.pup_exchange_connections') is not null,'friend connections table exists');
 select ok(to_regclass('public.pup_exchange_offers') is not null,'offers table exists');
 select ok(to_regclass('public.pup_exchange_transfer_policy') is not null,'transfer policy table exists');
@@ -134,5 +134,40 @@ select is((select save_data #>> '{stores,puppy_clicker_save,values,puppy_name}'
   from public.pup_account_saves
   where account_uuid='f0000000-0000-4000-8000-000000002225'),'Buddy',
  'transferred-out selected puppy restores the Classic display name');
+-- This privileged UUID is obtained only from the server-managed permission table.
+-- A protected puppy not owned by the sender can be gifted exactly once to an
+-- accepting friend. It never makes that puppy giftable to other players.
+insert into public.pup_exchange_privileged_gifters(account_uuid)
+values ('f0000000-0000-4000-8000-000000001114');
+insert into public.pup_exchange_transfer_policy(puppy_id,giftable,tradeable,bound)
+values ('v4_protected_fixture',false,false,true);
+select ok(not has_table_privilege('authenticated','public.pup_exchange_privileged_gifters','SELECT'),
+ 'gift privilege cannot be read or edited by normal clients');
+insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
+values ('f0000000-0000-4000-8000-000000007003',
+ 'f0000000-0000-4000-8000-000000001114',
+ 'f0000000-0000-4000-8000-000000002225','gift',array['v4_protected_fixture']);
+select is((public.pup_exchange_complete(
+ 'f0000000-0000-4000-8000-000000007003',
+ 'f0000000-0000-4000-8000-000000002225')->>'state'),'completed',
+ 'verified owner can gift protected catalog puppy without owning it');
+select ok((select save_data #> '{stores,puppy_clicker_save,values,unlocked_puppies}'
+ from public.pup_account_saves
+ where account_uuid='f0000000-0000-4000-8000-000000002225') ? 'v4_protected_fixture',
+ 'recipient receives protected puppy from owner');
+select ok(not (select save_data #> '{stores,puppy_clicker_save,values,unlocked_puppies}'
+ from public.pup_account_saves
+ where account_uuid='f0000000-0000-4000-8000-000000001114') ? 'v4_protected_fixture',
+ 'owner does not need to generate or keep a local puppy copy');
+insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
+values ('f0000000-0000-4000-8000-000000007004',
+ 'f0000000-0000-4000-8000-000000002225',
+ 'f0000000-0000-4000-8000-000000001114','gift',array['v4_protected_fixture']);
+select throws_ok($select public.pup_exchange_complete(
+ 'f0000000-0000-4000-8000-000000007004',
+ 'f0000000-0000-4000-8000-000000001114')$,
+ 'P0001','EXCHANGE_PUPPY_NOT_TRANSFERABLE',
+ 'regular account still cannot gift protected puppy');
+
 select * from finish();
 rollback;
