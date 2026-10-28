@@ -219,6 +219,17 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     "PupEye request failed ("+e.javaClass.simpleName.take(32)+"). Check connectivity and retry.")
   }
  }.start()}
+ // Operational crash markers contain a public code only; no stack, identity or save.
+ @ReactMethod fun readStartupCrash(p:Promise)=runAsync(p){
+  val code=PuppyStartupCrashStore.read(ctx)
+  Arguments.createMap().apply{putBoolean("exists",code!=null);if(code!=null)putString("code",code)}
+ }
+ @ReactMethod fun clearStartupCrash(p:Promise)=runAsync(p){
+  check(PuppyStartupCrashStore.clear(ctx));true
+ }
+ @ReactMethod fun recordStartupCrash(code:String,p:Promise)=runAsync(p){
+  PuppyStartupCrashStore.save(ctx,code)
+ }
  @ReactMethod fun status(key:String,p:Promise)=runAsync(p){
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
