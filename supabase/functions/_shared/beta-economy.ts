@@ -487,7 +487,10 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    expect(typeof id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(id),"INVALID_AFK_ID");
    const history=readAfkInbox(v);
    const item=history.find(n=>n.id===id);
-   expect(item&&!item.claimed,"AFK_ALREADY_CLAIMED");
+   // Return the authoritative receipt for duplicate taps or a delayed UI refresh,
+   // without ever awarding this reward a second time.
+   expect(item,"AFK_REWARD_NOT_FOUND");
+   if(item.claimed)break;
    earned(v,t,item.amount);
    write(v,t,"beta_afk_notifications_v1",JSON.stringify(history.map(n=>n.id===id?{...n,claimed:true,read:true}:n)),"string");
    break;
