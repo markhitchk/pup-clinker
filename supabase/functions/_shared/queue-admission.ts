@@ -44,7 +44,7 @@ export function queueTicketFromRequest(req:Request):string|null {
 }
 /** Called after existing PupEye session+device verification; never replaces bans. */
 export async function requirePlayerAdmission(
- req:Request, admin:any, session:{player:any;installation:any}, action:string
+ req:Request, admin:any, session:{session:{id:string};player:any;installation:any}, action:string
 ):Promise<void>{
  const ticket=queueTicketFromRequest(req);
  const {data,error}=await admin.rpc("pup_queue_guard",{
