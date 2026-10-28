@@ -111,3 +111,16 @@ Deno.test("signed beta sync probe writes only a typed save receipt and no econom
  assertEquals((result.stores as any).puppy_seasonal_v1,(source.stores as any).puppy_seasonal_v1);
  assertEquals(JSON.stringify(source),initial,"do not mutate authoritative old revision in place");
 });
+
+Deno.test("AFK reward receipt is idempotent and pays Treats once",async()=>{
+ const id="afk:1793039900000:1793040000000";
+ const before=make();
+ data(before).beta_afk_notifications_v1=JSON.stringify([{id,amount:50,createdAt:NOW,claimed:false,read:false}]);
+ const first=await applyBetaEconomy(before,{type:"afkClaim",id},NOW);
+ assertEquals(data(first).treats,20050);
+ assertEquals(JSON.parse(data(first).beta_afk_notifications_v1)[0].claimed,true);
+ const retry=await applyBetaEconomy(first,{type:"afkClaim",id},NOW+1000);
+ assertEquals(data(retry).treats,data(first).treats);
+ assertEquals(data(retry).lifetime_treats,data(first).lifetime_treats);
+ assertEquals(data(retry).player_xp_v1,data(first).player_xp_v1);
+});
