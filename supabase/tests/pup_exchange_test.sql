@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(24);
 select ok(to_regclass('public.pup_exchange_connections') is not null,'friend connections table exists');
 select ok(to_regclass('public.pup_exchange_offers') is not null,'offers table exists');
 select ok(to_regclass('public.pup_exchange_transfer_policy') is not null,'transfer policy table exists');
@@ -130,5 +130,9 @@ select is((select save_data #>> '{stores,puppy_clicker_save,values,puppy_style}'
   where account_uuid='f0000000-0000-4000-8000-000000002225'),'classic',
  'transferred-out selected puppy switches to free classic');
 
+select is((select save_data #>> '{stores,puppy_clicker_save,values,puppy_name}'
+  from public.pup_account_saves
+  where account_uuid='f0000000-0000-4000-8000-000000002225'),'Buddy',
+ 'transferred-out selected puppy restores the Classic display name');
 select * from finish();
 rollback;
