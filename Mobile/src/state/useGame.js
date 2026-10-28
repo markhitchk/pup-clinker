@@ -83,9 +83,17 @@ export function useGame({mode='guest'}={}){
     liveVerified.current=false;
     void native.clearCachedBootstrap?.().catch(()=>{});
    }
+   if(liveVerified.current&&!revoked){
+    // A transient refresh outage after a successful startup must never throw
+    // the player back to sign-in or replace their last verified cloud progress.
+    // The server remains the only authority for subsequent economy writes.
+    setCloudState('LAST_VERIFIED');
+    setSyncStatus(previous=>({...previous,state:'RECONNECTING',errorCode:'CLOUD_TEMPORARILY_UNAVAILABLE'}));
+    return false;
+   }
    if(cachedPreview.current&&!revoked){
     setCloudState('CACHED_OFFLINE');
-    return false; // Keep last known encrypted preview visible; never grant writes.
+    return false; // Cached snapshots alone never authorize gameplay.
    }
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
