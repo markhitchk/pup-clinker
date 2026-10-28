@@ -19,7 +19,7 @@ Deno.serve(async (req: Request) => {
     const envelope = verifyEnvelope(await req.json(), "register");
     const payload = envelope.payload;
     const playerId = requiredString(payload.playerId, "playerId");
-    const friendCode = requiredString(payload.friendCode, "friendCode");
+    let friendCode = requiredString(payload.friendCode, "friendCode");
     const username = requiredString(payload.username, "username").slice(0, 32);
     const supportCode = requiredString(payload.supportCode, "supportCode").slice(0, 32);
     const deviceModel = optionalString(payload.deviceModel)?.slice(0, 64);
@@ -109,6 +109,16 @@ Deno.serve(async (req: Request) => {
         throw error;
       }
 
+      // Existing signed installations may still carry this account's old
+      // generated Friend Code after a server-controlled vanity-code rename.
+      // Only normalize for the SAME already verified installation/player key.
+      if (
+        exactInstallationPlayer.player_id === playerId &&
+        exactInstallationPlayer.friend_code === "PUP-HARLEYTG-DEV" &&
+        friendCode === "PUP-DA98-QKMT-L74H"
+      ) {
+        friendCode = exactInstallationPlayer.friend_code;
+      }
       if (
         exactInstallationPlayer.player_id !== playerId ||
         exactInstallationPlayer.friend_code !== friendCode
