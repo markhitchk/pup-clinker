@@ -65,12 +65,13 @@ test('protected backend paths gate gameplay and save writes',()=>{
 });
 test('private schema has serialized admission and forbids direct user RPCs',()=>{
  const sql=file('../../supabase/migrations/20261028010000_pup_smart_admission_staging.sql');
+ const monitorSql=file('../../supabase/migrations/20261028010100_pup_queue_trusted_monitor_staging.sql');
  assert.match(sql,/for update;/i);
  assert.match(sql,/pup_queue_guard/);
  assert.match(sql,/slots_used <= capacity/);
  assert.match(sql,/grant execute on function public\.pup_queue_dispatch.*to service_role/i);
  assert.match(sql,/revoke all on function public\.pup_queue_dispatch.*from public,anon,authenticated/i);
  assert.match(sql,/health_checked_at/);
- assert.match(sql,/high_samples/);
+ assert.match(monitorSql,/high_samples/);
  assert.doesNotMatch(sql,/grant execute on function .* to anon/i);
 });
