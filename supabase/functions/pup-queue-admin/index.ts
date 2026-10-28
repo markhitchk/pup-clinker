@@ -44,8 +44,8 @@ Deno.serve(async(req:Request)=>{
   const capacity=payload.capacity??null;
   const rate=payload.maxAdmitsPerMinute??null;
   if(typeof mode!=="string"||!["disabled","manual","automatic","maintenance"].includes(mode)||
-   (capacity!==null&&(!Number.isSafeInteger(capacity)||capacity<1||capacity>200000))||
-   (rate!==null&&(!Number.isSafeInteger(rate)||rate<1||rate>100000)))
+   (capacity!==null&&(typeof capacity!=="number"||!Number.isSafeInteger(capacity)||capacity<1||capacity>200000))||
+   (rate!==null&&(typeof rate!=="number"||!Number.isSafeInteger(rate)||rate<1||rate>100000)))
    throw new HttpError(400,"QUEUE_ADMIN_INVALID","Invalid queue mode or measured capacity.");
   const {data,error}=await admin.rpc("pup_queue_admin_update",{
    p_actor:session.player.id,p_mode:mode,p_capacity:capacity,p_rate:rate
