@@ -20,6 +20,7 @@ native.Animated={Value,View:'View',Image:'Image',createAnimatedComponent:x=>x,lo
 native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={vibrate(){}};
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
 native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
+native.NativeModules={PuppyBetaAccount:{readStartupCrash:async()=>({exists:false}),clearStartupCrash:async()=>true}};
 let fixture={},latestState;
 let setupComplete=true;
 function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch,gameForDisplay:state.game,account:{status:'VERIFIED',legalAccepted:true,gameplayWritable:true},cloudState:'LIVE_SYNCED',refreshAccount:async()=>true};}
@@ -53,7 +54,7 @@ const text=root=>root.findAllByType('Text').map(t=>t.props.children).flat().join
 async function render(values={}){fixture=values;let renderer;await act(()=>{renderer=create(React.createElement(App));});return renderer;}
 test('beta first-run entry displays account onboarding before the game hierarchy',async()=>{
  setupComplete=false;let renderer;
- try{await act(()=>{renderer=create(React.createElement(App,{betaMode:true}));});assert.match(text(renderer.root),/Set Up Your Account/);assert.equal(renderer.root.findAllByType('Pressable').filter(p=>p.props.accessibilityRole==='tab').length,0);}
+ try{await act(async()=>{renderer=create(React.createElement(App,{betaMode:true}));await new Promise(resolve=>setImmediate(resolve));});assert.match(text(renderer.root),/Set Up Your Account/);assert.equal(renderer.root.findAllByType('Pressable').filter(p=>p.props.accessibilityRole==='tab').length,0);}
  finally{setupComplete=true;if(renderer)await act(()=>renderer.unmount());}
 });
 test('primary navigation preserves Play, Care, Roster, Shop and Rewards with working routes',async()=>{
