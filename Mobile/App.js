@@ -1069,7 +1069,7 @@ export function PuppyApp({betaMode=false}){
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
   </View>:null}
-  <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)}/>
+  <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)} onNavigate={openScreen}/>
   {betaMode?<BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>:null}
  </PuppyPointer>;
 }
