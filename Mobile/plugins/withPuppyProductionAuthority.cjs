@@ -24,6 +24,8 @@ function stagingBackendRoot(){
  if(url.protocol!=='https:'||!url.hostname.endsWith('.supabase.co')||
   url.pathname!=='/functions/v1/pup-queue')
   throw Error('Staging queue requires a valid isolated Supabase Edge URL');
+ if(url.hostname==='damcmyqusdxucwozkoeh.supabase.co')
+  throw Error('Queue staging builds cannot point to the live Puppy Clicker database');
  if(!process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY)
   throw Error('Staging queue requires the staging Supabase publishable key');
  // Changing every native auth/save endpoint together prevents staging from
