@@ -3,6 +3,7 @@ import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import {projectPendingTapDisplay} from './optimisticTaps.js';
+import {classifyBetaSaveFailure} from './saveFeedback.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {initialState,transition} from './reducer.js';
 import {GUEST_SAVE_KEY,parseGuestSave,serializeGuestSave} from './guestSave.js';
@@ -24,7 +25,7 @@ export function useGame({mode='guest'}={}){
  const [account,setAccount]=useState(beta?{status:'CHECKING'}:null);
  const [cloudState,setCloudState]=useState(beta?'NOT_LOADED':null);
  const [startupError,setStartupError]=useState(null);
- const [syncStatus,setSyncStatus]=useState({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null});
+ const [syncStatus,setSyncStatus]=useState({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null,notice:null});
  const liveVerified=useRef(false);
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
@@ -74,7 +75,7 @@ export function useGame({mode='guest'}={}){
     if(previous.state==='SAVED'&&cloud?.revision===previous.revision)return previous;
     return {state:active.gameplayWritable===true?'READY':'BLOCKED',
      revision:Number.isFinite(cloud?.revision)?cloud.revision:null,
-     savedAt:cloud?.updatedAt||null,errorCode:active.gameplayWritable===true?null:'ACCOUNT_READ_ONLY'};
+     savedAt:cloud?.updatedAt||null,errorCode:active.gameplayWritable===true?null:'ACCOUNT_READ_ONLY',notice:null};
    });
    dispatch({type:'hydrate',game:g,now:Date.now(),readOnly:true});
    dispatch({type:'dismiss'});
@@ -263,7 +264,7 @@ export function useGame({mode='guest'}={}){
    if(tapIntentId!==null)setPendingTapIntents(current=>[...current,{id:tapIntentId,at:Number.isSafeInteger(action.now)?action.now:Date.now()}]);
    if(claimId!==null)pendingAfkClaims.current.add(claimId);
    pendingLiveWrites.current++;
-   setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null}));
+   setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null,notice:null}));
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
     const intent=Object.fromEntries(
      ['type','kind','id','payment','upgradeId','rarity','name','skill','goalId','amount','wager','bet'].filter(k=>action[k]!==undefined).map(k=>[k,action[k]])
@@ -276,15 +277,14 @@ export function useGame({mode='guest'}={}){
     ++currentRequest.current;
     setCloudState('LIVE_SYNCED');
     setSyncStatus({state:'SAVED',revision:result.revision,
-     savedAt:result.savedAt||new Date().toISOString(),errorCode:null});
+     savedAt:result.savedAt||new Date().toISOString(),errorCode:null,notice:null});
     try {
      const game=projectKotlinCloudSave(result.saveJson,account?.displayName||account?.username);
      dispatch({type:'hydrate',game,now:Date.now(),readOnly:true});
     }catch{
      setSyncStatus({state:'SAVED_DISPLAY_ERROR',revision:result.revision,
       savedAt:result.savedAt||new Date().toISOString(),
-      errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED'});
-     if(ToastAndroid?.show)ToastAndroid.show('Saved, but the latest balance could not be displayed. Reconnecting…',ToastAndroid.LONG);
+      errorCode:'SAVED_BUT_DISPLAY_REFRESH_FAILED',notice:'Your action was saved, but the screen needs to reload the latest cloud progress.'});
      void refreshAccount();
     }
    }).catch(error=>{
@@ -292,15 +292,9 @@ export function useGame({mode='guest'}={}){
     // mutation. Never replay an ambiguous economy action or erase the last
     // verified cloud snapshot. Re-read the signed server state after all
     // in-flight writes settle, and ask the player before submitting again.
-    const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
-    const rejected=/GAMEPLAY_REJECTED|GAMEPLAY_NOT_PORTED|PUP_LEGAL_ACCEPTANCE_REQUIRED/.test(code);
-    if(!rejected)needsReceiptRecheck.current=true;
-    setSyncStatus(previous=>({...previous,
-     state:rejected?'REJECTED':'VERIFYING_SAVE',
-     errorCode:rejected?'ACTION_NOT_ACCEPTED':'SAVE_RECEIPT_UNCONFIRMED'}));
-    if(ToastAndroid?.show)ToastAndroid.show(
-     rejected?'Action rejected. No new progress was saved.':'Save confirmation lost. Checking Pup Account before another action.',
-     ToastAndroid.LONG);
+    const failure=classifyBetaSaveFailure(error);
+    if(failure.state==='VERIFYING_SAVE')needsReceiptRecheck.current=true;
+    setSyncStatus(previous=>({...previous,...failure}));
    }).finally(()=>{
     if(claimId!==null)pendingAfkClaims.current.delete(claimId);
     if(tapIntentId!==null)setPendingTapIntents(current=>current.filter(item=>item.id!==tapIntentId));
