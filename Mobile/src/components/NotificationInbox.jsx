@@ -5,7 +5,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import PuppyPointer from './PuppyPointer.jsx';
 const tabs=[['all','All'],['reward','🎁 Reward'],['pup','🐾 Pup'],['system','⚙️ System']];
 const dayStart=value=>{const d=new Date(value);d.setHours(0,0,0,0);return d.getTime();};
-export default function NotificationInbox({visible,g,act,onClose,onNavigate}){
+export default function NotificationInbox({visible,g,act,onClose,onNavigate,serverBacked=false}){
  const [filter,setFilter]=useState('all');
  const insets=useSafeAreaInsets(),{height}=useWindowDimensions();
  const short=height-insets.top-insets.bottom<700;
@@ -15,7 +15,7 @@ export default function NotificationInbox({visible,g,act,onClose,onNavigate}){
  const unread=g.notificationInbox.filter(n=>!n.read).length;
  const hasRead=g.notificationInbox.some(n=>n.read);
  const openItem=n=>{
-  act({type:'openNotification',id:n.id});
+  act({type:serverBacked&&n.id.startsWith('afk:')?'afkOpen':'openNotification',id:n.id});
   if(n.action==='daily'||n.action==='parkClaim'){
    onClose();onNavigate?.('rewards');
   }
@@ -32,7 +32,7 @@ export default function NotificationInbox({visible,g,act,onClose,onNavigate}){
       <View style={{flex:1,gap:4}}><View style={s.titleRow}><Text numberOfLines={2} style={s.itemTitle}>{n.title}</Text><View style={s.timeRow}><Text style={s.time}>{dateLabel(n.createdAt)}</Text>{!n.read?<View style={s.dot}/>:null}</View></View><Text style={s.itemBody}>{n.body}</Text></View>
      </Pressable>{n.action==='afkClaim'?<View style={s.claimRow}><Pressable accessibilityRole="button" accessibilityLabel={'Claim '+n.title} style={s.claim} onPress={()=>act({type:'afkClaim',id:n.id})}><Text style={s.claimText}>🦴 Claim</Text></Pressable></View>:null}
     </View>)}</View>:null)}</ScrollView>
-    <View style={s.footer}><Pressable accessibilityRole="button" disabled={!hasRead} accessibilityState={{disabled:!hasRead}} onPress={()=>act({type:'clearReadNotifications'})} style={[s.footerButton,!hasRead&&{opacity:.55}]}><Text style={s.footerText}>🗑 Clear Read</Text></Pressable><Pressable accessibilityRole="button" disabled={!unread} accessibilityState={{disabled:!unread}} onPress={()=>act({type:'markNotificationsRead'})} style={[s.footerButton,s.markAll,!unread&&{opacity:.55}]}><Text style={[s.footerText,{color:'#FFFFFF'}]}>✓ Mark All Read</Text></Pressable></View>
+    <View style={s.footer}><Pressable accessibilityRole="button" disabled={!hasRead} accessibilityState={{disabled:!hasRead}} onPress={()=>act({type:serverBacked?'afkClearRead':'clearReadNotifications'})} style={[s.footerButton,!hasRead&&{opacity:.55}]}><Text style={s.footerText}>🗑 Clear Read</Text></Pressable><Pressable accessibilityRole="button" disabled={!unread} accessibilityState={{disabled:!unread}} onPress={()=>act({type:serverBacked?'afkMarkAllRead':'markNotificationsRead'})} style={[s.footerButton,s.markAll,!unread&&{opacity:.55}]}><Text style={[s.footerText,{color:'#FFFFFF'}]}>✓ Mark All Read</Text></Pressable></View>
    </View>
   </PuppyPointer>
  </Modal>;
