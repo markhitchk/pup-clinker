@@ -68,7 +68,11 @@ export async function requirePlayerAdmission(
 export async function queueRateLimit(req:Request,binding:string):Promise<void>{
  const endpoint=Deno.env.get("PUP_QUEUE_REDIS_REST_URL");
  const key=Deno.env.get("PUP_QUEUE_REDIS_REST_TOKEN");
- if(!endpoint||!key)throw new HttpError(503,"PC-Q005","Admission rate limiting is not configured.");
+ const ipCeiling=Number(Deno.env.get("PUP_QUEUE_IP_MAX_PER_MIN"));
+ const bindingCeiling=Number(Deno.env.get("PUP_QUEUE_DEVICE_MAX_PER_MIN"));
+ if(!endpoint||!key||!Number.isSafeInteger(ipCeiling)||ipCeiling<1||
+    !Number.isSafeInteger(bindingCeiling)||bindingCeiling<1)
+  throw new HttpError(503,"PC-Q005","Admission rate limiting is not configured.");
  // Edge/runtime-provided connecting IP is an abuse signal, not account identity.
  const ip=req.headers.get("cf-connecting-ip")??req.headers.get("x-real-ip")??
   req.headers.get("x-forwarded-for")?.split(",")[0]??"unknown";
@@ -85,7 +89,7 @@ export async function queueRateLimit(req:Request,binding:string):Promise<void>{
  if(!Array.isArray(results)||results.length!==4)
   throw new HttpError(503,"PC-Q005","Queue protection is temporarily unavailable.");
  // Thresholds are anti-abuse request ceilings, not player capacity.
- if(Number(results[0]?.result)>120||Number(results[2]?.result)>30)
+ if(Number(results[0]?.result)>ipCeiling||Number(results[2]?.result)>bindingCeiling)
   throw new HttpError(429,"PC-Q005","Please slow down and retry.");
 }
 export async function queueDispatch(admin:any,action:string,binding:string,ticketId:string|null){
