@@ -75,18 +75,18 @@ select ok(public.pup_queue_guard(null,repeat('d',64),
  'f0000000-0000-4000-8000-000000000085',true,
  'f0000000-0000-4000-8000-000000000086'),
  'valid pre-activation PupEye session retains save continuity');
-select throws_ok($select public.pup_queue_guard(null,repeat('d',64),
+select throws_ok($guard$select public.pup_queue_guard(null,repeat('d',64),
  'f0000000-0000-4000-8000-000000000084',
  'f0000000-0000-4000-8000-000000000085',true,
- 'f0000000-0000-4000-8000-000000000087')$,
+ 'f0000000-0000-4000-8000-000000000087')$guard$,
  'P0001','QUEUE_ADMISSION_REQUIRED',
  'sessions issued after activation cannot bypass queue');
 update public.pupeye_sessions set revoked_at=clock_timestamp()
  where id='f0000000-0000-4000-8000-000000000086';
-select throws_ok($select public.pup_queue_guard(null,repeat('d',64),
+select throws_ok($guard$select public.pup_queue_guard(null,repeat('d',64),
  'f0000000-0000-4000-8000-000000000084',
  'f0000000-0000-4000-8000-000000000085',true,
- 'f0000000-0000-4000-8000-000000000086')$,
+ 'f0000000-0000-4000-8000-000000000086')$guard$,
  'P0001','QUEUE_ADMISSION_REQUIRED',
  'revoking a pre-activation session removes the continuity allowance');
 
