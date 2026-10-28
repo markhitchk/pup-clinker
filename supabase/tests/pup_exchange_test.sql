@@ -163,7 +163,7 @@ insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
 values ('f0000000-0000-4000-8000-000000007004',
  'f0000000-0000-4000-8000-000000002225',
  'f0000000-0000-4000-8000-000000001114','gift',array['v4_protected_fixture']);
-select throws_ok($select public.pup_exchange_complete(
+select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000007004',
  'f0000000-0000-4000-8000-000000001114')$,
  'P0001','EXCHANGE_PUPPY_NOT_TRANSFERABLE',
