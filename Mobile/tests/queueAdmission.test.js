@@ -75,3 +75,26 @@ test('private schema has serialized admission and forbids direct user RPCs',()=>
  assert.match(monitorSql,/high_samples/);
  assert.doesNotMatch(sql,/grant execute on function .* to anon/i);
 });
+
+test('queue server rejects replay and uses a separate status RPC',()=>{
+ const shared=file('../../supabase/functions/_shared/queue-admission.ts');
+ const edge=file('../../supabase/functions/pup-queue/index.ts');
+ assert.match(shared,/action==="status"/);
+ assert.match(shared,/pup_queue_status/);
+ assert.match(shared,/pup_queue_dispatch/);
+ assert.match(shared,/pupq:proof:/);
+ assert.match(shared,/\["SET",replayKey,"1","EX",180,"NX"\]/);
+ assert.match(shared,/namedCurve!=="prime256v1"/);
+ assert.match(edge,/boundedJson\(req\)/);
+ assert.match(edge,/queueRateLimit\(req,proof\.binding,proof\.nonce\)/);
+});
+test('pre-activation PupEye sessions retain cloud-save continuity',()=>{
+ const sql=file('../../supabase/migrations/20261028010200_pup_queue_session_continuity_staging.sql');
+ const shared=file('../../supabase/functions/_shared/queue-admission.ts');
+ assert.match(sql,/s\.created_at<=c\.activated_at/);
+ assert.match(sql,/s\.expires_at>v_now and s\.revoked_at is null/);
+ assert.match(sql,/s\.player_uuid=p_player/);
+ assert.match(sql,/s\.installation_uuid=p_installation/);
+ assert.match(sql,/grant execute on function public\.pup_queue_guard.*\n to service_role/);
+ assert.match(shared,/p_session:session\.session\.id/);
+});
