@@ -171,3 +171,20 @@ test('beta cloud save exposes signed commit receipt and safe non-economic verifi
  assert.match(economy,/beta_last_sync_probe_at_v1/);
  assert.doesNotMatch(root,/Account synced · live gameplay/);
 });
+
+test('expired PupEye sessions are renewed without blindly replaying uncertain writes',()=>{
+ const bridge=read('../plugins/puppy-production/PuppyBetaAccountPackage.kt');
+ const hook=read('../src/state/useGame.js');
+ const app=read('../App.js');
+ assert.match(bridge,/private fun signedPost\(/);
+ assert.match(bridge,/PUPEYE_SESSION_INVALID/);
+ assert.match(bridge,/PUPEYE_SESSION_REQUIRED/);
+ assert.match(bridge,/post\(function,envelope\(action,payload\),key,renewed\)/);
+ assert.match(bridge,/val answer=signedPost\("pup-beta-link","beta-gameplay",payload,key\)/);
+ assert.match(hook,/needsReceiptRecheck/);
+ assert.match(hook,/pendingLiveWrites\.current===0&&needsReceiptRecheck\.current/);
+ assert.match(hook,/Save confirmation lost/);
+ assert.doesNotMatch(hook,/errorDetail:String\(error\?\.message/);
+ assert.match(app,/Save needs attention/);
+ assert.doesNotMatch(app,/syncStatus\.errorCode/);
+});

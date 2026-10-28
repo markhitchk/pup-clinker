@@ -54,22 +54,25 @@ test('time-bound Kotlin cooldown prevents taps and survives guest save',()=>{
  assert.equal(sanitizeGame({...g,cooldownUntilMs:-999}).cooldownUntilMs,0);
 });
 
-test('trillion-scale Pup Account Treats remain visibly responsive without changing Kotlin legacy formatter',()=>{
+test('quadrillion-scale Pup Account balances fit four wallet cells without losing exact values',()=>{
  const stored=9_000_000_010_023_864;
  const next=stored+1_588_842;
- assert.equal(v6Format(stored,true),v6Format(next,true),'legacy format hides million-Treat gains');
- assert.notEqual(v6WalletFormat(stored,true),v6WalletFormat(next,true),'live wallet must update after server confirms each tap');
- assert.notEqual(v6WalletFormat(stored,true),v6WalletFormat(stored+10_000,true),'balanced 10k payout must remain visible each tap');
- assert.equal(v6WalletFormat(stored,true),'9000.000010024T');
- assert.equal(v6WalletFormat(next,true),'9000.000011613T');
- assert.equal(v6WalletFormat(stored,false),'9,000,000,010,023,864');
- assert.equal(v6WalletFormat(1_234_567_890,true),'1.2346B');
+ assert.equal(v6Format(stored,true),v6Format(next,true),'legacy Kotlin formatter is unchanged');
+ assert.equal(v6WalletFormat(stored,true),'9Qa');
+ assert.equal(v6WalletFormat(next,true),'9Qa');
+ assert.equal(v6WalletFormat(1_250_000_000_000_000,true),'1.25Qa');
+ assert.equal(v6WalletFormat(2_500_000_000_000,true),'2.5T');
+ assert.equal(v6WalletFormat(1_234_567_890,true),'1.23B');
+ assert.equal(v6WalletFormat(1000,true),'1K');
+ assert.equal(v6WalletFormat(999,true),'999');
  assert.equal(v6WalletFormat(NaN,true),'0');
  assert.equal(v6WalletFormat(-20,true),'0');
- assert.equal(v6WalletFormat(1000,true),'1.0K');
- assert.ok(9_000_000_010_023_864+1_588_842<Number.MAX_SAFE_INTEGER);
+ assert.equal(v6WalletFormat(stored,false),'9,000,000,010,023,864');
+ assert.ok(next<Number.MAX_SAFE_INTEGER);
  const wallet=react.slice(react.indexOf('function Wallet('),react.indexOf('function NeedPill('));
  assert.match(wallet,/v6WalletFormat\(value/);
  assert.match(wallet,/Exact balance/);
  assert.match(wallet,/adjustsFontSizeToFit/);
+ assert.match(reactPlay,/Progress saved to Pup Account/);
+ assert.match(reactPlay,/Checking last save/);
 });
