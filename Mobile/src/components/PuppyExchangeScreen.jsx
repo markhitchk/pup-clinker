@@ -18,6 +18,8 @@ const safeMessage=code=>{
  if(/REQUEST_PENDING/.test(code))return 'That friend request is already waiting for a response.';
  if(/BLOCKED/.test(code))return 'This connection is blocked.';
  if(/NOT_TRANSFERABLE/.test(code))return 'That puppy is protected and cannot be exchanged.';
+ if(/UNKNOWN_PUPPY/.test(code))return 'This puppy has not been published in the official roster yet.';
+ if(/CATALOG_UNAVAILABLE/.test(code))return 'The official puppy catalog is unavailable. Try again later.';
  if(/INVENTORY|CLOUD_SAVE/.test(code))return 'Cloud ownership changed. Refresh the roster before trading.';
  if(/EXPIRED|CLOSED|NOT_PENDING/.test(code))return 'This offer is no longer active. Refresh to see the latest status.';
  if(/FRIENDSHIP/.test(code))return 'Both players must first accept a friend request.';
@@ -89,8 +91,10 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
  const policy=new Map(data.policies.map(p=>[p.id,p]));
  const byId=new Map((registry?.items||[]).map(p=>[p.id,p]));
  const active=useMemo(()=>new Set(game?.unlockedPuppies||[]),[game?.unlockedPuppies]);
- const eligible=kind=>(registry?.items||[]).filter(p=>active.has(p.id)&&
-  (kind==='gift'?policy.get(p.id)?.giftable:policy.get(p.id)?.tradeable));
+ const canGiftAll=data.profile?.canGiftAll===true;
+ const eligible=kind=>(registry?.items||[]).filter(p=>
+  kind==='gift'&&canGiftAll ? true : active.has(p.id)&&
+   (kind==='gift'?policy.get(p.id)?.giftable:policy.get(p.id)?.tradeable));
  const puppyLabel=id=>byId.get(id)?.name||id;
  const details=ids=>ids?.length?ids.map(puppyLabel).join(' · '):'No puppies selected';
  const sendFriend=async()=>{
@@ -138,7 +142,8 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
  const selector=(kind,chosen,setChosen,max)=>{
   const pups=eligible(kind);
   return <View style={styles.section}>
-   <Text style={styles.label}>Your eligible puppies · {chosen.length}/{max}</Text>
+   <Text style={styles.label}>{kind==='gift'&&canGiftAll?'All official puppies':'Your eligible puppies'} · {chosen.length}/{max}</Text>
+   {kind==='gift'&&canGiftAll?<Text style={styles.muted}>Owner gifting: choose any published puppy, including protected and future roster styles. Your friend must still accept.</Text>:null}
    {pups.length===0?<Text style={styles.muted}>No server-approved {kind==='gift'?'giftable':'tradeable'} puppies are available in your verified roster. Protected and source-copy puppies cannot be exchanged.</Text>:null}
    <View style={styles.wrap}>{pups.map(p=>{
     const checked=chosen.includes(p.id);
@@ -287,7 +292,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
     <Text style={styles.muted}>No completed or closed offers yet.</Text>:null}
   </>):null}
   {busy?<ActivityIndicator color="#73CFE7"/>:null}
-  <Text style={styles.footer}>Only verified Pup Accounts may connect. Server-approved transfer policy, account standing, and atomic cloud receipts govern every gift and trade.</Text>
+  <Text style={styles.footer}>Only verified Pup Accounts may connect. Server-approved transfer policy (with an account-bound gift-only owner exception), account standing, and atomic cloud receipts govern every gift and trade.</Text>
  </View>;
 }
 const styles=StyleSheet.create({
