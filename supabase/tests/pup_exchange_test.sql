@@ -96,9 +96,9 @@ select ok(
 select is((select save_data #>> '{stores,puppy_clicker_save,values,treats}'
  from public.pup_account_saves where account_uuid='f0000000-0000-4000-8000-000000001114'),
  '100','sender Treats unaffected');
-select throws_ok($select public.pup_exchange_complete(
+select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000007001',
- 'f0000000-0000-4000-8000-000000002225')$,
+ 'f0000000-0000-4000-8000-000000002225')$$,
  'P0001','EXCHANGE_OFFER_NOT_PENDING','gift receipt is single-use');
 
 insert into public.pup_exchange_offers
@@ -108,9 +108,9 @@ values
   'f0000000-0000-4000-8000-000000001114',
   'f0000000-0000-4000-8000-000000002225',
   'trade',array['v3_sender_fixture'],array['v3_recipient_fixture'],'countered');
-select throws_ok($select public.pup_exchange_complete(
+select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000007002',
- 'f0000000-0000-4000-8000-000000002225')$,
+ 'f0000000-0000-4000-8000-000000002225')$$,
  'P0001','EXCHANGE_CONFIRMATION_REQUIRED',
  'recipient cannot forge the sender final confirmation');
 select is((public.pup_exchange_complete(
