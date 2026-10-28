@@ -214,7 +214,7 @@ grant execute on function public.pup_queue_dispatch(text,text,uuid) to service_r
 create or replace function public.pup_queue_status(
  p_binding_hash text,p_ticket uuid
 ) returns jsonb language plpgsql security definer
-set search_path=pg_catalog as $
+set search_path=pg_catalog as $$
 declare c pup_queue.control%rowtype; t pup_queue.tickets%rowtype; ahead integer;
 begin
  if p_binding_hash is null or p_binding_hash !~ '^[a-f0-9]{64}
@@ -292,7 +292,7 @@ alter table pup_queue.control add column if not exists low_samples integer not n
 alter table pup_queue.control add column if not exists minimum_hold_seconds integer not null default 120;
 
 create or replace function public.pup_queue_admin_status()
-returns jsonb language plpgsql security definer set search_path=pg_catalog as $
+returns jsonb language plpgsql security definer set search_path=pg_catalog as $$
 declare c pup_queue.control%rowtype; waiting integer;
 begin
  select * into c from pup_queue.control where id=1;
@@ -302,13 +302,13 @@ begin
   'automatic_active',c.automatic_active,'health_checked_at',c.health_checked_at,
   'health_trustworthy',c.health_trustworthy,'high_pressure',c.high_pressure,
   'low_pressure',c.low_pressure,'waiting',waiting,'revision',c.revision);
-end $;
+end $$;
 revoke all on function public.pup_queue_admin_status() from public,anon,authenticated;
 grant execute on function public.pup_queue_admin_status() to service_role;
 
 create or replace function public.pup_queue_admin_thresholds(
  p_actor uuid,p_high numeric,p_low numeric,p_hold_seconds integer default 120
-) returns jsonb language plpgsql security definer set search_path=pg_catalog as $
+) returns jsonb language plpgsql security definer set search_path=pg_catalog as $$
 declare c pup_queue.control%rowtype;
 begin
  if p_actor is null or p_high is null or p_low is null or p_high<=p_low
@@ -321,7 +321,7 @@ begin
  insert into pup_queue.audit(actor_player,action,old_mode,new_mode,old_revision,new_revision)
  values(p_actor,'QUEUE_THRESHOLDS_CHANGED',c.mode,c.mode,c.revision,c.revision+1);
  return jsonb_build_object('ok',true,'revision',c.revision+1);
-end $;
+end $$;
 revoke all on function public.pup_queue_admin_thresholds(uuid,numeric,numeric,integer) from public,anon,authenticated;
 grant execute on function public.pup_queue_admin_thresholds(uuid,numeric,numeric,integer) to service_role;
 
@@ -330,7 +330,7 @@ grant execute on function public.pup_queue_admin_thresholds(uuid,numeric,numeric
 -- can supply a health sample through an ordinary queue request.
 create or replace function public.pup_queue_health_report(
  p_score numeric,p_trustworthy boolean
-) returns jsonb language plpgsql security definer set search_path=pg_catalog as $
+) returns jsonb language plpgsql security definer set search_path=pg_catalog as $$
 declare c pup_queue.control%rowtype; at_time timestamptz:=clock_timestamp();
  high_count integer; low_count integer; active boolean;
 begin
@@ -354,7 +354,7 @@ begin
   activated_at=case when active is distinct from c.automatic_active then at_time else c.activated_at end
  where id=1;
  return jsonb_build_object('ok',true,'automaticActive',active);
-end $;
+end $$;
 revoke all on function public.pup_queue_health_report(numeric,boolean) from public,anon,authenticated;
 grant execute on function public.pup_queue_health_report(numeric,boolean) to service_role;
 
@@ -384,7 +384,7 @@ comment on schema pup_queue is 'PRIVATE stage-only admission control. Never expo
   'playersAhead',case when t.state='WAITING' then ahead else 0 end,
   'retryAfterMs',case when t.state='WAITING' then 12000 else 10000 end,
   'protocol',1);
-end $;
+end $$;
 revoke all on function public.pup_queue_status(text,uuid) from public,anon,authenticated;
 grant execute on function public.pup_queue_status(text,uuid) to service_role;
 
