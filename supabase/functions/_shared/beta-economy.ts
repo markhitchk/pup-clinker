@@ -39,6 +39,21 @@ export function newBetaKotlinSave(now=Date.now()):Dict{
   }};
 }
 
+type AfkNotice={id:string;amount:number;createdAt:number;claimed:boolean};
+function readAfkInbox(v:Dict):AfkNotice[]{
+ const value=v.beta_afk_notifications_v1;
+ if(value===undefined||value===null||value==="")return [];
+ expect(typeof value==="string"&&value.length<=24000,"INVALID_AFK_HISTORY");
+ let raw:unknown;try{raw=JSON.parse(value);}catch{throw Error("INVALID_AFK_HISTORY");}
+ expect(Array.isArray(raw)&&raw.length<=100,"INVALID_AFK_HISTORY");
+ for(const item of raw){
+  expect(isObj(item)&&typeof item.id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(item.id)&&
+   typeof item.amount==="number"&&Number.isSafeInteger(item.amount)&&item.amount>=1&&item.amount<=7000&&
+   typeof item.createdAt==="number"&&Number.isSafeInteger(item.createdAt)&&item.createdAt>0&&
+   typeof item.claimed==="boolean","INVALID_AFK_HISTORY");
+ }
+ return raw as AfkNotice[];
+}
 export type BetaEconomyIntent={type:string;kind?:string;upgradeId?:string;rarity?:string;name?:string;skill?:string;goalId?:string;amount?:number;wager?:number;bet?:{type?:string;number?:number};id?:string;payment?:string};
 const MAX=Number.MAX_SAFE_INTEGER;
 const defs=[
@@ -439,6 +454,42 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
     write(v,t,"puppy_name",name.slice(0,18),"string");
     careWrite(v,t,now);
    }
+   break;
+  }
+  case "afkStart":{
+   // The client supplies no timestamps or balances. Only a signed foreground
+   // -> background transition may start an AFK interval.
+   if(num(v,"beta_afk_started_at_v1")===0)
+    setLong(v,t,"beta_afk_started_at_v1",now);
+   break;
+  }
+  case "afkSettle":{
+   const start=num(v,"beta_afk_started_at_v1");
+   if(start>0){
+    const elapsed=Math.min(7*86400000,Math.max(0,now-start));
+    const amount=Math.min(7000,Math.floor(elapsed*1000/86400000));
+    if(amount>0){
+     const key="beta_afk_notifications_v1";
+     const history=readAfkInbox(v);
+     const end=start+elapsed;
+     const id="afk:"+start+":"+end;
+     if(!history.some(n=>n.id===id)){
+      history.unshift({id,amount,createdAt:now,claimed:false});
+      write(v,t,key,JSON.stringify(history.slice(0,100)),"string");
+     }
+    }
+    setLong(v,t,"beta_afk_started_at_v1",0);
+   }
+   break;
+  }
+  case "afkClaim":{
+   const id=intent.id;
+   expect(typeof id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(id),"INVALID_AFK_ID");
+   const history=readAfkInbox(v);
+   const item=history.find(n=>n.id===id);
+   expect(item&&!item.claimed,"AFK_ALREADY_CLAIMED");
+   earned(v,t,item.amount);
+   write(v,t,"beta_afk_notifications_v1",JSON.stringify(history.map(n=>n.id===id?{...n,claimed:true}:n)),"string");
    break;
   }
   case "favorite":{
