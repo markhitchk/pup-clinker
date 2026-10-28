@@ -12,7 +12,7 @@ Deno.serve(async req=>{
   let body:Record<string,unknown>;
   try{body=await req.json();}catch{throw new HttpError(400,"PC-Q008","Queue request is invalid.");}
   const proof=verifyQueueProof(body);
-  await queueRateLimit(req,proof.binding);
+  await queueRateLimit(req,proof.binding,proof.nonce);
   const admin=createAdminClient();
   const result=publicQueueResponse(await queueDispatch(admin,proof.action,proof.binding,proof.ticketId));
   return new Response(JSON.stringify({...result,correlationId}),{
