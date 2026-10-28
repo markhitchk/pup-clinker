@@ -10,7 +10,7 @@ test('React Native mounts web Discord handoff at app root',()=>{
 test('Android web handoff forwards codes only using the one allowed redirect',()=>{
  const handoff=read('src/production/WebDiscordHandoff.jsx');
  const account=read('src/production/BetaAccountEntry.jsx');
- assert.match(handoff,/discord-1547982688898777118/);
+ assert.match(read('src/production/webDiscordCallback.js'),/discord-1547982688898777118/);
  assert.match(handoff,/relay-submit/);
  assert.doesNotMatch(handoff,/NativeModules\.PuppyBetaAccount|device_key|access_token/);
  assert.match(account,/if\(isWebDiscordCallback\(url\)\|\|/);
