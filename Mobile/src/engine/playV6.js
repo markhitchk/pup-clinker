@@ -52,7 +52,7 @@ export function v6WalletFormat(value,compact=true){
  const [scale,suffix]=unit;
  const amount=n/scale;
  const decimals=amount<10?2:amount<100?1:0;
- return amount.toFixed(decimals).replace(/(\\.\\d*?[1-9])0+$|\\.0+$/,'$1')+suffix;
+ return amount.toFixed(decimals).replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1')+suffix;
 }
 export function v6CooldownSeconds(game,now=Date.now()){
  const until=Number(game?.cooldownUntilMs)||0;
