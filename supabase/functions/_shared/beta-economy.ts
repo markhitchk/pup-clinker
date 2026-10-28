@@ -487,9 +487,8 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    expect(typeof id==="string"&&/^afk:\d{10,15}:\d{10,15}$/.test(id),"INVALID_AFK_ID");
    const history=readAfkInbox(v);
    const item=history.find(n=>n.id===id);
-   // Duplicate taps or a delayed mobile receipt must never pay twice.
-   // Returning the authoritative save for an already-claimed notice lets the
-   // client clear its stale Claim action instead of showing "Action rejected".
+   // Return the authoritative receipt for duplicate taps or a delayed UI refresh,
+   // without ever awarding this reward a second time.
    expect(item,"AFK_REWARD_NOT_FOUND");
    if(item.claimed)break;
    earned(v,t,item.amount);
