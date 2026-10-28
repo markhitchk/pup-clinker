@@ -68,10 +68,10 @@ async function identityFromWebSession(admin:any,req:Request){
  if(!WEB_ORIGINS.has(req.headers.get("origin")||""))
   throw new HttpError(403,"EXCHANGE_WEB_ORIGIN_INVALID","Unrecognized website origin.");
  const bearer=req.headers.get("authorization")||"";
- if(!/^Bearer\\s+\\S+$/.test(bearer))
+ if(!/^Bearer\s+\S+$/.test(bearer))
   throw new HttpError(401,"EXCHANGE_WEB_SESSION_REQUIRED","Sign in to your Pup Account.");
  // getUser(token) checks the signature, expiry and current Auth user on the server.
- const {data:session,error:authError}=await admin.auth.getUser(bearer.replace(/^Bearer\\s+/,""));
+ const {data:session,error:authError}=await admin.auth.getUser(bearer.replace(/^Bearer\s+/,""));
  if(authError||!session?.user||session.user.is_anonymous)
   throw new HttpError(401,"EXCHANGE_WEB_SESSION_REQUIRED","Sign in to your Pup Account.");
  const link=await admin.from("pup_web_auth_links").select("account_uuid")
