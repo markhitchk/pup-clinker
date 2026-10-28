@@ -100,7 +100,21 @@ export function projectKotlinCloudSave(raw,username=''){
   if(pending.type==='SCRATCHERS')g.pendingScratch=pending;
   if(pending.type==='LUCKY_WHEEL')g.pendingWheel=pending;
  }
-  g.redeemedCodeIds=set('redeemed_code_ids');
+  // System-reward history comes only from a server-signed cloud snapshot.
+ // Never infer a claimable reward from a client-supplied Treat balance.
+ try{
+  const notices=JSON.parse(string('beta_afk_notifications_v1','[]'));
+  if(Array.isArray(notices))g.notificationInbox=notices.filter(n=>
+   n&&typeof n.id==='string'&&/^afk:\d{10,15}:\d{10,15}$/.test(n.id)&&
+   Number.isSafeInteger(n.amount)&&n.amount>0&&n.amount<=7000&&
+   Number.isSafeInteger(n.createdAt)&&n.createdAt>0&&typeof n.claimed==='boolean'
+  ).slice(0,100).map(n=>({
+   id:n.id,category:'pup',title:'Your puppies saved some Treats!',
+   body:'Your puppies saved '+n.amount+' Treats while you were away.',
+   createdAt:n.createdAt,read:n.claimed,action:n.claimed?null:'afkClaim',
+  }));
+ }catch{/* A malformed optional notice never changes the signed economy. */}
+ g.redeemedCodeIds=set('redeemed_code_ids');
  g.onboardingComplete=true;
  g.onboardingStep=5;
  // Internal legacy presentation field only; it is never a guest identity.
