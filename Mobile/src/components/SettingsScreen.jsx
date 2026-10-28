@@ -11,7 +11,7 @@ const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
-export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,onConnectAccount,onUpdateAccountName,onUpdateBirthday,cloudState,syncStatus,onRefreshAccount}){
+export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,account,onConnectAccount,onUpdateAccountName,onUpdateBirthday,cloudState,syncStatus,onRefreshAccount}){
  const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [profileBusy,setProfileBusy]=useState(false),[profileMessage,setProfileMessage]=useState('');
@@ -54,7 +54,8 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </>)}
   {betaMode?section('pup-account','🔐','Pup Account','Manage your sign-in and contact details',<>
     <T muted>Sign-in and cloud progress load automatically during startup.</T>
-    <Action onPress={onConnectAccount}>Manage Pup Account</Action>
+    <Action onPress={()=>onOpen('account-details')}>View Account Details</Action>
+    <Action onPress={onConnectAccount}>Manage Pup Account Sign-in</Action>
    </>):null}
    {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>Discord sign-in and account management remain available in Settings.</T></>:pending)}
   {group('APP & EXPERIENCE')}
@@ -102,13 +103,16 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T style={s.bold}>CURRENT SAVE</T><T muted>{betaMode?'Your game progress is stored securely in Pup Account after confirmed actions.':'Local guest save. Your original Kotlin app and cloud progress are separate.'}</T>
    {betaMode?<View style={{gap:7}}>
     <T style={s.bold}>CLOUD BACKUP</T>
-    <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)?C.danger:C.text}]}>
-     {['ERROR','BLOCKED','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)
-      ?'A recent action could not be confirmed. Please reconnect and try again.'
-      :syncStatus?.state==='SAVING'?'Saving your progress…'
-      :syncStatus?.state==='SAVED'?'Cloud backup working.'
-      :'Cloud backup is available after sign-in.'}
+    <T accessibilityRole="alert" style={[s.small,{color:['ERROR','BLOCKED','REJECTED','SAVED_DISPLAY_ERROR','VERIFYING_SAVE'].includes(syncStatus?.state)?C.danger:C.text}]}>
+     {syncStatus?.state==='SAVING'?'Saving your progress…':
+      syncStatus?.state==='SAVED'?'Cloud backup working.':
+      syncStatus?.state==='NO_CHANGE'?'No save was necessary for the last action.':
+      syncStatus?.state==='VERIFYING_SAVE'||syncStatus?.state==='RECONNECTING'?'Confirming your last cloud save…':
+      syncStatus?.state==='REJECTED'?'The last action was not applied.':
+      syncStatus?.state==='ERROR'||syncStatus?.state==='BLOCKED'||syncStatus?.state==='SAVED_DISPLAY_ERROR'?'Cloud progress needs attention.':
+      'Cloud backup available.'}
     </T>
+    {syncStatus?.notice?<T muted style={s.small}>{syncStatus.notice}</T>:null}
     <T muted style={s.small}>Check Cloud Backup verifies your save connection without spending Treats or changing XP.</T>
     <Action disabled={syncStatus?.state==='SAVING'} onPress={()=>act({type:'syncProbe'})}>{syncStatus?.state==='SAVING'?'Checking…':'Check Cloud Backup'}</Action>
     <Action onPress={()=>{void onRefreshAccount?.();}}>Refresh Game Progress</Action>
