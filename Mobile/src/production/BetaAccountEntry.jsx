@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
+import {isWebDiscordCallback} from './webDiscordCallback.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -55,7 +56,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   }
  },[onVerified]);
  const finish=useCallback(async url=>{
-  if(!isCallback(url)||recent.current===url)return;
+  // Browser-initiated Discord code belongs to its own PKCE verifier.
+  // Only the app-root WebDiscordHandoff may forward it; never pass it to PupEye.
+  if(isWebDiscordCallback(url)||!isCallback(url)||recent.current===url)return;
   recent.current=url;
   setBusy(true);
   setProblem('');
