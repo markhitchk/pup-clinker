@@ -17,6 +17,21 @@ function registerProductionAuthority(contents){
  if(!marker.test(contents))throw Error('Pup Account: unsupported Kotlin MainApplication template');
  return contents.replace(marker,match=>match+'\n              '+registration+'\n              '+betaRegistration);
 }
+function stagingBackendRoot(){
+ if(process.env.EXPO_PUBLIC_PUP_QUEUE_ENABLED!=='true')return null;
+ const queueUrl=process.env.EXPO_PUBLIC_PUP_QUEUE_URL||'';
+ const url=new URL(queueUrl);
+ if(url.protocol!=='https:'||!url.hostname.endsWith('.supabase.co')||
+  url.pathname!=='/functions/v1/pup-queue')
+  throw Error('Staging queue requires a valid isolated Supabase Edge URL');
+ if(url.hostname==='damcmyqusdxucwozkoeh.supabase.co')
+  throw Error('Queue staging builds cannot point to the live Puppy Clicker database');
+ if(!process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY)
+  throw Error('Staging queue requires the staging Supabase publishable key');
+ // Changing every native auth/save endpoint together prevents staging from
+ // silently authenticating against production after queue admission.
+ return url.origin+'/functions/v1/';
+}
 function withPuppyProductionAuthority(config){
  config=withMainApplication(config,mod=>{
   if(mod.modResults.language!=='kt')throw Error('Pup Account requires Kotlin MainApplication');
@@ -39,6 +54,16 @@ function withPuppyProductionAuthority(config){
    path.join(__dirname,'puppy-production/PuppyStartupCrashStore.kt'),
    path.join(java,'PuppyStartupCrashStore.kt')
   );
+  const alternate=stagingBackendRoot();
+  if(alternate){
+   const production='https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/';
+   for(const file of ['PuppyBetaAccountPackage.kt','PuppyProductionAuthorityPackage.kt']){
+    const dest=path.join(java,file);
+    const source=fs.readFileSync(dest,'utf8');
+    if(!source.includes(production))throw Error('Expected PupEye production URL missing: '+file);
+    fs.writeFileSync(dest,source.replaceAll(production,alternate));
+   }
+  }
   return mod;
  }]);
 }
@@ -46,3 +71,5 @@ module.exports=withPuppyProductionAuthority;
 module.exports.registerProductionAuthority=registerProductionAuthority;
 
 module.exports.installNativeCrashRecorder=installNativeCrashRecorder;
+
+module.exports.stagingBackendRoot=stagingBackendRoot;

@@ -44,3 +44,23 @@ verify_jwt = false
 # Discord bot only. Secret-authenticated developer gifts and system messages.
 [functions.pup-bot-gift]
 verify_jwt = false
+
+# Queue is signed separately: publishable key, Android P-256 proof and
+# one-time database leases, not a Supabase Auth JWT.
+[functions.pup-queue]
+verify_jwt = false
+
+# Administrative actions require a verified PupEye DEVELOPER session.
+[functions.pup-queue-admin]
+verify_jwt = false
+
+# Monitoring is authenticated by an independent secret stored on the server.
+[functions.pup-queue-monitor]
+verify_jwt = false
+
+# Existing signed beta account endpoints authenticate using PupEye sessions.
+[functions.pup-beta-link]
+verify_jwt = false
+
+[functions.pup-credentials]
+verify_jwt = false

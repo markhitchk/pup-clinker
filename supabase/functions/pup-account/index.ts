@@ -11,6 +11,7 @@ import {
 } from "../_shared/pupeye.ts";
 
 const MAX_SAVE_BYTES = 1024 * 1024;
+import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
 
 function objectValue(value: unknown, field: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -163,6 +164,9 @@ Deno.serve(async (req: Request) => {
 
     const admin = createAdminClient();
     const session = await authenticateSession(req, admin, envelope);
+    if (["account-bootstrap","cloud-save-read","cloud-save-write"].includes(envelope.action)) {
+      await requirePlayerAdmission(req,admin,session,envelope.action);
+    }
     const account = await ensureAccount(admin, session);
 
     if (account.status !== "active") {

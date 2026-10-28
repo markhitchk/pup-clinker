@@ -11,12 +11,16 @@ import {
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
 
+import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
+
 Deno.serve(async (req: Request) => {
+
   try {
     assertPublishableRequest(req);
       const envelope = verifyEnvelope(await req.json(), "save-checkpoint");
       const admin = createAdminClient();
       const session = await authenticateSession(req, admin, envelope);
+    await requirePlayerAdmission(req,admin,session,"save-checkpoint");
       const generation = requiredNumber(envelope.payload.generation, "generation");
       const supportCode = requiredString(envelope.payload.supportCode, "supportCode").slice(0, 32);
       const reason = typeof envelope.payload.reason === "string"
