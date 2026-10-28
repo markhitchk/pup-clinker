@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(33);
 select ok(to_regclass('public.pup_exchange_connections') is not null,'friend connections table exists');
 select ok(to_regclass('public.pup_exchange_offers') is not null,'offers table exists');
 select ok(to_regclass('public.pup_exchange_transfer_policy') is not null,'transfer policy table exists');
@@ -168,6 +168,54 @@ select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000001114')$$,
  'P0001','EXCHANGE_PUPPY_NOT_TRANSFERABLE',
  'regular account still cannot gift protected puppy');
+
+-- Direct gifting is tied to a verified server DEVELOPER role, not a client
+-- flag. A developer can gift a bound style to an unconnected player, but
+-- normal users still need friendship and block decisions still apply.
+delete from public.pup_exchange_connections
+ where requester='f0000000-0000-4000-8000-000000001114'
+   and recipient='f0000000-0000-4000-8000-000000002225';
+update public.pupeye_players set guild_role='DEVELOPER',guild_verified_at=now()
+ where id='f0000000-0000-4000-8000-000000001111';
+insert into public.pup_exchange_transfer_policy(puppy_id,giftable,tradeable,bound)
+values ('v4_direct_dev_gift',false,false,true);
+insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
+values ('f0000000-0000-4000-8000-000000007005',
+ 'f0000000-0000-4000-8000-000000001114',
+ 'f0000000-0000-4000-8000-000000002225','gift',array['v4_direct_dev_gift']);
+select is((public.pup_exchange_complete(
+ 'f0000000-0000-4000-8000-000000007005',
+ 'f0000000-0000-4000-8000-000000002225')->>'state'),'completed',
+ 'verified developer gift succeeds without a friend connection');
+select ok((select save_data #> '{stores,puppy_clicker_save,values,unlocked_puppies}'
+ from public.pup_account_saves where account_uuid='f0000000-0000-4000-8000-000000002225')
+ ? 'v4_direct_dev_gift','recipient receives direct developer gift');
+
+-- Ordinary accounts may not skip the friend relationship.
+insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
+values ('f0000000-0000-4000-8000-000000007006',
+ 'f0000000-0000-4000-8000-000000002225',
+ 'f0000000-0000-4000-8000-000000001114','gift',array['v3_gift_fixture']);
+select throws_ok($$select public.pup_exchange_complete(
+ 'f0000000-0000-4000-8000-000000007006',
+ 'f0000000-0000-4000-8000-000000001114')$$,
+ 'P0001','EXCHANGE_FRIENDSHIP_REQUIRED',
+ 'normal gift without a friend connection is rejected');
+
+-- A block by either party must override the developer's direct-gift right.
+insert into public.pup_exchange_connections(requester,recipient,state,blocked_by)
+values ('f0000000-0000-4000-8000-000000001114',
+ 'f0000000-0000-4000-8000-000000002225','blocked',
+ 'f0000000-0000-4000-8000-000000002225');
+insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
+values ('f0000000-0000-4000-8000-000000007007',
+ 'f0000000-0000-4000-8000-000000001114',
+ 'f0000000-0000-4000-8000-000000002225','gift',array['v4_direct_dev_gift']);
+select throws_ok($$select public.pup_exchange_complete(
+ 'f0000000-0000-4000-8000-000000007007',
+ 'f0000000-0000-4000-8000-000000002225')$$,
+ 'P0001','EXCHANGE_BLOCKED',
+ 'blocked connection rejects developer gifting');
 
 select * from finish();
 rollback;

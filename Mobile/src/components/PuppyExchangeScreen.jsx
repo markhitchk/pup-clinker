@@ -92,6 +92,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
  const byId=new Map((registry?.items||[]).map(p=>[p.id,p]));
  const active=useMemo(()=>new Set(game?.unlockedPuppies||[]),[game?.unlockedPuppies]);
  const canGiftAll=data.profile?.canGiftAll===true;
+ const canGiftDirect=data.profile?.canGiftDirect===true;
  const eligible=kind=>(registry?.items||[]).filter(p=>
   kind==='gift'&&canGiftAll ? true : active.has(p.id)&&
    (kind==='gift'?policy.get(p.id)?.giftable:policy.get(p.id)?.tradeable));
@@ -99,7 +100,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
  const details=ids=>ids?.length?ids.map(puppyLabel).join(' · '):'No puppies selected';
  const sendFriend=async()=>{
   const valid=code.trim().toUpperCase();
-  if(!/^PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(valid)){
+  if(!/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/.test(valid)){
    setError('Use a Friend Code like PUP-XXXX-XXXX-XXXX.');return;
   }
   if(await run('request',{friendCode:valid},'Friend request sent.'))
@@ -143,7 +144,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
   const pups=eligible(kind);
   return <View style={styles.section}>
    <Text style={styles.label}>{kind==='gift'&&canGiftAll?'All official puppies':'Your eligible puppies'} · {chosen.length}/{max}</Text>
-   {kind==='gift'&&canGiftAll?<Text style={styles.muted}>Owner gifting: choose any published puppy, including protected and future roster styles. Your friend must still accept.</Text>:null}
+   {kind==='gift'&&canGiftAll?<Text style={styles.muted}>Developer gifting: choose any published puppy, including protected and future roster styles. The recipient must still accept.</Text>:null}
    {pups.length===0?<Text style={styles.muted}>No server-approved {kind==='gift'?'giftable':'tradeable'} puppies are available in your verified roster. Protected and source-copy puppies cannot be exchanged.</Text>:null}
    <View style={styles.wrap}>{pups.map(p=>{
     const checked=chosen.includes(p.id);
@@ -233,7 +234,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
   </View>:null}
   {tab==='connect'?panel(<>
    <Text style={styles.heading}>Connect with a friend</Text>
-   <Text style={styles.muted}>Enter their permanent Friend Code. The recipient accepts from Friends. Usernames are display-only.</Text>
+   <Text style={styles.muted}>Enter their Friend Code. The recipient accepts from Friends. Developer gifting is available directly in Gifts without adding a friend.</Text>
    <TextInput accessibilityLabel="Friend Code" value={code}
     onChangeText={x=>{setCode(x.toUpperCase());setFound(null);}} autoCapitalize="characters"
     placeholder="PUP-XXXX-XXXX-XXXX" placeholderTextColor="#8B9DAC"
@@ -253,29 +254,42 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
    {panel(<>
     <Text style={styles.heading}>{tab==='gifts'?'🎁 Send a puppy gift':'⇄ Trade puppies'}</Text>
     <Text style={styles.muted}>{tab==='gifts'
-     ?'The sender retains their original puppy; the recipient must accept.'
+     ?(canGiftDirect
+       ?'Developer gift: send to any eligible account using their Friend Code, without connecting. The recipient must accept.'
+       :'The sender retains their original puppy; the recipient must accept.')
      :'You offer up to five owned puppies. Your friend counters with up to five, then you confirm.'}</Text>
-    <Text style={styles.label}>Accepted friend</Text>
+    <Text style={styles.label}>{tab==='gifts'&&canGiftDirect?'Gift recipient':'Accepted friend'}</Text>
     <View style={styles.wrap}>{friends.map(c=><Pressable key={c.id}
       accessibilityRole="radio" accessibilityState={{checked:friendCode===c.peer?.code}}
       onPress={()=>setFriendCode(c.peer?.code||'')}
       style={[styles.chip,friendCode===c.peer?.code&&styles.chipOn]}>
       <Text style={styles.chipText}>{c.peer?.name}</Text></Pressable>)}</View>
-    {friends.length===0?<Text style={styles.muted}>Add a friend in Connect first.</Text>:null}
+    {tab==='gifts'&&canGiftDirect?<TextInput
+      accessibilityLabel="Gift recipient Friend Code"
+      value={friendCode}
+      onChangeText={x=>setFriendCode(x.toUpperCase().trim())}
+      autoCapitalize="characters"
+      placeholder="Recipient Friend Code: PUP-XXXX-XXXX-XXXX"
+      placeholderTextColor="#8B9DAC"
+      maxLength={19} style={styles.input}/>:null}
+    {friends.length===0&&!canGiftDirect?<Text style={styles.muted}>Add a friend in Connect first.</Text>:null}
     {selector(tab==='gifts'?'gift':'trade',selected,setSelected,tab==='gifts'?1:5)}
     {button(tab==='gifts'?'Offer gift':'Propose trade',()=>{
      setOfferKind(tab==='gifts'?'gift':'trade');
      // sendOffer reads offerKind on the next render. Pass the intended mode
      // directly below rather than relying on asynchronous React state.
      const kind=tab==='gifts'?'gift':'trade';
-     if(!friendCode||selected.length===0){setError('Select a friend and eligible puppies.');return;}
+     const recipientCode=friendCode.trim().toUpperCase();
+     if(!/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/.test(recipientCode)||selected.length===0){
+      setError('Enter a valid recipient Friend Code and select a puppy.');return;
+     }
      Alert.alert(kind==='gift'?'Send gift?':'Propose trade?',
       kind==='gift'?'Your friend must accept the puppy copy.':
        'Your friend must counter, and you must approve the final trade.',
       [{text:'Cancel',style:'cancel'},{text:'Send',onPress:async()=>{
-       if(await run('offer',{friendCode,kind,offered:selected},'Offer sent.'))setSelected([]);
+       if(await run('offer',{friendCode:recipientCode,kind,offered:selected},'Offer sent.'))setSelected([]);
       }}]);
-    },friends.length===0||selected.length===0)}
+    },(friends.length===0&&!canGiftDirect)||selected.length===0||!friendCode)}
    </>)}
    {panel(<><Text style={styles.heading}>{tab==='gifts'?'Gift offers':'Trade offers'}</Text>
     {data.offers.filter(o=>o.kind===(tab==='gifts'?'gift':'trade')&&

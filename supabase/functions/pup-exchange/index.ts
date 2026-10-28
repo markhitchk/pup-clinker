@@ -9,7 +9,8 @@ import {assertGlobalEnforcementAllowed} from "../_shared/global-enforcement.ts";
 // is trusted. A linked beta resolves to the original account's player UUID.
 const allowed=new Set(["profile","lookup","request","respond","remove",
   "offer","counter","confirm","decline","cancel"]);
-const codePattern=/^PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
+// Fixed-width legacy player codes, plus the single reserved developer vanity code.
+const codePattern=/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/;
 const idPattern=/^[a-z0-9_]{1,64}$/;
 const consent=(a:any)=>Number(a.terms_version)>=1&&Number(a.privacy_version)>=1&&
   Boolean(a.terms_accepted_at)&&Boolean(a.privacy_accepted_at);
@@ -75,10 +76,26 @@ async function pair(admin:any,me:string,them:string){
  requireOk(q.error);
  return q.data;
 }
-async function friend(admin:any,me:string,them:string){
+async function friend(admin:any,me:string,them:string,allowDirectGift=false){
  const connection=await pair(admin,me,them);
- if(connection?.state!=="accepted")
+ // Even developers cannot override an explicit block from either party.
+ if(connection?.state==="blocked")
+  throw new HttpError(403,"EXCHANGE_BLOCKED","This connection is blocked.");
+ if(!allowDirectGift&&connection?.state!=="accepted")
   throw new HttpError(403,"EXCHANGE_FRIENDSHIP_REQUIRED","Add this player as a friend first.");
+}
+async function developerGiftPrivileges(admin:any,accountId:string):Promise<boolean>{
+ // PupEye guild roles are assigned by verified server-side Discord role sync,
+ // never user metadata or an unverified client role claim.
+ const q=await admin.from("pup_accounts").select("player_uuid,status")
+  .eq("id",accountId).maybeSingle();
+ requireOk(q.error);
+ if(!q.data||q.data.status!=="active")return false;
+ const p=await admin.from("pupeye_players")
+  .select("status,guild_role,guild_verified_at").eq("id",q.data.player_uuid).maybeSingle();
+ requireOk(p.error);
+ return p.data?.status==="active"&&p.data?.guild_role==="DEVELOPER"&&
+  Boolean(p.data?.guild_verified_at);
 }
 async function accessibleOffer(admin:any,id:string,me:string){
  if(!/^[0-9a-f-]{36}$/i.test(id))throw new HttpError(400,"EXCHANGE_OFFER_INVALID","Invalid offer.");
@@ -141,7 +158,8 @@ async function registerPublishedPuppies(admin:any,missing:string[]){
 }
 
 async function eligible(admin:any,account:any,ids:string[],type:"gift"|"trade"){
- const privileged=type==="gift"&&await canGiftAnyCatalogPuppy(admin,account);
+ const privileged=type==="gift"&&
+  (await canGiftAnyCatalogPuppy(admin,account)||await developerGiftPrivileges(admin,account));
  if(privileged){
   const rows=await admin.from("pup_exchange_transfer_policy").select("puppy_id").in("puppy_id",ids);
   requireOk(rows.error);
@@ -182,7 +200,8 @@ async function snapshot(admin:any,who:any,player:any){
  const players=accounts.data.length?await admin.from("pupeye_players")
    .select("id,friend_code").in("id",accounts.data.map((a:any)=>a.player_uuid)):{data:[],error:null};
  requireOk(players.error);
- const canGiftAll=await canGiftAnyCatalogPuppy(admin,who.id);
+ const canGiftDirect=await developerGiftPrivileges(admin,who.id);
+ const canGiftAll=canGiftDirect||await canGiftAnyCatalogPuppy(admin,who.id);
  const names=new Map(accounts.data.map((a:any)=>[a.id,{
   name:a.display_name||a.username,
   code:players.data.find((p:any)=>p.id===a.player_uuid)?.friend_code||""
@@ -190,7 +209,7 @@ async function snapshot(admin:any,who:any,player:any){
  return {
   policies:(policies.data||[]).filter((p:any)=>p.giftable||p.tradeable)
     .map((p:any)=>({id:p.puppy_id,giftable:p.giftable,tradeable:p.tradeable})),
-  profile:{username:who.display_name||who.username,friendCode:player.friend_code,canGiftAll},
+  profile:{username:who.display_name||who.username,friendCode:player.friend_code,canGiftAll,canGiftDirect},
   connections:(c.data||[]).map((x:any)=>({
    id:x.id,peer:names.get(x.requester===who.id?x.recipient:x.requester),
    incoming:x.recipient===who.id,state:x.state,blockedByMe:x.blocked_by===who.id
@@ -268,9 +287,10 @@ Deno.serve(async(req:Request)=>{
   }
   if(action==="offer"){
    const target=await peerByCode(admin,s(params.friendCode,30).toUpperCase());
-   await friend(admin,me,target.id);
    const kind=params.kind==="gift"?"gift":params.kind==="trade"?"trade":null;
    if(!kind)throw new HttpError(400,"EXCHANGE_OFFER_INVALID","Invalid offer type.");
+   const canGiftDirect=kind==="gift"&&await developerGiftPrivileges(admin,me);
+   await friend(admin,me,target.id,canGiftDirect);
    const ids=uniqueIds(params.offered,1,kind==="gift"?1:5);
    await eligible(admin,me,ids,kind);
    const q=await admin.from("pup_exchange_offers").insert({
