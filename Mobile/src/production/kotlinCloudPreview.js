@@ -111,7 +111,7 @@ export function projectKotlinCloudSave(raw,username=''){
   ).slice(0,100).map(n=>({
    id:n.id,category:'pup',title:'Your puppies saved some Treats!',
    body:'Your puppies saved '+n.amount+' Treats while you were away.',
-   createdAt:n.createdAt,read:n.claimed,action:n.claimed?null:'afkClaim',
+   createdAt:n.createdAt,read:n.claimed||n.read===true,action:n.claimed?null:'afkClaim',
   }));
  }catch{/* A malformed optional notice never changes the signed economy. */}
  g.redeemedCodeIds=set('redeemed_code_ids');
