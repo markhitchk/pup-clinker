@@ -5,7 +5,7 @@ const categories=['reward','pup','system'];
 export function sanitizeInbox(input){
  if(!Array.isArray(input))return [];
  const ids=new Set();
- return input.filter(n=>n&&typeof n.id==='string'&&n.id.length<=100&&!ids.has(n.id)&&ids.add(n.id)&&categories.includes(n.category)&&typeof n.title==='string'&&typeof n.body==='string'&&Number.isSafeInteger(n.createdAt)&&n.createdAt>0).slice(0,INBOX_LIMIT).map(n=>({id:n.id,title:n.title.slice(0,180),body:n.body.slice(0,1000),category:n.category,createdAt:n.createdAt,read:n.read===true,action:['daily','parkClaim'].includes(n.action)?n.action:null}));
+ return input.filter(n=>n&&typeof n.id==='string'&&n.id.length<=100&&!ids.has(n.id)&&ids.add(n.id)&&categories.includes(n.category)&&typeof n.title==='string'&&typeof n.body==='string'&&Number.isSafeInteger(n.createdAt)&&n.createdAt>0).slice(0,INBOX_LIMIT).map(n=>({id:n.id,title:n.title.slice(0,180),body:n.body.slice(0,1000),category:n.category,createdAt:n.createdAt,read:n.read===true,action:['daily','parkClaim','afkClaim'].includes(n.action)?n.action:null}));
 }
 function append(g,item){
  if(g.notificationSeenIds.includes(item.id))return;
