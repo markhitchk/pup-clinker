@@ -8,7 +8,7 @@ Deno.serve(async(req:Request)=>{
  try{
   assertPublishableRequest(req);
   const signed=verifyEnvelope(await req.json());
-  if(!["queue-admin-status","queue-admin-config"].includes(signed.action))
+  if(!["queue-admin-status","queue-admin-config","queue-admin-thresholds"].includes(signed.action))
    throw new HttpError(400,"QUEUE_ADMIN_ACTION_INVALID","Invalid queue operation.");
   const admin=createAdminClient();
   const session=await authenticateSession(req,admin,signed);
@@ -26,6 +26,18 @@ Deno.serve(async(req:Request)=>{
     automaticActive:data.automatic_active,healthCheckedAt:data.health_checked_at,
     revision:data.revision
    }});
+  }
+  if(signed.action==="queue-admin-thresholds"){
+   const p=signed.payload;
+   if(typeof p.high!=="number"||typeof p.low!=="number"||!Number.isFinite(p.high)||
+      !Number.isFinite(p.low)||p.low<0||p.high>1||p.low>=p.high)
+    throw new HttpError(400,"QUEUE_ADMIN_INVALID","Measured pressure thresholds are required.");
+   const {data,error}=await admin.rpc("pup_queue_admin_thresholds",{
+    p_actor:session.player.id,p_high:p.high,p_low:p.low,
+    p_hold_seconds:Number.isSafeInteger(p.holdSeconds)?p.holdSeconds:120
+   });
+   if(error)throw new HttpError(409,"QUEUE_ADMIN_CONFLICT","Queue threshold update was rejected.");
+   return json(200,data);
   }
   const payload=signed.payload;
   const mode=payload.mode;
