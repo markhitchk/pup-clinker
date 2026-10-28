@@ -33,7 +33,8 @@ The native bridge generates a minimal hardware-backed P-256 key without register
 - Only service-role RPCs; `anon` and `authenticated` cannot call the privileged admission/lease functions. Edge Functions still validate account/session signatures, bans, ownership, save integrity and transactions.
 - Capacity row locking serializes **ticket promotions and claims**, while ordinary status queries use a separate read-only RPC without global capacity locks.
 - WAITING tickets preserve FIFO `sequence_id`. Short-lived READY and ADMITTED leases are counted against one atomic `slots_used` counter.
-- Ticket heartbeat writes are coalesced on Android; public polling is jittered and backed off.
+- Ticket heartbeat writes are coalesced on Android; public polling uses the dedicated read-only `pup_queue_status` RPC, with jitter and backoff. Expired READY/ADMITTED leases never produce an accepted polling state.
+- Redis rate limiting rejects replayed signed nonces across Edge workers; the service validates a P-256 public key and bounds streamed JSON bodies to 2 KiB.
 - Maximum capacity, admission rate, automatic thresholds and measured baselines begin **unset**. No fake wait-time estimate is returned.
 
 **Protected paths:** `pup-beta-link` (gameplay, cloud read, bootstrap), `pup-account` (cloud read/write/bootstrap), `pupeye-sync`, `pupeye-transaction` and `pupeye-save-attestation`. Authentication, account recovery and support actions are intentionally exempt from gameplay admission while retaining existing authorization and enforcement.
@@ -75,14 +76,14 @@ When the queue flag is enabled, the Expo config plugin replaces **all** native P
 ### Test scenarios
 
 - `Mobile/tests/queueAdmission.test.js`: pre-startup module isolation, error safety, native proof, backend guard coverage and bounds.
-- `supabase/tests/pup_queue_admission_test.sql`: RLS, service-role-only execution, transparent disabled mode, FIFO capacity and replay idempotence.
+- `supabase/tests/pup_queue_admission_test.sql`: RLS, service-role-only execution, transparent disabled mode, FIFO capacity, replay idempotence, and pre-activation session continuity/revocation.
 - `supabase/functions/tests/pup-queue-test.ts`: signed P-256 proof tampering, safe public responses and missing-admission rejection.
 - `scripts/queue-load.mjs`: opt-in, guarded staged burst harness with p50, p95, p99, state and error counts. **No actual load test results are claimed.**
 
 ### Security review / remaining blockers
 
-1. **Existing active sessions when automatic protection switches on.** The current first-pass admission gate may reject gameplay writes for an incumbent authenticated session that entered while queuing was disabled. A session-continuity lease / trusted pre-activation allowance must be implemented and tested before production rollout; never lose unsynced rewards.
-2. **Anti-bot / source IP integrity.** Redis counters and Keystore binding are in place but per-IP forwarding must be verified as trusted upstream metadata. A sufficiently distributed botnet can create many new keys. Add WAF/challenge and abuse benchmarks before exposing enabled public queue.
+1. **Existing active sessions during activation — code mitigation added, live validation pending.** `20261028010200_pup_queue_session_continuity_staging.sql` preserves cloud-save access for an authenticated, unrevoked PupEye session created before the queue became active, only until that original session expires. A newly issued session still requires admission. This is not a bypass for fresh logins. Verify during staging failover, and measure incumbent capacity headroom. Existing installations which never established a server session beforehand still need the staged-upgrade strategy below.
+2. **Anti-bot / source IP integrity.** Redis request ceilings, one-time signed nonces and Keystore binding are implemented, but per-IP forwarding must be verified as trusted upstream metadata (never trust client-set X-Forwarded-For). A sufficiently distributed botnet can create many new keys. Add WAF/challenge and abuse benchmarks before exposing enabled public queue.
 3. **Database cost and capacity:** index/SQL correctness in CI is not equivalent to load-test success. Run DB pool saturation, Redis outage, auth failure, network drop and simultaneous-claim tests in staging.
 4. **Monitoring:** a privileged metrics-ingestion endpoint exists but there is not yet a deployed independent metrics collector or measured baselines. Automatic mode is disabled by default and fails closed if evidence is stale.
 5. **Legacy Android clients:** existing Kotlin Google Play APKs cannot prove possession of a pre-startup ticket. Do not enable admission requirements in production until a compatible staged upgrade strategy and authenticated incumbent-session handling exist.
