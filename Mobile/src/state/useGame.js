@@ -29,6 +29,7 @@ export function useGame({mode='guest'}={}){
  const cachedPreview=useRef(false);
  const currentRequest=useRef(0);
  const pendingLiveWrites=useRef(0);
+ const needsReceiptRecheck=useRef(false);
  const signedWriteQueue=useRef(Promise.resolve());
  const nextTapIntentId=useRef(0);
  const [pendingTapIntents,setPendingTapIntents]=useState([]);
@@ -283,14 +284,26 @@ export function useGame({mode='guest'}={}){
      void refreshAccount();
     }
    }).catch(error=>{
+    // A timeout or dropped response does NOT prove the server rejected the
+    // mutation. Never replay an ambiguous economy action or erase the last
+    // verified cloud snapshot. Re-read the signed server state after all
+    // in-flight writes settle, and ask the player before submitting again.
     const code=String(error?.code||'SAVE_NETWORK_FAILURE').replace(/^BETA_/,'').slice(0,64);
-    setSyncStatus(previous=>({...previous,state:'ERROR',errorCode:code,
-     errorDetail:String(error?.message||'').slice(0,120)}));
-    if(/CLOUD_SAVE_CONFLICT/.test(code))void refreshAccount();
-    if(ToastAndroid?.show)ToastAndroid.show('Could not save the action. Check your connection and try again.',ToastAndroid.LONG);
+    const rejected=/GAMEPLAY_REJECTED|GAMEPLAY_NOT_PORTED|PUP_LEGAL_ACCEPTANCE_REQUIRED/.test(code);
+    if(!rejected)needsReceiptRecheck.current=true;
+    setSyncStatus(previous=>({...previous,
+     state:rejected?'REJECTED':'VERIFYING_SAVE',
+     errorCode:rejected?'ACTION_NOT_ACCEPTED':'SAVE_RECEIPT_UNCONFIRMED'}));
+    if(ToastAndroid?.show)ToastAndroid.show(
+     rejected?'Action rejected. No new progress was saved.':'Save confirmation lost. Checking Pup Account before another action.',
+     ToastAndroid.LONG);
    }).finally(()=>{
     if(tapIntentId!==null)setPendingTapIntents(current=>current.filter(item=>item.id!==tapIntentId));
     pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);
+    if(pendingLiveWrites.current===0&&needsReceiptRecheck.current){
+     needsReceiptRecheck.current=false;
+     void refreshAccount();
+    }
    });
    return;
   }
