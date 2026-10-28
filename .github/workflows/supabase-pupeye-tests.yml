@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/**'
+      - 'scripts/exchange-web-session.test.mjs'
       - '.github/workflows/supabase-pupeye-tests.yml'
   pull_request:
     branches: [main]
@@ -26,6 +27,8 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Test Exchange browser session parsing
+        run: node --test scripts/exchange-web-session.test.mjs
       - name: Start local Supabase
         run: supabase start
       - name: Run database tests
