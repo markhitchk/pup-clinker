@@ -136,7 +136,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private class ApiError(val code:String,val reason:String=""):Exception(code)
  private fun post(function:String,body:JSONObject,key:String,token:String?=null):JSONObject {
   publishable(key)
-  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link","pup-credentials"))
+  require(function in setOf("pupeye-register","pupeye-auth-discord","pup-account","pup-beta-link","pup-credentials","pup-exchange"))
   val c=URL(root+function).openConnection() as HttpURLConnection
   try {
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
@@ -536,6 +536,17 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putString("savedAt",answer.optString("savedAt",""))
    putString("saveJson",answer.getJSONObject("saveData").toString())
   }
+ }
+ // Signed account-bound Puppy Exchange operations. A JSON string avoids
+ // exposing an unverified React-side token, device key or installation ID.
+ @ReactMethod fun exchangeAction(intentJson:String,key:String,p:Promise)=runAsync(p){
+  require(intentJson.length in 2..4096){"Invalid Puppy Exchange request"}
+  val intent=JSONObject(intentJson)
+  val action=intent.optString("operation")
+  require(action in setOf("profile","lookup","request","respond","remove",
+   "offer","counter","confirm","decline","cancel")){"Unsupported Exchange action"}
+  val answer=signedPost("pup-exchange","puppy-exchange",intent,key)
+  Arguments.createMap().apply{putString("json",answer.toString())}
  }
  private val setupBooleans=mapOf(
   "reducedMotion" to "reduced_motion", "anonymousDiagnosticsEnabled" to "anonymous_diagnostics_enabled",
