@@ -93,6 +93,9 @@ async function eligible(admin:any,account:any,ids:string[],type:"gift"|"trade"){
   throw new HttpError(409,"EXCHANGE_NOT_TRANSFERABLE","These puppies cannot be transferred.");
 }
 async function snapshot(admin:any,who:any,player:any){
+ const policies=await admin.from("pup_exchange_transfer_policy")
+   .select("puppy_id,giftable,tradeable").eq("bound",false).eq("source_copy",false)
+   .limit(500);requireOk(policies.error);
  const c=await admin.from("pup_exchange_connections").select("*")
   .or("requester.eq."+who.id+",recipient.eq."+who.id)
   .order("updated_at",{ascending:false}).limit(100);requireOk(c.error);
@@ -114,6 +117,8 @@ async function snapshot(admin:any,who:any,player:any){
   code:players.data.find((p:any)=>p.id===a.player_uuid)?.friend_code||""
  }]));
  return {
+  policies:(policies.data||[]).filter((p:any)=>p.giftable||p.tradeable)
+    .map((p:any)=>({id:p.puppy_id,giftable:p.giftable,tradeable:p.tradeable})),
   profile:{username:who.display_name||who.username,friendCode:player.friend_code},
   connections:(c.data||[]).map((x:any)=>({
    id:x.id,peer:names.get(x.requester===who.id?x.recipient:x.requester),
