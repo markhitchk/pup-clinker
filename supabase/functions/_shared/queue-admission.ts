@@ -48,6 +48,7 @@ export async function requirePlayerAdmission(
  const {data,error}=await admin.rpc("pup_queue_guard",{
   p_ticket:ticket,p_binding_hash:session.installation.device_key_id,
   p_player:session.player.id,p_installation:session.installation.id,
+  p_session:session.session.id,
   p_touch:true,
  });
  if(error){
