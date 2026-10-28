@@ -233,6 +233,14 @@ begin
  select * into t from pup_queue.tickets where id=p_ticket;
  if not found or t.binding_hash<>p_binding_hash then
   return jsonb_build_object('state','REVOKED','code','PC-Q008','retryAfterMs',15000);end if;
+ -- This query never mutates capacity, but must not tell Android to enter on
+ -- a lease that has already expired between polls.
+ if (t.state='READY' and (t.ready_until is null or t.ready_until<=clock_timestamp()))
+    or (t.state='ADMITTED' and (t.lease_until is null or t.lease_until<=clock_timestamp()))
+    or (t.state='WAITING' and (t.expires_at<=clock_timestamp() or
+        t.last_seen_at<=clock_timestamp()-interval '8 minutes')) then
+  return jsonb_build_object('state','EXPIRED','code','PC-Q003','retryAfterMs',10000);
+ end if;
  if t.state='WAITING' then
   select count(*)::integer into ahead from pup_queue.tickets
    where state='WAITING' and sequence_id<t.sequence_id;
