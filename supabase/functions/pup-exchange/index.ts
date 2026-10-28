@@ -127,7 +127,7 @@ async function registerPublishedPuppies(admin:any,missing:string[]){
    if(typeof item?.asset_id!=="string"||typeof item?.file!=="string")continue;
    const id=item.asset_id.trim();
    if(idPattern.test(id)&&id.startsWith(prefix)&&
-      /^[A-Za-z0-9._-]{1,128}\\.png$/.test(item.file.trim()))recognized.add(id);
+      /^[A-Za-z0-9._-]{1,128}$/.test(item.file.trim())&&item.file.endsWith(".png"))recognized.add(id);
   }
   if(missing.every(id=>recognized.has(id)))break;
  }
