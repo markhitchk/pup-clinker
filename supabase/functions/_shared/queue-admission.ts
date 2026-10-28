@@ -93,9 +93,15 @@ export async function queueRateLimit(req:Request,binding:string):Promise<void>{
   throw new HttpError(429,"PC-Q005","Please slow down and retry.");
 }
 export async function queueDispatch(admin:any,action:string,binding:string,ticketId:string|null){
- const {data,error}=await admin.rpc("pup_queue_dispatch",{
-  p_action:action,p_binding_hash:binding,p_ticket:ticketId
- });
+ // Ordinary status polling must remain read-only. The capacity-serialized
+ // dispatch RPC deliberately rejects "status" and is only for transitions.
+ const {data,error}=action==="status"
+  ?await admin.rpc("pup_queue_status",{
+    p_binding_hash:binding,p_ticket:ticketId
+   })
+  :await admin.rpc("pup_queue_dispatch",{
+    p_action:action,p_binding_hash:binding,p_ticket:ticketId
+   });
  if(error)throw new HttpError(503,"PC-Q002","Queue status is temporarily unavailable.");
  return data as Record<string,unknown>;
 }
