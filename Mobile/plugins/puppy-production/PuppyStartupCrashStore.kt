@@ -37,9 +37,10 @@ object PuppyStartupCrashStore {
  }
  fun read(ctx:Context):String? {
   val age=System.currentTimeMillis()-prefs(ctx).getLong("at",0L)
-  if(age<0||age>7L*24*60*60*1000L)return null
+  if(age<0||age>7L*24*60*60*1000L){clear(ctx);return null}
   val code=prefs(ctx).getString("code",null)
-  return if(allowed.contains(code))code else null
+  if(!allowed.contains(code)){clear(ctx);return null}
+  return code
  }
  fun clear(ctx:Context):Boolean=prefs(ctx).edit().remove("code").remove("at").commit()
 }
