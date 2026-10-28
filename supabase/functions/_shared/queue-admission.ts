@@ -1,4 +1,4 @@
-import { createHash, createPublicKey, createVerify } from "node:crypto";
+import { createHash, createHmac, createPublicKey, createVerify } from "node:crypto";
 import type { Buffer as NodeBuffer } from "node:buffer";
 import { HttpError, createAdminClient } from "./pupeye.ts";
 
@@ -26,9 +26,11 @@ export function verifyQueueProof(raw: Record<string,unknown>) {
  try{
   const verifier=createVerify("SHA256");verifier.update(material);verifier.end();
   const key=createPublicKey({key:keyBytes as unknown as NodeBuffer,format:"der",type:"spki"});
-  if(!verifier.verify(key,sigBytes))throw Error("Proof rejected");
+  if(key.asymmetricKeyType!=="ec"||
+     key.asymmetricKeyDetails?.namedCurve!=="prime256v1"||
+     !verifier.verify(key,sigBytes))throw Error("Proof rejected");
  }catch{throw new HttpError(401,"PC-Q008","Queue proof is invalid.");}
- return {action,binding,ticketId:ticketId||null};
+ return {action,binding,ticketId:ticketId||null,nonce};
 }
 export function queueError(code:string):HttpError{
  if(code==="PC-Q007")return new HttpError(503,"PC-Q007","Puppy Clicker is undergoing maintenance.");
@@ -66,7 +68,7 @@ export async function requirePlayerAdmission(
  * Never use in-process counters as the production security boundary.
  * This requires a non-user-configurable source identifier at the trusted edge.
  */
-export async function queueRateLimit(req:Request,binding:string):Promise<void>{
+export async function queueRateLimit(req:Request,binding:string,nonce:string):Promise<void>{
  const endpoint=Deno.env.get("PUP_QUEUE_REDIS_REST_URL");
  const key=Deno.env.get("PUP_QUEUE_REDIS_REST_TOKEN");
  const ipCeiling=Number(Deno.env.get("PUP_QUEUE_IP_MAX_PER_MIN"));
@@ -77,20 +79,32 @@ export async function queueRateLimit(req:Request,binding:string):Promise<void>{
  // Edge/runtime-provided connecting IP is an abuse signal, not account identity.
  const ip=req.headers.get("cf-connecting-ip")??req.headers.get("x-real-ip")??
   req.headers.get("x-forwarded-for")?.split(",")[0]??"unknown";
- const privacyDigest=createHash("sha256").update(ip).digest("hex").slice(0,24);
+ // HMAC prevents redis-key logging from disclosing linkable plain IP hashes.
+ const privacyDigest=createHmac("sha256",key).update(ip).digest("hex").slice(0,24);
  const slot=Math.floor(Date.now()/60000);
  const buckets=[`pupq:ip:${privacyDigest}:${slot}`,`pupq:device:${binding}:${slot}`];
+ const replayKey="pupq:proof:"+createHmac("sha256",key)
+  .update(binding+"|"+nonce).digest("hex");
  const response=await fetch(endpoint.replace(/\/$/,"")+"/pipeline",{
   method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},
-  body:JSON.stringify(buckets.flatMap(b=>[["INCR",b],["EXPIRE",b,90]])),
+  // The single Redis SET NX rejects a replayed signed nonce across workers.
+  body:JSON.stringify([...buckets.flatMap(b=>[["INCR",b],["EXPIRE",b,90]]),
+   ["SET",replayKey,"1","EX",180,"NX"]]),
   signal:AbortSignal.timeout(2000)
  }).catch(()=>null);
  if(!response?.ok)throw new HttpError(503,"PC-Q005","Queue protection is temporarily unavailable.");
  const results=await response.json().catch(()=>null);
- if(!Array.isArray(results)||results.length!==4)
+ if(!Array.isArray(results)||results.length!==5)
   throw new HttpError(503,"PC-Q005","Queue protection is temporarily unavailable.");
+ const ipCount=results[0]?.result,deviceCount=results[2]?.result;
+ if(!Number.isSafeInteger(ipCount)||!Number.isSafeInteger(deviceCount)||
+    ipCount<1||deviceCount<1||results[1]?.error||results[3]?.error||
+    results[4]?.error)
+  throw new HttpError(503,"PC-Q005","Queue protection is temporarily unavailable.");
+ if(results[4]?.result!== "OK")
+  throw new HttpError(401,"PC-Q008","Queue request has already been used.");
  // Thresholds are anti-abuse request ceilings, not player capacity.
- if(Number(results[0]?.result)>ipCeiling||Number(results[2]?.result)>bindingCeiling)
+ if(ipCount>ipCeiling||deviceCount>bindingCeiling)
   throw new HttpError(429,"PC-Q005","Please slow down and retry.");
 }
 export async function queueDispatch(admin:any,action:string,binding:string,ticketId:string|null){
