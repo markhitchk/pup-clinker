@@ -126,16 +126,32 @@ test('closing a held danger dialog cancels the timer before it can dispatch',asy
   now=25000;await act(()=>mock.timers.tick(15100));assert.equal(ui.confirmed(),0);assert.equal(ui.dismissed(),1);
  }finally{await act(()=>ui.renderer.unmount());mock.restoreAll();mock.timers.reset();}
 });
-test('a stale inbox Claim press cannot credit the same local reward twice',async()=>{
+test('AFK notification Claim sends a signed claim intent instead of locally crediting Treats',async()=>{
  let state={game:freshGame(),ready:true,notice:''},renderer;
- state=transition(state,{type:'checkNotifications',now:Date.now()});
- const render=()=>React.createElement(Inbox,{visible:true,g:state.game,act:action=>{state=transition(state,action);renderer.update(render());},onClose:()=>{}});
+ const now=Date.now(),id='afk:'+(now-500000)+':'+now;
+ state.game.notificationInbox=[{id,category:'pup',title:'Your puppies saved some Treats!',body:'Your puppies saved 5 Treats while you were away.',createdAt:now,read:false,action:'afkClaim'}];
+ const calls=[];
+ const render=()=>React.createElement(Inbox,{visible:true,g:state.game,act:action=>calls.push(action),onClose:()=>{}});
  await act(()=>{renderer=create(render());});
  try{
-  const claim=renderer.root.findAllByType('Pressable').find(p=>String(p.props.accessibilityLabel).startsWith('Claim ')).props.onPress;
-  await act(claim);const balance=state.game.treats;assert.ok(balance>0);
-  await act(claim);assert.equal(state.game.treats,balance);
+  const claim=renderer.root.findAllByType('Pressable').find(p=>String(p.props.accessibilityLabel).startsWith('Claim '));
+  assert.ok(claim,'server-authored AFK rewards retain a Claim control');
+  await act(()=>claim.props.onPress());
+  assert.deepEqual(calls,[{type:'afkClaim',id}]);
+  assert.equal(state.game.treats,0,'UI never manufactures rewards');
+ }finally{await act(()=>renderer.unmount());}
+});
+test('daily reward notification navigates to Rewards and does not claim without confirmation',async()=>{
+ let state={game:freshGame(),ready:true,notice:''},renderer,route=null,closed=0;
+ state=transition(state,{type:'checkNotifications',now:Date.now()});
+ const render=()=>React.createElement(Inbox,{visible:true,g:state.game,act:action=>{state=transition(state,action);},onClose:()=>closed++,onNavigate:r=>route=r});
+ await act(()=>{renderer=create(render());});
+ try{
   assert.equal(renderer.root.findAllByType('Pressable').filter(p=>String(p.props.accessibilityLabel).startsWith('Claim ')).length,0);
+  const daily=renderer.root.findAllByType('Pressable').find(p=>String(p.props.accessibilityLabel).includes('Daily Puppy Reward available'));
+  assert.ok(daily);
+  await act(()=>daily.props.onPress());
+  assert.equal(route,'rewards');assert.equal(closed,1);assert.equal(state.game.treats,0);
  }finally{await act(()=>renderer.unmount());}
 });
 test('inbox and danger windows explicitly draw edge to edge before applying safe insets',async()=>{
