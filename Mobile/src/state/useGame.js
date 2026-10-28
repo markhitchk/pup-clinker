@@ -284,6 +284,18 @@ export function useGame({mode='guest'}={}){
   }
   dispatch(action);
  },[beta,account?.displayName,account?.username,cloudState,refreshAccount]);
+ const afkResumeChecked=useRef(false);
+ useEffect(()=>{
+  if(!beta||account?.status!=='VERIFIED'||account.gameplayWritable!==true||!liveVerified.current)return;
+  // The server alone timestamps AFK starts and settles earned Treats.
+  // No client clock or balance is accepted for these intents.
+  if(!afkResumeChecked.current){afkResumeChecked.current=true;act({type:'afkSettle'});}
+  const sub=AppState.addEventListener('change',status=>{
+   if(status==='background')act({type:'afkStart'});
+   if(status==='active')act({type:'afkSettle'});
+  });
+  return ()=>sub.remove();
+ },[beta,account?.status,account?.gameplayWritable,act]);
  const updateAccountName=useCallback(async displayName=>{
   if(!beta||account?.status!=='VERIFIED')throw new Error('Sign in before editing your Pup Account.');
   const updated=await NativeModules.PuppyBetaAccount.updateDisplayName(displayName,PUBLISHABLE_KEY);
