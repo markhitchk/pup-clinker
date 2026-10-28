@@ -183,8 +183,8 @@ test('expired PupEye sessions are renewed without blindly replaying uncertain wr
  assert.match(bridge,/val answer=signedPost\("pup-beta-link","beta-gameplay",payload,key\)/);
  assert.match(hook,/needsReceiptRecheck/);
  assert.match(hook,/pendingLiveWrites\.current===0&&needsReceiptRecheck\.current/);
- assert.match(hook,/Save confirmation lost/);
+ assert.match(hook,/classifyBetaSaveFailure/);
  assert.doesNotMatch(hook,/errorDetail:String\(error\?\.message/);
- assert.match(app,/Save needs attention/);
+ assert.doesNotMatch(app,/Save needs attention|Saving progress…|Progress saved to Pup Account/);
  assert.doesNotMatch(app,/syncStatus\.errorCode/);
 });
