@@ -8,6 +8,7 @@ import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
+import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
 import PuppyPointer from './src/components/PuppyPointer.jsx';
 import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
@@ -371,6 +372,7 @@ function RosterScreen({g,act,registry,onUse}){
  const available=registry.items;
  const [sort,setSort]=useState('unlocked');
  const [inspected,setInspected]=useState(g.puppyStyle);
+ const [detailsId,setDetailsId]=useState(null);
  const [view,setView]=useState('browser');
  const [renameOpen,setRenameOpen]=useState(false);
  const [editing,setEditing]=useState(g.puppyName);
@@ -384,6 +386,9 @@ function RosterScreen({g,act,registry,onUse}){
  useEffect(()=>setEditing(g.puppyName),[g.puppyName]);
 
  const selected=available.find(p=>p.id===inspected)||available.find(p=>p.id===g.puppyStyle)||available[0];
+ const details=available.find(p=>p.id===detailsId);
+ const detailsOwned=details?g.unlockedPuppies.includes(details.id):false;
+ const detailsCurrent=details?.id===g.puppyStyle;
  const selectedOwned=g.unlockedPuppies.includes(selected.id);
  const selectedFavorite=g.favoritePuppies.includes(selected.id);
  const matches=available.filter(p=>{
@@ -443,6 +448,15 @@ function RosterScreen({g,act,registry,onUse}){
   <Txt muted style={styles.small}>Puppy collection; protected Puppy Code and Discord entitlements require verified account services.</Txt>
  </View>;
  return <View style={styles.restoredRoster}>
+  <PuppyDetailsDialog visible={Boolean(details)} puppy={details} onClose={()=>setDetailsId(null)}
+   portrait={details?<Portrait key={details.id+':details:'+(retries[details.id]||0)} puppy={details} size={112} unlocked={detailsOwned} accessory={detailsCurrent?g.accessory:'None'}/>:null}
+   originalName={details?puppyName(details):''} displayName={details?displayName(details):''}
+   assetId={details?nativeId(details):''} unlocked={detailsOwned} current={detailsCurrent}
+   favorite={Boolean(details&&g.favoritePuppies.includes(details.id))}
+   onToggleFavorite={()=>{if(detailsOwned)act({type:'favorite',id:details.id});}}
+   onRetryArtwork={()=>{if(details)retry(details.id);}}
+   onUse={id=>onUse?onUse(id):act({type:'switch',id,now:Date.now()})}
+   onRename={name=>act({type:'rename',name})}/>
   <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={()=>Alert.alert('Puppy Exchange','Puppy Exchange requires the linked account and protected trading service. This service requires authorized Pup Account access.')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
   <View style={styles.restoredRosterFilters}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.rosterStatus,status===id&&styles.rosterStatusSelected]}><Txt style={[styles.rosterControlText,status===id&&styles.rosterSelectedText]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍  Search puppies or ID" placeholderTextColor={C.muted} style={styles.rosterSearch} maxLength={64} value={search} onChangeText={setSearch}/>
@@ -470,7 +484,7 @@ function RosterScreen({g,act,registry,onUse}){
   </View>
   {matches.length?<View style={styles.restoredRosterGrid} onLayout={event=>setGridWidth(event.nativeEvent.layout.width)}>{matches.map(p=>{
    const owned=g.unlockedPuppies.includes(p.id),fav=g.favoritePuppies.includes(p.id);
-   return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+puppyName(p)} key={p.id} onPress={()=>setInspected(p.id)} style={[styles.restoredRosterTile,{width:gridWidth>0?(gridWidth-14)/3:'31%'},inspected===p.id&&{borderColor:C.accent}]}>
+   return <Pressable accessibilityRole="button" accessibilityLabel={'Inspect '+puppyName(p)} key={p.id} onPress={()=>{setInspected(p.id);setDetailsId(p.id);}} style={[styles.restoredRosterTile,{width:gridWidth>0?(gridWidth-14)/3:'31%'},inspected===p.id&&{borderColor:C.accent}]}>
     <Portrait key={p.id+':'+(retries[p.id]||0)} puppy={p} size={66} unlocked={owned}/>
     <Txt numberOfLines={1} style={styles.rosterTileName}>{displayName(p)}</Txt><Txt numberOfLines={1} style={styles.rosterMeta}>{nativeId(p)}</Txt><View style={styles.rosterGroupBadge}><Txt numberOfLines={1} style={styles.rosterMeta}>{p.groupTitle}</Txt></View><Txt style={styles.rosterMeta}>{p.id===g.puppyStyle?'Current':owned?'Unlocked':'🔒 Locked'}</Txt>
     <Pressable accessibilityRole="button" accessibilityLabel={(fav?'Remove ':'Add ')+displayName(p)+(fav?' from favorites':' to favorites')} disabled={!owned} onPress={e=>{e.stopPropagation?.();act({type:'favorite',id:p.id});}} style={[styles.rosterHeart,{position:'absolute',right:0,top:0}]}><Txt style={[styles.rosterHeartText,fav&&{color:'#FF646B'}]}>{fav?'♥':'♡'}</Txt></Pressable>
