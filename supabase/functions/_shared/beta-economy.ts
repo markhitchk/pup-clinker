@@ -441,6 +441,15 @@ export async function applyBetaEconomy(raw:unknown,intent:BetaEconomyIntent,now=
    }
    break;
   }
+  case "favorite":{
+   const id=intent.id;
+   expect(typeof id==="string"&&/^[a-z0-9_]{1,40}$/.test(id),"INVALID_PUPPY_ID");
+   const unlocked=new Set([...own(v,"unlocked_puppies"),"classic","golden","poodle","spotty"]);
+   expect(unlocked.has(id),"PUPPY_LOCKED");
+   const favorites=own(v,"favorite_puppies");
+   write(v,t,"favorite_puppies",favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id],"string_set");
+   break;
+  }
   case "rename":{
    const name=typeof intent.name==="string"?intent.name.trim().replace(/\n/g," ").slice(0,18):"";
    expect(name.length>0,"PUPPY_NAME_REQUIRED");
