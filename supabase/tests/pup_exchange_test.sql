@@ -196,9 +196,9 @@ insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
 values ('f0000000-0000-4000-8000-000000007006',
  'f0000000-0000-4000-8000-000000002225',
  'f0000000-0000-4000-8000-000000001114','gift',array['v3_gift_fixture']);
-select throws_ok($select public.pup_exchange_complete(
+select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000007006',
- 'f0000000-0000-4000-8000-000000001114')$,
+ 'f0000000-0000-4000-8000-000000001114')$$,
  'P0001','EXCHANGE_FRIENDSHIP_REQUIRED',
  'normal gift without a friend connection is rejected');
 
@@ -211,9 +211,9 @@ insert into public.pup_exchange_offers(id,sender,recipient,kind,offered)
 values ('f0000000-0000-4000-8000-000000007007',
  'f0000000-0000-4000-8000-000000001114',
  'f0000000-0000-4000-8000-000000002225','gift',array['v4_direct_dev_gift']);
-select throws_ok($select public.pup_exchange_complete(
+select throws_ok($$select public.pup_exchange_complete(
  'f0000000-0000-4000-8000-000000007007',
- 'f0000000-0000-4000-8000-000000002225')$,
+ 'f0000000-0000-4000-8000-000000002225')$$,
  'P0001','EXCHANGE_BLOCKED',
  'blocked connection rejects developer gifting');
 
