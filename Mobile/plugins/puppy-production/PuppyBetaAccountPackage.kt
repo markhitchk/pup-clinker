@@ -30,6 +30,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
  private val sessionFile get()=File(ctx.noBackupFilesDir,"pupeye/supabase_session_v1.pup")
  // Encrypted and device-bound; never an authority for economy writes.
  private val accountPreviewFile get()=File(ctx.noBackupFilesDir,"pupeye/account_preview_v1.pup")
+ private val queueFile get()=File(ctx.noBackupFilesDir,"pupeye/admission_ticket_v1.pup")
  private val store get()=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
  private val random=SecureRandom()
  private val root="https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/"
@@ -70,6 +71,22 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   cipher.init(Cipher.DECRYPT_MODE,store.getKey(aesAlias,null) as SecretKey,GCMParameterSpec(128,bytes.copyOfRange(4,16)))
   cipher.updateAAD("PuppyClicker/device-save/v1".toByteArray())
   return JSONObject(String(cipher.doFinal(bytes.copyOfRange(16,bytes.size))))
+ }
+ private fun initializeQueueIdentity(){
+  beta()
+  if(!store.containsAlias(keyAlias)){
+   val gen=KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC,"AndroidKeyStore")
+   gen.initialize(KeyGenParameterSpec.Builder(keyAlias,KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
+    .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1")).setDigests(KeyProperties.DIGEST_SHA256).build())
+   gen.generateKeyPair()
+  }
+  if(!store.containsAlias(aesAlias)){
+   val gen=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore")
+   gen.init(KeyGenParameterSpec.Builder(aesAlias,KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+    .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+    .setKeySize(256).build())
+   gen.generateKey()
+  }
  }
  private fun initializeBetaIdentity() {
   beta()
@@ -125,6 +142,11 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    c.requestMethod="POST";c.connectTimeout=30000;c.readTimeout=90000;c.doOutput=true
    c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("apikey",key)
    if(token!=null)c.setRequestProperty("X-Pupeye-Session",token)
+   // Only the matching signed installation may use a server-issued lease.
+   runCatching{read(queueFile).optString("ticketId","")}
+    .getOrNull()?.takeIf{it.matches(Regex("[0-9a-fA-F-]{36}"))}?.let{
+     c.setRequestProperty("X-Puppy-Queue-Ticket",it)
+    }
    val bytes=body.toString().toByteArray()
    c.setFixedLengthStreamingMode(bytes.size)
    c.outputStream.use{it.write(bytes)}
@@ -219,6 +241,70 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     "PupEye request failed ("+e.javaClass.simpleName.take(32)+"). Check connectivity and retry.")
   }
  }.start()}
+ // Anonymous admission runs BEFORE PupEye player registration.
+ private fun queueRequest(action:String,apiUrl:String,key:String):WritableMap{
+  initializeQueueIdentity()
+  publishable(key)
+  require(action in setOf("bootstrap","status","admit","release"))
+  val url=URL(apiUrl)
+  require(url.protocol=="https"&&url.host.endsWith(".supabase.co")&&
+   url.path.endsWith("/functions/v1/pup-queue")){"Unsupported queue endpoint"}
+  val stored=runCatching{read(queueFile)}.getOrNull()
+  val ticket=stored?.optString("ticketId","")?:""
+  val pub=b64(store.getCertificate(keyAlias).publicKey.encoded)
+  val at=System.currentTimeMillis()
+  val nonce=UUID.randomUUID().toString()
+  val material=listOf("PuppyClicker/Queue/v1",action,at.toString(),nonce,ticket,pub).joinToString("\n")
+  val sig=Signature.getInstance("SHA256withECDSA").run{
+   initSign(store.getKey(keyAlias,null) as PrivateKey);update(material.toByteArray());b64(sign())
+  }
+  val request=JSONObject().put("action",action).put("publicKey",pub)
+   .put("timestampEpochMs",at).put("nonce",nonce).put("ticketId",ticket)
+   .put("signature",sig)
+  val conn=url.openConnection() as HttpURLConnection
+  val response:JSONObject
+  try{
+   conn.requestMethod="POST";conn.doOutput=true
+   conn.connectTimeout=8000;conn.readTimeout=12000
+   conn.setRequestProperty("Content-Type","application/json")
+   conn.setRequestProperty("apikey",key)
+   val payload=request.toString().toByteArray()
+   conn.setFixedLengthStreamingMode(payload.size)
+   conn.outputStream.use{it.write(payload)}
+   val bytes=(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream)
+    ?.use{it.readNBytes(8193)}?:ByteArray(0)
+   require(bytes.size<=8192){"Queue response too large"}
+   response=JSONObject(String(bytes))
+  }finally{conn.disconnect()}
+  val state=response.optString("state","UNAVAILABLE")
+  val issued=response.optString("ticketId","")
+  if(issued.matches(Regex("[0-9a-fA-F-]{36}"))&&issued!=ticket)
+   write(queueFile,JSONObject().put("ticketId",issued))
+  if(state=="REVOKED"||state=="EXPIRED"||state=="RELEASED")
+   queueFile.delete()
+  return Arguments.createMap().apply{
+   putString("state",state)
+   putString("code",response.optString("code",""))
+   putString("ticketId",issued)
+   putInt("retryAfterMs",response.optInt("retryAfterMs",12000).coerceIn(5000,60000))
+   if(response.has("playersAhead")&&!response.isNull("playersAhead"))
+    putInt("playersAhead",response.optInt("playersAhead").coerceAtLeast(0))
+   putString("correlationId",response.optString("correlationId",""))
+  }
+ }
+ private fun queueSafely(action:String,url:String,key:String):WritableMap =
+  try{queueRequest(action,url,key)}catch(e:Exception){
+   Arguments.createMap().apply{
+    putString("state","UNAVAILABLE")
+    putString("code",if(action=="bootstrap")"PC-Q001" else "PC-Q006")
+    putInt("retryAfterMs",30000)
+   }
+  }
+ @ReactMethod fun queueBootstrap(url:String,key:String,p:Promise)=runAsync(p){queueSafely("bootstrap",url,key)}
+ @ReactMethod fun queueStatus(url:String,key:String,p:Promise)=runAsync(p){queueSafely("status",url,key)}
+ @ReactMethod fun queueAdmit(url:String,key:String,p:Promise)=runAsync(p){queueSafely("admit",url,key)}
+ @ReactMethod fun queueRelease(url:String,key:String,p:Promise)=runAsync(p){queueSafely("release",url,key)}
+
  // Operational crash markers contain a public code only; no stack, identity or save.
  @ReactMethod fun readStartupCrash(p:Promise)=runAsync(p){
   val code=PuppyStartupCrashStore.read(ctx)
