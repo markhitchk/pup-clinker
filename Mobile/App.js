@@ -2,6 +2,8 @@ import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
 import AccountOnboarding from './src/production/AccountOnboarding.jsx';
 import PuppyStartupScreen from './src/production/PuppyStartupScreen.jsx';
+import PuppyErrorBoundary from './src/production/PuppyErrorBoundary.jsx';
+import {classifyStartupFailure,publicStartupIssue} from './src/production/startupErrors.js';
 import {startupGate} from './src/production/startupGate.js';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
 import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
@@ -993,17 +995,46 @@ function OnboardingScreen({g,act,notifications}){
 }
 // Beta uses the real Puppy Clicker screen hierarchy, not a migration-only page.
 // The production package continues to require an original-key-signed Play upgrade.
-export default function App(){return <SafeAreaProvider>{NativeModules.PuppyBetaAccount?.isBeta===true?<PuppyApp betaMode/>:<ProductionEntry/>}</SafeAreaProvider>;}
+export default function App(){return <SafeAreaProvider><PuppyErrorBoundary>{NativeModules.PuppyBetaAccount?.isBeta===true?<PuppyApp betaMode/>:<ProductionEntry/>}</PuppyErrorBoundary></SafeAreaProvider>;}
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,gameForDisplay,act:gameAct,account,cloudState,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
+ const {state,gameForDisplay,act:gameAct,account,cloudState,startupError,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
  const onboarding=useAccountOnboarding({enabled:betaMode,account,activateAccount:refreshAccount});
  const act=useCallback(action=>{
   gameAct(action);
   if(betaMode&&action.type==='setPreference')void onboarding.update({[action.name]:action.value});
   if(betaMode&&action.type==='resetSettings')void onboarding.update(DEFAULT_PREFERENCES);
  },[gameAct,betaMode,onboarding.update]);
+ const [crashChecked,setCrashChecked]=useState(!betaMode);
+ const [previousCrash,setPreviousCrash]=useState(null);
+ const [startupRetryBusy,setStartupRetryBusy]=useState(false);
+ useEffect(()=>{
+  if(!betaMode)return;
+  let active=true;
+  const native=NativeModules.PuppyBetaAccount;
+  Promise.resolve(native?.readStartupCrash?.()).then(result=>{
+   if(active&&result?.exists===true)setPreviousCrash(publicStartupIssue(result.code));
+  }).catch(()=>{/* Crash markers are optional; never block authenticated startup. */})
+   .finally(()=>{if(active)setCrashChecked(true);});
+  return ()=>{active=false;};
+ },[betaMode]);
+ const retryStartup=()=>{
+  if(startupRetryBusy)return;
+  setStartupRetryBusy(true);
+  void Promise.allSettled([refreshAccount(),onboarding.reload()])
+   .finally(()=>setStartupRetryBusy(false));
+ };
+ const retryPreviousCrash=()=>{
+  if(startupRetryBusy)return;
+  setStartupRetryBusy(true);
+  const native=NativeModules.PuppyBetaAccount;
+  Promise.resolve(native?.clearStartupCrash?.()).then(()=>{
+   setPreviousCrash(null);
+   return Promise.allSettled([refreshAccount(),onboarding.reload()]);
+  }).catch(()=>{/* Keep marker visible until it has been acknowledged. */})
+   .finally(()=>setStartupRetryBusy(false));
+ };
  const [accountOpen,setAccountOpen]=useState(false);
  const [accountEntryMode,setAccountEntryMode]=useState('signin');
  const openAccount=mode=>{setAccountEntryMode(mode||'signin');setAccountOpen(true);};
@@ -1042,9 +1073,13 @@ export function PuppyApp({betaMode=false}){
  // No account banner, cached preview or unverified account can enter gameplay.
  const startPhase=betaMode?startupGate({account,cloudState,setupReady:onboarding.ready,
   setupProblem:onboarding.problem,gameReady:state.ready}):'ready';
+ if(betaMode&&!crashChecked)return <PuppyStartupScreen phase="loading"/>;
+ if(betaMode&&previousCrash)return <PuppyStartupScreen phase="crash" issue={previousCrash}
+  busy={startupRetryBusy} retry={retryPreviousCrash}/>;
  if(betaMode&&(startPhase==='loading'||startPhase==='connection-error'||startPhase==='setup-error'))
-  return <PuppyStartupScreen phase={startPhase} busy={onboarding.busy}
-   retry={()=>{void Promise.all([refreshAccount(),onboarding.reload()]);}}/>;
+  return <PuppyStartupScreen phase={startPhase} issue={classifyStartupFailure({
+   source:startPhase==='setup-error'?'setup':'account',error:startupError,account,cloudState
+  })} busy={startupRetryBusy||onboarding.busy} retry={retryStartup}/>;
  if(betaMode&&(startPhase==='signin'||startPhase==='legal'))return <>
   <PuppyStartupScreen phase="loading"/>
   <BetaAccountEntry visible requiredAtStartup initialMode="signin" onboarding
