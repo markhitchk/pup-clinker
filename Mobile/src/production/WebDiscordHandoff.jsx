@@ -1,21 +1,14 @@
 import React,{useEffect} from 'react';
 import {Alert,Linking} from 'react-native';
+import {isWebDiscordCallback} from './webDiscordCallback.js';
 
 // Web uses exactly the same Discord redirect as Android. This component is
 // mounted at the app root and forwards ONLY the Discord authorization code,
 // never a PupEye session, OAuth verifier, account secret, or device key.
 const RELAY='https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/pup-web-discord-relay';
 const KEY='sb_publishable_id7zKwH7BPmmohc7T3RZmA_DTjMaFVU';
-const CALLBACK=/^discord-1547982688898777118:\/authorize\/callback(?:\?|$)/;
-const STATE=/^pcw1_[A-Za-z0-9_-]{32,64}$/;
 const CODE=/^[A-Za-z0-9_-]{8,2048}$/;
 let latestUrl='';
-export function isWebDiscordCallback(url){
- if(typeof url!=='string'||!CALLBACK.test(url))return false;
- const query=url.includes('?')?url.slice(url.indexOf('?')+1):'';
- try{return STATE.test(new URLSearchParams(query).get('state')||'');}
- catch{return false;}
-}
 async function forward(url){
  if(!isWebDiscordCallback(url)||url===latestUrl)return;
  latestUrl=url;

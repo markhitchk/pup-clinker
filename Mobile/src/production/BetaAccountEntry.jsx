@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
-import {isWebDiscordCallback} from './WebDiscordHandoff.jsx';
+import {isWebDiscordCallback} from './webDiscordCallback.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
