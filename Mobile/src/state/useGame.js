@@ -34,9 +34,14 @@ export function useGame({mode='guest'}={}){
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
-  if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('NOT_LOADED');return false;}
+  if(!native?.bootstrap){setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('CONNECTION_ERROR');return false;}
   const request=++currentRequest.current;
-  if(incoming?.status==='VERIFIED')setAccount(incoming);
+  if(incoming?.status==='VERIFIED'){
+  setAccount(incoming);
+  // After sign-in, remain on startup until the signed cloud snapshot arrives.
+  // Background refreshes must not interrupt an already verified game.
+  if(!liveVerified.current)setCloudState('NOT_LOADED');
+ }
   try{
    // A single signed request replaces sequential account-status + cloud-read.
    const result=await native.bootstrap(PUBLISHABLE_KEY);
