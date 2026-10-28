@@ -172,7 +172,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    <Text style={styles.body}>{onboarding?'Use a Pup username and password, or connect Discord instead. A support email is optional.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
    <View style={styles.card}>
     <Text style={styles.label}>PUP ACCOUNT</Text>
-    <Text style={styles.value}>{verified?'Connected':'Sign-in required'}</Text>
+    <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':'Sign-in required'}</Text>
     {verified?<><Text style={styles.body}>Pup Account: @{state.username}</Text>
       <Text style={styles.body}>Discord: {state.guildRole?'Connected':'Optional'}</Text>
       <Text style={styles.body}>Cloud save: {state.cloudSaveExists?'Found':'Not found'}</Text>
