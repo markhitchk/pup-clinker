@@ -1,5 +1,6 @@
 import ProductionEntry from './src/production/ProductionEntry.jsx';
 import BetaAccountEntry from './src/production/BetaAccountEntry.jsx';
+import WebDiscordHandoff from './src/production/WebDiscordHandoff.jsx';
 import AccountOnboarding from './src/production/AccountOnboarding.jsx';
 import PuppyStartupScreen from './src/production/PuppyStartupScreen.jsx';
 import PuppyErrorBoundary from './src/production/PuppyErrorBoundary.jsx';
@@ -997,7 +998,7 @@ function OnboardingScreen({g,act,notifications}){
 }
 // Beta uses the real Puppy Clicker screen hierarchy, not a migration-only page.
 // The production package continues to require an original-key-signed Play upgrade.
-export default function App(){return <SafeAreaProvider><PuppyErrorBoundary>{NativeModules.PuppyBetaAccount?.isBeta===true?<PuppyApp betaMode/>:<ProductionEntry/>}</PuppyErrorBoundary></SafeAreaProvider>;}
+export default function App(){return <SafeAreaProvider><WebDiscordHandoff/><PuppyErrorBoundary>{NativeModules.PuppyBetaAccount?.isBeta===true?<PuppyApp betaMode/>:<ProductionEntry/>}</PuppyErrorBoundary></SafeAreaProvider>;}
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
