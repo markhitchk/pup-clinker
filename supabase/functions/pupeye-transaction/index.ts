@@ -12,11 +12,15 @@ import {
 } from "../_shared/pupeye.ts";
 
 Deno.serve(async (req: Request) => {
+import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
+
+
   try {
     assertPublishableRequest(req);
       const envelope = verifyEnvelope(await req.json(), "economy-transaction");
       const admin = createAdminClient();
       const session = await authenticateSession(req, admin, envelope);
+    await requirePlayerAdmission(req,admin,session,"economy-transaction");
 
       const transactionId = requiredString(envelope.payload.transactionId, "transactionId").slice(0, 160);
       const source = requiredString(envelope.payload.source, "source").slice(0, 40);
