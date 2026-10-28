@@ -13,6 +13,7 @@ import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
+import PuppyExchangeScreen from './src/components/PuppyExchangeScreen.jsx';
 import PuppyPointer from './src/components/PuppyPointer.jsx';
 import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
@@ -380,7 +381,7 @@ function PrestigeScreen({g,act,activeCasinoRound=false}){
   })}
  </View>;
 }
-function RosterScreen({g,act,registry,onUse}){
+function RosterScreen({g,act,registry,onUse,onOpenExchange}){
  const [gridWidth,setGridWidth]=useState(0);
  const [search,setSearch]=useState('');
  const [status,setStatus]=useState('all');
@@ -474,7 +475,7 @@ function RosterScreen({g,act,registry,onUse}){
    onRetryArtwork={()=>{if(details)retry(details.id);}}
    onUse={id=>onUse?onUse(id):act({type:'switch',id,now:Date.now()})}
    onRename={name=>act({type:'rename',name})}/>
-  <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={()=>Alert.alert('Puppy Exchange','Puppy Exchange requires the linked account and protected trading service. This service requires authorized Pup Account access.')} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
+  <View style={styles.restoredRosterHeader}><View style={{flex:1,minWidth:0}}><Txt style={styles.pageTitle}>Puppy Roster</Txt><Txt muted numberOfLines={1} style={styles.pageSubtitle}>Browse every streamed puppy in the live roster.</Txt></View><Pressable accessibilityRole="button" accessibilityLabel="Open Puppy Exchange" onPress={onOpenExchange} style={styles.rosterOutline}><Txt style={styles.rosterActionText}>🎁 Exchange</Txt></Pressable></View>
   <View style={styles.restoredRosterFilters}>{[['all','All'],['unlocked','Unlocked'],['locked','Locked']].map(([id,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:status===id}} onPress={()=>setStatus(id)} style={[styles.rosterStatus,status===id&&styles.rosterStatusSelected]}><Txt style={[styles.rosterControlText,status===id&&styles.rosterSelectedText]}>{label}</Txt></Pressable>)}</View>
   <TextInput accessibilityLabel="Search puppies or ID" placeholder="🔍  Search puppies or ID" placeholderTextColor={C.muted} style={styles.rosterSearch} maxLength={64} value={search} onChangeText={setSearch}/>
   <View style={styles.restoredRosterFilters}>
@@ -1073,7 +1074,8 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
-  if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy}/>;
+  if(secondary==='exchange')return <PuppyExchangeScreen game={g} registry={registry} account={account} onBack={()=>setSecondary(null)} onRefresh={refreshAccount}/>;
+  if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy} onOpenExchange={()=>setSecondary('exchange')}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
@@ -1113,7 +1115,7 @@ export function PuppyApp({betaMode=false}){
 
 {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
   <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary&&secondary!=='settings'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
+   {secondary&&secondary!=='settings'&&secondary!=='exchange'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
   {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>

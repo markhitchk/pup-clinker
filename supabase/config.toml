@@ -64,3 +64,7 @@ verify_jwt = false
 
 [functions.pup-credentials]
 verify_jwt = false
+
+# PupEye signed installation + active session, no Supabase Auth JWT.
+[functions.pup-exchange]
+verify_jwt = false
