@@ -96,9 +96,7 @@ begin
      where id=o.recipient and status='active' and terms_version>=1 and privacy_version>=1)
   then raise exception 'EXCHANGE_ACCOUNT_NOT_ELIGIBLE'; end if;
 
-  -- A server-recorded, account-bound exception allows gift-only creation of
-  -- any cataloged puppy without sender ownership or standard transferability.
-  -- Account UUID comes from the signed PupEye identity at offer time.
+  -- Gift-only owner privilege; the standard rules still apply to trades.
   select o.kind='gift' and exists (
     select 1 from public.pup_exchange_privileged_gifters g
     where g.account_uuid=o.sender and g.enabled
@@ -136,83 +134,16 @@ begin
   end if;
 
   foreach puppy in array offered loop
-    if puppy !~ '^[a-z0-9_]{1,64}
-      raise exception 'EXCHANGE_SENDER_INVENTORY_INVALID';
-    end if;
-    select case when o.kind='gift' then 'gift' else 'trade' end into transfer_kind;
-    if not exists (
-      select 1 from public.pup_exchange_transfer_policy p
-      where p.puppy_id=puppy and
-        (privileged_gift or (not p.bound and not p.source_copy
-         and case when transfer_kind='gift' then p.giftable else p.tradeable end))
-    ) then raise exception 'EXCHANGE_PUPPY_NOT_TRANSFERABLE'; end if;
-  end loop;
-  if o.kind='trade' then
-    foreach puppy in array requested loop
-      if puppy !~ '^[a-z0-9_]{1,64}$' or not (rl ? puppy) or (sl ? puppy) then
-        raise exception 'EXCHANGE_RECIPIENT_INVENTORY_INVALID';
-      end if;
-      if not exists (select 1 from public.pup_exchange_transfer_policy p
-        where p.puppy_id=puppy and not p.bound and not p.source_copy and p.tradeable)
-      then raise exception 'EXCHANGE_PUPPY_NOT_TRANSFERABLE'; end if;
-    end loop;
-  end if;
-
-  -- Gifts make a non-duplicating recipient copy, as in Kotlin's resolveGiftCopy;
-  -- trades move the one existing unlocked style between players.
-  if o.kind='trade' then
-    select coalesce(jsonb_agg(value),'[]'::jsonb) into sl
-      from jsonb_array_elements(sl) as value
-      where value #>> '{}' <> all(offered);
-    select coalesce(jsonb_agg(value),'[]'::jsonb) into rl
-      from jsonb_array_elements(rl) as value
-      where value #>> '{}' <> all(requested);
-  end if;
-  select sl || to_jsonb(requested) into sl;
-  select rl || to_jsonb(offered) into rl;
-
-  -- Reset transferred-out current puppies to the permanent Classic style
-  -- including the visible name and equipped care state.
-  if o.kind='trade' then
-    if (sv #>> '{stores,puppy_clicker_save,values,puppy_style}')=any(offered) then
-      sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,puppy_style}','"classic"'::jsonb);
-      sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,puppy_name}',
-        coalesce(sv #> '{stores,puppy_clicker_save,values,puppy_name_for_classic}','"Buddy"'::jsonb),true);
-    end if;
-    if (rv #>> '{stores,puppy_clicker_save,values,puppy_style}')=any(requested) then
-      rv=jsonb_set(rv,'{stores,puppy_clicker_save,values,puppy_style}','"classic"'::jsonb);
-      rv=jsonb_set(rv,'{stores,puppy_clicker_save,values,puppy_name}',
-        coalesce(rv #> '{stores,puppy_clicker_save,values,puppy_name_for_classic}','"Buddy"'::jsonb),true);
-    end if;
-  end if;
-  sv=jsonb_set(sv,'{stores,puppy_clicker_save,values,unlocked_puppies}',sl);
-  rv=jsonb_set(rv,'{stores,puppy_clicker_save,values,unlocked_puppies}',rl);
-  saved_at=(extract(epoch from clock_timestamp())*1000)::bigint;
-  sv=jsonb_set(sv,'{savedAtEpochMs}',to_jsonb(saved_at),true);
-  rv=jsonb_set(rv,'{savedAtEpochMs}',to_jsonb(saved_at),true);
-  update public.pup_account_saves set
-    revision=revision+1, save_data=sv,
-    payload_hash_sha256=encode(extensions.digest(public.pup_exchange_canonical(sv),'sha256'),'hex'),
-    updated_at=now()
-    where account_uuid=o.sender;
-  update public.pup_account_saves set
-    revision=revision+1, save_data=rv,
-    payload_hash_sha256=encode(extensions.digest(public.pup_exchange_canonical(rv),'sha256'),'hex'),
-    updated_at=now()
-    where account_uuid=o.recipient;
-  update public.pup_exchange_offers set state='completed',completed_at=now(),updated_at=now()
-    where id=o.id;
-  return jsonb_build_object('ok',true,'offerId',o.id,'state','completed','kind',o.kind);
-end $$;
-
+    if puppy !~ '^[a-z0-9_]{1,64}$'
       or (not privileged_gift and not (sl ? puppy)) or (rl ? puppy) then
       raise exception 'EXCHANGE_SENDER_INVENTORY_INVALID';
     end if;
     select case when o.kind='gift' then 'gift' else 'trade' end into transfer_kind;
     if not exists (
       select 1 from public.pup_exchange_transfer_policy p
-      where p.puppy_id=puppy and not p.bound and not p.source_copy
-        and case when transfer_kind='gift' then p.giftable else p.tradeable end
+      where p.puppy_id=puppy and (privileged_gift or
+        (not p.bound and not p.source_copy and
+         case when transfer_kind='gift' then p.giftable else p.tradeable end))
     ) then raise exception 'EXCHANGE_PUPPY_NOT_TRANSFERABLE'; end if;
   end loop;
   if o.kind='trade' then
@@ -272,6 +203,5 @@ end $$;
     where id=o.id;
   return jsonb_build_object('ok',true,'offerId',o.id,'state','completed','kind',o.kind);
 end $$;
-
 revoke all on function public.pup_exchange_complete(uuid,uuid) from public,anon,authenticated;
 grant execute on function public.pup_exchange_complete(uuid,uuid) to service_role;
