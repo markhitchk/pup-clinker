@@ -92,7 +92,7 @@ export default function LuckyWheelV6({game,pending,lastResult,onAction,onBack}){
  const display=wheelResult(pending)||lastResult;
  const blocked=Boolean(pending||game.casinoRound||game.pendingSlots||game.pendingRoulette||
   game.pendingPlinko||game.pendingScratch);
- const canSpin=!game.casinoReadOnly&&!game.gameplayBusy&&!blocked&&validWheelWager(wager)&&game.casinoChips>=wager;
+ const canSpin=!game.casinoReadOnly&&!game.casinoLegacyRoundActive&&!game.gameplayBusy&&!blocked&&validWheelWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
   const delayMs=animationsEnabled?WHEEL_V6.spinMs:WHEEL_V6.reducedMotionMs;
