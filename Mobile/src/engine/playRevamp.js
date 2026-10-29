@@ -36,8 +36,12 @@ export function v2PlayLayout(height,uiScale='default'){
  const nameHeight=Math.round((short?43:55)*scale);
  const energyHeight=Math.round((short?31:39)*scale);
  const tapHeight=Math.max(44,Math.round((short?55:68)*scale));
- const reserved=headingHeight+walletHeight+rewardHeight+nameHeight+energyHeight+tapHeight+gap*4+36;
- const portrait=Math.max(72,Math.min(Math.round(260*scale),Math.floor((h-reserved)*0.87)));
+ // Use one unscaled height budget before applying UI Scale. Otherwise
+ // Compact would paradoxically produce a bigger puppy on short screens
+ // because smaller controls free more space.
+ const baselineReserved=short?336:412;
+ const basePortrait=Math.max(72,Math.min(260,Math.floor((h-baselineReserved)*0.87)));
+ const portrait=Math.max(72,Math.round(basePortrait*scale));
  const minStageHeight=Math.max(225,portrait+nameHeight+energyHeight+tapHeight+Math.round(32*scale));
  return {scale,short,gap,headingHeight,walletHeight,rewardHeight,nameHeight,energyHeight,tapHeight,portrait,minStageHeight};
 }
