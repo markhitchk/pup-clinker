@@ -1,3 +1,11 @@
+# Puppy Clicker Android — React Native (current)
+
+**Android production target:** `Mobile/` React Native / Expo. The historic Kotlin `App/` directory is an archived reference and is not the application being migrated or deployed. React Native may compile Kotlin-based native modules internally, but those modules do not make the old Kotlin app the deployment target.
+
+**Database:** React Native continues to use signed Supabase Edge Function and native PupEye service endpoints, not direct writes to grouped private database schemas. Supabase now includes a private PupEye Web rate gate for browser actions; it does not change Android's device attestation or signed cloud economy contract. All existing Android accounts and cloud saves remain authoritative during the staged physical-table migration.
+
+---
+
 ## October 29 — Puppy Clicker grouped database layout (v2 compatibility)
 
 The six grouped Supabase schemas (`puppy_accounts`, `puppy_pupeye`, `puppy_game`, `puppy_exchange`, `puppy_admin`, `puppy_web`) currently contain read-only organizational views. **Canonical records remain in the original `public` tables.** No saves, account/device ownership, PupEye standing or exchange policies are moved by this app update.
