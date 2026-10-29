@@ -19,17 +19,33 @@ const animation=()=>({start(){},stop(){}});
 native.Animated={Value,View:'View',Image:'Image',createAnimatedComponent:x=>x,loop:animation,timing:animation,spring:animation,sequence:animation,parallel:animation,delay:animation};
 native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={vibrate(){}};
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
-native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
+let viewportWidth=393,viewportHeight=852;
+native.useWindowDimensions=()=>({width:viewportWidth,height:viewportHeight});native.useColorScheme=()=> 'dark';
+native.StyleSheet={create:value=>value};
 native.NativeModules={PuppyBetaAccount:{readStartupCrash:async()=>({exists:false}),clearStartupCrash:async()=>true}};
 let fixture={},latestState;
 let setupComplete=true;
 function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch,gameForDisplay:state.game,account:{status:'VERIFIED',legalAccepted:true,gameplayWritable:true},cloudState:'LIVE_SYNCED',refreshAccount:async()=>true};}
 const file=new URL('../App.js',import.meta.url),require=createRequire(file),module={exports:{}};
+function loadNativeJsx(path){
+ const url=new URL(path,import.meta.url),localRequire=createRequire(url),mod={exports:{}};
+ const compiled=transformSync(readFileSync(url,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+ new Function('require','module','exports',compiled)(id=>{
+  if(id==='react-native')return native;
+  if(id.endsWith('.png')||id.endsWith('.webp'))return 1;
+  return localRequire(id);
+ },mod,mod.exports);
+ return mod.exports;
+}
+const playUi=loadNativeJsx('../src/components/ResponsivePlay.jsx');
+const desktopShell=loadNativeJsx('../src/components/ResponsiveDesktopShell.jsx');
 const source=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
 new Function('require','module','exports',source)(id=>{
  if(id==='react-native')return native;
  if(id==='react-native-safe-area-context')return {SafeAreaProvider:({children})=>children,useSafeAreaInsets:()=>({top:24,bottom:24})};
  if(id.endsWith('/theme.js'))return theme;
+ if(id==='./src/components/ResponsivePlay.jsx')return playUi;
+ if(id==='./src/components/ResponsiveDesktopShell.jsx')return desktopShell;
  if(id==='./src/production/ProductionEntry.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Pup Account verification required')};
  if(id==='./src/production/BetaAccountEntry.jsx')return {__esModule:true,default:()=>null};
  if(id==='./src/production/WebDiscordHandoff.jsx')return {__esModule:true,default:()=>null};
@@ -97,6 +113,27 @@ test('Play matches the website stage and Switch Puppy opens the live roster',asy
   await act(()=>switchPuppy.props.onPress());
   assert.match(text(renderer.root),/Puppy Roster/);
  }finally{await act(()=>renderer.unmount());}
+});
+
+test('Chromebook and DeX wide windows use desktop sidebar, scene and right resource/care panels',async()=>{
+ viewportWidth=1366;viewportHeight=900;
+ let renderer;
+ try{
+  renderer=await render();
+  assert.equal(renderer.root.findAllByProps({testID:'desktop-native-sidebar'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'desktop-play-dashboard'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'desktop-dashboard-panels'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'desktop-game-status-header'}).length,1);
+  assert.match(text(renderer.root),/Your Resources/);
+  assert.match(text(renderer.root),/Today’s goals/);
+  assert.match(text(renderer.root),/Pup Care Status/);
+  assert.equal(renderer.root.findAllByType('View').filter(v=>v.props.style?.backgroundColor==='#07495B').length,0);
+  await act(()=>renderer.root.findByProps({accessibilityLabel:'Go to Care'}).props.onPress());
+  assert.match(text(renderer.root),/Pup Care/);
+ }finally{
+  if(renderer)await act(()=>renderer.unmount());
+  viewportWidth=393;viewportHeight=852;
+ }
 });
 
 const pressLabel=async(renderer,label)=>act(()=>renderer.root.findAllByType('Pressable').find(p=>p.props.accessibilityLabel===label).props.onPress({stopPropagation(){}}));
