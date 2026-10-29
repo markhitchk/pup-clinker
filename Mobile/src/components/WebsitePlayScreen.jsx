@@ -21,14 +21,14 @@ function Label({children,style}){return <Text style={[{color:ink,fontWeight:'800
 function Action({children,onPress,disabled=false,secondary=false,style}){
  return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled}
   onPress={onPress} style={[{minHeight:38,borderRadius:16,justifyContent:'center',alignItems:'center',paddingHorizontal:14,
-   backgroundColor:secondary?'#0D2635':cyan,borderWidth:1,borderColor:secondary?'#386478':'#1AEAFF',opacity:disabled?.5:1},style]}>
+   backgroundColor:secondary?'#0D2635':cyan,borderWidth:1,borderColor:secondary?'#386478':'#1AEAFF',opacity:disabled?0.5:1},style]}>
   <Text style={{color:secondary?ink:'#061C25',fontWeight:'900',fontSize:13,textAlign:'center'}}>{children}</Text>
  </Pressable>;
 }
-function Track({label,progress,target=100,height=7}){
+function Track({label,progress,target=100,height=7,inline=false}){
  return <View accessibilityRole="progressbar" accessibilityLabel={label}
   accessibilityValue={{min:0,max:target,now:Math.max(0,Math.min(target,Number(progress)||0))}}
-  style={{backgroundColor:'#263444',height,borderRadius:12,overflow:'hidden',flex:1}}>
+  style={{backgroundColor:'#263444',height,borderRadius:12,overflow:'hidden',...(inline?{flex:1}:{width:'100%'}),flexGrow:inline?1:0}}>
   <View style={{height:'100%',width:playPercent(progress,target)+'%',borderRadius:12,backgroundColor:cyan}}/>
  </View>;
 }
@@ -83,7 +83,7 @@ function CarePanel({g,puppyPortrait,onOpen}){
   </View>
   {needs.map(([icon,name,value])=><View key={name} style={[row,{gap:5}]}>
    <Text style={[copy,{width:105}]}>{icon} {name}</Text>
-   <Track label={name+' need'} progress={value}/>
+   <Track label={name+' need'} progress={value} inline/>
    <Text style={[copy,{minWidth:34,textAlign:'right'}]}>{val(value)}%</Text>
   </View>)}
   <View style={{backgroundColor:'#0B2633',borderWidth:1,borderColor:'#1D5066',borderRadius:12,padding:9}}>
@@ -100,9 +100,7 @@ export default function WebsitePlayScreen({g,act,clock,schedule,viewportHeight,o
  const [renameOpen,setRenameOpen]=useState(false);
  const [name,setName]=useState(g.puppyName||'');
  useEffect(()=>{if(!renameOpen)setName(g.puppyName||'');},[g.puppyName,renameOpen]);
- const next=(()=>{ // passed down by the adapter as an additional field; never calculate rewards from the UI
-  return null;
- })();
+ // The adapter supplies the verified, server-compatible next reward projection.
  const reward=g.nextPlayReward;
  const disabled=readOnly||cooldown>0||val(g.energy)<=10;
  const tapLabel=readOnly?'Pup Account is read-only':cooldown?'Fair-play cooldown · '+cooldown+'s':
