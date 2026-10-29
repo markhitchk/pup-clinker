@@ -1,5 +1,8 @@
 package com.harleytg.puppyclicker
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -33,7 +36,8 @@ import kotlinx.coroutines.launch
 internal fun PuppyRevampedPlayScreen(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
-    onOpenRoster: () -> Unit
+    onOpenRoster: () -> Unit,
+    onOpenCare: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -106,13 +110,25 @@ internal fun PuppyRevampedPlayScreen(
         val compact = maxHeight < 700.dp
         val tiny = maxHeight < 590.dp
         val portraitSize = when {
+            maxWidth >= 960.dp -> 290.dp
             tiny -> 126.dp
             compact -> 166.dp
             else -> 210.dp
         }
         val gap = if (tiny) 5.dp else 8.dp
+        val desktop = maxWidth >= 960.dp
         val accent = MaterialTheme.colorScheme.primary
 
+        Row(Modifier.fillMaxSize(),horizontalArrangement = Arrangement.spacedBy(if (desktop) 14.dp else 0.dp)) {
+            Box(Modifier.weight(1.3f).fillMaxHeight()) {
+                if (desktop) {
+                    Image(
+                        painter = painterResource(R.drawable.night_yard_v1),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))
+                    )
+                }
         Column(
             Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = if (tiny) 2.dp else 4.dp)
         ) {
@@ -141,16 +157,18 @@ internal fun PuppyRevampedPlayScreen(
                     Text("⇄ Switch Puppy", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
             }
-            Spacer(Modifier.height(gap))
-            PuppyWalletCard(state)
+            if (!desktop) {
+                Spacer(Modifier.height(gap))
+                PuppyWalletCard(state)
+            }
             Spacer(Modifier.height(gap))
 
             Surface(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
-                shadowElevation = 3.dp
+                color = if (desktop) Color.Transparent else MaterialTheme.colorScheme.surface,
+                border = if (desktop) null else BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
+                shadowElevation = if (desktop) 0.dp else 3.dp
             ) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -194,13 +212,13 @@ internal fun PuppyRevampedPlayScreen(
                                     background = Color.Transparent
                                 )
                             }
-                            Text(
+                            if (!desktop) Text(
                                 state.puppyName,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Black,
                                 maxLines = 1
                             )
-                            Surface(
+                            if (!desktop) Surface(
                                 shape = RoundedCornerShape(50),
                                 border = BorderStroke(1.dp, accent),
                                 color = accent.copy(alpha = 0.12f)
@@ -322,6 +340,11 @@ internal fun PuppyRevampedPlayScreen(
             }
         }
 
+            }
+            if (desktop) {
+                PuppyDesktopPlaySidePanel(state,vm,todayGoals,onOpenCare,Modifier.weight(1f).fillMaxHeight())
+            }
+        }
         V6TicketDropOverlay(
             visible = ticketVisible,
             rarity = state.lastTicketDrop,
@@ -349,6 +372,69 @@ internal fun PuppyRevampedPlayScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PuppyDesktopPlaySidePanel(
+    state: V6GameState,
+    vm: PuppyClickerV6ViewModel,
+    goals: List<PuppyRewardGoal>,
+    onOpenCare: () -> Unit,
+    modifier: Modifier
+) {
+    Column(modifier.verticalScroll(rememberScrollState()),verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Text("Your Resources",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                PuppyWalletCard(state)
+            }
+        }
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Today's goals",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                goals.take(3).forEach { goal ->
+                    val progress = goal.progress(state).coerceIn(0L,goal.target)
+                    val claimed = goal.id in state.claimedDailyTasks
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(goal.emoji,fontSize=26.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(goal.title,style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
+                            LinearProgressIndicator(
+                                progress={progress.toFloat()/goal.target.coerceAtLeast(1L).toFloat()},
+                                modifier=Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
+                            Text(progress.toString()+"/"+goal.target+" · "+goal.rewardTreats+" 🍪",
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Button(onClick={vm.claimDailyTask(goal.id)},enabled=!claimed && progress>=goal.target,
+                            contentPadding=PaddingValues(horizontal=10.dp,vertical=4.dp)) {
+                            Text(if(claimed) "✓" else "Claim",style=MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text("Pup Care Status",modifier=Modifier.weight(1f),
+                        style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                    TextButton(onClick=onOpenCare) { Text("Go to Care →") }
+                }
+                Text(state.puppyName+" · Wellness "+state.careScore+"% · Bond "+state.bond+"%",
+                    style=MaterialTheme.typography.labelSmall)
+                PuppyCompactCareMeter("💖 Happiness",state.happiness)
+                PuppyCompactCareMeter("🍖 Fullness",state.fullness)
+                PuppyCompactCareMeter("⚡ Energy",state.energy)
+                PuppyCompactCareMeter("🫧 Cleanliness",state.cleanliness)
+                PuppyCompactCareMeter("🤝 Bond",state.bond)
+                Text("✨ +"+state.careTapBonus+" Treats per tap",style=MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 
