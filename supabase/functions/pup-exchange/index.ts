@@ -10,7 +10,7 @@ import {assertGlobalEnforcementAllowed} from "../_shared/global-enforcement.ts";
 const allowed=new Set(["profile","lookup","request","respond","remove",
   "offer","counter","confirm","decline","cancel"]);
 // Fixed-width legacy player codes, plus the single reserved developer vanity code.
-const codePattern=/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/;
+const codePattern=/^(?:PUP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|PUP-HARLEYTG-DEV)$/;
 const idPattern=/^[a-z0-9_]{1,64}$/;
 const consent=(a:any)=>Number(a.terms_version)>=1&&Number(a.privacy_version)>=1&&
   Boolean(a.terms_accepted_at)&&Boolean(a.privacy_accepted_at);
