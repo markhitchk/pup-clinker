@@ -1,8 +1,8 @@
-name: APK Handoff Build
+name: Archived Kotlin Reference APK (manual only)
 
+# Historical Kotlin archive is not the current Android app.
+# React Native APKs are built from Mobile/ using the beta workflows.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
