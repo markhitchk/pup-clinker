@@ -1,5 +1,12 @@
 import {localEpochDay} from './monthlyRewards.js';
 import {ATTENTION_INTERVAL_MS,attentionMessage} from './attention.js';
+export const DEVELOPER_SUPPORT_MESSAGE=Object.freeze({
+ id:'developer:ad-free-support:v1',
+ category:'system',
+ title:'Developer Message',
+ body:"🐶 We’re working to keep Puppy Clicker free to play and ad-free! If you enjoy the game, please consider joining our Ko-fi membership or making a one-time donation. Your optional support helps cover server and development costs. Thank you for supporting Harley’s Studios! 💙",
+ url:'https://ko-fi.com/harleytg_'
+});
 export const INBOX_LIMIT=100;
 const categories=['reward','pup','system'];
 export function sanitizeInbox(input){
@@ -21,6 +28,7 @@ export function reconcileInbox(g,now){
  });
 }
 export function checkInbox(g,now){
+ append(g,{id:DEVELOPER_SUPPORT_MESSAGE.id,category:DEVELOPER_SUPPORT_MESSAGE.category,title:DEVELOPER_SUPPORT_MESSAGE.title,body:DEVELOPER_SUPPORT_MESSAGE.body,createdAt:now,action:null});
  const day=localEpochDay(new Date(now));
  if(g.dailyRewardNotifications&&g.lastDailyClaimDay!==day)append(g,{id:`daily:${day}`,category:'reward',title:'Daily Puppy Reward available',body:'Your daily Puppy Clicker reward is ready to claim.',createdAt:now,action:'daily'});
  if(g.gameEventNotifications&&g.parkActive&&g.parkReadyAtMs<=now)append(g,{id:`park:${g.parkReadyAtMs}`,category:'pup',title:'Dog Park Adventure complete',body:'Your puppy is back from the park. Open Rewards to collect.',createdAt:now,action:'parkClaim'});
