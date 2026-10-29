@@ -12,3 +12,13 @@ export function nextPlayReward(g,schedule,now){
  if(!goal)return {title:'Today complete',progress:1,target:1,rewardTreats:0,allClaimed:true};
  return {title:'Next Reward · '+goal.title,progress:Math.min(goal.target,Math.max(0,progressForGoal(g,goal,date))),target:goal.target,rewardTreats:goal.rewardTreats,allClaimed:false};
 }
+
+// Android Play uses measured space between system/header bars and bottom tabs.
+// Reserve space for stats, energy, tap and reward before sizing the artwork.
+export function androidPlayLayout(viewportHeight){
+ const height=Math.max(0,Number(viewportHeight)||0);
+ const base=revampedPlayLayout(height);
+ const reserved=39+76+50+3*base.gap;
+ const portrait=Math.max(68,Math.min(base.portrait,Math.floor(height-reserved-96)));
+ return {...base,portrait,minStageHeight:height<440?145:180};
+}
