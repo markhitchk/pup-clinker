@@ -75,6 +75,10 @@ export function projectKotlinCloudSave(raw,username=''){
  g.claimedDailyTasks=set('daily_tasks_v5');
  g.cooldownUntilMs=number('fair_play_cooldown_until');
  g.parkActive=values.park_active===true;
+ // Kotlin's original casino rounds live in a separate save slot. The beta
+ // server refuses new wagers while that Kotlin round is active. Surface the
+ // lock instead of showing apparently playable, repeatedly rejected buttons.
+ const legacyCasinoRoundActive=string('casino_active_round_v1').trim().length>0;
  const cloudRound=string('beta_casino_round_v1');
  const previousResult=string('beta_last_casino_result_v1');
  const parseRecord=value=>{try{const r=JSON.parse(value);return r&&typeof r==='object'&&!Array.isArray(r)?r:null;}catch{return null;}};
@@ -122,6 +126,7 @@ export function projectKotlinCloudSave(raw,username=''){
  // Suppress mutating offline-care restoration during read-only projection.
  g.lastActiveAt=Date.now();
  const projected=sanitizeGame(g);
+ projected.legacyCasinoRoundActive=legacyCasinoRoundActive;
  // The guest sanitizer deliberately rejects protected puppy prizes. Keep
  // verified signed wheel rounds for display/reveal without relaxing guest rules.
  const secureWheel=pending?.type==='LUCKY_WHEEL'?{...pending,authority:'PUPEYE'}:null;

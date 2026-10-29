@@ -17,6 +17,7 @@ import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
 import PuppyExchangeScreen from './src/components/PuppyExchangeScreen.jsx';
 import PuppyPointer from './src/components/PuppyPointer.jsx';
+import WebsitePlayScreen from './src/components/WebsitePlayScreen.jsx';
 import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
 import {themedStyles} from './src/theme.js';
@@ -154,10 +155,9 @@ function DailyGoalCard({g,goal,act,clock,readOnly=false}){
   </View>
  </View>;
 }
-function PlayScreen({g,act,clock,schedule,viewportHeight}){
+function PlayScreen({g,act,clock,schedule,viewportHeight,onOpen,readOnly=false}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const layout=revampedPlayLayout(viewportHeight);
- const next=nextPlayReward(g,schedule,clock),cooldown=v6CooldownSeconds(g,clock),bonus=careTapBonus(g);
+ const next=nextPlayReward(g,schedule,clock),cooldown=v6CooldownSeconds(g,clock);
  const animate=g.animatedUi!==false&&g.tapAnimationsEnabled!==false;
  const tapScale=useRef(new Animated.Value(1)).current;
  const rotation=useRef(new Animated.Value(0)).current;
@@ -172,9 +172,10 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
   const timer=setTimeout(()=>setTicketVisible(false),2750);return ()=>clearTimeout(timer);
  },[g.ticketDropSerial,g.lastTicketDrop]);
  const doTap=()=>{
-  if(v6CooldownSeconds(g,Date.now()))return;
+  // UI guard is supplementary; useGame and PupEye still authorize every write.
+  if(readOnly||v6CooldownSeconds(g,Date.now()))return;
   if(g.energy<=10){Alert.alert('😴 '+g.puppyName+' is tired','Rest in Pup Care to keep playing.');return;}
-  act({type:'tap',now:Date.now(),randoms:[Math.random(),Math.random()]});
+  act({type:'tap',now:Date.now()});
   if(g.hapticsEnabled)Vibration.vibrate(12);
   if(!animate)return;
   tapScale.stopAnimation();rotation.stopAnimation();lift.stopAnimation();
@@ -185,25 +186,14 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
    Animated.sequence([Animated.spring(lift,{toValue:-5,friction:5,tension:95,useNativeDriver:true}),Animated.spring(lift,{toValue:0,friction:6,tension:85,useNativeDriver:true})])
   ]).start();
  };
- const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
- const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
- return <View style={[styles.restoredPlay,{height:Math.max(420,viewportHeight),gap:layout.gap}]}>
-  <PageHeader title="Play" subtitle={layout.compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
-  <Wallet game={g}/>
-  <View style={[styles.restoredStage,{backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
-   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
-    <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
-     <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
-    </Animated.View>
-   </Pressable>
-   <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
-   <Pressable accessibilityRole="button" disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
-  </View>
-  <View style={styles.restoredNextReward}>
-   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
-  </View>
-  {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
- </View>;
+ const renderPortrait=size=><Animated.View style={{transform:[
+  {scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
+  <Portrait puppy={pup} size={size} accessory={g.accessory}/>
+ </Animated.View>;
+ return <WebsitePlayScreen g={{...g,nextPlayReward:next}} act={act} clock={clock}
+  schedule={schedule} viewportHeight={viewportHeight} onOpen={onOpen}
+  wallet={<Wallet game={g}/>} renderPortrait={renderPortrait} onTap={doTap}
+  cooldown={cooldown} ticketVisible={ticketVisible} readOnly={readOnly}/>;
 }
 // Shipped PuppyRevampedCareScreen, preserving the existing care reducer effects.
 function CareScreen({g,act,viewportHeight}){
@@ -811,7 +801,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  const active=state.blackjack;
  const displayed=blackjackDisplayRound(active,state.blackjackDisplay);
  const outcome=active?null:state.blackjackDisplay?.outcome||null;
- const controls=active?blackjackActions(active,g.casinoChips):null;
+ const controls=active?Object.fromEntries(Object.entries(blackjackActions(active,g.casinoChips)).map(([id,available])=>[id,available&&!g.casinoReadOnly&&!g.gameplayBusy])):null;
  const {width:windowWidth,fontScale}=useWindowDimensions();
  const oneRow=windowWidth>=BLACKJACK_V6.actionRowThreshold&&fontScale<=1.3;
  useEffect(()=>{
@@ -865,7 +855,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
      <Txt style={[styles.filterText,wager===preset&&styles.filterTextSelected]}>{preset}</Txt>
     </Pressable>)}
    </View>
-   <Button disabled={!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
+   <Button disabled={g.casinoReadOnly||g.casinoLegacyRoundActive||g.gameplayBusy||!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
     onPress={()=>{setSelectedHand(0);act({type:'blackjackStart',wager,deck:shuffledBlackjackDeck(),now:Date.now()});}}>
     {g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel?'Finish the current Casino round first':g.casinoChips<wager?'Not Enough Chips':'Deal for '+wager+' Chips'}
    </Button>
@@ -883,18 +873,30 @@ function BlackjackV6Panel({g,act,state,onBack}){
   </View>:null}
  </View>;
 }
-function CasinoScreen({g,act,state,bet,setBet,onBack}){
+function CasinoScreen({g,act,state,bet,setBet,onBack,onRefresh}){
  const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':g.pendingPlinko?'plinko':g.pendingWheel?'wheel':'hub');
  const [accepted,setAccepted]=useState(false);
- const {width}=useWindowDimensions();
+ const backRef=useRef(onBack);
+ backRef.current=onBack;
+ const restricted=g.casinoReadOnly===true;
+ const legacyActive=g.legacyCasinoRoundActive===true;
+ const busy=g.gameplayBusy===true;
+ const guardedAction=action=>{
+  if(restricted)return;
+  // Prevent duplicate wager/conversion submits while the last cloud save is
+  // still being confirmed. Authorized reveal actions retain queue semantics.
+  if((busy&&(action.type==='exchange'||action.type?.endsWith('Start')))||
+   (legacyActive&&action.type?.endsWith('Start')))return;
+  act(action);
+ };
  useEffect(()=>{
-  if(!accepted)Alert.alert('Puppy Casino — Simulated Gambling',
+  if(accepted)return;
+  Alert.alert('Puppy Casino — Simulated Gambling',
    'Slots, roulette, blackjack, Plinko, scratchers and the Lucky Pup Wheel use game-only chips. No real money is used and no prizes have real-world cash value.',
-   [{text:'Go Back',style:'cancel',onPress:onBack},{text:'Continue',onPress:()=>setAccepted(true)}],{cancelable:false});
- },[accepted,onBack]);
- const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
+   [{text:'Go Back',style:'cancel',onPress:()=>backRef.current()},
+    {text:'Continue',onPress:()=>setAccepted(true)}],{cancelable:false});
+ },[accepted]);
  const choices=[20,50,100,500,1000];
- const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch||g.pendingWheel);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<><View style={styles.pair}>
@@ -902,6 +904,22 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
+  {legacyActive?<View style={[styles.dailyGiftCard,{borderColor:'#AD8543',borderWidth:1}]}>
+   <Txt style={{fontSize:28}}>🎰</Txt><View style={{flex:1,gap:5}}>
+    <Txt style={styles.itemName}>Finish your Kotlin Casino round first</Txt>
+    <Txt muted style={styles.small}>Your original Android game still has an unfinished wager. Resume and finish it in the Kotlin app, synchronize the cloud save, then refresh your Pup Account here. The beta will not refund, reset, reroll, or settle that existing round.</Txt>
+    {onRefresh?<Button compact secondary onPress={onRefresh}>Recheck cloud progress</Button>:null}
+   </View>
+  </View>:null}
+  {g.casinoNotice?<Txt style={[styles.small,{color:C.accentInk}]}>{g.casinoNotice}</Txt>:null}
+  {restricted?<View style={[styles.dailyGiftCard,{borderColor:'#8E6672',borderWidth:1}]}>
+   <Txt style={{fontSize:28}}>🔒</Txt>
+   <View style={{flex:1,gap:6}}>
+    <Txt style={styles.itemName}>Pup Account casino is read-only</Txt>
+    <Txt muted style={styles.small}>PupEye has not authorized this beta as the write-enabled owner. Wagers and prizes cannot be changed from a companion installation. Your Kotlin account and saves stay protected.</Txt>
+    {onRefresh?<Button compact secondary onPress={onRefresh}>Refresh account verification</Button>:null}
+   </View>
+  </View>:busy?<Txt style={[styles.small,{color:C.accentInk}]}>Confirming the previous casino action before another wager…</Txt>:null}
   {page==='hub'?<>
    {g.pendingWheel?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🎡</Txt>
@@ -942,23 +960,23 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
    <View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:28}}>🐾</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Treats → Casino Chips</Txt><Txt muted style={styles.small}>10 🍪 = 1 🐾 · One-way conversion</Txt></View>
    </View>
-   <View style={styles.actions}><Button compact secondary disabled={g.treats<100} onPress={()=>act({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button compact secondary disabled={g.treats<1000} onPress={()=>act({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
+   <View style={styles.actions}><Button compact secondary disabled={restricted||busy||g.treats<100} onPress={()=>guardedAction({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button compact secondary disabled={restricted||busy||g.treats<1000} onPress={()=>guardedAction({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
    {CASINO_PAGES.map(([id,emoji,title,description,art])=><Pressable accessibilityRole="button" key={id} onPress={()=>setPage(id)} style={styles.casinoGameTile}>
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
    {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
    {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
-    lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.slotsDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<RouletteV6 game={g} pending={g.pendingRoulette}
-    lastResult={state.rouletteDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.rouletteDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='plinko'?<PlinkoV6 game={g} pending={g.pendingPlinko}
-    lastResult={state.plinkoDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.plinkoDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='scratchers'?<ScratchersV6 game={g} pending={g.pendingScratch}
-    lastResult={state.scratchDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.scratchDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='wheel'?<LuckyWheelV6 game={g} pending={g.pendingWheel}
-    lastResult={state.wheelDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
-   {page==='blackjack'?<BlackjackV6Panel g={g} act={act} state={state} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.wheelDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
+   {page==='blackjack'?<BlackjackV6Panel g={g} act={guardedAction} state={state} onBack={()=>setPage('hub')}/>:null}
   </>}
  </View>;
 }
@@ -1043,6 +1061,7 @@ export function PuppyApp({betaMode=false}){
  const openAccount=mode=>{setAccountEntryMode(mode||'signin');setAccountOpen(true);};
  const registry=useRoster();
  const {width}=useWindowDimensions();
+ const desktop=width>=960;
  const [tab,setTab]=useState('play');
  const [secondary,setSecondary]=useState(null);
  const [bet,setBet]=useState(20);
@@ -1069,8 +1088,15 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy} onOpenExchange={()=>setSecondary('exchange')}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
-  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>
+  if(secondary==='casino')return <CasinoScreen g={{...g,casinoReadOnly:betaMode&&account?.gameplayWritable!==true,
+   gameplayBusy:betaMode&&['SAVING','VERIFYING_SAVE'].includes(syncStatus?.state),
+   casinoLegacyRoundActive:g.legacyCasinoRoundActive===true,
+   casinoNotice:syncStatus?.notice||null}} act={act}
+   bet={bet} setBet={setBet} state={state} onRefresh={refreshAccount}
+   onBack={()=>openScreen('rewards')}/>;
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}
+   viewportHeight={contentHeight-6} onOpen={openScreen}
+   readOnly={betaMode&&(account?.gameplayWritable!==true||!['LIVE_SYNCED','NO_CLOUD_SAVE','LAST_VERIFIED'].includes(cloudState))}/>
   if(tab==='care')return <CareScreen g={g} act={act} viewportHeight={contentHeight-6}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
@@ -1097,6 +1123,33 @@ export function PuppyApp({betaMode=false}){
  </>;
  return <PuppyPointer enabled={saved.puppyPointerEnabled} style={[styles.root,{paddingTop:insets.top,paddingBottom:insets.bottom}]}>
   <StatusBar barStyle={C.dark?'light-content':'dark-content'} backgroundColor={C.bg}/>
+  <View style={{flex:1,flexDirection:desktop?'row':'column',minHeight:0}}>
+   {desktop?<View testID="desktop-game-sidebar" style={{width:198,backgroundColor:'#0D1921',
+    borderRightColor:'#263944',borderRightWidth:1,paddingVertical:16,paddingHorizontal:10}}>
+    <ScrollView contentContainerStyle={{gap:10,flexGrow:1}} showsVerticalScrollIndicator={false}>
+     <View style={{flexDirection:'row',alignItems:'center',gap:8,paddingBottom:14,paddingHorizontal:7}}>
+      <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:54,height:54}}/>
+      <Txt style={{fontSize:19,fontWeight:'900',color:'#FFFFFF',flex:1}}>Puppy Clicker</Txt>
+     </View>
+     {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab"
+      accessibilityState={{selected:!secondary&&tab===id}} onPress={()=>{setTab(id);setSecondary(null);}}
+      style={{flexDirection:'row',gap:12,alignItems:'center',minHeight:54,borderRadius:13,paddingHorizontal:12,
+       backgroundColor:!secondary&&tab===id?'#073C50':'transparent',
+       borderColor:!secondary&&tab===id?'#00BFD7':'transparent',borderWidth:1}}>
+      <Txt style={{fontSize:25}}>{icon}</Txt><Txt style={{fontSize:15,fontWeight:'800',
+       color:!secondary&&tab===id?'#00E5FF':'#CCD7E5'}}>{label}</Txt>
+     </Pressable>)}
+     <View style={{flex:1,minHeight:18}}/>
+     {[[ 'casino','🎰','Casino'],['exchange','🎁','Exchange'],['settings','⚙️','Settings']].map(([id,icon,label])=>
+      <Pressable key={id} accessibilityRole="button" accessibilityLabel={label}
+       onPress={()=>openScreen(id)}
+       style={{flexDirection:'row',gap:12,alignItems:'center',minHeight:44,paddingHorizontal:12,
+        borderRadius:12,backgroundColor:secondary===id?'#073C50':'transparent'}}>
+       <Txt style={{fontSize:21}}>{icon}</Txt><Txt style={{color:'#CCD7E5',fontWeight:'700'}}>{label}</Txt>
+      </Pressable>)}
+    </ScrollView>
+   </View>:null}
+   <View style={{flex:1,minWidth:0,minHeight:0}}>
   {state.ready&&saved.onboardingComplete?<View style={styles.topBar}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
@@ -1105,15 +1158,30 @@ export function PuppyApp({betaMode=false}){
   </View>:null}
 
 {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
-   {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
-  </ScrollView>
-  {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
+  {state.ready&&g.onboardingComplete&&!secondary&&tab==='play'
+   ?<View testID="play-viewport" onLayout={event=>{const h=event.nativeEvent.layout.height;if(h>0)setContentHeight(h);}}
+     style={{flex:1,minHeight:0,minWidth:0}}>{main()}</View>
+   :<ScrollView key={secondary||tab}
+     onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}}
+     style={styles.scroll}
+     contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{
+      paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},
+      {maxWidth:desktop?1680:width>650?670:undefined}]}
+     keyboardShouldPersistTaps="handled">
+     {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'
+      ?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
+     {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}>
+       <Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>
+      :!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>
+      :<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
+    </ScrollView>}
+  {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
   </View>:null}
+   </View>
+  </View>
   <NotificationInbox visible={inboxOpen} g={saved} act={act} onClose={()=>setInboxOpen(false)} onNavigate={openScreen} serverBacked={betaMode}/>
   {betaMode?<BetaAccountEntry visible={accountOpen} initialMode={accountEntryMode} onVerified={refreshAccount} onClose={()=>setAccountOpen(false)}/>:null}
  </PuppyPointer>;

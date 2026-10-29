@@ -46,6 +46,8 @@ new Function('require','module','exports',source)(id=>{
  if(id.endsWith('.png'))return 1;
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
  if(id==='./src/components/PuppyPointer.jsx')return {__esModule:true,default:({children,...p})=>React.createElement('View',p,children)};
+ // The navigation unit harness isolates the new Play renderer; its own layout contracts are tested separately.
+ if(id==='./src/components/WebsitePlayScreen.jsx')return {__esModule:true,default:()=>React.createElement('View',null,React.createElement('Text',null,'Next Reward'))};
  if(id.startsWith('./src/components/'))return {__esModule:true,default:()=>null};
  return require(id);
 },module,module.exports);
