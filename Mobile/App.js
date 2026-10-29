@@ -1125,11 +1125,24 @@ export function PuppyApp({betaMode=false}){
   </View>:null}
 
 {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:width>650?670:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
-   {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
-  </ScrollView>
-  {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
+  {state.ready&&g.onboardingComplete&&!secondary&&tab==='play'
+   ?<View testID="play-viewport" onLayout={event=>{const h=event.nativeEvent.layout.height;if(h>0)setContentHeight(h);}}
+     style={{flex:1,minHeight:0,minWidth:0}}>{main()}</View>
+   :<ScrollView key={secondary||tab}
+     onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}}
+     style={styles.scroll}
+     contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{
+      paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},
+      {maxWidth:desktop?1680:width>650?670:undefined}]}
+     keyboardShouldPersistTaps="handled">
+     {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'
+      ?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
+     {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}>
+       <Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>
+      :!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>
+      :<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
+    </ScrollView>}
+  {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
