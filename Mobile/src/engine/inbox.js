@@ -7,6 +7,14 @@ export const DEVELOPER_SUPPORT_MESSAGE=Object.freeze({
  body:"🐶 We’re working to keep Puppy Clicker free to play and ad-free! If you enjoy the game, please consider joining our Ko-fi membership or making a one-time donation. Your optional support helps cover server and development costs. Thank you for supporting Harley’s Studios! 💙",
  url:'https://ko-fi.com/harleytg_'
 });
+// Permanent notices are presented from source, not player save data.
+export function visibleInboxItems(inbox,filter='all'){
+ const stored=(Array.isArray(inbox)?inbox:[])
+  .filter(n=>n.id!==DEVELOPER_SUPPORT_MESSAGE.id&&(filter==='all'||n.category===filter))
+  .slice().sort((a,b)=>b.createdAt-a.createdAt);
+ if(filter!=='all'&&filter!=='system')return stored;
+ return [{...DEVELOPER_SUPPORT_MESSAGE,createdAt:0,read:true,action:null,pinned:true},...stored];
+}
 export const INBOX_LIMIT=100;
 const categories=['reward','pup','system'];
 export function sanitizeInbox(input){
@@ -28,7 +36,8 @@ export function reconcileInbox(g,now){
  });
 }
 export function checkInbox(g,now){
- append(g,{id:DEVELOPER_SUPPORT_MESSAGE.id,category:DEVELOPER_SUPPORT_MESSAGE.category,title:DEVELOPER_SUPPORT_MESSAGE.title,body:DEVELOPER_SUPPORT_MESSAGE.body,createdAt:now,action:null});
+ // Remove any legacy saved copy; the notice is now a permanent, non-clearable system item.
+ g.notificationInbox=g.notificationInbox.filter(n=>n.id!==DEVELOPER_SUPPORT_MESSAGE.id);
  const day=localEpochDay(new Date(now));
  if(g.dailyRewardNotifications&&g.lastDailyClaimDay!==day)append(g,{id:`daily:${day}`,category:'reward',title:'Daily Puppy Reward available',body:'Your daily Puppy Clicker reward is ready to claim.',createdAt:now,action:'daily'});
  if(g.gameEventNotifications&&g.parkActive&&g.parkReadyAtMs<=now)append(g,{id:`park:${g.parkReadyAtMs}`,category:'pup',title:'Dog Park Adventure complete',body:'Your puppy is back from the park. Open Rewards to collect.',createdAt:now,action:'parkClaim'});
