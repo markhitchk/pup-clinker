@@ -1,8 +1,9 @@
+import {ANDROID_DATABASE_CONTRACT,supportsDatabaseLayout} from './dbSchemaLayout.js';
 // Production-only handoff policy. The former local guest save is NEVER treated
 // as a verified Pup Account, even if it has the correct game economy fields.
 export const KOTLIN_PACKAGE='com.harleytg.puppyclicker';
 export const PRODUCTION_FUNCTION_URL=
- 'https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/pup-account';
+ 'https://damcmyqusdxucwozkoeh.supabase.co/functions/v1/'+ANDROID_DATABASE_CONTRACT.edgeFunction;
 
 export function classifyOriginalInstall(probe){
  if(!probe||typeof probe!=='object'||Array.isArray(probe))
@@ -23,6 +24,10 @@ export function classifyOriginalInstall(probe){
   message:'Original Kotlin save and device keys were detected. Checking the live Pup Account without modifying either save.'};
 }
 export function classifyVerifiedAccount(value){
+ // Fail closed for a future incompatible backend, but accept older responses.
+ if(value && !supportsDatabaseLayout(value.databaseLayoutVersion))
+  return {status:'DATABASE_LAYOUT_UNSUPPORTED',canPlay:false,
+   message:'The Puppy Clicker service requires a newer Android app for account verification.'};
  if(value?.verified!==true||typeof value?.accountId!=='string'||!value.accountId||
  typeof value?.username!=='string'||!value.username)
   return {status:'ACCOUNT_NOT_VERIFIED',canPlay:false,
