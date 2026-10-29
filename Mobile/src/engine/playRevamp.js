@@ -22,3 +22,22 @@ export function androidPlayLayout(viewportHeight){
  const portrait=Math.max(68,Math.min(base.portrait,Math.floor(height-reserved-96)));
  return {...base,portrait,minStageHeight:height<440?145:180};
 }
+
+
+// Browser-inspired native Play layout follows the app's UI Scale setting.
+export function v2PlayLayout(height,uiScale='default'){
+ const h=Math.max(0,Number(height)||0);
+ const scale=uiScale==='compact'?0.94:uiScale==='large'?1.08:1;
+ const short=h<570;
+ const gap=Math.max(4,Math.round((short?6:10)*scale));
+ const headingHeight=Math.round(32*scale);
+ const walletHeight=Math.round((short?65:82)*scale);
+ const rewardHeight=Math.round((short?50:60)*scale);
+ const nameHeight=Math.round((short?43:55)*scale);
+ const energyHeight=Math.round((short?31:39)*scale);
+ const tapHeight=Math.max(44,Math.round((short?55:68)*scale));
+ const reserved=headingHeight+walletHeight+rewardHeight+nameHeight+energyHeight+tapHeight+gap*4+36;
+ const portrait=Math.max(72,Math.min(Math.round(260*scale),Math.floor((h-reserved)*0.87)));
+ const minStageHeight=Math.max(225,portrait+nameHeight+energyHeight+tapHeight+Math.round(32*scale));
+ return {scale,short,gap,headingHeight,walletHeight,rewardHeight,nameHeight,energyHeight,tapHeight,portrait,minStageHeight};
+}
