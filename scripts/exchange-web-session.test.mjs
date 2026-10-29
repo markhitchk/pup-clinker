@@ -24,8 +24,9 @@ test("Puppy Exchange passes only the JWT to Supabase Auth",()=>{
 });
 
 test("Puppy Exchange accepts all generated alphanumeric Friend Code digits",()=>{
- const sourcePattern=source.match(/const codePattern=(\\/[^\\n]+\\/);/)?.[1];
- assert.ok(sourcePattern,"Exchange Friend Code validator must exist");
+ const line=source.split("\n").find(value=>value.startsWith("const codePattern="));
+ assert.ok(line,"Exchange Friend Code validator must exist");
+ const sourcePattern=line.slice("const codePattern=".length).replace(/;$/,"");
  const codePattern=new RegExp(sourcePattern.slice(1,-1));
  for(const code of ["PUP-A0B1-C234-D567","PUP-Z999-A000-1B2C","PUP-HARLEYTG-DEV"]){
   assert.equal(codePattern.test(code),true,code);
