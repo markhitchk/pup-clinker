@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,nextPlayReward} from '../src/engine/playRevamp.js';
+import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,v2PlayLayout,nextPlayReward} from '../src/engine/playRevamp.js';
 import {freshGame} from '../src/engine/game.js';
 import {fallbackSchedule,goalsForDay,localEpochDay} from '../src/engine/monthlyRewards.js';
 test('shipped primary order preserves Roster/Rewards and keeps Settings/Prestige internal',()=>{
@@ -32,4 +32,18 @@ test('Android Play portrait yields space to controls on short phones',()=>{
 });
 test('Android Roster remains the puppy-switch destination',()=>{
  assert.ok(MAIN_TABS.some(([id])=>id==='roster'));
+});
+
+test('V2 browser-style layout respects Compact, Default and Large UI Scale',()=>{
+ for(const height of [390,520,650,820]){
+  const compact=v2PlayLayout(height,'compact');
+  const normal=v2PlayLayout(height,'default');
+  const large=v2PlayLayout(height,'large');
+  assert.ok(compact.portrait<=normal.portrait);
+  assert.ok(normal.portrait<=large.portrait);
+  assert.ok(compact.tapHeight<=normal.tapHeight);
+  assert.ok(normal.tapHeight<=large.tapHeight);
+  assert.ok(compact.portrait>=72);
+  assert.ok(compact.tapHeight>=44);
+ }
 });
