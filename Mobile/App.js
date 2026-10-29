@@ -187,20 +187,52 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
  };
  const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
  const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
- return <View style={[styles.restoredPlay,{height:Math.max(420,viewportHeight),gap:layout.gap}]}>
-  <PageHeader title="Play" subtitle={layout.compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
-  <Wallet game={g}/>
-  <View style={[styles.restoredStage,{backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
-   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
-    <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
-     <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
-    </Animated.View>
+ return <View testID="web-parity-play" style={[styles.restoredPlay,{minHeight:Math.max(400,viewportHeight),gap:Math.min(layout.gap,9)}]}>
+  <View style={styles.cyberPlayHeading}>
+   <View style={{flex:1,minWidth:0}}>
+    <Txt style={styles.pageTitle}>Play</Txt>
+    <Txt muted style={styles.cyberSubtitle}>Tap your puppy and earn treats.</Txt>
+   </View>
+   <Pressable accessibilityRole="button" accessibilityLabel="Switch puppy" onPress={()=>onOpen?.('roster')} style={styles.cyberSwitchPuppy}>
+    <Txt style={styles.cyberSwitchText}>⇄ Switch Puppy</Txt>
    </Pressable>
-   <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
-   <Pressable accessibilityRole="button" disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
   </View>
-  <View style={styles.restoredNextReward}>
-   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
+  <Wallet game={g}/>
+  <View testID="web-parity-play-stage" style={[styles.cyberPlayStage,{borderColor:`rgba(${rgb},0.28)`}]}>
+   <View style={styles.cyberPuppyArea}>
+    <View pointerEvents="none" style={[styles.cyberOrbitGlow,{borderColor:accent,backgroundColor:`rgba(${rgb},0.12)`}]}/>
+    <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap} style={styles.cyberPuppyPortrait}>
+     <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
+      <Portrait puppy={pup} size={Math.min(220,Math.max(128,layout.portrait+36))} accessory={g.accessory}/>
+     </Animated.View>
+    </Pressable>
+    <Txt numberOfLines={1} style={styles.cyberPuppyName}>{g.puppyName}</Txt>
+    <View style={[styles.cyberCurrentBadge,{borderColor:accent,backgroundColor:`rgba(${rgb},0.13)`}]}>
+     <Txt style={[styles.cyberCurrentText,{color:C.accentInk}]}>Current Puppy</Txt>
+    </View>
+   </View>
+   <View style={styles.cyberEnergyRow}>
+    <Txt style={styles.cyberEnergyText}>⚡ Energy <Txt style={styles.cyberEnergyStrong}>{g.energy}%</Txt></Txt>
+    <View style={styles.cyberEnergyDivider}/>
+    <Txt style={styles.cyberEnergyText}>💖 Care bonus <Txt style={styles.cyberEnergyStrong}>+{bonus} 🍪/tap</Txt></Txt>
+   </View>
+   <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} testID="web-parity-tap" onPress={doTap} style={[styles.cyberTapButton,{borderColor:C.dark?'#8AF6FF':C.accent},cooldown>0&&styles.buttonDisabled]}>
+    <Txt style={styles.cyberTapPaw}>🐾</Txt>
+    <View style={{flexShrink:1,alignItems:'center'}}>
+     <Txt numberOfLines={1} adjustsFontSizeToFit style={[styles.cyberTapTitle,{color:C.onAccent}]}>{cooldown?'Fair-play cooldown · '+cooldown+'s':g.energy<=10?g.puppyName+' is tired':'Tap '+g.puppyName}</Txt>
+     {!cooldown&&g.energy>10?<Txt style={[styles.cyberTapAmount,{color:C.onAccent}]}>+{format(g.clickPower+bonus)} treats</Txt>:null}
+    </View>
+   </Pressable>
+  </View>
+  <View testID="web-parity-next-reward" style={styles.cyberRewardPanel}>
+   <Txt style={{fontSize:27}}>🎁</Txt>
+   <View style={{flex:1,minWidth:0,gap:4}}>
+    <View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={[styles.small,{fontWeight:'800'}]}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View>
+    <View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:Math.max(1,next.target),now:next.progress}} style={[styles.track,{height:6}]}>
+     <View style={[styles.fill,{backgroundColor:C.accent,width:Math.min(100,100*next.progress/Math.max(1,next.target))+'%',height:6}]}/>
+    </View>
+   </View>
+   <Txt style={[styles.small,{fontWeight:'900',maxWidth:70,textAlign:'right'}]}>{next.allClaimed?'All claimed':format(next.rewardTreats)+' 🍪'}</Txt>
   </View>
   {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
  </View>;
@@ -1070,7 +1102,7 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
-  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6}/>
+  if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} viewportHeight={contentHeight-6} onOpen={openScreen}/>
   if(tab==='care')return <CareScreen g={g} act={act} viewportHeight={contentHeight-6}/>;
   if(tab==='shop')return <ShopScreen g={g} act={act} onOpen={openScreen}/>;
   return null;
@@ -1128,6 +1160,27 @@ const styles=themedStyles(()=>({
  restoredCarePanel:{paddingHorizontal:11,borderRadius:18,borderWidth:1,borderColor:C.line,backgroundColor:C.surface},compactCareMeter:{flexDirection:'row',alignItems:'center',paddingVertical:3},compactCareLabel:{width:92,fontSize:12,fontWeight:'700'},compactCareTrack:{flex:1,height:5,borderRadius:9,backgroundColor:C.dark?'#494457':'#E7E1EF',overflow:'hidden'},compactCareFill:{height:'100%',backgroundColor:C.accent,borderRadius:9},compactCareValue:{width:38,marginLeft:8,fontSize:12,fontWeight:'900'},restoredCareDivider:{height:1,backgroundColor:C.line,marginVertical:5},
  restoredCareRow:{flexDirection:'row',gap:6},restoredCareAction:{flex:1,minWidth:0,minHeight:74,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,paddingVertical:6,paddingHorizontal:4,alignItems:'center',justifyContent:'center',gap:2},restoredCareActionTitle:{fontSize:14,fontWeight:'900',textAlign:'center'},restoredCareActionDetail:{fontSize:11,fontWeight:'700',textAlign:'center'},
 
+ // /play parity: Kotlin and React Native render the same native cyan-stage visual contract.
+ cyberPlayHeading:{flexDirection:'row',alignItems:'center',gap:8},
+ cyberSubtitle:{fontSize:12,color:C.muted},
+ cyberSwitchPuppy:{borderRadius:999,borderWidth:1,borderColor:C.line,backgroundColor:C.surface,paddingHorizontal:11,paddingVertical:9,minHeight:36,justifyContent:'center'},
+ cyberSwitchText:{fontSize:11,fontWeight:'800',color:C.accentInk},
+ cyberPlayStage:{flex:1,minHeight:260,borderWidth:1,borderRadius:24,backgroundColor:C.dark?'#101821':'#EAF9FD',paddingHorizontal:10,paddingVertical:9,gap:8,alignItems:'center',justifyContent:'flex-end'},
+ cyberPuppyArea:{flex:1,minHeight:134,width:'100%',alignItems:'center',justifyContent:'flex-end',paddingTop:6,gap:2},
+ cyberPuppyPortrait:{flexShrink:1,alignItems:'center',justifyContent:'flex-end',zIndex:1},
+ cyberOrbitGlow:{position:'absolute',bottom:34,width:'68%',height:52,borderRadius:100,borderWidth:3,elevation:3},
+ cyberPuppyName:{fontSize:21,fontWeight:'900',color:C.text,textAlign:'center',maxWidth:'100%'},
+ cyberCurrentBadge:{borderRadius:999,borderWidth:1,paddingVertical:3,paddingHorizontal:13},
+ cyberCurrentText:{fontSize:11,fontWeight:'800'},
+ cyberEnergyRow:{width:'100%',minHeight:34,borderRadius:16,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,flexDirection:'row',alignItems:'center',justifyContent:'center',paddingHorizontal:8,paddingVertical:6,gap:8},
+ cyberEnergyText:{flex:1,textAlign:'center',fontSize:10,color:C.muted},
+ cyberEnergyStrong:{color:C.text,fontWeight:'800'},
+ cyberEnergyDivider:{width:1,height:20,backgroundColor:C.line},
+ cyberTapButton:{width:'100%',minHeight:62,borderWidth:1,borderRadius:999,backgroundColor:C.accent,flexDirection:'row',alignItems:'center',justifyContent:'center',paddingHorizontal:12,paddingVertical:8,gap:10,elevation:4},
+ cyberTapPaw:{fontSize:26},
+ cyberTapTitle:{fontSize:18,fontWeight:'900',textAlign:'center'},
+ cyberTapAmount:{fontSize:12,fontWeight:'800',textAlign:'center'},
+ cyberRewardPanel:{minHeight:57,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,paddingVertical:8,borderRadius:18,backgroundColor:C.dark?'#092E41':'#DBF7FF',borderWidth:1,borderColor:C.dark?'#16465A':'#8EDDEA'},
  restoredPlay:{width:'100%',position:'relative'},
  restoredStage:{flex:1,minHeight:180,borderRadius:22,borderWidth:1,paddingHorizontal:12,paddingVertical:8,alignItems:'center',justifyContent:'center',gap:4},
  restoredEnergy:{fontSize:12,color:C.muted,fontWeight:'700',textAlign:'center',marginVertical:4},
