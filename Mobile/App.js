@@ -7,7 +7,7 @@ import PuppyErrorBoundary from './src/production/PuppyErrorBoundary.jsx';
 import {classifyStartupFailure,publicStartupIssue} from './src/production/startupErrors.js';
 import {startupGate} from './src/production/startupGate.js';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
-import {MAIN_TABS,revampedPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
+import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
@@ -110,17 +110,17 @@ function PageHeader({title,subtitle,action,withLogo=false}){
    <Txt style={styles.pageTitle}>{title}</Txt><Txt muted style={styles.pageSubtitle}>{subtitle}</Txt>
   </View>{action||null}</View>;
 }
-function Wallet({game}){
- return <View style={styles.wallet}>
+function Wallet({game,compact=false}){
+ return <View style={[styles.wallet,compact&&{paddingVertical:6,paddingHorizontal:5}]}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
    <Pressable key={label} accessibilityRole="button"
     accessibilityLabel={label+' exact balance: '+Number(value).toLocaleString('en-US')}
     onPress={()=>Alert.alert(label+' · Exact balance',Number(value).toLocaleString('en-US')+' '+label)}
     style={styles.walletCell}>
-    <Txt style={styles.walletEmoji}>{icon}</Txt>
+    <Txt style={[styles.walletEmoji,compact&&{fontSize:16}]}>{icon}</Txt>
     <Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}
-     style={styles.walletNumber}>{v6WalletFormat(value,game.compactNumbers!==false)}</Txt>
-    <Txt numberOfLines={1} style={styles.walletLabel}>{label}</Txt>
+     style={[styles.walletNumber,compact&&{fontSize:14}]}>{v6WalletFormat(value,game.compactNumbers!==false)}</Txt>
+    <Txt numberOfLines={1} style={[styles.walletLabel,compact&&{fontSize:10}]}>{label}</Txt>
    </Pressable>)}
  </View>;
 }
@@ -156,7 +156,7 @@ function DailyGoalCard({g,goal,act,clock,readOnly=false}){
 }
 function PlayScreen({g,act,clock,schedule,viewportHeight}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
- const layout=revampedPlayLayout(viewportHeight);
+ const layout=androidPlayLayout(viewportHeight);
  const next=nextPlayReward(g,schedule,clock),cooldown=v6CooldownSeconds(g,clock),bonus=careTapBonus(g);
  const animate=g.animatedUi!==false&&g.tapAnimationsEnabled!==false;
  const tapScale=useRef(new Animated.Value(1)).current;
@@ -187,20 +187,20 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
  };
  const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
  const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
- return <View style={[styles.restoredPlay,{height:Math.max(420,viewportHeight),gap:layout.gap}]}>
-  <PageHeader title="Play" subtitle={layout.compact?'Tap your puppy and earn treats.':'Tap, earn treats, and have fun with your puppy!'}/>
-  <Wallet game={g}/>
-  <View style={[styles.restoredStage,{backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
+ return <View testID="android-play-screen" style={[styles.restoredPlay,{height:Math.max(340,viewportHeight),gap:layout.gap}]}>
+  <PageHeader title="Play"/>
+  <Wallet game={g} compact/>
+  <View style={[styles.restoredStage,{minHeight:layout.minStageHeight,backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
    <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
     <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
      <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
     </Animated.View>
    </Pressable>
-   <Txt style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
-   <Pressable accessibilityRole="button" disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt style={{color:C.onAccent,fontWeight:'900'}}>{label}</Txt></Pressable>
+   <Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
+   <Pressable testID="android-tap-button" accessibilityRole="button" accessibilityLabel={label} disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75} style={{color:C.onAccent,fontWeight:'900',textAlign:'center'}}>{label}</Txt></Pressable>
   </View>
   <View style={styles.restoredNextReward}>
-   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
+   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
   </View>
   {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
  </View>;
@@ -1129,8 +1129,8 @@ const styles=themedStyles(()=>({
  restoredCareRow:{flexDirection:'row',gap:6},restoredCareAction:{flex:1,minWidth:0,minHeight:74,backgroundColor:C.surface,borderRadius:18,borderWidth:1,borderColor:C.line,paddingVertical:6,paddingHorizontal:4,alignItems:'center',justifyContent:'center',gap:2},restoredCareActionTitle:{fontSize:14,fontWeight:'900',textAlign:'center'},restoredCareActionDetail:{fontSize:11,fontWeight:'700',textAlign:'center'},
 
  restoredPlay:{width:'100%',position:'relative'},
- restoredStage:{flex:1,minHeight:180,borderRadius:22,borderWidth:1,paddingHorizontal:12,paddingVertical:8,alignItems:'center',justifyContent:'center',gap:4},
- restoredEnergy:{fontSize:12,color:C.muted,fontWeight:'700',textAlign:'center',marginVertical:4},
+ restoredStage:{flex:1,minHeight:0,borderRadius:22,borderWidth:1,paddingHorizontal:10,paddingVertical:6,alignItems:'center',justifyContent:'center',gap:3},
+ restoredEnergy:{fontSize:12,color:C.muted,fontWeight:'700',textAlign:'center',marginVertical:2,width:'100%'},
  restoredTap:{width:'100%',borderRadius:18,backgroundColor:C.accent,alignItems:'center',justifyContent:'center',paddingHorizontal:8},
  restoredNextReward:{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:11,paddingVertical:8,borderRadius:14,backgroundColor:C.accentSoft,borderColor:C.line,borderWidth:1},
 
