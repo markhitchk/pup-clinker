@@ -855,7 +855,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
      <Txt style={[styles.filterText,wager===preset&&styles.filterTextSelected]}>{preset}</Txt>
     </Pressable>)}
    </View>
-   <Button disabled={g.casinoReadOnly||g.gameplayBusy||!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
+   <Button disabled={g.casinoReadOnly||g.casinoLegacyRoundActive||g.gameplayBusy||!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
     onPress={()=>{setSelectedHand(0);act({type:'blackjackStart',wager,deck:shuffledBlackjackDeck(),now:Date.now()});}}>
     {g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel?'Finish the current Casino round first':g.casinoChips<wager?'Not Enough Chips':'Deal for '+wager+' Chips'}
    </Button>
@@ -879,12 +879,14 @@ function CasinoScreen({g,act,state,bet,setBet,onBack,onRefresh}){
  const backRef=useRef(onBack);
  backRef.current=onBack;
  const restricted=g.casinoReadOnly===true;
+ const legacyActive=g.legacyCasinoRoundActive===true;
  const busy=g.gameplayBusy===true;
  const guardedAction=action=>{
   if(restricted)return;
   // Prevent duplicate wager/conversion submits while the last cloud save is
   // still being confirmed. Authorized reveal actions retain queue semantics.
-  if(busy&&(action.type==='exchange'||action.type?.endsWith('Start')))return;
+  if((busy&&(action.type==='exchange'||action.type?.endsWith('Start')))||
+   (legacyActive&&action.type?.endsWith('Start')))return;
   act(action);
  };
  useEffect(()=>{
@@ -902,6 +904,14 @@ function CasinoScreen({g,act,state,bet,setBet,onBack,onRefresh}){
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
+  {legacyActive?<View style={[styles.dailyGiftCard,{borderColor:'#AD8543',borderWidth:1}]}>
+   <Txt style={{fontSize:28}}>🎰</Txt><View style={{flex:1,gap:5}}>
+    <Txt style={styles.itemName}>Finish your Kotlin Casino round first</Txt>
+    <Txt muted style={styles.small}>Your original Android game still has an unfinished wager. Resume and finish it in the Kotlin app, synchronize the cloud save, then refresh your Pup Account here. The beta will not refund, reset, reroll, or settle that existing round.</Txt>
+    {onRefresh?<Button compact secondary onPress={onRefresh}>Recheck cloud progress</Button>:null}
+   </View>
+  </View>:null}
+  {g.casinoNotice?<Txt style={[styles.small,{color:C.accentInk}]}>{g.casinoNotice}</Txt>:null}
   {restricted?<View style={[styles.dailyGiftCard,{borderColor:'#8E6672',borderWidth:1}]}>
    <Txt style={{fontSize:28}}>🔒</Txt>
    <View style={{flex:1,gap:6}}>
@@ -1079,7 +1089,9 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
   if(secondary==='casino')return <CasinoScreen g={{...g,casinoReadOnly:betaMode&&account?.gameplayWritable!==true,
-   gameplayBusy:betaMode&&['SAVING','VERIFYING_SAVE'].includes(syncStatus?.state)}} act={act}
+   gameplayBusy:betaMode&&['SAVING','VERIFYING_SAVE'].includes(syncStatus?.state),
+   casinoLegacyRoundActive:g.legacyCasinoRoundActive===true,
+   casinoNotice:syncStatus?.notice||null}} act={act}
    bet={bet} setBet={setBet} state={state} onRefresh={refreshAccount}
    onBack={()=>openScreen('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}
