@@ -100,7 +100,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
  const details=ids=>ids?.length?ids.map(puppyLabel).join(' · '):'No puppies selected';
  const sendFriend=async()=>{
   const valid=code.trim().toUpperCase();
-  if(!/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/.test(valid)){
+  if(!/^(?:PUP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|PUP-HARLEYTG-DEV)$/.test(valid)){
    setError('Use a Friend Code like PUP-XXXX-XXXX-XXXX.');return;
   }
   if(await run('request',{friendCode:valid},'Friend request sent.'))
@@ -280,7 +280,7 @@ export default function PuppyExchangeScreen({game,registry,onBack,onRefresh,acco
      // directly below rather than relying on asynchronous React state.
      const kind=tab==='gifts'?'gift':'trade';
      const recipientCode=friendCode.trim().toUpperCase();
-     if(!/^(?:PUP-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}|PUP-HARLEYTG-DEV)$/.test(recipientCode)||selected.length===0){
+     if(!/^(?:PUP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|PUP-HARLEYTG-DEV)$/.test(recipientCode)||selected.length===0){
       setError('Enter a valid recipient Friend Code and select a puppy.');return;
      }
      Alert.alert(kind==='gift'?'Send gift?':'Propose trade?',
