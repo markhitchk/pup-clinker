@@ -4,6 +4,8 @@ export const DEFAULT_PREFERENCES=Object.freeze({
  themeMode:'system',accentHex:'#00B8F0',uiScale:'default',performancePreset:'automatic',
  animatedUi:true,buttonAnimations:true,reducedMotion:false,highContrast:false,
  hapticsEnabled:true,animationsEnabled:true,compactNumbers:true,puppyPointerEnabled:true,
+ // Local presentation flag, never an authoritative gameplay or account field.
+ playLayoutV2Enabled:false,
  dailyRewardNotifications:true,gameEventNotifications:true,updateNotifications:true,puppyAttentionNotifications:false,
  anonymousDiagnosticsEnabled:false,crashReportsEnabled:false,supportIdentityEnabled:false
 });
