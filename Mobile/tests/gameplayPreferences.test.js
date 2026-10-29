@@ -29,3 +29,14 @@ test('settings survive a guest save without becoming a trusted account',()=>{
  assert.equal(restored.compactNumbers,false);
  assert.equal(JSON.parse(serializeGuestSave(restored)).kind,'guest-only');
 });
+
+test('Developer V2 flag is allowlisted, persists locally, and resets safely',()=>{
+ const g=freshGame();
+ assert.equal(g.playLayoutV2Enabled,false);
+ const enabled=transition({game:g,ready:true,notice:''},{type:'setPreference',name:'playLayoutV2Enabled',value:true});
+ assert.equal(enabled.game.playLayoutV2Enabled,true);
+ const saved=parseGuestSave(serializeGuestSave(enabled.game));
+ assert.equal(saved.playLayoutV2Enabled,true);
+ assert.equal(sanitizeGame({...saved,playLayoutV2Enabled:'true'}).playLayoutV2Enabled,false);
+ assert.equal(transition(enabled,{type:'resetSettings'}).game.playLayoutV2Enabled,false);
+});
