@@ -28,7 +28,8 @@ def patch_activity(source: str) -> str:
         """                    V6Tab.PLAY -> PuppyRevampedPlayScreen(
                         state = state,
                         vm = vm,
-                        onOpenRoster = { tab = V6Tab.ROSTER }
+                        onOpenRoster = { tab = V6Tab.ROSTER },
+                        onOpenCare = { tab = V6Tab.CARE }
                     )
 """,
         "Play route",
