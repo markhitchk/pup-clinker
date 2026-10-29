@@ -129,7 +129,7 @@ test('active Blackjack round resumes on Casino open and shows a dedicated Resume
  assert.ok(casino.includes('g.pendingWheel?\'wheel\':\'hub\''));
  assert.ok(casino.includes('Unfinished Blackjack Hand'));
  assert.ok(casino.includes("onPress={()=>setPage('blackjack')}"));
- assert.ok(casino.includes('BlackjackV6Panel g={g} act={act} state={state}'));
+ assert.match(casino,/<BlackjackV6Panel g=\{g\} act=\{guardedAction\} state=\{state\}/);
  assert.ok(scene.includes('Casino Chip Wallet'));
  assert.ok(scene.includes('BLACKJACK_V6.wagerPresets')); // uses native 20/100/500/2,500 chips presets
 });
