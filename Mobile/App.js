@@ -7,11 +7,12 @@ import PuppyErrorBoundary from './src/production/PuppyErrorBoundary.jsx';
 import {classifyStartupFailure,publicStartupIssue} from './src/production/startupErrors.js';
 import {startupGate} from './src/production/startupGate.js';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
-import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
+import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,v2PlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
+import V2PlayScreen from './src/components/V2PlayScreen.jsx';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
@@ -110,8 +111,8 @@ function PageHeader({title,subtitle,action,withLogo=false}){
    <Txt style={styles.pageTitle}>{title}</Txt><Txt muted style={styles.pageSubtitle}>{subtitle}</Txt>
   </View>{action||null}</View>;
 }
-function Wallet({game,compact=false}){
- return <View style={[styles.wallet,compact&&{paddingVertical:6,paddingHorizontal:5}]}>
+function Wallet({game,compact=false,v2=false}){
+ return <View style={[styles.wallet,compact&&{paddingVertical:6,paddingHorizontal:5},v2&&{borderColor:C.accent,borderWidth:2,borderRadius:22}]}>
   {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
    <Pressable key={label} accessibilityRole="button"
     accessibilityLabel={label+' exact balance: '+Number(value).toLocaleString('en-US')}
@@ -187,6 +188,18 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
  };
  const accent=g.accentHex||'#00B8F0',rgb=[1,3,5].map(i=>parseInt(accent.slice(i,i+2),16)).join(',');
  const label=cooldown?'🐶👁️ Fair-play cooldown · '+cooldown+'s':g.energy<=10?'😴 '+g.puppyName+' is tired · Care needed':'🐾 Tap '+g.puppyName+'  +'+(g.clickPower+bonus);
+ if(g.playLayoutV2Enabled===true){
+  const v2={...v2PlayLayout(viewportHeight,g.uiScale),viewportHeight};
+  return <V2PlayScreen game={g} layout={v2} wallet={<Wallet game={g} compact={g.uiScale==='compact'||v2.short} v2/>}
+   portrait={<Pressable testID="android-v2-puppy-portrait" accessibilityRole="button"
+    accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}}
+    disabled={cooldown>0} onPress={doTap}>
+    <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
+     <Portrait puppy={pup} size={v2.portrait} accessory={g.accessory}/>
+    </Animated.View>
+   </Pressable>}
+   onTap={doTap} cooldown={cooldown} bonus={bonus} next={next} ticketVisible={ticketVisible}/>;
+ }
  return <View testID="android-play-screen" style={[styles.restoredPlay,{height:Math.max(340,viewportHeight),gap:layout.gap}]}>
   <PageHeader title="Play"/>
   <Wallet game={g} compact/>
@@ -1097,7 +1110,7 @@ export function PuppyApp({betaMode=false}){
  </>;
  return <PuppyPointer enabled={saved.puppyPointerEnabled} style={[styles.root,{paddingTop:insets.top,paddingBottom:insets.bottom}]}>
   <StatusBar barStyle={C.dark?'light-content':'dark-content'} backgroundColor={C.bg}/>
-  {state.ready&&saved.onboardingComplete?<View style={styles.topBar}>
+  {state.ready&&saved.onboardingComplete?<View style={[styles.topBar,g.playLayoutV2Enabled&&{backgroundColor:C.bg,borderBottomWidth:1,borderBottomColor:C.accentSoft}]}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
    <Pressable accessibilityRole="button" accessibilityLabel={'Notifications, '+saved.notificationInbox.filter(n=>!n.read).length+' unread'} onPress={()=>{notifications.check();setInboxOpen(true);}} style={styles.headerButton}><Txt style={{fontSize:23}}>🔔</Txt>{saved.notificationInbox.some(n=>!n.read)?<View style={styles.unreadDot}/>:null}</Pressable>
@@ -1109,7 +1122,7 @@ export function PuppyApp({betaMode=false}){
    {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
-  {state.ready&&g.onboardingComplete&&!secondary?<View style={styles.bottomBar}>
+  {state.ready&&g.onboardingComplete&&!secondary?<View style={[styles.bottomBar,g.playLayoutV2Enabled&&{backgroundColor:C.card,borderTopColor:C.accentSoft}]}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
