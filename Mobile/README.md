@@ -1,3 +1,11 @@
+## October 29 — Puppy Clicker grouped database layout (v2 compatibility)
+
+The six grouped Supabase schemas (`puppy_accounts`, `puppy_pupeye`, `puppy_game`, `puppy_exchange`, `puppy_admin`, `puppy_web`) currently contain read-only organizational views. **Canonical records remain in the original `public` tables.** No saves, account/device ownership, PupEye standing or exchange policies are moved by this app update.
+
+The RN Android client continues to call signed Edge Functions via its native PupEye bridge, rather than accessing these schemas directly. `src/production/dbSchemaLayout.js` declares contract v2; `authority.js` accepts older server responses without a version field and rejects explicitly newer incompatible versions. Production player access and signed writes remain governed by backend verification, not a client-selected schema. Never put service-role credentials or direct protected-table access into Android.
+
+See the website repo's `docs/database-layout-v2.md` for the complete 36-table mapping and phased server migration requirements.
+
 ## October 25 — Native Pup Account registration and sign-in
 
 Onboarding Step 2 now prioritizes **Pup Account**, with separate `Sign in with Pup Account` and `Create Pup Account` actions. Discord remains an optional alternative or connected identity. Native Pup credentials use a username (3–20 letters/numbers/`_`/`-`), email, and password (minimum 8 characters). Sign-in accepts username **or** email.
