@@ -1,8 +1,13 @@
 package com.harleytg.puppyclicker
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -31,7 +36,8 @@ import kotlinx.coroutines.launch
 internal fun PuppyRevampedPlayScreen(
     state: V6GameState,
     vm: PuppyClickerV6ViewModel,
-    onOpenRoster: () -> Unit
+    onOpenRoster: () -> Unit,
+    onOpenCare: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -98,140 +104,247 @@ internal fun PuppyRevampedPlayScreen(
         }
     }
 
+    // Visual contract: Puppy-Clicker website /play on phones.
+    // Retain all Kotlin VM actions, cooldowns, haptics, animations and rewarded progression.
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val compact = maxHeight < 700.dp
         val tiny = maxHeight < 590.dp
         val portraitSize = when {
-            tiny -> 122.dp
-            compact -> 150.dp
-            else -> 185.dp
+            maxWidth >= 960.dp -> 290.dp
+            tiny -> 126.dp
+            compact -> 166.dp
+            else -> 210.dp
         }
+        val gap = if (tiny) 5.dp else 8.dp
+        val desktop = maxWidth >= 960.dp
+        val accent = MaterialTheme.colorScheme.primary
 
+        Row(Modifier.fillMaxSize(),horizontalArrangement = Arrangement.spacedBy(if (desktop) 14.dp else 0.dp)) {
+            Box(Modifier.weight(1.3f).fillMaxHeight()) {
+                if (desktop) {
+                    Image(
+                        painter = painterResource(R.drawable.night_yard_v1),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp))
+                    )
+                }
         Column(
-            Modifier
-                .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = if (tiny) 2.dp else 4.dp)
+            Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = if (tiny) 2.dp else 4.dp)
         ) {
-            PuppyMainPageHeader(
-                "Play",
-                if (compact) "Tap your puppy and earn treats." else "Tap, earn treats, and have fun with your puppy!"
-            )
-            Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-            PuppyWalletCard(state)
-            Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = RoundedCornerShape(22.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.065f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer(
-                                scaleX = tapScale.value,
-                                scaleY = tapScale.value,
-                                rotationZ = tapRotation.value,
-                                translationY = tapLift.value
-                            )
-                            .clickable(enabled = cooldown == 0L, onClick = ::tapPuppy),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        StreamedPuppyPortrait(
-                            styleId = state.puppyStyle,
-                            size = portraitSize,
-                            accessory = state.accessory,
-                            background = Color.Transparent
+                Column(Modifier.weight(1f)) {
+                    Text("Play", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                    if (!tiny) {
+                        Text(
+                            "Tap your puppy and earn treats.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (state.isTired) {
-                            "⚡ Energy ${state.energy}% · Rest in Pup Care to keep playing"
-                        } else {
-                            "⚡ Energy ${state.energy}% · Care bonus +${state.careTapBonus} 🍪/tap"
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (state.isTired) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(4.dp))
+                }
+                OutlinedButton(
+                    onClick = onOpenRoster,
+                    modifier = Modifier.height(38.dp),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, accent.copy(alpha = 0.45f)),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Text("⇄ Switch Puppy", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (!desktop) {
+                Spacer(Modifier.height(gap))
+                PuppyWalletCard(state)
+            }
+            Spacer(Modifier.height(gap))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                color = if (desktop) Color.Transparent else MaterialTheme.colorScheme.surface,
+                border = if (desktop) null else BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
+                shadowElevation = if (desktop) 0.dp else 3.dp
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        // The native Compose equivalent of the site's cyan platform orbit.
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .offset(y = (-40).dp)
+                                .width(if (tiny) 142.dp else 192.dp)
+                                .height(if (tiny) 35.dp else 48.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(accent.copy(alpha = 0.18f))
+                                .border(3.dp, accent.copy(alpha = 0.88f), RoundedCornerShape(50))
+                        )
+                        Column(
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .graphicsLayer(
+                                        scaleX = tapScale.value,
+                                        scaleY = tapScale.value,
+                                        rotationZ = tapRotation.value,
+                                        translationY = tapLift.value
+                                    )
+                                    .clickable(enabled = cooldown == 0L, onClick = ::tapPuppy),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                StreamedPuppyPortrait(
+                                    styleId = state.puppyStyle,
+                                    size = portraitSize,
+                                    accessory = state.accessory,
+                                    background = Color.Transparent
+                                )
+                            }
+                            if (!desktop) Text(
+                                state.puppyName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1
+                            )
+                            if (!desktop) Surface(
+                                shape = RoundedCornerShape(50),
+                                border = BorderStroke(1.dp, accent),
+                                color = accent.copy(alpha = 0.12f)
+                            ) {
+                                Text(
+                                    "Current Puppy",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 3.dp),
+                                    color = accent,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(7.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "⚡ Energy ${state.energy}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (state.isTired) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "💖 Care bonus +${state.careTapBonus} 🍪/tap",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(7.dp))
                     Button(
                         onClick = ::tapPuppy,
                         enabled = cooldown == 0L,
-                        modifier = Modifier.fillMaxWidth().height(if (tiny) 44.dp else 50.dp),
-                        shape = RoundedCornerShape(18.dp)
+                        modifier = Modifier.fillMaxWidth().height(if (tiny) 58.dp else 66.dp),
+                        shape = RoundedCornerShape(50),
+                        border = BorderStroke(1.dp, accent.copy(alpha = 0.75f))
                     ) {
-                        Text(
-                            when {
-                                cooldown > 0L ->
-                                    "🐶👁️ Fair-play cooldown · " + ((cooldown + 999L) / 1000L) + "s"
-                                state.isTired ->
-                                    "😴 " + state.puppyName + " is tired · Care needed"
-                                else ->
-                                    "🐾 Tap " + state.puppyName + "  +" +
-                                        (state.clickPower + state.careTapBonus)
-                            },
-                            fontWeight = FontWeight.Black
-                        )
+                        Text("🐾", fontSize = 25.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                when {
+                                    cooldown > 0L -> "Fair-play cooldown · " + ((cooldown + 999L) / 1000L) + "s"
+                                    state.isTired -> state.puppyName + " is tired"
+                                    else -> "Tap " + state.puppyName
+                                },
+                                fontWeight = FontWeight.Black,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1
+                            )
+                            if (cooldown == 0L && !state.isTired) {
+                                Text(
+                                    "+${state.clickPower + state.careTapBonus} treats",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(if (tiny) 5.dp else 8.dp))
-            val target = nextGoal?.target ?: 1L
-            val progressNow = nextGoal?.progress(state)?.coerceAtMost(target) ?: target
+            Spacer(Modifier.height(gap))
+            val target = (nextGoal?.target ?: 1L).coerceAtLeast(1L)
+            val progressNow = (nextGoal?.progress(state)?.coerceAtMost(target) ?: target).coerceAtLeast(0L)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.30f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                shape = RoundedCornerShape(18.dp),
+                color = accent.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.28f))
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = if (tiny) 6.dp else 8.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("🎁", fontSize = 22.sp)
-                    Spacer(Modifier.width(8.dp))
+                    Text("🎁", fontSize = 26.sp)
+                    Spacer(Modifier.width(7.dp))
                     Column(Modifier.weight(1f)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(
                                 nextGoal?.let { "Next Reward · ${it.title}" } ?: "Today complete",
                                 fontWeight = FontWeight.Black,
-                                style = MaterialTheme.typography.labelLarge
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
                                 if (nextGoal != null) "$progressNow/$target" else "✓",
                                 fontWeight = FontWeight.Black,
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelSmall
                             )
                         }
+                        Spacer(Modifier.height(5.dp))
                         LinearProgressIndicator(
                             progress = { progressNow.toFloat() / target.toFloat() },
-                            modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape)
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
                         )
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(
                         nextGoal?.let { "${it.rewardTreats} 🍪" } ?: "All claimed",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black
                     )
                 }
             }
         }
 
+            }
+            if (desktop) {
+                PuppyDesktopPlaySidePanel(state,vm,todayGoals,onOpenCare,Modifier.weight(1f).fillMaxHeight())
+            }
+        }
         V6TicketDropOverlay(
             visible = ticketVisible,
             rarity = state.lastTicketDrop,
@@ -259,6 +372,69 @@ internal fun PuppyRevampedPlayScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PuppyDesktopPlaySidePanel(
+    state: V6GameState,
+    vm: PuppyClickerV6ViewModel,
+    goals: List<PuppyRewardGoal>,
+    onOpenCare: () -> Unit,
+    modifier: Modifier
+) {
+    Column(modifier.verticalScroll(rememberScrollState()),verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Text("Your Resources",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                PuppyWalletCard(state)
+            }
+        }
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Today's goals",style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                goals.take(3).forEach { goal ->
+                    val progress = goal.progress(state).coerceIn(0L,goal.target)
+                    val claimed = goal.id in state.claimedDailyTasks
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text(goal.emoji,fontSize=26.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(goal.title,style=MaterialTheme.typography.labelLarge,fontWeight=FontWeight.Bold)
+                            LinearProgressIndicator(
+                                progress={progress.toFloat()/goal.target.coerceAtLeast(1L).toFloat()},
+                                modifier=Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
+                            Text(progress.toString()+"/"+goal.target+" · "+goal.rewardTreats+" 🍪",
+                                style=MaterialTheme.typography.labelSmall)
+                        }
+                        Button(onClick={vm.claimDailyTask(goal.id)},enabled=!claimed && progress>=goal.target,
+                            contentPadding=PaddingValues(horizontal=10.dp,vertical=4.dp)) {
+                            Text(if(claimed) "✓" else "Claim",style=MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+        Surface(modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),
+            color=MaterialTheme.colorScheme.surface,border=BorderStroke(1.dp,MaterialTheme.colorScheme.primary.copy(alpha=0.3f))) {
+            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text("Pup Care Status",modifier=Modifier.weight(1f),
+                        style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Black)
+                    TextButton(onClick=onOpenCare) { Text("Go to Care →") }
+                }
+                Text(state.puppyName+" · Wellness "+state.careScore+"% · Bond "+state.bond+"%",
+                    style=MaterialTheme.typography.labelSmall)
+                PuppyCompactCareMeter("💖 Happiness",state.happiness)
+                PuppyCompactCareMeter("🍖 Fullness",state.fullness)
+                PuppyCompactCareMeter("⚡ Energy",state.energy)
+                PuppyCompactCareMeter("🫧 Cleanliness",state.cleanliness)
+                PuppyCompactCareMeter("🤝 Bond",state.bond)
+                Text("✨ +"+state.careTapBonus+" Treats per tap",style=MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 
