@@ -85,6 +85,20 @@ test('Play uses a single app brand, a transparent stage and a live next-reward c
  }finally{await act(()=>renderer.unmount());}
 });
 
+test('Play matches the website stage and Switch Puppy opens the live roster',async()=>{
+ const renderer=await render();
+ try{
+  assert.equal(renderer.root.findAllByProps({testID:'web-parity-play-stage'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'web-parity-tap'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'web-parity-next-reward'}).length,1);
+  assert.match(text(renderer.root),/Current Puppy/);
+  assert.match(text(renderer.root),/Care bonus/);
+  const switchPuppy=renderer.root.findByProps({accessibilityLabel:'Switch puppy'});
+  await act(()=>switchPuppy.props.onPress());
+  assert.match(text(renderer.root),/Puppy Roster/);
+ }finally{await act(()=>renderer.unmount());}
+});
+
 const pressLabel=async(renderer,label)=>act(()=>renderer.root.findAllByType('Pressable').find(p=>p.props.accessibilityLabel===label).props.onPress({stopPropagation(){}}));
 const goTab=async(renderer,label)=>act(()=>renderer.root.findAllByType('Pressable').find(p=>p.props.accessibilityRole==='tab'&&text(p)===({Care:'💖 Care',Roster:'🐶 Roster',Rewards:'🎁 Rewards'}[label]||label)).props.onPress());
 test('Care exposes compact meters and a 3+2 action grid with real costs and care effects',async()=>{
