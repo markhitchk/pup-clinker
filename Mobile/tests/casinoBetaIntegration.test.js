@@ -42,6 +42,14 @@ test('blackjack server hand resumes with a presentation-only unknown hole card',
  assert.equal(state.blackjack.dealerCards.length,2);
  assert.equal(state.game.casinoChips,15000);
 });
+test('original Kotlin active casino wager blocks beta round starts without losing cloud progress',()=>{
+ const json=JSON.parse(kotlinRound(newSlotsGuestRound(100,[15,35,68],ts)));
+ json.stores.puppy_clicker_save.values.casino_active_round_v1='{"type":"BLACKJACK","status":"ACTIVE"}';
+ const game=projectKotlinCloudSave(JSON.stringify(json));
+ assert.equal(game.legacyCasinoRoundActive,true);
+ const state=transition(initialState(),{type:'hydrate',game,readOnly:true,now:ts+1000});
+ assert.equal(state.game.legacyCasinoRoundActive,true);
+});
 test('casino button guards distinguish authorized beta, saving and companion sessions',()=>{
  const root=readFileSync(new URL('../App.js',import.meta.url),'utf8');
  assert.match(root,/casinoReadOnly:betaMode&&account\?\.gameplayWritable!==true/);
@@ -50,7 +58,7 @@ test('casino button guards distinguish authorized beta, saving and companion ses
  assert.doesNotMatch(root,/\[accepted,onBack\]/);
  for(const name of ['SlotsV6','RouletteV6','PlinkoV6','ScratchersV6','LuckyWheelV6']){
   const source=readFileSync(new URL('../src/components/'+name+'.jsx',import.meta.url),'utf8');
-  assert.match(source,/!game\.casinoReadOnly&&!game\.gameplayBusy/,name+' must not submit unavailable wagers');
+  assert.match(source,/!game\.casinoReadOnly&&!game\.casinoLegacyRoundActive&&!game\.gameplayBusy/,name+' must not submit unavailable wagers');
  }
  assert.match(root,/casinoChips,wager,active/);
 });
