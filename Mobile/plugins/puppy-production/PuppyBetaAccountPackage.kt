@@ -552,7 +552,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   "reducedMotion" to "reduced_motion", "anonymousDiagnosticsEnabled" to "anonymous_diagnostics_enabled",
   "crashReportsEnabled" to "crash_reports_enabled", "supportIdentityEnabled" to "support_identity_enabled",
   "dailyRewardNotifications" to "notify_daily_rewards", "gameEventNotifications" to "notify_game_events",
-  "updateNotifications" to "notify_app_updates")
+  "updateNotifications" to "notify_app_updates",
+  "playLayoutV2Enabled" to "play_layout_v2_enabled")
  private val setupEnums=mapOf("themeMode" to ("theme_mode" to setOf("system","light","dark")),
   "uiScale" to ("ui_scale" to setOf("compact","default","large")))
  private fun validBirthday(month:Int,day:Int):Boolean =

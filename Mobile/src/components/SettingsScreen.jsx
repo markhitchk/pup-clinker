@@ -12,7 +12,7 @@ function Action({children,onPress,disabled=false,danger=false}){return <Pressabl
 function Toggle({title,detail,value,onChange,disabled=false}){return <View style={s.toggle}><View style={{flex:1,gap:3}}><T style={s.bold}>{title}</T>{detail?<T muted style={s.small}>{detail}</T>:null}</View><Switch accessibilityLabel={title} disabled={disabled} value={value===true} onValueChange={onChange} trackColor={{false:C.line,true:C.accent}} thumbColor={C.surface}/></View>;}
 function Choices({label,value,items,onChange}){return <View style={{gap:6}}><T style={s.bold}>{label}</T><View style={s.choices}>{items.map(([id,title])=><Pressable key={id} accessibilityRole="radio" accessibilityState={{checked:value===id}} onPress={()=>onChange(id)} style={[s.choice,value===id&&s.selected]}><T style={{color:value===id?C.accentInk:C.text}}>{title}</T></Pressable>)}</View></View>;}
 export default function SettingsScreen({g,act,onOpen,registry,notifications,diagnostics,betaMode=false,account,onConnectAccount,onUpdateAccountName,onUpdateBirthday,cloudState,syncStatus,onRefreshAccount}){
- const [expanded,setExpanded]=useState(null),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
+ const [expanded,setExpanded]=useState(null),[flagsOpen,setFlagsOpen]=useState(false),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [profileBusy,setProfileBusy]=useState(false),[profileMessage,setProfileMessage]=useState('');
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
@@ -128,6 +128,13 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <Action disabled={!report.trim()} onPress={()=>Share.share({message:`Puppy Clicker React Beta 1.8.0\n${category} report\n${g.supportIdentityEnabled?'Player: '+g.guestName+'\n':''}${report.trim()}`}).catch(e=>Alert.alert('Unable to share',e.message))}>Share Support Report</Action><T muted>Choose where to send your report in Android’s share menu.</T>
   </>)}
   {group('ADVANCED')}
+  {section('developer','🛠️','Developer','Experimental flags and interface modes',<>
+   <Action onPress={()=>setFlagsOpen(open=>!open)}>Flags {flagsOpen?'⌃':'⌄'}</Action>
+   {flagsOpen?<View style={s.flagsPanel}>
+    <Toggle title="V2 · Browser-style UI" detail="Restore the browser-inspired Play layout. Automatically follows Appearance → UI scale, including Compact." value={g.playLayoutV2Enabled} onChange={value=>pref('playLayoutV2Enabled',value)}/>
+    <T muted style={s.small}>V2 changes visuals only. Switching puppies stays in Roster; gameplay and Pup Account progress are unchanged.</T>
+   </View>:null}
+  </>)}
   {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<T muted>Open the items below when you need them.</T>)}
   {section('roster','🐶','Puppy Roster','Manage streamed puppy roster content and refresh assets',<><Action onPress={()=>onOpen('roster')}>Open Puppy Roster</Action><Action disabled={registry.refreshing} onPress={registry.refresh}>Refresh Puppy Assets</Action></>)}
   {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',pending)}
@@ -144,5 +151,5 @@ const s=themedStyles(()=>({
  title:{fontSize:28,fontWeight:'900',color:C.text},description:{fontSize:14,lineHeight:21},
  identity:{marginTop:14,marginBottom:16,backgroundColor:'#5B4FE0',borderRadius:24,padding:16,flexDirection:'row',alignItems:'center',gap:14,minHeight:108},avatar:{width:76,height:76},identityName:{fontSize:22,fontWeight:'900',color:'#FFFFFF'},badge:{fontSize:14,fontWeight:'800',color:'#FFFFFF',backgroundColor:'#7568E4',borderRadius:22,paddingHorizontal:10,paddingVertical:4,overflow:'hidden'},
  group:{fontSize:12,fontWeight:'900',color:C.accentInk,marginTop:7,marginBottom:7},section:{marginBottom:9,backgroundColor:C.surface,borderColor:C.line,borderWidth:1,borderRadius:20,overflow:'hidden'},sectionHead:{flexDirection:'row',alignItems:'center',paddingHorizontal:14,paddingVertical:12,gap:11,minHeight:68},sectionTitle:{fontSize:16,fontWeight:'800'},subtitle:{fontSize:12,lineHeight:17},iconBox:{width:42,height:42,borderRadius:12,backgroundColor:C.dark?'#494457':'#E7E1EF',alignItems:'center',justifyContent:'center'},icon:{fontSize:21},chevron:{fontSize:26,fontWeight:'800',color:C.accentInk},body:{padding:14,paddingTop:5,gap:12},
- action:{padding:12,borderRadius:20,borderWidth:1,borderColor:C.line,minHeight:44,justifyContent:'center'},toggle:{flexDirection:'row',alignItems:'center',gap:9,paddingVertical:5},choices:{flexDirection:'row',flexWrap:'wrap',gap:7},choice:{borderRadius:16,padding:9,borderWidth:1,borderColor:C.line},selected:{borderColor:C.accentInk,backgroundColor:C.accentSoft},input:{color:C.text,fontSize:15,borderRadius:12,padding:11,borderColor:C.line,borderWidth:1,backgroundColor:C.card},swatch:{width:42,height:42,borderRadius:21,borderWidth:2,alignItems:'center',justifyContent:'center'},preview:{backgroundColor:C.card,padding:14,borderRadius:18,gap:9},aboutLogo:{width:96,height:96,alignSelf:'center'}
+ action:{padding:12,borderRadius:20,borderWidth:1,borderColor:C.line,minHeight:44,justifyContent:'center'},toggle:{flexDirection:'row',alignItems:'center',gap:9,paddingVertical:5},choices:{flexDirection:'row',flexWrap:'wrap',gap:7},choice:{borderRadius:16,padding:9,borderWidth:1,borderColor:C.line},selected:{borderColor:C.accentInk,backgroundColor:C.accentSoft},input:{color:C.text,fontSize:15,borderRadius:12,padding:11,borderColor:C.line,borderWidth:1,backgroundColor:C.card},swatch:{width:42,height:42,borderRadius:21,borderWidth:2,alignItems:'center',justifyContent:'center'},preview:{backgroundColor:C.card,padding:14,borderRadius:18,gap:9},flagsPanel:{gap:10,padding:12,borderRadius:14,backgroundColor:C.card,borderWidth:1,borderColor:C.line},aboutLogo:{width:96,height:96,alignSelf:'center'}
 }));
