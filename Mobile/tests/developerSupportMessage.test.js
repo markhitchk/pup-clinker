@@ -64,3 +64,23 @@ test('other inbox items keep their sorting, filters and read state',()=>{
  assert.deepEqual(visibleInboxItems([regular],'reward'),[regular]);
  assert.equal(regular.read,false);
 });
+
+test('developer support notice stays pinned above a full notification history',()=>{
+ const history=Array.from({length:100},(_,i)=>({
+  id:'event:'+i,
+  category:i%2?'system':'reward',
+  title:'Event '+i,
+  body:'An ordinary game notification',
+  createdAt:Date.UTC(2026,9,29,12,0)+i,
+  read:i%2===0,
+  action:null
+ }));
+ const all=visibleInboxItems(history,'all');
+ assert.equal(all[0].id,DEVELOPER_SUPPORT_MESSAGE.id);
+ assert.equal(all.filter(n=>n.id===DEVELOPER_SUPPORT_MESSAGE.id).length,1);
+ assert.equal(all.length,101);
+ const system=visibleInboxItems(history,'system');
+ assert.equal(system[0].id,DEVELOPER_SUPPORT_MESSAGE.id);
+ assert.equal(system.length,51);
+ assert.equal(visibleInboxItems(history,'reward').length,50);
+});
