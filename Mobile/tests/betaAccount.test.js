@@ -12,7 +12,7 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  const hook=read('../src/state/useGame.js');
  assert.match(root,/<PuppyApp betaMode\/>/);
  assert.match(root,/<BetaAccountEntry visible=\{accountOpen\}/);
- assert.match(root,/PlayScreen g=/);
+ assert.match(root,/PlayScreen desktop={desktopMode} g=/);
  assert.match(root,/RosterScreen g=/);
  assert.match(root,/SettingsScreen g=/);
  assert.match(root,/CasinoScreen g=/);
