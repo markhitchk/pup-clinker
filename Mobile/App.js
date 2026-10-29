@@ -801,7 +801,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
  const active=state.blackjack;
  const displayed=blackjackDisplayRound(active,state.blackjackDisplay);
  const outcome=active?null:state.blackjackDisplay?.outcome||null;
- const controls=active?blackjackActions(active,g.casinoChips):null;
+ const controls=active?Object.fromEntries(Object.entries(blackjackActions(active,g.casinoChips)).map(([id,available])=>[id,available&&!g.casinoReadOnly&&!g.gameplayBusy])):null;
  const {width:windowWidth,fontScale}=useWindowDimensions();
  const oneRow=windowWidth>=BLACKJACK_V6.actionRowThreshold&&fontScale<=1.3;
  useEffect(()=>{
@@ -855,7 +855,7 @@ function BlackjackV6Panel({g,act,state,onBack}){
      <Txt style={[styles.filterText,wager===preset&&styles.filterTextSelected]}>{preset}</Txt>
     </Pressable>)}
    </View>
-   <Button disabled={!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
+   <Button disabled={g.casinoReadOnly||g.gameplayBusy||!canDealBlackjack(g.casinoChips,wager,active,g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}
     onPress={()=>{setSelectedHand(0);act({type:'blackjackStart',wager,deck:shuffledBlackjackDeck(),now:Date.now()});}}>
     {g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel?'Finish the current Casino round first':g.casinoChips<wager?'Not Enough Chips':'Deal for '+wager+' Chips'}
    </Button>
@@ -873,18 +873,28 @@ function BlackjackV6Panel({g,act,state,onBack}){
   </View>:null}
  </View>;
 }
-function CasinoScreen({g,act,state,bet,setBet,onBack}){
+function CasinoScreen({g,act,state,bet,setBet,onBack,onRefresh}){
  const [page,setPage]=useState(g.pendingScratch?'scratchers':state.blackjack?'blackjack':g.pendingSlots?'slots':g.pendingRoulette?'roulette':g.pendingPlinko?'plinko':g.pendingWheel?'wheel':'hub');
  const [accepted,setAccepted]=useState(false);
- const {width}=useWindowDimensions();
+ const backRef=useRef(onBack);
+ backRef.current=onBack;
+ const restricted=g.casinoReadOnly===true;
+ const busy=g.gameplayBusy===true;
+ const guardedAction=action=>{
+  if(restricted)return;
+  // Prevent duplicate wager/conversion submits while the last cloud save is
+  // still being confirmed. Authorized reveal actions retain queue semantics.
+  if(busy&&(action.type==='exchange'||action.type?.endsWith('Start')))return;
+  act(action);
+ };
  useEffect(()=>{
-  if(!accepted)Alert.alert('Puppy Casino — Simulated Gambling',
+  if(accepted)return;
+  Alert.alert('Puppy Casino — Simulated Gambling',
    'Slots, roulette, blackjack, Plinko, scratchers and the Lucky Pup Wheel use game-only chips. No real money is used and no prizes have real-world cash value.',
-   [{text:'Go Back',style:'cancel',onPress:onBack},{text:'Continue',onPress:()=>setAccepted(true)}],{cancelable:false});
- },[accepted,onBack]);
- const casino=(gameType,extra={})=>act({type:'casino',gameType,wager:bet,...extra});
+   [{text:'Go Back',style:'cancel',onPress:()=>backRef.current()},
+    {text:'Continue',onPress:()=>setAccepted(true)}],{cancelable:false});
+ },[accepted]);
  const choices=[20,50,100,500,1000];
- const inBlackjack=Boolean(state.blackjack||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingScratch||g.pendingWheel);
  const visiblePage=CASINO_PAGES.find(p=>p[0]===page);
  return <View style={styles.gamePage}>
   {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<><View style={styles.pair}>
@@ -892,6 +902,14 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
    <Txt style={styles.pageTitle}>{visiblePage?.[2]||'Puppy Casino'}</Txt>
   </View>
   <Txt muted style={styles.small}>🐾 Casino Chip Wallet · {format(g.casinoChips)} Chips · Simulated, no real-money prizes</Txt></>:null}
+  {restricted?<View style={[styles.dailyGiftCard,{borderColor:'#8E6672',borderWidth:1}]}>
+   <Txt style={{fontSize:28}}>🔒</Txt>
+   <View style={{flex:1,gap:6}}>
+    <Txt style={styles.itemName}>Pup Account casino is read-only</Txt>
+    <Txt muted style={styles.small}>PupEye has not authorized this beta as the write-enabled owner. Wagers and prizes cannot be changed from a companion installation. Your Kotlin account and saves stay protected.</Txt>
+    {onRefresh?<Button compact secondary onPress={onRefresh}>Refresh account verification</Button>:null}
+   </View>
+  </View>:busy?<Txt style={[styles.small,{color:C.accentInk}]}>Confirming the previous casino action before another wager…</Txt>:null}
   {page==='hub'?<>
    {g.pendingWheel?<View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:26}}>🎡</Txt>
@@ -932,23 +950,23 @@ function CasinoScreen({g,act,state,bet,setBet,onBack}){
    <View style={styles.dailyGiftCard}>
     <Txt style={{fontSize:28}}>🐾</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Treats → Casino Chips</Txt><Txt muted style={styles.small}>10 🍪 = 1 🐾 · One-way conversion</Txt></View>
    </View>
-   <View style={styles.actions}><Button compact secondary disabled={g.treats<100} onPress={()=>act({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button compact secondary disabled={g.treats<1000} onPress={()=>act({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
+   <View style={styles.actions}><Button compact secondary disabled={restricted||busy||g.treats<100} onPress={()=>guardedAction({type:'exchange',amount:100})}>100 🍪 → 10 🐾</Button><Button compact secondary disabled={restricted||busy||g.treats<1000} onPress={()=>guardedAction({type:'exchange',amount:1000})}>1,000 🍪 → 100 🐾</Button></View>
    {CASINO_PAGES.map(([id,emoji,title,description,art])=><Pressable accessibilityRole="button" key={id} onPress={()=>setPage(id)} style={styles.casinoGameTile}>
     <Image source={art} resizeMode="contain" style={styles.casinoTileArt}/><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{emoji} {title}</Txt><Txt muted style={styles.small}>{description}</Txt></View><Txt style={styles.casinoTileArrow}>›</Txt>
    </Pressable>)}
   </>:<>
    {page!=='blackjack'&&page!=='slots'&&page!=='roulette'&&page!=='plinko'&&page!=='scratchers'&&page!=='wheel'?<View style={styles.filterRow}>{choices.map(w=><Pressable key={w} accessibilityRole="button" accessibilityState={{selected:bet===w}} style={[styles.filterChip,bet===w&&styles.filterChipSelected]} onPress={()=>setBet(w)}><Txt numberOfLines={1} style={[styles.filterText,bet===w&&styles.filterTextSelected]}>{w}</Txt></Pressable>)}</View>:null}
    {page==='slots'?<SlotsV6 game={g} pending={g.pendingSlots}
-    lastResult={state.slotsDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.slotsDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='roulette'?<RouletteV6 game={g} pending={g.pendingRoulette}
-    lastResult={state.rouletteDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.rouletteDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='plinko'?<PlinkoV6 game={g} pending={g.pendingPlinko}
-    lastResult={state.plinkoDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.plinkoDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='scratchers'?<ScratchersV6 game={g} pending={g.pendingScratch}
-    lastResult={state.scratchDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.scratchDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
    {page==='wheel'?<LuckyWheelV6 game={g} pending={g.pendingWheel}
-    lastResult={state.wheelDisplay} onAction={act} onBack={()=>setPage('hub')}/>:null}
-   {page==='blackjack'?<BlackjackV6Panel g={g} act={act} state={state} onBack={()=>setPage('hub')}/>:null}
+    lastResult={state.wheelDisplay} onAction={guardedAction} onBack={()=>setPage('hub')}/>:null}
+   {page==='blackjack'?<BlackjackV6Panel g={g} act={guardedAction} state={state} onBack={()=>setPage('hub')}/>:null}
   </>}
  </View>;
 }
@@ -1060,7 +1078,10 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy} onOpenExchange={()=>setSecondary('exchange')}/>;
   if(secondary==='rewards'||tab==='rewards'&&!secondary)return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='gacha')return <GachaScreen g={g} act={act} state={state} registry={registry} onBack={()=>openScreen('rewards')}/>;
-  if(secondary==='casino')return <CasinoScreen g={g} act={act} bet={bet} setBet={setBet} state={state} onBack={()=>openScreen('rewards')}/>;
+  if(secondary==='casino')return <CasinoScreen g={{...g,casinoReadOnly:betaMode&&account?.gameplayWritable!==true,
+   gameplayBusy:betaMode&&['SAVING','VERIFYING_SAVE'].includes(syncStatus?.state)}} act={act}
+   bet={bet} setBet={setBet} state={state} onRefresh={refreshAccount}
+   onBack={()=>openScreen('rewards')}/>;
   if(tab==='play')return <PlayScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule}
    viewportHeight={contentHeight-6} onOpen={openScreen}
    readOnly={betaMode&&(account?.gameplayWritable!==true||!['LIVE_SYNCED','NO_CLOUD_SAVE','LAST_VERIFIED'].includes(cloudState))}/>
