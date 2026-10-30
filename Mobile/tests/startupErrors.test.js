@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {publicStartupIssue,classifyStartupFailure,STARTUP_ERRORS} from '../src/production/startupErrors.js';
+import {publicStartupIssue,classifyStartupFailure,requiresPupAccountSignIn,STARTUP_ERRORS} from '../src/production/startupErrors.js';
 
 test('public startup codes have stable human-readable messages and recovery',()=>{
  for(const [code,definition] of Object.entries(STARTUP_ERRORS)){
@@ -22,6 +22,11 @@ test('startup classifies network, auth, device, integrity, cloud, native and ren
  assert.equal(classify({source:'setup'}),'PUPPY-START-101');
  assert.equal(classify({account:{status:'NATIVE_MODULE_MISSING'}}),'PUPPY-START-102');
  assert.equal(classify({cloudState:'CACHED_OFFLINE'}),'PUPPY-NET-701');
+ assert.equal(classify({error:{code:'BETA_PUP_ACCOUNT_LOGIN_REQUIRED'},cloudState:'CACHED_OFFLINE'}),'PUPPY-AUTH-801');
+ assert.equal(requiresPupAccountSignIn({code:'BETA_PUP_ACCOUNT_LOGIN_REQUIRED'}),true);
+ assert.equal(requiresPupAccountSignIn({code:'BETA_PUP_ACCOUNT_DISCORD_REQUIRED'}),true);
+ assert.equal(requiresPupAccountSignIn({code:'BETA_BETA_LINK_REQUIRED'}),true);
+ assert.equal(requiresPupAccountSignIn({code:'BETA_TRANSPORT_FAILURE'}),false);
  assert.equal(classify({error:{code:'BETA_TRANSPORT_FAILURE'},cloudState:'CONNECTION_ERROR'}),'PUPPY-NET-702');
  assert.equal(classify({error:{code:'BETA_SESSION_EXPIRED'}}),'PUPPY-AUTH-801');
  assert.equal(classify({error:{code:'BETA_OWNER_DEVICE_UNAVAILABLE'}}),'PUPEYE-ID-401');
