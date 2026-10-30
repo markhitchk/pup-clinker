@@ -69,14 +69,14 @@ Deno.serve(async (req: Request) => {
       }).eq("id", session.installation.id);
       if (installError) throw installError;
 
-      const { error: headError } = await admin.from("pupeye_save_heads").upsert({
+      const { error: headError } = await admin.rpc("puppy_upsert_save_head", {p_payload: {
         installation_uuid: session.installation.id,
         generation,
         support_code: supportCode,
         last_reason: reason,
         hard_flags: hardFlags,
         updated_at: now,
-      }, { onConflict: "installation_uuid" });
+      }});
       if (headError) throw headError;
 
       return json(200, { ok: true, generation });
