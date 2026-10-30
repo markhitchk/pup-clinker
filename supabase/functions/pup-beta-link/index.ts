@@ -89,13 +89,13 @@ Deno.serve(async (req: Request) => {
       }
 
       await verifyOwner(admin, owner, "beta-link-discord");
-      const { error: linkError } = await admin.from("pup_beta_account_links").upsert({
+      const { error: linkError } = await admin.rpc("puppy_upsert_beta_link", {p_payload: {
         installation_uuid: session.installation.id,
         account_uuid: owner.id,
         discord_user_id: discordId,
         expires_at: new Date(Date.now() + MAX_BETA_GRANT_MS).toISOString(),
         verified_at: new Date().toISOString(),
-      }, { onConflict: "installation_uuid" });
+      }});
       if (linkError) throw linkError;
       await audit(admin, "BETA_COMPANION_LINKED", "info", {
         accountId: owner.id, mode: "read_only", source: "DISCORD_OAUTH_USERS_ME",
