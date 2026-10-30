@@ -242,8 +242,7 @@ Deno.serve(async (req: Request) => {
 
       if (!approved) {
         const { data: migration, error: migrationError } = await admin
-          .from("pupeye_device_migrations")
-          .upsert({
+          .rpc("puppy_upsert_device_migration", {p_payload: {
             player_uuid: player.id,
             from_installation_uuid: activeInstallation.id,
             requested_installation_id: envelope.installationId,
@@ -254,11 +253,7 @@ Deno.serve(async (req: Request) => {
             requested_app_version: appVersion,
             status: "pending",
             requested_at: new Date().toISOString(),
-          }, {
-            onConflict: "player_uuid,requested_installation_id,requested_device_key_id",
-          })
-          .select("*")
-          .single();
+          }});
         if (migrationError) throw migrationError;
 
         await audit(
