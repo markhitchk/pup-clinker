@@ -4,13 +4,14 @@
  */
 export function startupGate({account,cloudState,setupReady,setupProblem,gameReady}){
  if(!setupReady&&setupProblem)return 'setup-error';
+ // A confirmed auth requirement must win over a stale cache/loading state.
+ if(cloudState==='SIGN_IN_REQUIRED'||account?.status==='NEEDS_ACCOUNT'||
+  account?.status==='NEEDS_DISCORD'||account?.status==='NEEDS_CREDENTIALS')return 'signin';
  if(account?.status==='CHECKING'||cloudState==='NOT_LOADED'||cloudState==='CACHED_VERIFYING'||!setupReady)return 'loading';
  if(cloudState==='CONNECTION_ERROR'||cloudState==='CACHED_OFFLINE'||
   account?.status==='CONNECTION_ERROR'||account?.status==='NATIVE_MODULE_MISSING'||
   account?.status==='DEVICE_TRANSFER_REQUIRED'||
    account?.status==='DATABASE_LAYOUT_UNSUPPORTED')return 'connection-error';
- if(cloudState==='SIGN_IN_REQUIRED'||account?.status==='NEEDS_ACCOUNT'||
-  account?.status==='NEEDS_DISCORD'||account?.status==='NEEDS_CREDENTIALS')return 'signin';
  if(account?.status!=='VERIFIED')return 'signin';
  if(account.legalAccepted!==true)return 'legal';
  if(!gameReady)return 'loading';
