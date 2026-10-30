@@ -2,6 +2,7 @@ import {useCallback,useEffect,useMemo,useReducer,useRef,useState} from 'react';
 import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
+import {supportsDatabaseLayout} from '../production/dbSchemaLayout.js';
 import {projectPendingTapDisplay} from './optimisticTaps.js';
 import {classifyBetaSaveFailure} from './saveFeedback.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,6 +52,11 @@ export function useGame({mode='guest'}={}){
    const result=await native.bootstrap(PUBLISHABLE_KEY);
    if(request!==currentRequest.current)return false;
    const active=result?.account;
+   if(active?.status==='VERIFIED'&&!supportsDatabaseLayout(active.databaseLayoutVersion)){
+    const incompatible=new Error('DATABASE_LAYOUT_UNSUPPORTED');
+    incompatible.code='DATABASE_LAYOUT_UNSUPPORTED';
+    throw incompatible; // Never hydrate or authorize an incompatible save.
+   }
    if(active?.status!=='VERIFIED'){
     setStartupError(null);
     setPendingTapIntents([]);
@@ -83,6 +89,16 @@ export function useGame({mode='guest'}={}){
   }catch(error){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
+   if(error?.code==='DATABASE_LAYOUT_UNSUPPORTED'){
+    liveVerified.current=false;cachedPreview.current=false;
+    setPendingTapIntents([]);
+    setStartupError({code:'DATABASE_LAYOUT_UNSUPPORTED'});
+    setAccount({status:'DATABASE_LAYOUT_UNSUPPORTED'});
+    setCloudState('CONNECTION_ERROR');
+    setSyncStatus(current=>({...current,state:'BLOCKED',errorCode:'DATABASE_LAYOUT_UNSUPPORTED'}));
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    return false;
+   }
    const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
    // Projected cloud parse errors are recognized locally; no exception text
    // is handed to the splash screen or persisted as diagnostics.
@@ -137,7 +153,8 @@ export function useGame({mode='guest'}={}){
     // Last signed snapshot is a visual-only head start during live verification.
     // Delayed cache reads cannot replace a newer server-verified response.
     if(native?.cachedBootstrap)void native.cachedBootstrap().then(result=>{
-     if(liveVerified.current||result?.account?.status!=='CACHED')return;
+     if(liveVerified.current||result?.account?.status!=='CACHED'||
+      !supportsDatabaseLayout(result.account.databaseLayoutVersion))return;
      try{
       const account=result.account;
       const cloud=result.cloud;

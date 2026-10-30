@@ -3,6 +3,7 @@ import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,Statu
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
+import {supportsDatabaseLayout} from './dbSchemaLayout.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -37,6 +38,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   }
   try{
    const result=await native.status(publishableKey);
+   if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
+    setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
+    setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
+    return;
+   }
    setState(result);
    if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
   }catch(error){
@@ -64,6 +70,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   setProblem('');
   try{
    const result=await api().completeDiscord(url,publishableKey);
+   if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
+    setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
+    setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
+    return;
+   }
    setState(result);
    if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
   }catch(error){
@@ -108,6 +119,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
    setPassword('');
+   if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
+    setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
+    setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
+    return;
+   }
    setState(result);setLinkNative(false);
    setContactEmail(result.contactEmail||email.trim());
    if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);

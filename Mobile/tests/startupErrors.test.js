@@ -27,6 +27,8 @@ test('startup classifies network, auth, device, integrity, cloud, native and ren
  assert.equal(classify({error:{code:'BETA_OWNER_DEVICE_UNAVAILABLE'}}),'PUPEYE-ID-401');
  assert.equal(classify({error:{code:'BETA_PUP_ACCOUNT_BLOCKED'}}),'PUPEYE-SERVER-701');
  assert.equal(classify({error:{code:'INVALID_CLOUD_SAVE_JSON'}}),'PUPPY-SAVE-205');
+ assert.equal(classify({error:{code:'DATABASE_LAYOUT_UNSUPPORTED'}}),'PUPPY-DB-301');
+ assert.equal(classify({account:{status:'DATABASE_LAYOUT_UNSUPPORTED'}}),'PUPPY-DB-301');
  assert.equal(classify({source:'render'}),'PUPPY-CRASH-902');
  assert.equal(classify({source:'native'}),'PUPPY-CRASH-901');
 });

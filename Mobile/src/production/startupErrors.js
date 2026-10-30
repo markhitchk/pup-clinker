@@ -8,6 +8,7 @@ export const STARTUP_ERRORS=Object.freeze({
  'PUPPY-AUTH-801':{title:'Sign-in required',message:'Your saved sign-in could not be verified.',recovery:'Sign in again. Your cloud save has not been deleted.'},
  'PUPEYE-ID-401':{title:'Account recovery required',message:'PupEye could not authorize this installation to access the account.',recovery:'Use your approved account-recovery process or contact Support. Do not reset your account.'},
  'PUPEYE-SERVER-701':{title:'Account verification blocked',message:'PupEye did not approve the account startup request.',recovery:'Contact Support with this code. Do not attempt to replace protected save data.'},
+ 'PUPPY-DB-301':{title:'Android update required',message:'This Puppy Clicker version cannot use the current Pup Account database layout.',recovery:'Install a newer official Android beta before reconnecting. Your cloud save has not been reset.'},
  'PUPPY-SAVE-205':{title:'Cloud progress could not be displayed',message:'Your saved progress could not be loaded safely on this version.',recovery:'Update Puppy Clicker or contact Support. The server save was not overwritten.'},
  'PUPPY-CRASH-901':{title:'Previous Android crash detected',message:'Puppy Clicker closed unexpectedly on the previous launch.',recovery:'Try Again. If it crashes repeatedly, share this code with Support.'},
  'PUPPY-CRASH-902':{title:'App interface error',message:'An unexpected error interrupted Puppy Clicker.',recovery:'Try restarting the screen. Your cloud save has not been reset.'},
@@ -25,6 +26,8 @@ export function classifyStartupFailure({source='account',error,account,cloudStat
  // Known machine codes only. Raw backend error text is never displayed.
  if(account?.status==='NATIVE_MODULE_MISSING')return publicStartupIssue('PUPPY-START-102');
  if(source==='setup')return publicStartupIssue('PUPPY-START-101');
+ if(code.includes('DATABASE_LAYOUT_UNSUPPORTED')||account?.status==='DATABASE_LAYOUT_UNSUPPORTED')
+  return publicStartupIssue('PUPPY-DB-301');
  if(source==='render'||source==='javascript')return publicStartupIssue('PUPPY-CRASH-902');
  if(source==='native')return publicStartupIssue('PUPPY-CRASH-901');
  if(code.includes('OWNER_DEVICE_UNAVAILABLE')||code.includes('ON_OTHER_DEVICE')||

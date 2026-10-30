@@ -25,6 +25,7 @@ test('legal agreements remain required for returning players',()=>{
 test('offline startup offers retry instead of rendering a cached, unsigned game',()=>{
  assert.equal(startupGate({...base,cloudState:'CACHED_OFFLINE',account:{status:'CACHED'}}),'connection-error');
  assert.equal(startupGate({...base,cloudState:'CONNECTION_ERROR'}),'connection-error');
+ assert.equal(startupGate({...base,account:{status:'DATABASE_LAYOUT_UNSUPPORTED'}}),'connection-error');
  assert.equal(startupGate({...base,account:{status:'NATIVE_MODULE_MISSING'},cloudState:'CONNECTION_ERROR'}),'connection-error');
  assert.equal(startupGate({...base,setupReady:false,setupProblem:'Setup failed'}),'setup-error');
 });

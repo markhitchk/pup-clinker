@@ -213,6 +213,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val save=obj.getJSONObject("cloudSave")
   return Arguments.createMap().apply{
    putString("status","VERIFIED");putString("username",a.getString("username"))
+   if(obj.has("databaseLayoutVersion"))putInt("databaseLayoutVersion",obj.getInt("databaseLayoutVersion"))
    putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
    putString("contactEmail",obj.optString("contactEmail",""))
    putBoolean("readOnly",obj.optBoolean("readOnly",false))
@@ -441,6 +442,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   val account=Arguments.createMap().apply{
    putString("status",if(cached)"CACHED" else "VERIFIED")
    putString("username",a.getString("username"))
+    if(obj.has("databaseLayoutVersion"))putInt("databaseLayoutVersion",obj.getInt("databaseLayoutVersion"))
    putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
    putString("contactEmail",obj.optString("contactEmail",""))
    putString("displayName",a.optString("displayName",a.getString("username")))

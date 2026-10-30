@@ -6,11 +6,13 @@ The 36 original Puppy Clicker tables have been physically moved into six schemas
 
 **Android production target:** `Mobile/` React Native / Expo. The historic Kotlin `App/` directory is an archived reference and is not the application being migrated or deployed. React Native may compile Kotlin-based native modules internally, but those modules do not make the old Kotlin app the deployment target.
 
-**Database:** React Native continues to use signed Supabase Edge Function and native PupEye service endpoints, not direct writes to grouped private database schemas. Supabase now includes a private PupEye Web rate gate for browser actions; it does not change Android's device attestation or signed cloud economy contract. All existing Android accounts and cloud saves remain authoritative during the staged physical-table migration.
+**Database:** React Native continues to use signed Supabase Edge Function and native PupEye service endpoints, not direct writes to grouped private database schemas. Supabase now includes a private PupEye Web rate gate for browser actions; it does not change Android's device attestation or signed cloud economy contract. All existing Android accounts and cloud saves remain authoritative after the completed physical migration. Signed Pup Account status and cloud bootstrap now announce layout v3; older signed responses remain compatible and future incompatible layouts display a safe update-required screen.
 
 ---
 
-## October 29 — Puppy Clicker grouped database layout (v2 compatibility)
+## Historical v2 plan — Puppy Clicker grouped database layout (obsolete)
+
+> The description below predates the physical migration. See v3 status at the top of this document.
 
 The six grouped Supabase schemas (`puppy_accounts`, `puppy_pupeye`, `puppy_game`, `puppy_exchange`, `puppy_admin`, `puppy_web`) currently contain read-only organizational views. **Canonical records remain in the original `public` tables.** The existing records, device identity, bans, saves and ownership are retained during their atomic table relocation; primary keys and foreign keys stay intact.
 
