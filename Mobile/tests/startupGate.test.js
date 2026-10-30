@@ -15,6 +15,8 @@ test('Pup Account and save must verify before leaving startup',()=>{
 });
 test('missing session asks for username/Discord sign-in before gameplay',()=>{
  assert.equal(startupGate({...base,account:{status:'NEEDS_ACCOUNT'},cloudState:'SIGN_IN_REQUIRED'}),'signin');
+ assert.equal(startupGate({...base,account:{status:'NEEDS_ACCOUNT'},cloudState:'CACHED_VERIFYING'}),'signin');
+ assert.equal(startupGate({...base,account:{status:'NEEDS_ACCOUNT'},cloudState:'CONNECTION_ERROR'}),'signin');
  assert.equal(startupGate({...base,account:{status:'NEEDS_DISCORD'},cloudState:'SIGN_IN_REQUIRED'}),'signin');
  assert.equal(startupGate({...base,account:active,cloudState:'SIGN_IN_REQUIRED'}),'signin');
 });
