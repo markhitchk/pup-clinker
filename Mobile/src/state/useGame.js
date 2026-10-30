@@ -3,6 +3,7 @@ import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import {supportsDatabaseLayout} from '../production/dbSchemaLayout.js';
+import {requiresPupAccountSignIn} from '../production/startupErrors.js';
 import {projectPendingTapDisplay} from './optimisticTaps.js';
 import {classifyBetaSaveFailure} from './saveFeedback.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +30,7 @@ export function useGame({mode='guest'}={}){
  const [syncStatus,setSyncStatus]=useState({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null,notice:null});
  const liveVerified=useRef(false);
  const cachedPreview=useRef(false);
+ const signInRequired=useRef(false);
  const currentRequest=useRef(0);
  const pendingLiveWrites=useRef(0);
  const needsReceiptRecheck=useRef(false);
@@ -42,6 +44,7 @@ export function useGame({mode='guest'}={}){
   if(!native?.bootstrap){setStartupError({code:'PUPPY_NATIVE_MODULE_MISSING'});setAccount({status:'NATIVE_MODULE_MISSING'});setCloudState('CONNECTION_ERROR');return false;}
   const request=++currentRequest.current;
   if(incoming?.status==='VERIFIED'){
+  signInRequired.current=false;
   setAccount(incoming);
   // After sign-in, remain on startup until the signed cloud snapshot arrives.
   // Background refreshes must not interrupt an already verified game.
@@ -74,6 +77,7 @@ export function useGame({mode='guest'}={}){
     :emptyAccountView(active.displayName||active.username);
    liveVerified.current=true;
    cachedPreview.current=false;
+   signInRequired.current=false;
    setStartupError(null);
    setAccount(active);
    setCloudState(cloud?.exists?(active.gameplayWritable===true?'LIVE_SYNCED':'SERVER_SNAPSHOT_READ_ONLY'):'NO_CLOUD_SAVE');
@@ -89,6 +93,21 @@ export function useGame({mode='guest'}={}){
   }catch(error){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
+   // A PupEye device session with no signed-in Pup Account is NOT offline.
+   // Unlock the actual sign-in screen without clearing device identity or saves.
+   if(requiresPupAccountSignIn(error)){
+    liveVerified.current=false;
+    cachedPreview.current=false;
+    signInRequired.current=true;
+    setPendingTapIntents([]);
+    setStartupError(null);
+    setAccount({status:'NEEDS_ACCOUNT'});
+    setCloudState('SIGN_IN_REQUIRED');
+    setSyncStatus(current=>({...current,state:'NOT_VERIFIED',errorCode:'SIGN_IN_REQUIRED'}));
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    dispatch({type:'dismiss'});
+    return false;
+   }
    if(error?.code==='DATABASE_LAYOUT_UNSUPPORTED'){
     liveVerified.current=false;cachedPreview.current=false;
     setPendingTapIntents([]);
@@ -153,7 +172,7 @@ export function useGame({mode='guest'}={}){
     // Last signed snapshot is a visual-only head start during live verification.
     // Delayed cache reads cannot replace a newer server-verified response.
     if(native?.cachedBootstrap)void native.cachedBootstrap().then(result=>{
-     if(liveVerified.current||result?.account?.status!=='CACHED'||
+     if(liveVerified.current||signInRequired.current||result?.account?.status!=='CACHED'||
       !supportsDatabaseLayout(result.account.databaseLayoutVersion))return;
      try{
       const account=result.account;
