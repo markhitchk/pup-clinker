@@ -188,10 +188,7 @@ async function registerPublishedPuppies(admin:any,missing:string[]){
  }
  if(missing.some(id=>!recognized.has(id)))
   throw new HttpError(409,"EXCHANGE_UNKNOWN_PUPPY","This puppy is not in the published official roster.");
- const inserted=await admin.from("pup_exchange_transfer_policy")
-  .upsert(missing.map(puppy_id=>({
-   puppy_id,giftable:false,tradeable:false,bound:true,source_copy:false
-  })),{onConflict:"puppy_id",ignoreDuplicates:true});
+ const inserted=await admin.rpc("puppy_seed_exchange_policy",{p_ids:missing});
  requireOk(inserted.error);
 }
 
