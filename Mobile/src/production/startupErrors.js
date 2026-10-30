@@ -21,6 +21,12 @@ export function publicStartupIssue(code){
  const safe=typeof code==='string'&&has(code)?code:'PUPPY-START-999';
  return {code:safe,...STARTUP_ERRORS[safe]};
 }
+// A signed PupEye installation can exist without an authenticated Pup Account.
+// These are expected sign-in states, not connectivity failures.
+export function requiresPupAccountSignIn(error){
+ const code=typeof error?.code==='string'?error.code.toUpperCase():'';
+ return /^(?:BETA_)?(?:PUP_ACCOUNT_LOGIN_REQUIRED|PUP_ACCOUNT_DISCORD_REQUIRED|BETA_LINK_REQUIRED)$/.test(code);
+}
 export function classifyStartupFailure({source='account',error,account,cloudState}={}){
  const code=typeof error?.code==='string'?error.code.toUpperCase():'';
  // Known machine codes only. Raw backend error text is never displayed.
@@ -40,6 +46,7 @@ export function classifyStartupFailure({source='account',error,account,cloudStat
   return publicStartupIssue('PUPPY-AUTH-801');
  if(/INVALID_CLOUD_SAVE|INVALID_KOTLIN_SAVE|UNSUPPORTED_KOTLIN_SAVE|MISSING_KOTLIN_PROGRESS|UNSUPPORTED_CLOUD_SAVE|SAVE_JSON/.test(code))
   return publicStartupIssue('PUPPY-SAVE-205');
+ if(requiresPupAccountSignIn(error))return publicStartupIssue('PUPPY-AUTH-801');
  if(cloudState==='CACHED_OFFLINE'||code.includes('TIMEOUT')||code.includes('NETWORK_UNAVAILABLE'))
   return publicStartupIssue('PUPPY-NET-701');
  if(account?.status==='CONNECTION_ERROR'||cloudState==='CONNECTION_ERROR'||code.includes('TRANSPORT_FAILURE'))
