@@ -113,14 +113,14 @@ async function finishPasswordSignIn(admin: any, session: any, account: any, auth
     if (previous && previous.account_uuid !== account.id) {
       throw new HttpError(409, "PUP_ACCOUNT_SWITCH_BLOCKED", "This installation is linked to a different Pup Account.");
     }
-    const { error } = await admin.from("pup_beta_account_links").upsert({
+    const { error } = await admin.rpc("puppy_upsert_beta_link", {p_payload: {
       installation_uuid: session.installation.id,
       account_uuid: account.id,
       discord_user_id: previous?.discord_user_id ?? null,
       credential_auth_user_id: authId,
       expires_at: new Date(Date.now() + GRANT_MS).toISOString(),
       verified_at: new Date().toISOString(),
-    }, { onConflict: "installation_uuid" });
+    }});
     if (error) throw error;
   }
   await audit(admin, "PUP_NATIVE_AUTH_SUCCESS", "info",
