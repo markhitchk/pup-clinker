@@ -363,6 +363,26 @@ Deno.serve(async (req: Request) => {
       backendInstallationId: installation.id,
     });
   } catch (error) {
+    // A retired identity must never be silently re-created after account cleanup.
+    // PostgreSQL enforces this independently of this Edge Function (including other
+    // insert/update paths); translate its constraint failure into a usable response.
+    const dbError = error && typeof error === "object"
+      ? error as { code?: string; message?: string }
+      : null;
+    if (dbError?.code === "23514" && dbError.message?.includes("PUPEYE_PLAYER_ID_RETIRED")) {
+      return errorResponse(new HttpError(
+        409,
+        "PLAYER_ID_RETIRED",
+        "This deleted Player ID cannot be restored. Register with a new Player ID and Friend Code.",
+      ));
+    }
+    if (dbError?.code === "23514" && dbError.message?.includes("PUPEYE_FRIEND_CODE_RETIRED")) {
+      return errorResponse(new HttpError(
+        409,
+        "FRIEND_CODE_RETIRED",
+        "This deleted Friend Code cannot be restored. Register with a new Player ID and Friend Code.",
+      ));
+    }
     return errorResponse(error);
   }
 });
