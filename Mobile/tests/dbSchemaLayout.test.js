@@ -40,3 +40,11 @@ test('native signed account status and cloud bootstrap forward server layout ver
  assert.match(game,/supportsDatabaseLayout\(result\.account\.databaseLayoutVersion\)/);
  assert.match(entry,/supportsDatabaseLayout\(result\.databaseLayoutVersion\)/);
 });
+
+test('signed native Pup Account and beta endpoints announce physical layout v3',()=>{
+ const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
+ const account=read('../../supabase/functions/pup-account/index.ts');
+ const beta=read('../../supabase/functions/pup-beta-link/index.ts');
+ assert.equal((account.match(/databaseLayoutVersion: 3/g)||[]).length,2);
+ assert.equal((beta.match(/databaseLayoutVersion: 3/g)||[]).length,2);
+});

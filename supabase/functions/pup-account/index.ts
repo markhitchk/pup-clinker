@@ -197,6 +197,7 @@ Deno.serve(async (req: Request) => {
         .eq("player_uuid", session.player.id).maybeSingle();
       if (saveError) throw saveError;
       return json(200, {
+        databaseLayoutVersion: 3,
         readOnly: false, accountWritable: true, linkedFromPlay: false,
         legalAccepted: hasLegalConsent(account),
         contactEmail: account.contact_email ?? null,
@@ -228,6 +229,7 @@ Deno.serve(async (req: Request) => {
       if (saveError) throw saveError;
 
       return json(200, {
+        databaseLayoutVersion: 3,
         realtimeTopic: `pup-account:${account.realtime_topic}`,
         legalAccepted: hasLegalConsent(account),
         contactEmail: account.contact_email ?? null,
