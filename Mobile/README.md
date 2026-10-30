@@ -1,3 +1,7 @@
+## October 29 — Physical Puppy Clicker schema migration v3 complete
+
+The 36 original Puppy Clicker tables have been physically moved into six schemas. React Native `Mobile/` accesses the same cloud records through the stable signed PupEye native/Edge Function endpoints; no new Android API credentials or different account identity is required. Supabase server RPCs now handle upsert operations against the new physical tables, while `public` compatibility views preserve older clients. This move does not activate new gameplay features or authorize guest save writes. The website's PupEye Web defenses are separate from Android installation attestation.
+
 # Puppy Clicker Android — React Native (current)
 
 **Android production target:** `Mobile/` React Native / Expo. The historic Kotlin `App/` directory is an archived reference and is not the application being migrated or deployed. React Native may compile Kotlin-based native modules internally, but those modules do not make the old Kotlin app the deployment target.
@@ -8,7 +12,7 @@
 
 ## October 29 — Puppy Clicker grouped database layout (v2 compatibility)
 
-The six grouped Supabase schemas (`puppy_accounts`, `puppy_pupeye`, `puppy_game`, `puppy_exchange`, `puppy_admin`, `puppy_web`) currently contain read-only organizational views. **Canonical records remain in the original `public` tables.** No saves, account/device ownership, PupEye standing or exchange policies are moved by this app update.
+The six grouped Supabase schemas (`puppy_accounts`, `puppy_pupeye`, `puppy_game`, `puppy_exchange`, `puppy_admin`, `puppy_web`) currently contain read-only organizational views. **Canonical records remain in the original `public` tables.** The existing records, device identity, bans, saves and ownership are retained during their atomic table relocation; primary keys and foreign keys stay intact.
 
 The RN Android client continues to call signed Edge Functions via its native PupEye bridge, rather than accessing these schemas directly. `src/production/dbSchemaLayout.js` declares contract v2; `authority.js` accepts older server responses without a version field and rejects explicitly newer incompatible versions. Production player access and signed writes remain governed by backend verification, not a client-selected schema. Never put service-role credentials or direct protected-table access into Android.
 
