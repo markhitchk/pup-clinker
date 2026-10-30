@@ -15,6 +15,6 @@ test('Android keeps secure Pup Account Edge endpoint during grouped DB rollout',
 });
 
 test('Android blocks unsupported new database contracts but accepts old servers',()=>{
- assert.equal(classifyVerifiedAccount({databaseLayoutVersion:3}).status,'DATABASE_LAYOUT_UNSUPPORTED');
+ assert.equal(classifyVerifiedAccount({databaseLayoutVersion:4}).status,'DATABASE_LAYOUT_UNSUPPORTED');
  assert.equal(classifyVerifiedAccount({verified:false}).status,'ACCOUNT_NOT_VERIFIED');
 });
