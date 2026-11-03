@@ -27,7 +27,7 @@ FORUM_CHANNEL_ID = 1548116554674085948
 
 # Defaults to #3 because Buddy (#1) and Sunny (#2) were already handled.
 START_AT = int(os.getenv("PUPPY_START_AT", "3"))
-END_AT = int(os.getenv("PUPPY_END_AT", "27"))
+END_AT = int(os.getenv("PUPPY_END_AT", "29"))
 
 MODE = os.getenv("PUPPY_MODE", "verify").strip().lower()
 FORUM_TAG_NAME = os.getenv("PUPPY_FORUM_TAG", "").strip() or None
@@ -52,6 +52,10 @@ class Puppy:
     def image_url(self) -> str:
         generation_folder = self.generation.lower()
         return f"{REPO_RAW}/assets/{generation_folder}/{self.filename}"
+
+    @property
+    def website_url(self) -> str:
+        return f"https://puppy-clicker.vercel.app/puppies?pup={self.asset_id}"
 
     @property
     def thread_name(self) -> str:
@@ -86,6 +90,8 @@ PUPPIES: tuple[Puppy, ...] = (
     Puppy(25, "Prism", "v2_prism", "V2 pastel purple, teal and cream fluffy puppy.", "V2"),
     Puppy(26, "Flurry", "v2_flurry", "V2 fluffy snow-white puppy with a curled tail.", "V2"),
     Puppy(27, "HarleyTG Puppy", "v2_harleytg", "Fluffy golden-cream puppy with cyan-blue eyes and a raised waving paw.", "V2"),
+    Puppy(28, "Dev Pup", "v2_dev_pup", "V2 developer-only puppy.", "V2"),
+    Puppy(29, "Rory", "v2_rory", "V2 special reward puppy.", "V2"),
 )
 
 
@@ -99,6 +105,7 @@ def make_embed(puppy: Puppy) -> discord.Embed:
     embed = discord.Embed(
         title=f"🐾 Meet #{puppy.number:02d} — {puppy.name}",
         description=puppy.description,
+        url=puppy.website_url,
         colour=discord.Colour.from_rgb(0, 184, 240),
     )
     embed.add_field(name="Roster", value=puppy.generation, inline=True)
@@ -114,10 +121,8 @@ async def get_existing_thread_names(channel: discord.ForumChannel) -> set[str]:
     try:
         async for thread in channel.archived_threads(limit=None):
             names.add(thread.name.casefold())
-    except discord.Forbidden:
-        print("⚠️  Could not read archived threads; duplicate checking will use active posts only.")
-    except discord.HTTPException as exc:
-        print(f"⚠️  Could not read archived threads: {exc}")
+    except (discord.Forbidden, discord.HTTPException) as exc:
+        raise RuntimeError("Cannot verify archived forum posts; refusing to risk duplicates.") from exc
 
     return names
 
@@ -219,9 +224,11 @@ class OneShotForumBot(discord.Client):
         print(f"\nSelected roster range: #{START_AT:02d}–#{END_AT:02d} ({len(puppies)} puppies)")
 
         if MODE == "verify":
+            existing = await get_existing_thread_names(channel)
             print("\nVERIFY MODE — no Discord posts will be created.")
             for puppy in puppies:
-                print(f"  • {puppy.thread_name} [{puppy.asset_id}]")
+                state = "exists" if puppy.thread_name.casefold() in existing else "new"
+                print(f"  • {puppy.thread_name} [{puppy.asset_id}] ({state})")
             print("\n✅ Verification complete. Set PUPPY_MODE=post to publish.")
             await self.close()
             return
@@ -245,7 +252,8 @@ class OneShotForumBot(discord.Client):
                     name=puppy.thread_name,
                     content=(
                         f"**Meet {puppy.name}!** 🐾\n"
-                        f"Puppy Clicker roster #{puppy.number:02d} • {puppy.generation}"
+                        f"Puppy Clicker roster #{puppy.number:02d} • {puppy.generation}\n"
+                        f"Official page: {puppy.website_url}"
                     ),
                     embed=make_embed(puppy),
                     applied_tags=tags,
