@@ -1078,7 +1078,7 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} account={account} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='account-details')return <AccountDetailsScreen account={account} cloudState={cloudState}
    onBack={()=>setSecondary('settings')} onManage={()=>openAccount('signin')} onRefresh={refreshAccount} onInventory={()=>setSecondary('inventory')}/>;
-  if(secondary==='inventory')return <InventoryScreen game={g} cloudState={betaMode?cloudState:null} updatedAt={betaMode?syncStatus?.savedAt:null} onRefresh={betaMode?refreshAccount:undefined}/>;
+  if(secondary==='inventory')return <InventoryScreen game={state.game} cloudState={betaMode?cloudState:null} updatedAt={betaMode?syncStatus?.savedAt:null} onRefresh={betaMode?refreshAccount:undefined}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='exchange')return <PuppyExchangeScreen game={g} registry={registry} account={account} onBack={()=>setSecondary(null)} onRefresh={refreshAccount}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy} onOpenExchange={()=>setSecondary('exchange')}/>;
