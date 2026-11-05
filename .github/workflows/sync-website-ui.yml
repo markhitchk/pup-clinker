@@ -1,4 +1,4 @@
-name: Sync existing website styling to Android
+name: Sync canonical website UI to Android
 on:
   workflow_dispatch:
   schedule:
@@ -9,11 +9,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: website-style-sync
+  group: website-ui-sync
   cancel-in-progress: false
 
 jobs:
-  propose-website-colors:
+  propose-website-ui:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -25,10 +25,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PUPPY_WEBSITE_UI_REF: main
         run: node Mobile/scripts/sync-website-ui.mjs
-      - name: Check for changed website style tokens
+      - name: Mirror approved website-owned React Native components
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUPPY_WEBSITE_UI_REF: main
+        run: node Mobile/scripts/sync-website-native-ui.mjs
+      - name: Check for changed website UI files
         id: diff
         run: |
-          if git diff --quiet -- Mobile/src/production/websiteDesignTokens.js; then
+          if git diff --quiet -- Mobile/src/production/websiteDesignTokens.js Mobile/src/production/websiteUiSources.json Mobile/src/components/AccountDetailsScreen.jsx; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -38,8 +43,9 @@ jobs:
         run: |
           npm --prefix Mobile ci --no-audit --no-fund
           node Mobile/scripts/sync-website-ui.mjs --verify
+          node Mobile/scripts/sync-website-native-ui.mjs --verify
           npm --prefix Mobile test
-      - name: Propose Android-only website style update
+      - name: Propose Android-only website UI update
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,12 +53,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C sync/website-style
-          git add Mobile/src/production/websiteDesignTokens.js
-          git commit -m "chore(android): track unchanged website's canonical CSS colors"
+          git add Mobile/src/production/websiteDesignTokens.js Mobile/src/production/websiteUiSources.json Mobile/src/components/AccountDetailsScreen.jsx
+          git commit -m "chore(android): mirror reviewed website-owned UI and colors"
           git push --force-with-lease origin HEAD:sync/website-style
           if ! gh pr view sync/website-style --json number >/dev/null 2>&1; then
             gh pr create --base main --head sync/website-style \
-              --title "chore(android): match website UI colors" \
-              --body "Android-only CSS-color token sync. Website remains unchanged. This does not automatically port browser HTML/CSS layouts; native screen parity remains separately tested." \
+              --title "chore(android): mirror approved website UI" \
+              --body "Android-only sync of approved RN-compatible website components and CSS color tokens. Website remains unchanged. Browser DOM/CSS, native authentication and gameplay authority are excluded. Tests gate generated changes." \
               || echo "::warning::PR creation may be disabled; inspect sync/website-style branch."
           fi
