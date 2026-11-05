@@ -51,6 +51,7 @@ new Function('require','module','exports',source)(id=>{
  }
  if(id==='./src/assets/gacha.js')return {GACHA_ART:{}};
  if(id.endsWith('.png'))return 1;
+ if(id==='./src/production/websiteLanguage.js')return {useWebsiteLanguage:()=>({language:'en',setLanguage:()=>{},t:key=>key})};
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
  if(id==='./src/components/PuppyPointer.jsx')return {__esModule:true,default:({children,...p})=>React.createElement('View',p,children)};
  if(id==='./src/components/WebsiteDesktopDashboard.jsx')
