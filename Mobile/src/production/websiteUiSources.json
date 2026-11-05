@@ -26,5 +26,11 @@
     "target": "src/production/websiteNavigation.js",
     "sourceSha": "babd6f51094bacdd01cdd29da179759219ad4f7d",
     "blobSha": "e4d125946bd4073df7653e34a82125fde3360582"
+  },
+  "careShop": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteCareShopScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "d3d622686f6d98feb6529c68079702dce04d590e"
   }
 }
