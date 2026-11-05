@@ -70,9 +70,11 @@ test('quadrillion-scale Pup Account balances fit four wallet cells without losin
  assert.equal(v6WalletFormat(stored,false),'9,000,000,010,023,864');
  assert.ok(next<Number.MAX_SAFE_INTEGER);
  const wallet=react.slice(react.indexOf('function Wallet('),react.indexOf('function NeedPill('));
- assert.match(wallet,/v6WalletFormat\(value/);
- assert.match(wallet,/Exact balance/);
- assert.match(wallet,/adjustsFontSizeToFit/);
+ const shared=readFileSync(new URL('../src/shared-ui/PupGameChrome.jsx',import.meta.url),'utf8');
+ assert.match(wallet,/formatValue=\{v6WalletFormat\}/);
+ assert.match(wallet,/<PupResourceStrip/);
+ assert.match(shared,/exact balance/);
+ assert.match(shared,/adjustsFontSizeToFit/);
  assert.doesNotMatch(reactPlay,/Progress saved to Pup Account/);
  assert.doesNotMatch(reactPlay,/Checking last save/);
 });
