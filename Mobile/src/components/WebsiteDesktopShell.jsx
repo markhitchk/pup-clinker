@@ -1,8 +1,9 @@
 // Website desktop navigation translated to native React for Chromebook and DeX.
 // Visual reference: Puppy-Clicker/src/native/web/DesktopNavigation.jsx.
 // Keep screen actions in the signed native game, never in a browser WebView.
-import React,{useState} from 'react';
-import {Image,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import React from 'react';
+export {default as WebsiteDesktopInventory} from './WebsiteInventoryScreen.jsx';
+import {Image,Pressable,ScrollView,Text,View} from 'react-native';
 import {colors as C} from '../theme.js';
 import {level} from '../engine/game.js';
 import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,levelXp,nextXpTarget} from '../engine/balancedProgression.js';
@@ -110,52 +111,6 @@ export function WebsiteDesktopTopBar({game,onNotifications,onSettings,onInventor
  </View>;
 }
 
-const inventorySections=[['puppies','🐶','Puppies'],['accessories','🎀','Accessories'],
- ['tickets','🎟️','Tickets'],['upgrades','⬆️','Upgrades'],['wallet','🍪','Wallet']];
-const currency=[['🍪','Treats','treats'],['🦴','Bones','bones'],
- ['🪙','Pup Coins','pupCoins'],['🐾','Casino Chips','casinoChips']];
-const numeric=v=>Number.isFinite(Number(v))?Math.max(0,Math.trunc(Number(v))):0;
-export function WebsiteDesktopInventory({game,onOpen}){
- const [section,setSection]=useState('puppies');
- const [search,setSearch]=useState('');
- const owned=[...new Set(Array.isArray(game.unlockedPuppies)?game.unlockedPuppies:[])];
- const accessories=[...new Set(Array.isArray(game.ownedAccessories)?game.ownedAccessories:[])].filter(x=>x!=='None');
- const tickets=Object.entries(game.ticketInventory||{});
- const upgrades=Object.entries(game.upgrades||{}).filter(([,quantity])=>numeric(quantity)>0);
- const counts={puppies:owned.length,accessories:accessories.length,
-  tickets:tickets.reduce((total,[,n])=>total+numeric(n),0),
-  upgrades:upgrades.length,wallet:currency.length};
- const rows=section==='puppies'?owned.filter(id=>id.toLowerCase().includes(search.toLowerCase()))
-  .map(id=>({key:id,title:game.puppyNames?.[id]|| (id===game.puppyStyle?game.puppyName:id),
-   description:id+(id===game.puppyStyle?' · Current puppy':'')})):
-  section==='accessories'?accessories.map(a=>({key:a,title:a,description:a===game.accessory?'Equipped':'Owned'})):
-  section==='tickets'?tickets.map(([rarity,n])=>({key:rarity,title:rarity+' ticket',description:'×'+numeric(n)})):
-  section==='upgrades'?upgrades.map(([id,n])=>({key:id,title:id,description:'Level '+numeric(n)})):
-  currency.map(([emoji,title,key])=>({key,title:emoji+' '+title,description:numeric(game[key]).toLocaleString('en-US')}));
- return <View testID="android-desktop-inventory" style={{gap:14}}>
-  <Text accessibilityRole="header" style={[styles.pageTitle,{color:C.text}]}>🎒 Inventory</Text>
-  <Text style={{color:C.muted}}>Your owned collection and balances from the active Pup Account.</Text>
-  <View style={styles.inventoryTabs}>
-   {inventorySections.map(([id,icon,label])=><NavButton key={id} icon={icon}
-    label={label+' '+counts[id]} active={section===id} onPress={()=>setSection(id)}/>)}
-  </View>
-  {section==='puppies'?<TextInput accessibilityLabel="Search puppies"
-   placeholder="Search your puppies…" placeholderTextColor={C.muted} value={search}
-   onChangeText={setSearch} style={[styles.search,{color:C.text,borderColor:C.line,
-    backgroundColor:C.card}]}/>:null}
-  <View style={[styles.inventoryPanel,{backgroundColor:C.surface,borderColor:C.line}]}>
-   {rows.length?rows.map(row=><View key={row.key} style={[styles.inventoryRow,{borderBottomColor:C.line}]}>
-    <Text style={[styles.inventoryName,{color:C.text}]}>{row.title}</Text>
-    <Text style={{color:C.muted,fontSize:12}}>{row.description}</Text>
-   </View>):<Text style={{color:C.muted}}>Nothing in this category yet.</Text>}
-  </View>
-  <Pressable accessibilityRole="button" onPress={()=>onOpen('roster')}
-   style={[styles.secondaryButton,{borderColor:C.line}]}>
-   <Text style={{color:C.accent,fontWeight:'700'}}>Open Puppy Roster</Text>
-  </Pressable>
-  <Text style={{color:C.muted,fontSize:12}}>🔒 Read-only inventory · Game progress remains protected.</Text>
- </View>;
-}
 export function WebsiteDesktopHelp({onOpen}){
  return <View testID="android-desktop-help" style={{gap:16}}>
   <Text accessibilityRole="header" style={[styles.pageTitle,{color:C.text}]}>Puppy Clicker Help</Text>
