@@ -6,6 +6,8 @@ import {ACCENT_PRESETS} from '../engine/settings.js';
 import {guestLevel} from '../engine/progression.js';
 import {PUPPY_IMAGES} from '../assets/puppies.js';
 import {validBirthday} from '../engine/onboarding.js';
+import {WEBSITE_SETTINGS_LABELS} from '../production/websiteSettingsContract.js';
+import {useWebsiteLanguage} from '../production/websiteLanguage.js';
 
 const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text,muted&&s.muted,style]}>{children}</Text>;
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
@@ -17,6 +19,8 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
  const [profileBusy,setProfileBusy]=useState(false),[profileMessage,setProfileMessage]=useState('');
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
  const [hex,setHex]=useState(g.accentHex),[custom,setCustom]=useState(false),[report,setReport]=useState(''),[category,setCategory]=useState('Bug');
+ const [cloudRefreshing,setCloudRefreshing]=useState(false),[cloudNotice,setCloudNotice]=useState('');
+ const {language,setLanguage}=useWebsiteLanguage();
  useEffect(()=>setHex(g.accentHex),[g.accentHex]);
  useEffect(()=>{if(!profileBusy)setName(g.guestName);},[g.guestName,profileBusy]);
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!expanded)return false;setExpanded(null);return true;});return ()=>sub.remove();},[expanded]);
@@ -36,7 +40,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <View style={{flex:1,gap:8}}><T numberOfLines={1} style={s.identityName}>{g.guestName}</T><View style={s.choices}><T style={s.badge}>Lv {guestLevel(g)}</T><T style={s.badge}>{g.xp} XP</T></View></View>
   </View>
   {group('ACCOUNT')}
-  {section('profile','👤','Profile',g.guestName+' · Level '+guestLevel(g),<>
+  {section('profile','👤',WEBSITE_SETTINGS_LABELS.profile,g.guestName+' · Level '+guestLevel(g),<>
    <T muted>{betaMode?'Pup Account · Signed gameplay saves directly to Supabase and syncs between verified installations.':'Guest · Level '+guestLevel(g)+' · Saved on this device'}</T><T style={s.bold}>Display name</T><TextInput accessibilityLabel="Display name" value={name} onChangeText={setName} maxLength={24} style={s.input}/><Action disabled={profileBusy||!name.trim()||name.trim().length<2||name.trim().length>24} onPress={()=>{
     if(!betaMode){act({type:'onboardPlayer',name});return;}
     setProfileBusy(true);setProfileMessage('');
@@ -52,15 +56,27 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
     }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
   </>)}
-  {betaMode?section('pup-account','🔐','Pup Account','Manage your sign-in and contact details',<>
-    <T muted>Sign-in and cloud progress load automatically during startup.</T>
-    <Action onPress={()=>onOpen('account-details')}>View Account Details</Action>
+  {betaMode?section('pup-account','🔐',WEBSITE_SETTINGS_LABELS.account,'Your signed-in account and live progress',<>
+    <T muted>Signed in as @{account?.username||g.guestName}.</T>
+    <T muted>{cloudState==='LIVE_SYNCED'&&!['BLOCKED','RECONNECTING','SAVED_DISPLAY_ERROR'].includes(syncStatus?.state)
+     ?'Cloud progress is connected.': 'Cloud progress needs attention. Refresh to check your connection.'}</T>
+    <T muted>Confirmed gameplay actions are saved to your Pup Account. Android notification and appearance preferences remain device-specific.</T>
+    <Action onPress={()=>onOpen('account-details')}>Manage Pup Account</Action>
     <Action onPress={()=>onOpen('inventory')}>🎒 View Inventory</Action>
+    <Action disabled={cloudRefreshing||!onRefreshAccount} onPress={async()=>{
+     setCloudRefreshing(true);setCloudNotice('');
+     try{const ok=await onRefreshAccount?.();setCloudNotice(ok?'Cloud progress refreshed.':'Unable to refresh right now. Please try again.');}
+     catch{setCloudNotice('Unable to refresh right now. Please try again.');}
+     finally{setCloudRefreshing(false);}
+    }}>{cloudRefreshing?'Refreshing…':'Refresh cloud progress'}</Action>
+    {cloudNotice?<T accessibilityRole="alert" muted>{cloudNotice}</T>:null}
     <Action onPress={onConnectAccount}>Manage Pup Account Sign-in</Action>
    </>):null}
    {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>Discord sign-in and account management remain available in Settings.</T></>:pending)}
   {group('APP & EXPERIENCE')}
-  {section('appearance','🎨','Appearance','Theme, accent color, scale, contrast and motion',<>
+  {section('appearance','🎨',WEBSITE_SETTINGS_LABELS.appearance,'Theme, accent color, scale, contrast and motion',<>
+   <Choices label="Language / Idioma" value={language}
+    items={[['en','English'],['es','Español']]} onChange={setLanguage}/>
    <Choices label="THEME" value={g.themeMode} items={[["light","Light"],["dark","Dark"],["system","Follow System"]]} onChange={v=>pref('themeMode',v)}/>
    <T style={s.bold}>ACCENT COLOR</T><T muted>Current: {ACCENT_PRESETS.find(p=>p[1]===g.accentHex)?.[0]||g.accentHex}</T>
    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:10}}>{ACCENT_PRESETS.map(([title,color])=><Pressable key={color} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{checked:g.accentHex===color}} onPress={()=>pref('accentHex',color)} style={{alignItems:'center',gap:4}}><View style={[s.swatch,{backgroundColor:color,borderColor:g.accentHex===color?C.text:C.line}]}>{g.accentHex===color?<T style={{color:'#071014',fontWeight:'900'}}>✓</T>:null}</View><T style={s.small}>{title.split(' ')[0]}</T></Pressable>)}</ScrollView>
@@ -73,7 +89,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    {toggle('highContrast','High contrast','Strengthens separation between text, cards and controls.')}
    <Choices label="UI scale" value={g.uiScale} items={[["compact","Compact"],["default","Default"],["large","Large"]]} onChange={v=>pref('uiScale',v)}/>
   </>)}
-  {section('notifications','🔔','Notifications','In-game alerts, updates and notification permissions',<>
+  {section('notifications','🔔',WEBSITE_SETTINGS_LABELS.notifications,'In-game alerts, updates and notification permissions',<>
    <T style={s.bold}>Notification Permission</T><T muted>{notifications.permission==='granted'?'Android notifications are allowed.':notifications.permission==='unsupported'?'Android notification delivery is available in the Android app.':'Android notification permission is required for alerts outside the app.'}</T>
    {notifications.permission!=='granted'?<Action disabled={notifications.permission==='unsupported'} onPress={notifications.permission==='denied'?notifications.openSystemSettings:notifications.request}>{notifications.permission==='denied'?'Open Android Settings':'Allow Notifications'}</Action>:null}
    {toggle('dailyRewardNotifications','Daily Rewards','Daily gifts and claimable reward reminders.')}
@@ -91,7 +107,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T muted>{betaMode?'Beta gameplay uses your authenticated Pup Account, not guest progression. Taps, care, shop, Gacha, daily rewards, XP and casino settlements use signed cloud writes; unsupported actions remain blocked.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
   </>)}
   {group('GAME')}
-  {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
+  {section('gameplay','🎮',WEBSITE_SETTINGS_LABELS.play,'Interaction, feedback and gameplay preferences',<>
    {toggle('hapticsEnabled','Haptic feedback','Android vibration feedback for supported interactions.')}
    {g.hapticsEnabled?<Action onPress={()=>Vibration.vibrate(30)}>Test Haptic</Action>:null}
    {toggle('animationsEnabled','Tap animations','Puppy idle and tap motion.')}
