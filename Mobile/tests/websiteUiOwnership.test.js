@@ -17,10 +17,13 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.equal(source.upstream,'markhitchk/Puppy-Clicker');
  assert.match(source.commit,/^[a-f0-9]{40}$/);
  assert.deepEqual(source.components.map(({source,target})=>[source,target]),[
-  ['src/native/src/components/AccountDetailsScreen.jsx','src/components/AccountDetailsScreen.jsx']
+  ['src/native/src/components/AccountDetailsScreen.jsx','src/components/AccountDetailsScreen.jsx'],
+  ['src/native/src/components/NotificationInbox.jsx','src/components/NotificationInbox.jsx'],
+  ['src/native/src/production/AccountOnboarding.jsx','src/production/AccountOnboarding.jsx']
  ]);
  for(const item of source.components){
   const body=load(item.target);
+  assert.match(item.sourceSha,/^[a-f0-9]{40}$/);
   assert.equal(blobSha(body),item.blobSha,item.target);
   assert.match(body,/from 'react-native'/);
   assert.doesNotMatch(body,/<(?:div|button|section)\b|\b(?:window|document|localStorage)\s*\./);
