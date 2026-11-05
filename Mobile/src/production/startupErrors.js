@@ -7,6 +7,7 @@ export const STARTUP_ERRORS=Object.freeze({
  'PUPPY-NET-702':{title:'Account service unavailable',message:'Puppy Clicker could not finish verifying your account and saved progress.',recovery:'Try Again. If the problem continues, send this code to Support.'},
  'PUPPY-AUTH-801':{title:'Sign-in required',message:'Your saved sign-in could not be verified.',recovery:'Sign in again. Your cloud save has not been deleted.'},
  'PUPEYE-ID-401':{title:'Account recovery required',message:'PupEye could not authorize this installation to access the account.',recovery:'Use your approved account-recovery process or contact Support. Do not reset your account.'},
+ 'PUPEYE-ID-402':{title:'Previous beta identity retired',message:'The deleted local PupEye Player ID or Friend Code on this beta installation cannot be restored.',recovery:'Choose Create New Beta Identity to register fresh local identifiers, then sign in again. Your existing Pup Account and cloud save are not deleted.'},
  'PUPEYE-SERVER-701':{title:'Account verification blocked',message:'PupEye did not approve the account startup request.',recovery:'Contact Support with this code. Do not attempt to replace protected save data.'},
  'PUPPY-DB-301':{title:'Android update required',message:'This Puppy Clicker version cannot use the current Pup Account database layout.',recovery:'Install a newer official Android beta before reconnecting. Your cloud save has not been reset.'},
  'PUPPY-SAVE-205':{title:'Cloud progress could not be displayed',message:'Your saved progress could not be loaded safely on this version.',recovery:'Update Puppy Clicker or contact Support. The server save was not overwritten.'},
@@ -30,6 +31,11 @@ export function classifyStartupFailure({source='account',error,account,cloudStat
   return publicStartupIssue('PUPPY-DB-301');
  if(source==='render'||source==='javascript')return publicStartupIssue('PUPPY-CRASH-902');
  if(source==='native')return publicStartupIssue('PUPPY-CRASH-901');
+ // Retired identifiers are an intentional backend registration refusal, not
+ // lost internet. Classify before CACHED_OFFLINE masks the real 409 response.
+ if(code.includes('PLAYER_ID_RETIRED')||code.includes('FRIEND_CODE_RETIRED')||
+    account?.status==='IDENTITY_RECOVERY_REQUIRED')
+  return publicStartupIssue('PUPEYE-ID-402');
  if(code.includes('OWNER_DEVICE_UNAVAILABLE')||code.includes('ON_OTHER_DEVICE')||
   code.includes('DISCORD_ALREADY_LINKED')||account?.status==='DEVICE_TRANSFER_REQUIRED')
   return publicStartupIssue('PUPEYE-ID-401');
