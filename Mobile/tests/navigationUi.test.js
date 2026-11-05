@@ -69,6 +69,17 @@ new Function('require','module','exports',source)(id=>{
    React.createElement('Text',null,'Pup Account Inventory'),
    React.createElement('Pressable',{accessibilityRole:'button',accessibilityLabel:'Back to game',onPress:onBack},'Back'))
  };
+ if(id==='./src/components/WebsiteCareShopScreens.jsx'||
+    id==='./src/components/WebsiteRewardsScreens.jsx'){
+  const name=id.split('/').at(-1);
+  const path=new URL('../src/components/'+name,import.meta.url);
+  const generated={exports:{}};
+  const code=transformSync(readFileSync(path,'utf8'),{babelrc:false,configFile:false,
+   plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',code)(name=>
+   name==='react-native'?native:require(name),generated,generated.exports);
+  return generated.exports;
+ }
  if(id==='./src/components/WebsitePlayScreen.jsx'){
   const screenFile=new URL('../src/components/WebsitePlayScreen.jsx',import.meta.url);
   const screenModule={exports:{}};
