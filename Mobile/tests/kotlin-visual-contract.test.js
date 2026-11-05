@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const ui=app+readFileSync(new URL('../src/components/SettingsScreen.jsx',import.meta.url),'utf8')+
- readFileSync(new URL('../src/components/WebsiteCareShopScreens.jsx',import.meta.url),'utf8');
+ readFileSync(new URL('../src/components/WebsiteCareShopScreens.jsx',import.meta.url),'utf8')+
+ readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
 const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const settings=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt',import.meta.url),'utf8');
 
