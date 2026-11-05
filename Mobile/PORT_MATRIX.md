@@ -3,7 +3,7 @@
 **Visual source of truth:** [Puppy-Clicker](https://github.com/markhitchk/Puppy-Clicker) `main`; **target:** [pup-clinker/Mobile](https://github.com/markhitchk/pup-clinker/tree/main/Mobile). The website's appearance and deployment are not changed by this work.
 
 ## Status meanings
-- **Shared:** byte-identical, generated from one website-owned React Native-compatible component, with provenance and an offline drift test.
+- **Shared:** website-owned React Native-compatible component, generated downstream with a pinned provenance hash and offline drift test; deterministic asset substitutions are permitted and recorded.
 - **Partial:** native implementation exists but a side-by-side, screen-by-screen 1:1 review or true shared-source extraction is outstanding.
 - **Native:** kept in Android by design, with browser UI only adapted through a narrow interface.
 - **Deferred:** not yet proven equivalent; do not claim completion.
@@ -13,6 +13,8 @@
 | Part | Website source / route | Android entry / ownership | Status | Next acceptance requirement |
 | --- | --- | --- | --- | --- |
 | 1 | `src/native/src/components/AccountDetailsScreen.jsx` | `Mobile/src/components/AccountDetailsScreen.jsx` | **Shared** | Website-owned upstream, pinned SHA, automated source sync and offline hash check |
+| 1 | `src/native/src/components/NotificationInbox.jsx` | `Mobile/src/components/NotificationInbox.jsx` | **Shared with asset adapter** | Identical website component body; generated local Image require for logo |
+| 1 | `src/native/src/production/AccountOnboarding.jsx` | `Mobile/src/production/AccountOnboarding.jsx` | **Shared with asset adapter** | Identical website component body; local logo/Discord images only |
 | 1 | `src/native/web/kawaii.css` | `websiteDesignTokens.js` and `websiteTheme.js` | **Partial** | Tokens synced; typography, radii, spacing, interactions and animation parity remain |
 | 2 | `src/native/App.jsx` navigation and `web/DesktopNavigation.jsx` | `Mobile/App.js`, `WebsiteDesktopShell.jsx` | **Partial** | Exact five tabs, deep-navigation/back behavior, phone/desktop and resize QA |
 | 2 | Website `/play` PlayScreen + desktop Play | `WebsitePlayScreen.jsx`, `WebsiteDesktopDashboard.jsx` | **Partial** | Reuse the screen hierarchy/copy/animation contract; compare on real phone/Chromebook/DeX |
