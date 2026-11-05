@@ -68,24 +68,24 @@ function extractWebsiteTabs(source){
 function extractWebsiteScreen(source,name){
  const at=source.indexOf('function '+name+'(');
  if(at<0)throw Error('Missing canonical screen '+name);
- const end=source.indexOf('\\nfunction ',at+1);
+ const end=source.indexOf('\nfunction ',at+1);
  if(end<0)throw Error('Invalid canonical screen boundary: '+name);
- return source.slice(at,end).replace(/\\n\\/\\/ Part 3:[^\\n]*\\s*$/,'').trimEnd();
+ return source.slice(at,end).replace(/\n\/\/ Part 3:[^\n]*\s*$/,'').trimEnd();
 }
 function generateCareShop(source){
  const care=extractWebsiteScreen(source,'CareScreen');
  const shop=extractWebsiteScreen(source,'ShopScreen');
  if(!care.includes('Care actions')||!shop.includes('Pup Coin Shop')||
-    /<(?:div|section|article|button)\\b|\\b(?:window|document|localStorage)\\./.test(care+'\\n'+shop))
+    /<(?:div|section|article|button)\b|\b(?:window|document|localStorage)\./.test(care+'\n'+shop))
   throw Error('Website Care/Shop changed native structure; review extraction');
  const deps='ROSTER,careTapBonus,mood,wellness,canPerformCare,Txt,styles,C,PageHeader,Portrait,upgradesForShopTab,Wallet,Button,RARITIES,accessoryPrices,accessoryOffer,v6Format,TICKET_RARITY_PRESENTATION,ticketShopOffer,MAX_UPGRADES_PER_ITEM,upgradeOffer,Card';
- return '// GENERATED, DO NOT EDIT. Source: markhitchk/Puppy-Clicker/src/native/App.jsx\\n'+
- '// The website owns these React Native-compatible Care and Shop screen bodies.\\n'+
- '// Native PupEye/gameplay callbacks and presentation dependencies are injected by the shell.\\n'+
- "import React,{useState} from 'react';\\n"+
- "import {Alert,Pressable,View} from 'react-native';\\n\\n"+
- 'export function createWebsiteCareShopScreens({'+deps+'}){\\n'+
- care+'\\n\\n'+shop+'\\n\\n return {CareScreen,ShopScreen};\\n}\\n';
+ return '// GENERATED, DO NOT EDIT. Source: markhitchk/Puppy-Clicker/src/native/App.jsx\n'+
+ '// The website owns these React Native-compatible Care and Shop screen bodies.\n'+
+ '// Native PupEye/gameplay callbacks and presentation dependencies are injected by the shell.\n'+
+ "import React,{useState} from 'react';\n"+
+ "import {Alert,Pressable,View} from 'react-native';\n\n"+
+ 'export function createWebsiteCareShopScreens({'+deps+'}){\n'+
+ care+'\n\n'+shop+'\n\n return {CareScreen,ShopScreen};\n}\n';
 }
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
