@@ -7,7 +7,8 @@ import PuppyErrorBoundary from './src/production/PuppyErrorBoundary.jsx';
 import {classifyStartupFailure,publicStartupIssue} from './src/production/startupErrors.js';
 import {startupGate} from './src/production/startupGate.js';
 import {useAccountOnboarding} from './src/production/useAccountOnboarding.js';
-import {MAIN_TABS,revampedPlayLayout,androidPlayLayout,v2PlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
+import {revampedPlayLayout,androidPlayLayout,v2PlayLayout,nextPlayReward} from './src/engine/playRevamp.js';
+import {MAIN_TABS} from './src/production/websiteNavigation.js';
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context';
 import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
@@ -198,7 +199,7 @@ function PlayScreen({g,act,clock,schedule,viewportHeight,desktop=false}){
    <Animated.View style={{transform:[{scale:tapScale},
     {rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},
     {translateY:lift}]}}>
-    <Portrait puppy={pup} size={desktop?260:Math.min(layout.portrait,viewportHeight<540?132:viewportHeight<650?166:214)}
+    <Portrait puppy={pup} size={desktop?260:Math.max(85,Math.min(214,Math.floor((viewportHeight-330)*0.85)))}
      accessory={g.accessory}/>
    </Animated.View>
   </Pressable>}
@@ -1187,14 +1188,14 @@ export function PuppyApp({betaMode=false}){
   </View>):null}
 
 {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} scrollEnabled={desktop||windowHeight<560||Boolean(secondary)||tab!=='play'} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:desktop?undefined:width>650?670:undefined,
+  <ScrollView key={secondary||tab} scrollEnabled={desktop||windowHeight<700||contentHeight<575||Boolean(secondary)||tab!=='play'} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:desktop?undefined:width>650?670:undefined,
     paddingHorizontal:desktop?20:undefined,
     paddingVertical:desktop?14:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'&&secondary!=='inventory'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
   {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View testID="game-bottom-bar" style={[styles.bottomBar,g.playLayoutV2Enabled&&{backgroundColor:C.card,borderTopColor:C.accentSoft}]}>
-   {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
+   {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} testID={'android-main-tab-'+id} accessibilityLabel={label} onPress={()=>openScreen(id)} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
   </View>:null}
