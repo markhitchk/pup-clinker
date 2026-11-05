@@ -12,6 +12,12 @@ const NAVIGATION_SOURCE='src/native/src/engine/playRevamp.js';
 const NAVIGATION_TARGET='src/production/websiteNavigation.js';
 const CARE_SHOP_SOURCE='src/native/App.jsx';
 const CARE_SHOP_TARGET='src/components/WebsiteCareShopScreens.jsx';
+const REWARDS_SOURCE='src/native/App.jsx';
+const REWARDS_TARGET='src/components/WebsiteRewardsScreens.jsx';
+const SOURCE_MODULES=Object.freeze([
+ {key:'languageCatalog',source:'src/communityI18n.js',target:'src/production/websiteI18n.js'},
+ {key:'goalState',source:'src/native/web/webGoalState.js',target:'src/production/websiteGoalState.js'}
+]);
 const COMPONENTS=Object.freeze([
  {source:'src/native/src/components/AccountDetailsScreen.jsx',
   target:'src/components/AccountDetailsScreen.jsx'},
@@ -87,6 +93,40 @@ function generateCareShop(source){
  'export function createWebsiteCareShopScreens({'+deps+'}){\n'+
  care+'\n\n'+shop+'\n\n return {CareScreen,ShopScreen};\n}\n';
 }
+function extractWebsitePart(source,name,tail){
+ const start=source.indexOf('function '+name+'(');
+ const end=source.indexOf(tail,start+1);
+ if(start<0||end<0)throw Error('Review website Rewards function '+name);
+ return source.slice(start,end).trimEnd();
+}
+function generateRewards(source){
+ let daily=extractWebsitePart(source,'DailyGoalCard','\nfunction PlayScreen(');
+ const htmlStart=daily.indexOf(' if(compact)return ');
+ const nativeStart=daily.indexOf('\n\n return <View',htmlStart);
+ if(htmlStart<0||nativeStart<0)
+  throw Error('Website native goal/card boundary changed; review before synchronizing');
+ daily=daily.slice(0,htmlStart)+'\n'+daily.slice(nativeStart+1);
+ const group=extractWebsitePart(source,'RewardsGroup','\nfunction RewardsScreen(');
+ const screen=extractWebsitePart(source,'RewardsScreen','\n// The scene assets below');
+ if(/<(?:div|section|article|button)\b|\b(?:window|document|localStorage)\s*\./.test(daily+group+screen))
+  throw Error('Website Rewards no longer contains purely native JSX');
+ const deps='Txt,styles,C,PageHeader,Button,Card,format,goalsForDay,monthKey,level,MAX_PLAYER_LEVEL,MAX_PLAYER_XP,nextXpTarget,levelXp,MAX_REWARD_STREAK_DAYS,achievementStatuses,parkPreview,ACHIEVEMENTS,webGoalState,webServerRewardsDate,webServerEpochDay,useLanguage';
+ return '// GENERATED, DO NOT EDIT. Source: markhitchk/Puppy-Clicker/src/native/App.jsx\n'+
+ '// Website-owned Rewards components. The browser-only compact HTML goal renderer\n'+
+ '// is excluded; native View/Pressable markup and signed game actions remain identical.\n'+
+ "import React,{useState} from 'react';\n"+
+ "import {Pressable,View} from 'react-native';\n\n"+
+ 'export function createWebsiteRewardsScreens({'+deps+'}){\n'+
+ daily+'\n\n'+group+'\n\n'+screen+'\n\n return {DailyGoalCard,RewardsGroup,RewardsScreen};\n}\n';
+}
+function adaptPureWebsiteModule(item,body){
+ if(item.key==='goalState'){
+  if(!body.includes("from '../src/engine/"))
+   throw Error('Website goal eligibility imports changed; review before syncing');
+  return body.replaceAll('../src/engine/','../engine/');
+ }
+ return body;
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -117,7 +157,22 @@ async function verify(){
  const generatedCareShop=await readFile(resolve(MOBILE,CARE_SHOP_TARGET),'utf8');
  if(blobSha(generatedCareShop)!==careShop.blobSha)
   throw Error('Website Care/Shop UI drift; regenerate before merging');
- console.log('Canonical website native UI and navigation and Care/Shop hashes verified');
+ const rewards=manifest.rewards;
+ if(!rewards||rewards.source!==REWARDS_SOURCE||rewards.target!==REWARDS_TARGET||
+    !/^[a-f0-9]{40}$/.test(rewards.sourceSha)||!/^[a-f0-9]{40}$/.test(rewards.blobSha))
+  throw Error('Missing website-owned Rewards source metadata');
+ if(blobSha(await readFile(resolve(MOBILE,REWARDS_TARGET),'utf8'))!==rewards.blobSha)
+  throw Error('Website Rewards UI drift; regenerate before merging');
+ for(const item of SOURCE_MODULES){
+  const saved=manifest[item.key];
+  if(!saved||saved.source!==item.source||saved.target!==item.target||
+     !/^[a-f0-9]{40}$/.test(saved.sourceSha)||!/^[a-f0-9]{40}$/.test(saved.blobSha))
+   throw Error('Missing pinned website module '+item.key);
+  const current=await readFile(resolve(MOBILE,item.target),'utf8');
+  if(blobSha(current)!==saved.blobSha)
+   throw Error('Website source drift: '+item.target);
+ }
+ console.log('Canonical website UI sources, native screens and Rewards hashes verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -164,7 +219,23 @@ else{
   await writeFile(generatedTarget,careShopGenerated);
  const careShop={source:CARE_SHOP_SOURCE,target:CARE_SHOP_TARGET,
   sourceSha:blobSha(sourceApp),blobSha:blobSha(careShopGenerated)};
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop},null,2)+'\n';
+ const rewardsGenerated=generateRewards(sourceApp);
+ if((await readFile(resolve(MOBILE,REWARDS_TARGET),'utf8').catch(()=>null))!==rewardsGenerated)
+  await writeFile(resolve(MOBILE,REWARDS_TARGET),rewardsGenerated);
+ const rewards={source:REWARDS_SOURCE,target:REWARDS_TARGET,
+  sourceSha:blobSha(sourceApp),blobSha:blobSha(rewardsGenerated)};
+ const syncedModules={};
+ for(const item of SOURCE_MODULES){
+  const raw=await fetchText(
+   'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+item.source,
+   {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+  const body=adaptPureWebsiteModule(item,raw);
+  if((await readFile(resolve(MOBILE,item.target),'utf8').catch(()=>null))!==body)
+   await writeFile(resolve(MOBILE,item.target),body);
+  syncedModules[item.key]={source:item.source,target:item.target,
+   sourceSha:blobSha(raw),blobSha:blobSha(body)};
+ }
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
