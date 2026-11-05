@@ -19,6 +19,12 @@
       "target": "src/production/AccountOnboarding.jsx",
       "sourceSha": "edd0ba93326ffea1af04ce5517bdbc5ce8eb950d",
       "blobSha": "a91358d96e0abd12f8e1232c9f9ca05ef86b91b8"
+    },
+    {
+      "source": "src/native/src/components/PuppyDetailsDialog.jsx",
+      "target": "src/components/PuppyDetailsDialog.jsx",
+      "sourceSha": "065490cc90263913632fb58f02ba4cfeba65b847",
+      "blobSha": "26a5a5f88480cacbb7c8580d57fa06b2863e4f9e"
     }
   ],
   "navigation": {
@@ -50,5 +56,23 @@
     "target": "src/production/websiteGoalState.js",
     "sourceSha": "05713ed217702f22abce23b39db0bda9d7e0a879",
     "blobSha": "a475fd78365dd5cdf8a9212da1790b34a703c61e"
+  },
+  "rosterPrestige": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteRosterPrestigeScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "0c094446f5a4d0177f2774b1615d57b83fce33c1"
+  },
+  "puppyNames": {
+    "source": "src/nameSuggestions.js",
+    "target": "src/production/websiteNameSuggestions.js",
+    "sourceSha": "1e2d1f5ad2fde22b1be68d0e3aa97260d78c4754",
+    "blobSha": "3cba645f0d2718751f82be4c94995f75a26ed4d9"
+  },
+  "inventoryContract": {
+    "source": "src/InventoryScreen.jsx",
+    "target": "src/production/websiteInventoryContract.js",
+    "sourceSha": "b4ffa3d48b994aa341d9f9de42f7d9145c5eae3f",
+    "blobSha": "ea7e6721d412ace2969909bc68dad5f791227c2a"
   }
 }
