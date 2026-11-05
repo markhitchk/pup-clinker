@@ -9,7 +9,7 @@ import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6WalletFormat,v6CooldownSeconds,v6
 const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const react=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const launchedPlay=kotlin.slice(kotlin.indexOf('private fun V6Play('),kotlin.indexOf('private fun V6CareAndDaily('));
-const reactPlay=react.slice(react.indexOf('function PlayScreen('),react.indexOf('function CareScreen('));
+const reactPlay=react.slice(react.indexOf('function PlayScreen('),react.indexOf('function PrestigeScreen('));
 
 test('legacy V6 sizing helper remains backward compatible for old callers',()=>{
  assert.deepEqual(v6PlaySizing(360),{circle:258,portrait:238,stageHeight:365});
