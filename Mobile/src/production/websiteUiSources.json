@@ -1,0 +1,11 @@
+{
+  "upstream": "markhitchk/Puppy-Clicker",
+  "commit": "9a3d27ed6e41526d9d7594a548b8e2ed67036a71",
+  "components": [
+    {
+      "source": "src/native/src/components/AccountDetailsScreen.jsx",
+      "target": "src/components/AccountDetailsScreen.jsx",
+      "blobSha": "3e16ca2d2af4f0ba474c08986ed725cdb3c3cf6d"
+    }
+  ]
+}
