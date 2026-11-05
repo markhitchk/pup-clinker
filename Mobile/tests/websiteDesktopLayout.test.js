@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
 import {transformSync} from '@babel/core';
 import jsx from '@babel/plugin-transform-react-jsx';
 import {WEBSITE_DESKTOP_BREAKPOINT,desktopLayoutForWindow} from '../src/production/desktopLayout.js';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const require=createRequire(import.meta.url);
 test('Android Chromebook and Samsung DeX match website desktop breakpoint',()=>{
  assert.equal(WEBSITE_DESKTOP_BREAKPOINT,960);
  for(const width of [360,600,800,959]){
@@ -29,6 +31,13 @@ test('Android manifest allows landscape/desktop freeform, without altering produ
  const app=JSON.parse(read('app.json')).expo;
  assert.equal(app.orientation,'default');
  assert.equal(app.android.package,'com.harleytg.puppyclicker');
+ assert.ok(app.plugins.includes('./plugins/withPuppyDesktopMode.cjs'));
+ const plugin=require('../plugins/withPuppyDesktopMode.cjs');
+ const manifest={manifest:{application:[{$:{},activity:[{$:{'android:name':'.MainActivity'}}]}]}};
+ plugin.enableResizableWindowing(manifest);
+ assert.equal(manifest.manifest.application[0].$['android:resizeableActivity'],'true');
+ assert.equal(manifest.manifest.application[0].activity[0].$['android:resizeableActivity'],'true');
+ assert.equal(manifest.manifest.application[0].activity[0].$['android:screenOrientation'],undefined);
  const appConfig=read('app.config.js');
  assert.match(appConfig,/com\.harleytg\.puppyclicker\.beta/);
 });
