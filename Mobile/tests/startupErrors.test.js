@@ -2,7 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {publicStartupIssue,classifyStartupFailure,STARTUP_ERRORS} from '../src/production/startupErrors.js';
+import {publicStartupIssue,classifyStartupFailure,betaNeedsPupAccountSignIn,STARTUP_ERRORS} from '../src/production/startupErrors.js';
+
+test('account-link 401 and account-login 409 route to sign-in instead of PUPPY-NET-702',()=>{
+ for(const code of ['BETA_BETA_LINK_REQUIRED','BETA_PUP_ACCOUNT_LOGIN_REQUIRED','BETA_PUP_ACCOUNT_DISCORD_REQUIRED']){
+  assert.equal(betaNeedsPupAccountSignIn({code}),true);
+  assert.equal(classifyStartupFailure({error:{code},account:{status:'CONNECTION_ERROR'},cloudState:'CONNECTION_ERROR'}).code,'PUPPY-AUTH-801');
+ }
+ for(const code of ['BETA_TRANSPORT_FAILURE','BETA_PUP_ACCOUNT_BLOCKED','BETA_PLAYER_ID_RETIRED']){
+  assert.equal(betaNeedsPupAccountSignIn({code}),false);
+ }
+ const hook=readFileSync(new URL('../src/state/useGame.js',import.meta.url),'utf8');
+ assert.ok(hook.includes('const signInRequired=betaNeedsPupAccountSignIn(error);'));
+ assert.ok(hook.includes('setStartupError(signInRequired?null:safeFailure);'));
+});
 
 test('public startup codes have stable human-readable messages and recovery',()=>{
  for(const [code,definition] of Object.entries(STARTUP_ERRORS)){

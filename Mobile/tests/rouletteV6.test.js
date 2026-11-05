@@ -14,6 +14,7 @@ const original=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pu
 const engine=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyRouletteEngine.kt',import.meta.url),'utf8');
 const component=readFileSync(new URL('../src/components/RouletteV6.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
 const ready=(chips=100)=>{const s=initialState();s.ready=true;s.game.casinoChips=chips;return s;};
 const bet=(type,number)=>({type,...(type==='STRAIGHT'?{number}:{})});
 
@@ -170,8 +171,8 @@ test('React Roulette UI is dedicated and exposes selection, picker, RTP, rules a
   assert.ok(component.includes(term)||term==='97.30%'&&component.includes('ROULETTE_V6.rtp'),term);
  }
  assert.ok(app.includes('RouletteV6'));
- assert.match(app,/g\.pendingRoulette\?'roulette':/);
- assert.ok(app.includes('Unfinished Roulette Spin'));
+ assert.match(casino,/g\.pendingRoulette\?'roulette':/);
+ assert.ok(casino.includes('Unfinished Roulette Spin'));
  assert.ok(!component.includes("type:'casino',gameType:'roulette'"));
  assert.ok(!component.includes('<WebView'));
 });

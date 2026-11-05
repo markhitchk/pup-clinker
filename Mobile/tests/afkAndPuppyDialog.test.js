@@ -37,7 +37,7 @@ test('malformed local notification rewards cannot escalate into AFK currency cla
 });
 test('roster uses a preview modal with original name, ownership and confirmation controls',()=>{
  const source=readFileSync(new URL('../src/components/PuppyDetailsDialog.jsx',import.meta.url),'utf8');
- const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
  for(const label of ['Puppy Details','How to Unlock','Retry Art','Use Puppy','Rename Puppy','Original roster name','Cancel','Done'])
   assert.ok(source.includes(label),label);
  assert.match(app,/setDetailsId\(p.id\)/);

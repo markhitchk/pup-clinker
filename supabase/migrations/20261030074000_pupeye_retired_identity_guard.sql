@@ -2,6 +2,9 @@
 -- Physical table is puppy_pupeye.pupeye_players; public.pupeye_players is an updatable view.
 -- Historical identity values are seeded privately in the live project and intentionally
 -- omitted from this public source-controlled migration.
+-- Local Supabase tests still use the legacy physical public table; live grouped
+-- installations use the canonical puppy_pupeye table. Use the actual base table.
+create schema if not exists puppy_pupeye;
 create table if not exists puppy_pupeye.retired_player_identifiers (
   identifier_type text not null check (identifier_type in ('player_id', 'friend_code')),
   identifier text not null check (identifier = upper(btrim(identifier)) and identifier <> ''),
@@ -54,15 +57,26 @@ begin
 end;
 $fn$;
 
-drop trigger if exists pupeye_capture_deleted_identity on puppy_pupeye.pupeye_players;
-create trigger pupeye_capture_deleted_identity before delete
-on puppy_pupeye.pupeye_players for each row
-execute function puppy_pupeye.capture_deleted_pupeye_identity();
-
-drop trigger if exists pupeye_reject_retired_identity on puppy_pupeye.pupeye_players;
-create trigger pupeye_reject_retired_identity before insert or update of player_id, friend_code
-on puppy_pupeye.pupeye_players for each row
-execute function puppy_pupeye.reject_retired_pupeye_identity();
-
--- TRUNCATE bypasses DELETE triggers and RLS; only trusted DB administration may run it.
-revoke truncate on table puppy_pupeye.pupeye_players from anon, authenticated, service_role;
+-- Apply the same retirement guard to the actual physical table. In local CI
+-- the base table is still public.pupeye_players; grouped production projects
+-- have relocated it to puppy_pupeye.pupeye_players with a public compatibility
+-- view. Never install triggers on the compatibility view or bypass this guard.
+do $retired_identity_guard$
+declare
+  target_table text;
+begin
+  if to_regclass('puppy_pupeye.pupeye_players') is not null then
+    target_table := 'puppy_pupeye.pupeye_players';
+  elsif to_regclass('public.pupeye_players') is not null then
+    target_table := 'public.pupeye_players';
+  else
+    raise exception 'Missing PupEye players base table; cannot apply retired identity protection';
+  end if;
+  execute format('drop trigger if exists pupeye_capture_deleted_identity on %s',target_table);
+  execute format('create trigger pupeye_capture_deleted_identity before delete on %s for each row execute function puppy_pupeye.capture_deleted_pupeye_identity()',target_table);
+  execute format('drop trigger if exists pupeye_reject_retired_identity on %s',target_table);
+  execute format('create trigger pupeye_reject_retired_identity before insert or update of player_id, friend_code on %s for each row execute function puppy_pupeye.reject_retired_pupeye_identity()',target_table);
+  -- TRUNCATE bypasses DELETE triggers/RLS; never grant it to clients.
+  execute format('revoke truncate on table %s from anon, authenticated, service_role',target_table);
+end;
+$retired_identity_guard$;

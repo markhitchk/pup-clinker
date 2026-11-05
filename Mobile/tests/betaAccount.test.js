@@ -12,7 +12,9 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  const hook=read('../src/state/useGame.js');
  assert.match(root,/<PuppyApp betaMode\/>/);
  assert.match(root,/<BetaAccountEntry visible=\{accountOpen\}/);
- assert.match(root,/PlayScreen g=/);
+ assert.match(root,/<PlayScreen key="phone" g=/);
+ assert.match(root,/<PlayScreen key="desktop" g=/);
+ assert.match(root,/<WebsiteDesktopDashboard game=\{g\}/);
  assert.match(root,/RosterScreen g=/);
  assert.match(root,/SettingsScreen g=/);
  assert.match(root,/CasinoScreen g=/);
@@ -25,7 +27,9 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(root,/gameForDisplay/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{betaMode&&!\(cloudState==='LIVE_SYNCED'/);
- assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
+ const canonicalRewards=read('../src/components/WebsiteRewardsScreens.jsx');
+ assert.ok(canonicalRewards.includes('const unavailable=readOnly||(!complete&&typeof onOpen'));
+ assert.ok(canonicalRewards.includes('disabled={unavailable}'));
  assert.match(hook,/ToastAndroid\.show\(/);
  assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });

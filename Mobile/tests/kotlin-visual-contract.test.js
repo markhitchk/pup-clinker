@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const ui=app+readFileSync(new URL('../src/components/SettingsScreen.jsx',import.meta.url),'utf8');
+const ui=app+readFileSync(new URL('../src/components/SettingsScreen.jsx',import.meta.url),'utf8')+
+ readFileSync(new URL('../src/components/WebsiteCareShopScreens.jsx',import.meta.url),'utf8')+
+ readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
 const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const settings=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppySettingsUi.kt',import.meta.url),'utf8');
 
@@ -28,7 +30,9 @@ test('Shop and Roster retain native filtered pages',()=>{
 test('settings layout follows native expandable categories without faking identity',()=>{
  for(const title of ['Profile','Discord','Appearance','Notifications','Privacy & Data','Gameplay','Data Management','Support & Reports','Advanced','Puppy Roster','PupEye Protection','Online Assets','Release Hub','About Puppy Clicker']){
   assert.ok(settings.includes('"'+title+'"'),title+' missing in Kotlin');
-  assert.ok(ui.includes("'"+title+"'"),title+' missing in React');
+  const nativeWebLabel={Profile:'profile',Appearance:'appearance',Notifications:'notifications',Gameplay:'play'}[title];
+  if(nativeWebLabel)assert.ok(ui.includes('WEBSITE_SETTINGS_LABELS.'+nativeWebLabel),title+' website-owned label missing in React');
+  else assert.ok(ui.includes("'"+title+"'"),title+' missing in React');
  }
  assert.ok(ui.includes('Guest · Level'));
  assert.ok(ui.includes('original Kotlin app'));

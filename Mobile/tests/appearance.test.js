@@ -15,7 +15,7 @@ test('Follow System resolves the correct palette and custom accent keeps readabl
 });
 test('existing scene styles update after a theme change and scale leaves flex and opacity alone',()=>{
  const styles=themedStyles(()=>({card:{backgroundColor:colors.surface,fontSize:20,flex:1,opacity:.6,padding:10}}));
- applyAppearance({themeMode:'dark',uiScale:'default'},true);assert.equal(styles.card.backgroundColor,'#151A1F');
+ applyAppearance({themeMode:'dark',uiScale:'default'},true);assert.equal(styles.card.backgroundColor,'#12151F');
  applyAppearance({themeMode:'light',uiScale:'large'},true);assert.equal(styles.card.backgroundColor,'#FFFFFF');assert.equal(styles.card.fontSize,21.6);assert.equal(styles.card.opacity,.6);assert.equal(styles.card.flex,1);
  assert.equal(scaleStyles({card:{height:100,borderWidth:1}},.94).card.height,94);
 });

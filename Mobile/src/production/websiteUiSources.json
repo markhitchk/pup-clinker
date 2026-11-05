@@ -1,0 +1,116 @@
+{
+  "upstream": "markhitchk/Puppy-Clicker",
+  "commit": "9a3d27ed6e41526d9d7594a548b8e2ed67036a71",
+  "components": [
+    {
+      "source": "src/native/src/components/AccountDetailsScreen.jsx",
+      "target": "src/components/AccountDetailsScreen.jsx",
+      "sourceSha": "3e16ca2d2af4f0ba474c08986ed725cdb3c3cf6d",
+      "blobSha": "3e16ca2d2af4f0ba474c08986ed725cdb3c3cf6d"
+    },
+    {
+      "source": "src/native/src/components/NotificationInbox.jsx",
+      "target": "src/components/NotificationInbox.jsx",
+      "sourceSha": "229ebee752e2579b79899f0cbb34a2ee443c7fd5",
+      "blobSha": "53e586345fae05d0e8d5356482701c942d9c5a5d"
+    },
+    {
+      "source": "src/native/src/production/AccountOnboarding.jsx",
+      "target": "src/production/AccountOnboarding.jsx",
+      "sourceSha": "edd0ba93326ffea1af04ce5517bdbc5ce8eb950d",
+      "blobSha": "a91358d96e0abd12f8e1232c9f9ca05ef86b91b8"
+    },
+    {
+      "source": "src/native/src/components/PuppyDetailsDialog.jsx",
+      "target": "src/components/PuppyDetailsDialog.jsx",
+      "sourceSha": "065490cc90263913632fb58f02ba4cfeba65b847",
+      "blobSha": "26a5a5f88480cacbb7c8580d57fa06b2863e4f9e"
+    }
+  ],
+  "navigation": {
+    "source": "src/native/src/engine/playRevamp.js",
+    "target": "src/production/websiteNavigation.js",
+    "sourceSha": "babd6f51094bacdd01cdd29da179759219ad4f7d",
+    "blobSha": "e4d125946bd4073df7653e34a82125fde3360582"
+  },
+  "careShop": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteCareShopScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "d3d622686f6d98feb6529c68079702dce04d590e"
+  },
+  "rewards": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteRewardsScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "19dc606ab28a7cfede3ad8e10da190a08c4d83fb"
+  },
+  "languageCatalog": {
+    "source": "src/communityI18n.js",
+    "target": "src/production/websiteI18n.js",
+    "sourceSha": "b1f0e351654b3bc1ab578f2eb49176749e6a3e0d",
+    "blobSha": "b1f0e351654b3bc1ab578f2eb49176749e6a3e0d"
+  },
+  "goalState": {
+    "source": "src/native/web/webGoalState.js",
+    "target": "src/production/websiteGoalState.js",
+    "sourceSha": "05713ed217702f22abce23b39db0bda9d7e0a879",
+    "blobSha": "a475fd78365dd5cdf8a9212da1790b34a703c61e"
+  },
+  "rosterPrestige": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteRosterPrestigeScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "0c094446f5a4d0177f2774b1615d57b83fce33c1"
+  },
+  "puppyNames": {
+    "source": "src/nameSuggestions.js",
+    "target": "src/production/websiteNameSuggestions.js",
+    "sourceSha": "1e2d1f5ad2fde22b1be68d0e3aa97260d78c4754",
+    "blobSha": "3cba645f0d2718751f82be4c94995f75a26ed4d9"
+  },
+  "inventoryContract": {
+    "source": "src/InventoryScreen.jsx",
+    "target": "src/production/websiteInventoryContract.js",
+    "sourceSha": "b4ffa3d48b994aa341d9f9de42f7d9145c5eae3f",
+    "blobSha": "ea7e6721d412ace2969909bc68dad5f791227c2a"
+  },
+  "authContract": {
+    "target": "src/production/websiteAccountContract.js",
+    "sources": [
+      {
+        "source": "src/WebRegister.jsx",
+        "sourceSha": "4f58ae30515f1893754240a0e6159d8908ada4f7"
+      },
+      {
+        "source": "src/native/web/AccountGate.jsx",
+        "sourceSha": "e6868b12ee5a27c2ef7642cc2bed72e66d11009a"
+      },
+      {
+        "source": "src/JoinSourceFields.jsx",
+        "sourceSha": "3690df1fd7b7c4efe86fd69a220e3c9403cd47ed"
+      }
+    ],
+    "blobSha": "2f0200ed1ce1036ceb18e66c866dcbd40936767b"
+  },
+  "settingsContract": {
+    "source": "src/native/web/WebSettings.jsx",
+    "target": "src/production/websiteSettingsContract.js",
+    "sourceSha": "f7439525ce01ccc12a03e32d9a4e7b40e290eaa9",
+    "blobSha": "597cce0879d6c8b5892efc7277a6e13a28f19241"
+  },
+  "casinoGacha": {
+    "source": "src/native/App.jsx",
+    "dialogSource": "src/native/web/WebsiteDesign.jsx",
+    "target": "src/components/WebsiteCasinoGachaScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "dialogSha": "a5a09cac9697281d9f3c88624d1feb17a8b4422f",
+    "blobSha": "8978c0c70e6cfbb955cf0dad42a2da24d6d9435a"
+  },
+  "pupeyeStatus": {
+    "source": "src/pupeyeStatusPresentation.js",
+    "target": "src/production/websitePupEyePresentation.js",
+    "sourceSha": "c182896019d5b9c2c60d6b7e7feeda4934b8f397",
+    "blobSha": "c182896019d5b9c2c60d6b7e7feeda4934b8f397"
+  }
+}

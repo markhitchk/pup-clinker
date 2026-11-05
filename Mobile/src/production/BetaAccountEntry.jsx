@@ -1,9 +1,11 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
+import {ActivityIndicator,Image,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
 import {supportsDatabaseLayout} from './dbSchemaLayout.js';
+import {usePupAuthForm,registrationError,loginError,passwordRules,JOIN_SOURCE_OPTIONS} from '../shared/usePupAuthForm.js';
+import {WEBSITE_ACCOUNT_COPY} from './websiteAccountContract.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -14,21 +16,21 @@ const isCallback=url=>typeof url==='string'&&
 
 export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false,initialMode='signin',requiredAtStartup=false}){
  const insets=useSafeAreaInsets();
+ const {width:windowWidth}=useWindowDimensions();
+ const desktop=windowWidth>=960;
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState('');
  const [cloud,setCloud]=useState(null);
- const [mode,setMode]=useState(initialMode);
- const [username,setUsername]=useState('');
- const [email,setEmail]=useState('');
- const [login,setLogin]=useState('');
- const [password,setPassword]=useState('');
+ const {mode,setMode,chooseMode,username,setUsername,login,setLogin,password,setPassword,confirm,setConfirm,
+  contactEmail:email,setContactEmail:setEmail,joinSource,setJoinSource,joinDetails,setJoinDetails,
+  terms:tos,setTerms:setTos,privacy,setPrivacy,clearSecrets}=usePupAuthForm(initialMode);
  const [notice,setNotice]=useState('');
  const [linkNative,setLinkNative]=useState(false);
- const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
+ const [policy,setPolicy]=useState(null);
  const [contactEmail,setContactEmail]=useState('');
  useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
- const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
+ const close=useCallback(()=>{clearSecrets();setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -103,22 +105,22 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  },[]);
  const submit=useCallback(async()=>{
   if(busy)return;
-  if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||password.length<8||(email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())))){
-   setProblem('Enter a valid username, password of at least 8 characters, and optional support contact email.');return;
+  if(mode==='signup'){
+   const invalid=registrationError({username,password,confirm,contactEmail:email,terms:tos,privacy});
+   if(invalid){setProblem(invalid);return;}
   }
-  if(mode==='signup'&&(!tos||!privacy)){setProblem('Accept both the Terms of Use and Privacy Policy.');return;}
   if(linkNative&&mode==='signup'&&state.status==='VERIFIED'&&username.trim().toLowerCase()!==String(state.username||'').toLowerCase()){
    setProblem('Keep your existing Pup username when adding password sign-in.');return;
   }
-  if(mode==='signin'&&(!login.trim()||!password)){
-   setProblem('Enter your Pup username and password.');return;
-  }
+  const missing=mode!=='signup'?loginError(login,password):'';
+  if(missing){setProblem(missing);return;}
   setBusy(true);setProblem('');setNotice('');
   try{
    const result=mode==='signup'
-    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,publishableKey)
+    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,
+      joinSource,joinSource?joinDetails.trim():'',publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
-   setPassword('');
+   clearSecrets();
    if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
     setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
     setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
@@ -133,6 +135,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     PUP_USERNAME_TAKEN:'That Pup username is already taken. Choose another.',
     PUP_EMAIL_UNVERIFIED:'Please verify your email, then sign in.',
     PUP_SIGNIN_INVALID:'Incorrect Pup username or password.',
+    PUP_PASSWORD_COMPLEXITY_REQUIRED:'Use 8–128 characters with uppercase and lowercase letters, a number, and a special character.',
+    PUP_JOIN_SOURCE_INVALID:'Choose a valid optional discovery source or leave it blank.',
     PUP_SIGNUP_UNAVAILABLE:'Could not register Pup Account. You can sign in with Discord instead.',
     PUP_PASSWORD_SETUP_UNAVAILABLE:'Password registration is unavailable; Discord sign-in remains available.',
     PUP_PASSWORD_LOGIN_DISABLED:'Enable password authentication in Supabase Auth. No SMTP is needed.',
@@ -145,7 +149,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    };
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
- },[busy,mode,username,email,login,password,tos,privacy,onVerified,linkNative]);
+ },[busy,mode,username,email,login,password,confirm,tos,privacy,joinSource,joinDetails,onVerified,linkNative]);
  const saveSupportContact=useCallback(async()=>{
   if(busy)return;
   setBusy(true);setProblem('');setNotice('');
@@ -184,11 +188,32 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={requiredAtStartup?()=>{}:close}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
-  <ScrollView contentContainerStyle={styles.content}>
+  <ScrollView contentContainerStyle={[styles.content,desktop&&styles.desktopContent]}
+   keyboardShouldPersistTaps="handled">
+   {desktop?<View style={styles.desktopIntro}>
+    <Image source={require('../../assets/logos/puppy_clicker.png')}
+     accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={styles.desktopLogo}/>
+    <Text style={styles.logo}>{WEBSITE_ACCOUNT_COPY.eyebrow}</Text>
+    <Text accessibilityRole="header" style={styles.desktopTitle}>
+     {mode==='signup'?WEBSITE_ACCOUNT_COPY.registerTitle:WEBSITE_ACCOUNT_COPY.signinTitle}
+    </Text>
+    <Text style={styles.body}>{WEBSITE_ACCOUNT_COPY.intro}</Text>
+    {WEBSITE_ACCOUNT_COPY.benefits.map(benefit=><Text key={benefit} style={styles.desktopBenefit}>{benefit}</Text>)}
+    <Text style={styles.desktopFoot}>Harley's Studios · Puppy Clicker</Text>
+   </View>:null}
+   <View style={desktop?styles.desktopForm:styles.mobileForm}>
    {!requiredAtStartup?<Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>:null}
-   <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
-   <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>{onboarding?'Use a Pup username and password, or connect Discord instead. A support email is optional.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
+   <View style={{alignItems:'center',gap:9}}>
+    <Image source={require('../../assets/logos/puppy_clicker.png')} accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={{width:88,height:88}}/>
+    <Text style={styles.logo}>{WEBSITE_ACCOUNT_COPY.eyebrow}</Text>
+   </View>
+   <Text style={styles.title}>{verified?'Pup Account connected':mode==='signup'?WEBSITE_ACCOUNT_COPY.registerTitle:WEBSITE_ACCOUNT_COPY.signinTitle}</Text>
+   <Text style={[styles.body,{textAlign:'center'}]}>{WEBSITE_ACCOUNT_COPY.intro}</Text>
+   <View style={styles.benefits} accessibilityLabel="Pup Account benefits">
+    {WEBSITE_ACCOUNT_COPY.benefits.map(benefit=><View key={benefit} style={styles.benefit}>
+     <Text style={styles.benefitText}>{benefit}</Text>
+    </View>)}
+   </View>
    <View style={styles.card}>
     <Text style={styles.label}>PUP ACCOUNT</Text>
     <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':'Sign-in required'}</Text>
@@ -213,11 +238,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {consentNeeded?<>{agreements}<Pressable accessibilityRole="button" accessibilityLabel="Accept both policies" disabled={!tos||!privacy||busy} style={styles.button} onPress={()=>void consent()}><Text style={styles.buttonText}>Accept and continue</Text></Pressable></>:null}
    {(!verified||linkNative)?<>
     {!linkNative?<View style={styles.modes}>
-     {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
-      accessibilityLabel={item==='signin'?'Sign in':item==='signup'?'Create account':'Discord login'}
-      onPress={()=>{setMode(item);setProblem('');setNotice('');setPassword('');}}
-      style={[styles.mode,mode===item&&styles.modeSelected]}>
-      <Text style={[styles.modeText,mode===item&&styles.modeSelectedText]}>{item==='signin'?'Sign in':item==='signup'?'Create account':'Discord'}</Text>
+     {['signin','signup'].map(item=><Pressable key={item} accessibilityRole="tab" accessibilityState={{selected:mode===item}}
+      accessibilityLabel={item==='signin'?'Sign In':'Create Account'}
+      onPress={()=>{chooseMode(item);setProblem('');setNotice('');}}
+      style={[styles.mode,(mode===item||(mode==='discord'&&item==='signin'))&&styles.modeSelected]}>
+      <Text style={[styles.modeText,(mode===item||(mode==='discord'&&item==='signin'))&&styles.modeSelectedText]}>{item==='signin'?'Sign In':'Create Account'}</Text>
      </Pressable>)}
     </View>:<Pressable accessibilityRole="button" style={styles.secondary} onPress={()=>{setLinkNative(false);setPassword('');setProblem('');}}>
      <Text style={styles.secondaryText}>← Back to your Pup Account</Text>
@@ -227,28 +252,68 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, and XP stay on the same account.</Text>:null}
      {mode==='signup'?<>
       <Text style={styles.label}>USERNAME</Text>
-      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false} autoComplete="username"
        placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
        maxLength={20} editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
+      {!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Generate username"
+       disabled={busy} onPress={()=>void api().authSuggestion('username')
+        .then(value=>{if(typeof value==='string'){setUsername(value);setProblem('');}})
+        .catch(()=>setProblem('Secure username suggestion is unavailable.'))}>
+       <Text style={styles.secondaryText}>🎲 Generate username</Text>
+      </Pressable>:null}
       <Text style={styles.label}>SUPPORT CONTACT EMAIL (OPTIONAL)</Text>
       <TextInput accessibilityLabel="Pup email" autoCapitalize="none" autoCorrect={false}
        keyboardType="email-address" autoComplete="email" placeholder="Not used for sign-in or verification"
        placeholderTextColor="#8AA1AF" value={email} onChangeText={setEmail} style={styles.input}/>
      </>:<>
       <Text style={styles.label}>PUP USERNAME</Text>
-      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false} autoComplete="username"
        placeholder="Pup username" placeholderTextColor="#8AA1AF"
        value={login} onChangeText={setLogin} style={styles.input}/>
      </>}
-     <Text style={styles.label}>PASSWORD</Text>
+     <Text style={styles.label}>{mode==='signup'?'NEW PASSWORD':'PASSWORD'}</Text>
      <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none"
       autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
       placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
       value={password} onChangeText={setPassword} style={styles.input}/>
+     {mode==='signup'?<Pressable accessibilityRole="button" accessibilityLabel="Generate strong password"
+      disabled={busy} onPress={()=>void api().authSuggestion('password')
+       .then(value=>{if(typeof value==='string'){setPassword(value);setConfirm(value);
+        setNotice('Strong password generated. Save it in your password manager before registering.');}})
+       .catch(()=>setProblem('Secure password generation is unavailable.'))}>
+      <Text style={styles.secondaryText}>🔐 Generate strong password</Text>
+     </Pressable>:null}
+     {mode==='signup'?<>
+      <Text style={styles.body}>Choose a strong password or use Android's password manager suggestion.</Text>
+      <View style={{gap:4}}>{passwordRules(password).map(rule=><Text key={rule.label}
+       style={{color:rule.passed?'#83E7B5':'#BBD0DF',fontSize:12}}>
+       {rule.passed?'✓':'○'} {rule.label}</Text>)}</View>
+      <Text style={styles.label}>CONFIRM PASSWORD</Text>
+      <TextInput accessibilityLabel="Confirm password" secureTextEntry
+       autoComplete="new-password" autoCapitalize="none" autoCorrect={false}
+       placeholder="Re-enter password" placeholderTextColor="#8AA1AF"
+       maxLength={128} value={confirm} onChangeText={setConfirm} style={styles.input}/>
+     </>:null}
+     {mode==='signup'&&!linkNative?<View style={{gap:8}}>
+      <Text style={styles.label}>HOW DID YOU HEAR ABOUT PUPPY CLICKER? (OPTIONAL)</Text>
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+       {JOIN_SOURCE_OPTIONS.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+        accessibilityLabel={label} accessibilityState={{selected:joinSource===value}}
+        onPress={()=>{setJoinSource(joinSource===value?'':value);setJoinDetails('');}}
+        style={[styles.mode,{flexGrow:0,paddingHorizontal:10,paddingVertical:9},joinSource===value&&styles.modeSelected]}>
+        <Text style={[styles.modeText,{fontSize:12},joinSource===value&&styles.modeSelectedText]}>{label}</Text>
+       </Pressable>)}
+      </View>
+      {joinSource?<><Text style={styles.label}>{joinSource==='friend'?'WHO INVITED YOU? (OPTIONAL)':'WHERE DID YOU SEE US? (OPTIONAL)'}</Text>
+       <TextInput accessibilityLabel="Discovery source details" maxLength={120}
+        placeholder={joinSource==='friend'?'Pup username or name':'Server, channel, creator or website'}
+        placeholderTextColor="#8AA1AF" value={joinDetails} onChangeText={setJoinDetails} style={styles.input}/></>:null}
+      <Text style={styles.body}>Optional feedback only. No invite code or reward is required.</Text>
+     </View>:null}
      {mode==='signup'?agreements:null}
      <Pressable accessibilityRole="button" accessibilityLabel={linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
-      <Text style={styles.buttonText}>{linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
+      <Text style={styles.buttonText}>{busy?'Verifying…':linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in to Pup Account'}</Text>
      </Pressable>
      {mode==='signup'?<Text style={styles.body}>No verification email or SMTP is required. Contact email is optional and used only for support; password is handled by Supabase Auth.</Text>:null}
      {mode==='signup'&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="I already use Discord" onPress={()=>{setMode('discord');setProblem('');setPassword('');}}>
@@ -258,6 +323,22 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
     </Pressable>}
+    {mode!=='discord'&&!linkNative?<View style={styles.card}>
+     <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+      <Image source={require('../../assets/logos/discord.png')} resizeMode="contain" style={{width:30,height:30}}/>
+      <View style={{flex:1}}><Text style={styles.cardTitle}>Discord</Text>
+       <Text style={styles.body}>Alternative login or optional linked account</Text></View>
+     </View>
+     <Text style={styles.body}>Sign in with the Discord identity linked to your Pup Account.</Text>
+     <Pressable accessibilityRole="button" accessibilityLabel="Sign in with Discord"
+      disabled={busy} style={styles.button} onPress={()=>void signin()}>
+      <Text style={styles.buttonText}>Sign in with Discord</Text>
+     </Pressable>
+    </View>:null}
+    <Pressable accessibilityRole="button" accessibilityLabel="Recover Pup Account"
+     style={styles.secondary} onPress={()=>void Linking.openURL('https://puppy-clicker.vercel.app/recovery')}>
+     <Text style={styles.secondaryText}>Forgot your username or password? Recover account</Text>
+    </Pressable>
    </>:(!onboarding&&!requiredAtStartup)?<>
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
@@ -273,29 +354,41 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Text style={styles.body}>Live: Treats, XP, shop purchases, daily rewards, Gacha, and server-settled casino games. Unsupported redeem codes and restricted entitlement grants remain disabled.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
+   </View>
   </ScrollView>
   <Modal visible={Boolean(policy)} animationType="slide" onRequestClose={()=>setPolicy(null)}><View style={[styles.root,{paddingTop:insets.top+20,paddingBottom:insets.bottom+20,paddingHorizontal:20}]}><Text style={styles.title}>{policy==='terms'?'Terms of Use':'Privacy Policy'}</Text><ScrollView style={{flex:1}}><Text style={styles.body} selectable>{policy?legal[policy]:''}</Text></ScrollView><Pressable accessibilityRole="button" accessibilityLabel="Close policy" style={styles.button} onPress={()=>setPolicy(null)}><Text style={styles.buttonText}>Close</Text></Pressable></View></Modal>
  </View>
  </Modal>;
 }
 const styles=StyleSheet.create({
- root:{flex:1,backgroundColor:'#0F1A23'},
+ root:{flex:1,backgroundColor:'#0A0C12'},
  content:{padding:22,gap:18,maxWidth:600,width:'100%',alignSelf:'center'},
- logo:{fontWeight:'900',fontSize:21,color:'#FFF'},
+ desktopContent:{maxWidth:1240,minHeight:'100%',flexDirection:'row',alignItems:'stretch',gap:0,padding:22},
+ desktopIntro:{width:'43%',backgroundColor:'#102632',padding:28,justifyContent:'center',gap:18,borderTopLeftRadius:24,borderBottomLeftRadius:24,borderWidth:1,borderColor:'#2D5364'},
+ desktopLogo:{width:115,height:115,alignSelf:'center'},
+ desktopTitle:{color:'#FFFFFF',fontWeight:'900',fontSize:34,lineHeight:41},
+ desktopBenefit:{color:'#D9F5FF',fontSize:15,fontWeight:'700',backgroundColor:'rgba(0,229,255,0.08)',borderRadius:999,paddingHorizontal:14,paddingVertical:11},
+ desktopFoot:{color:'#B1C7D6',fontSize:12,marginTop:15},
+ desktopForm:{flex:1,minWidth:0,backgroundColor:'#12151F',padding:28,gap:18,borderTopRightRadius:24,borderBottomRightRadius:24,borderWidth:1,borderColor:'#2D5364'},
+ mobileForm:{width:'100%',gap:18},
+ benefits:{width:'100%',flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'center',gap:7,marginVertical:2},
+ benefit:{backgroundColor:'rgba(0,229,255,0.08)',borderWidth:1,borderColor:'rgba(0,229,255,0.25)',borderRadius:999,paddingHorizontal:11,paddingVertical:7},
+ benefitText:{color:'#D9F5FF',fontSize:11,fontWeight:'700'},
+ logo:{fontWeight:'900',fontSize:12,color:'#00E5FF',letterSpacing:1.2},
  title:{color:'#FFF',fontSize:29,fontWeight:'900'},
  body:{color:'#D0DEE8',fontSize:15,lineHeight:24},
- card:{borderRadius:18,borderWidth:1,borderColor:'#415767',padding:18,gap:12,backgroundColor:'#1A2C38'},
+ card:{borderRadius:22,borderWidth:1,borderColor:'#2D5364',padding:18,gap:12,backgroundColor:'#12151F'},
  label:{color:'#8DD6FF',fontSize:13,fontWeight:'900',letterSpacing:1},
  value:{color:'#FFF',fontWeight:'900',fontSize:20},
  cardTitle:{color:'#FFF',fontSize:19,fontWeight:'800'},
  error:{borderWidth:1,borderColor:'#CB7777',padding:16,borderRadius:15,backgroundColor:'#38282D'},
- button:{backgroundColor:'#87D6FF',padding:18,borderRadius:14,alignItems:'center'},
+ button:{backgroundColor:'#00E5FF',padding:18,borderRadius:24,alignItems:'center'},
  buttonText:{color:'#0B1C29',fontSize:17,fontWeight:'900'},
  secondary:{borderRadius:14,borderWidth:1,borderColor:'#5D8CA9',padding:14,alignItems:'center'},
  secondaryText:{color:'#B0E5FF',fontWeight:'800'},
  disabled:{opacity:0.5},
  modes:{flexDirection:'row',gap:8},mode:{flex:1,paddingVertical:12,paddingHorizontal:5,alignItems:'center',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12},
- modeSelected:{backgroundColor:'#254C63',borderColor:'#87D6FF'},modeText:{fontSize:14,fontWeight:'800',color:'#B0E5FF'},
+ modeSelected:{backgroundColor:'#183C4D',borderColor:'#00E5FF'},modeText:{fontSize:14,fontWeight:'800',color:'#B0E5FF'},
  modeSelectedText:{color:'#FFFFFF'},
  input:{color:'#FFFFFF',backgroundColor:'#152631',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12,paddingHorizontal:14,minHeight:52,fontSize:16}
 });

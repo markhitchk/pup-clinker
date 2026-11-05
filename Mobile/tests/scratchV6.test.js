@@ -17,6 +17,7 @@ const engine=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pupp
 const stage=readFileSync(new URL('../src/components/ScratchStage.jsx',import.meta.url),'utf8');
 const ui=readFileSync(new URL('../src/components/ScratchersV6.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
 
 test('Kotlin canvas grid and original panel/coin source geometry match Part 5E',()=>{
  assert.ok(kotlin.includes('SCRATCH_COLUMNS = 48'));
@@ -156,7 +157,7 @@ test('fraud-like incorrect symbols or forged payout cannot be settled from persi
 
 test('Scratchers replaces legacy Casino generic controls and preserves native page hierarchy',()=>{
  assert.ok(app.includes("import ScratchersV6 from './src/components/ScratchersV6.jsx'"));
- assert.ok(app.includes("page==='scratchers'?<ScratchersV6"));
+ assert.ok(casino.includes("page==='scratchers'?<ScratchersV6"));
  assert.ok(ui.includes('ScratchStage'));
  assert.ok(ui.includes('Scratch Token'));
  assert.ok(ui.includes('Card Odds & Rules'));

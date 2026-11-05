@@ -11,6 +11,7 @@ const nativeUI=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pu
 const nativeEngine=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppySlotsEngine.kt',import.meta.url),'utf8');
 const component=readFileSync(new URL('../src/components/SlotsV6.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
 const ready=(chips=100)=>{const state=initialState();state.ready=true;state.game.casinoChips=chips;return state;};
 
 test('Slots V6 matches launched Kotlin weighted symbols, published RTP, wager presets and geometry',()=>{
@@ -129,8 +130,8 @@ test('Modified pending payout or unknown symbols cannot be settled or persisted'
 
 test('Slots scene has Kotlin result and rules, linked from Casino without duplicate parent wager bar',()=>{
  assert.ok(app.includes('SlotsV6'));
- assert.match(app,/g\.pendingSlots\?'slots':/);
- assert.ok(app.includes('Unfinished Slots Spin'));
+ assert.match(casino,/g\.pendingSlots\?'slots':/);
+ assert.ok(casino.includes('Unfinished Slots Spin'));
  assert.ok(app.includes("type:'slotsStart'")||component.includes("type:'slotsStart'"));
  assert.ok(component.includes("type:'slotsReveal'"));
  assert.ok(component.includes('slotsResultLabel(displayed)'));

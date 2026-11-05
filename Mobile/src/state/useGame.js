@@ -3,6 +3,7 @@ import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import {supportsDatabaseLayout} from '../production/dbSchemaLayout.js';
+import {betaNeedsPupAccountSignIn} from '../production/startupErrors.js';
 import {projectPendingTapDisplay} from './optimisticTaps.js';
 import {classifyBetaSaveFailure} from './saveFeedback.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -36,6 +37,7 @@ export function useGame({mode='guest'}={}){
  const nextTapIntentId=useRef(0);
  const pendingAfkClaims=useRef(new Set());
  const [pendingTapIntents,setPendingTapIntents]=useState([]);
+ const [pendingProtectedActions,setPendingProtectedActions]=useState(0);
  const refreshAccount=useCallback(async (incoming)=>{
   if(!beta)return false;
   const native=NativeModules.PuppyBetaAccount;
@@ -112,7 +114,8 @@ export function useGame({mode='guest'}={}){
     dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     return false;
    }
-   const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   const signInRequired=betaNeedsPupAccountSignIn(error);
+   const revoked=signInRequired||/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
    // Projected cloud parse errors are recognized locally; no exception text
    // is handed to the splash screen or persisted as diagnostics.
    const projectionError=/^(INVALID_CLOUD_SAVE|MISSING_KOTLIN_PROGRESS|UNSUPPORTED_CLOUD_SAVE|UNSUPPORTED_KOTLIN_SAVE)/.test(String(error?.message||''));
@@ -135,7 +138,7 @@ export function useGame({mode='guest'}={}){
     setCloudState('CACHED_OFFLINE');
     return false; // Cached snapshots alone never authorize gameplay.
    }
-   setStartupError(safeFailure);
+   setStartupError(signInRequired?null:safeFailure);
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
    setSyncStatus(current=>({...current,state:'ERROR',
@@ -293,6 +296,10 @@ export function useGame({mode='guest'}={}){
    const tapIntentId=action.type==='tap'?++nextTapIntentId.current:null;
    if(tapIntentId!==null)setPendingTapIntents(current=>[...current,{id:tapIntentId,at:Number.isSafeInteger(action.now)?action.now:Date.now()}]);
    if(claimId!==null)pendingAfkClaims.current.add(claimId);
+   // Website Gacha/Casino controls must not fire another protected purchase
+   // while a signed non-tap action is still queued or in flight.
+   const blocksCasinoGacha=action.type!=='tap'&&!action.type.startsWith('afk');
+   if(blocksCasinoGacha)setPendingProtectedActions(count=>count+1);
    pendingLiveWrites.current++;
    setSyncStatus(previous=>({...previous,state:'SAVING',errorCode:null,notice:null}));
    signedWriteQueue.current=signedWriteQueue.current.catch(()=>{}).then(async()=>{
@@ -329,6 +336,7 @@ export function useGame({mode='guest'}={}){
     if(claimId!==null)pendingAfkClaims.current.delete(claimId);
     if(tapIntentId!==null)setPendingTapIntents(current=>current.filter(item=>item.id!==tapIntentId));
     pendingLiveWrites.current=Math.max(0,pendingLiveWrites.current-1);
+    if(blocksCasinoGacha)setPendingProtectedActions(count=>Math.max(0,count-1));
     if(pendingLiveWrites.current===0&&needsReceiptRecheck.current){
      needsReceiptRecheck.current=false;
      void refreshAccount();
@@ -389,6 +397,11 @@ export function useGame({mode='guest'}={}){
   await refreshAccount(updated);
   return updated;
  },[beta,account?.status,refreshAccount]);
- const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
- return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
+ const gameForDisplay=useMemo(()=>{
+  const game=beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game;
+  return beta?{...game,gameplayBusy:pendingProtectedActions>0,
+   // Never display an unsupported native/legacy refund button.
+   canRecoverLegacyCasino:false}:game;
+ },[beta,state.game,pendingTapIntents,pendingProtectedActions]);
+ return {state,gameForDisplay,queuedTaps:pendingTapIntents.length,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
 }

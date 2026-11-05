@@ -370,15 +370,43 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
  }
- @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
+ @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,joinSource:String,joinDetails:String,key:String,p:Promise)=runAsync(p){
   require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
   require(password.length in 8..128){"Invalid Pup password"}
   require(contactEmail.length<=254 && (contactEmail.isBlank()||contactEmail.contains("@"))){"Invalid optional support email"}
   require(termsAccepted&&privacyAccepted){"Both legal policies must be accepted"}
+  require(joinSource.isBlank()||joinSource in setOf("friend","discord","youtube","tiktok","instagram","reddit","google","play_store","other")){"Invalid join source"}
+  require(joinDetails.length<=120&&joinDetails.none{it.code<32||it.code==127}){"Invalid join details"}
+  require(joinSource.isNotBlank()||joinDetails.isBlank()){"Join details require a source"}
   val body=JSONObject().put("username",username).put("contactEmail",contactEmail.trim())
    .put("password",password).put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)
+   .put("joinSource",if(joinSource.isBlank())JSONObject.NULL else joinSource)
+   .put("joinDetails",if(joinDetails.isBlank())JSONObject.NULL else joinDetails)
   post("pup-credentials",envelope("native-sign-up",body),key,session(key))
   account(key)
+ }
+ // Website's name/password suggestion behavior, backed by Android SecureRandom.
+ // Never use Math.random() for password generation or expose device credentials.
+ @ReactMethod fun authSuggestion(kind:String,p:Promise)=runAsync(p){
+  when(kind){
+   "username" -> {
+    val adjectives=arrayOf("Sunny","Cozy","Merry","Lucky","Cloudy","Sparkly","Gentle","Golden","Bouncy","Clever","Happy","Tiny","Dreamy","Fuzzy","Bright","Starry","Sweet","Cheery","Jolly","Peppy","Velvet","Moonlit")
+    val handles=arrayOf("Paw","Pup","Snoot","Tail","Biscuit","Buddy","Mochi","Paws","Corgi","Scout","Poodle","Wag","Noodle","Fluff","Zoomie","Waffle")
+    adjectives[random.nextInt(adjectives.size)]+handles[random.nextInt(handles.size)]+"_"+(1000+random.nextInt(9000))
+   }
+   "password" -> {
+    val groups=arrayOf("ABCDEFGHJKLMNPQRSTUVWXYZ","abcdefghijkmnopqrstuvwxyz","23456789","!@#\$%*_-?")
+    val all="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#\$%*_-?"
+    val chars=groups.map{it[random.nextInt(it.length)]}.toMutableList()
+    while(chars.size<24)chars.add(all[random.nextInt(all.length)])
+    for(i in chars.lastIndex downTo 1){
+     val j=random.nextInt(i+1)
+     val tmp=chars[i];chars[i]=chars[j];chars[j]=tmp
+    }
+    chars.joinToString("")
+   }
+   else -> throw IllegalArgumentException("Unsupported account suggestion")
+  }
  }
  @ReactMethod fun signInPupAccount(login:String,password:String,key:String,p:Promise)=runAsync(p){
   require(login.matches(Regex("[A-Za-z0-9_-]{3,20}"))&&password.length in 1..128){"Invalid Pup login"}

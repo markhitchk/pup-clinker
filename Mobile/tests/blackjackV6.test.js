@@ -14,7 +14,7 @@ import {parseGuestSave,serializeGuestSave} from '../src/state/guestSave.js';
 const kotlinUi=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyBlackjackUi.kt',import.meta.url),'utf8');
 const kotlinEngine=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyBlackjackEngine.kt',import.meta.url),'utf8');
 const ui=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const scene=ui.slice(ui.indexOf('function BlackjackArtworkCard('),ui.indexOf('function CasinoScreen('));
+const scene=ui.slice(ui.indexOf('function BlackjackArtworkCard('),ui.indexOf('// Website-owned Casino hub'));
 const card=(r,s=0)=>13*s+r-1;
 const deck=(...top)=>[...top,...Array.from({length:52},(_,i)=>i).filter(i=>!top.includes(i))];
 
@@ -123,7 +123,7 @@ test('initial natural Blackjack does not hide settled hand or re-pay on preview 
 });
 
 test('active Blackjack round resumes on Casino open and shows a dedicated Resume button',()=>{
- const casino=ui.slice(ui.indexOf('function CasinoScreen('),ui.indexOf('function OnboardingScreen('));
+ const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
  assert.match(casino,/state\.blackjack\?'blackjack':/);
  assert.ok(casino.includes('Unfinished Blackjack Hand'));
  assert.ok(casino.includes('g.pendingWheel?\'wheel\':\'hub\''));

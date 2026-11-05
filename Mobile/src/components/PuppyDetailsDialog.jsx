@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {Modal,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors as C,themedStyles} from '../theme.js';
+import {suggestPuppyName} from '../production/websiteNameSuggestions.js';
 
 /**
  * Kotlin PuppyRosterDialogSystem parity. A preview owns the Use/Rename
@@ -66,6 +67,10 @@ export default function PuppyDetailsDialog({puppy,visible,onClose,portrait,asset
       <TextInput accessibilityLabel="New puppy name" value={name} maxLength={18} onChangeText={setName}
        placeholder="Puppy name" placeholderTextColor={C.muted} style={s.input}/>
       <Text style={s.muted}>{name.length}/18</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Generate random puppy name"
+       style={s.secondary} onPress={()=>{try{setName(suggestPuppyName(name));}catch{setName('Buddy');}}}>
+       <Text style={s.secondaryText}>🎲 Generate puppy name</Text>
+      </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Restore original puppy name" onPress={()=>setName(originalName.slice(0,18))}>
        <Text style={s.secondaryText}>Use original name</Text></Pressable></View>:null}
      {mode==='preview'?<Pressable accessibilityRole="button" accessibilityLabel="Done" style={s.primary} onPress={finish}>

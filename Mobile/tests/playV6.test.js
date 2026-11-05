@@ -9,7 +9,8 @@ import {V6_PLAY_LAYOUT,v6PlaySizing,v6Format,v6WalletFormat,v6CooldownSeconds,v6
 const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyClickerV6Activity.kt',import.meta.url),'utf8');
 const react=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const launchedPlay=kotlin.slice(kotlin.indexOf('private fun V6Play('),kotlin.indexOf('private fun V6CareAndDaily('));
-const reactPlay=react.slice(react.indexOf('function PlayScreen('),react.indexOf('function CareScreen('));
+const reactPlay=react.slice(react.indexOf('function PlayScreen('),react.indexOf('// Website-owned Roster and Prestige screens'));
+
 
 test('legacy V6 sizing helper remains backward compatible for old callers',()=>{
  assert.deepEqual(v6PlaySizing(360),{circle:258,portrait:238,stageHeight:365});
@@ -70,9 +71,11 @@ test('quadrillion-scale Pup Account balances fit four wallet cells without losin
  assert.equal(v6WalletFormat(stored,false),'9,000,000,010,023,864');
  assert.ok(next<Number.MAX_SAFE_INTEGER);
  const wallet=react.slice(react.indexOf('function Wallet('),react.indexOf('function NeedPill('));
- assert.match(wallet,/v6WalletFormat\(value/);
- assert.match(wallet,/Exact balance/);
- assert.match(wallet,/adjustsFontSizeToFit/);
+ const shared=readFileSync(new URL('../src/shared-ui/PupGameChrome.jsx',import.meta.url),'utf8');
+ assert.match(wallet,/formatValue=\{v6WalletFormat\}/);
+ assert.match(wallet,/<PupResourceStrip/);
+ assert.match(shared,/exact balance/);
+ assert.match(shared,/adjustsFontSizeToFit/);
  assert.doesNotMatch(reactPlay,/Progress saved to Pup Account/);
  assert.doesNotMatch(reactPlay,/Checking last save/);
 });

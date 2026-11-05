@@ -1,0 +1,64 @@
+name: Sync canonical website UI to Android
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: website-ui-sync
+  cancel-in-progress: false
+
+jobs:
+  propose-website-ui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Read unchanged website design CSS and update native tokens
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUPPY_WEBSITE_UI_REF: main
+        run: node Mobile/scripts/sync-website-ui.mjs
+      - name: Mirror approved website-owned React Native components
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUPPY_WEBSITE_UI_REF: main
+        run: node Mobile/scripts/sync-website-native-ui.mjs
+      - name: Check for changed website UI files
+        id: diff
+        run: |
+          if git diff --quiet -- Mobile/src/production/websiteDesignTokens.js Mobile/src/production/websiteUiSources.json Mobile/src/production/websiteNavigation.js Mobile/src/components/AccountDetailsScreen.jsx Mobile/src/components/NotificationInbox.jsx Mobile/src/production/AccountOnboarding.jsx Mobile/src/components/WebsiteCareShopScreens.jsx Mobile/src/components/WebsiteRewardsScreens.jsx Mobile/src/production/websiteI18n.js Mobile/src/production/websiteGoalState.js Mobile/src/components/WebsiteRosterPrestigeScreens.jsx Mobile/src/components/PuppyDetailsDialog.jsx Mobile/src/production/websiteNameSuggestions.js Mobile/src/production/websiteInventoryContract.js Mobile/src/production/websiteAccountContract.js Mobile/src/production/websiteSettingsContract.js Mobile/src/components/WebsiteCasinoGachaScreens.jsx Mobile/src/production/websitePupEyePresentation.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify Android source parity
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          npm --prefix Mobile ci --no-audit --no-fund
+          node Mobile/scripts/sync-website-ui.mjs --verify
+          node Mobile/scripts/sync-website-native-ui.mjs --verify
+          npm --prefix Mobile test
+      - name: Propose Android-only website UI update
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C sync/website-style
+          git add Mobile/src/production/websiteDesignTokens.js Mobile/src/production/websiteUiSources.json Mobile/src/production/websiteNavigation.js Mobile/src/components/AccountDetailsScreen.jsx Mobile/src/components/NotificationInbox.jsx Mobile/src/production/AccountOnboarding.jsx Mobile/src/components/WebsiteCareShopScreens.jsx Mobile/src/components/WebsiteRewardsScreens.jsx Mobile/src/production/websiteI18n.js Mobile/src/production/websiteGoalState.js Mobile/src/components/WebsiteRosterPrestigeScreens.jsx Mobile/src/components/PuppyDetailsDialog.jsx Mobile/src/production/websiteNameSuggestions.js Mobile/src/production/websiteInventoryContract.js Mobile/src/production/websiteAccountContract.js Mobile/src/production/websiteSettingsContract.js Mobile/src/components/WebsiteCasinoGachaScreens.jsx Mobile/src/production/websitePupEyePresentation.js
+          git commit -m "chore(android): mirror reviewed website-owned UI and colors"
+          git push --force-with-lease origin HEAD:sync/website-style
+          if ! gh pr view sync/website-style --json number >/dev/null 2>&1; then
+            gh pr create --base main --head sync/website-style \
+              --title "chore(android): mirror approved website UI" \
+              --body "Android-only sync of approved RN-compatible website components and CSS color tokens. Website remains unchanged. Browser DOM/CSS, native authentication and gameplay authority are excluded. Tests gate generated changes." \
+              || echo "::warning::PR creation may be disabled; inspect sync/website-style branch."
+          fi

@@ -11,8 +11,10 @@ const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pupp
 const catalog=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyCatalogV6.kt',import.meta.url),'utf8');
 const gachaKotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyGacha.kt',import.meta.url),'utf8');
 const rn=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const roster=rn.slice(rn.indexOf('function RosterScreen('),rn.indexOf('function GachaScreen('));
-const gacha=rn.slice(rn.indexOf('function GachaScreen('),rn.indexOf('function RewardsScreen('));
+const shared=readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
+const roster=shared.slice(shared.indexOf('function RosterScreen('),shared.indexOf('return {PrestigeScreen,RosterScreen};'));
+const gacha=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
+
 
 test('Part 4 Collection keeps exact V1/V2 stable Kotlin source IDs, names and code locks',()=>{
  const ids=LEGACY_V6_PUPPIES.map(p=>p.id);
@@ -83,7 +85,7 @@ test('Gacha machine scene replicates Kotlin 1024:1536 image layout and phase tim
   assert.ok(gacha.includes(item));
  assert.ok(gacha.includes('stage===2'));
  assert.ok(gacha.includes('stage===4'));
- assert.ok(gacha.includes('purchasesAllowed=stage===0'));
+ assert.ok(gacha.includes('purchasesAllowed=!g.gameplayBusy&&stage===0'));
 });
 
 test('Gacha guest unlocks only manifest-free puppies; protected developer and Discord stay excluded',()=>{

@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {transformSync} from '@babel/core';
+import jsx from '@babel/plugin-transform-react-jsx';
+import {freshGame} from '../src/engine/game.js';
+import {
+ INVENTORY_CATEGORIES,buildInventoryModel,inventoryNumber
+} from '../src/components/inventoryModel.js';
+
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+test('Inventory mirrors all five categories in the existing website without making up ownership',()=>{
+ assert.deepEqual(INVENTORY_CATEGORIES.map(c=>c.id),
+  ['puppies','accessories','tickets','upgrades','wallet']);
+ const game=freshGame();
+ game.unlockedPuppies=['classic','v2_frost','v2_rory','unlisted_pup','classic'];
+ game.puppyStyle='v2_rory';
+ game.puppyName='Rory';
+ game.puppyNames={v2_rory:'Little Rory'};
+ game.favoritePuppies=['v2_rory'];
+ game.ownedAccessories=['None','Bow','Crown','Bow'];
+ game.accessory='Bow';
+ game.ticketInventory={COMMON:2,UNCOMMON:1,RARE:0,EPIC:3,LEGENDARY:0};
+ game.upgrades={better_treats:4,chew_toy:1};
+ game.treats=1205;game.bones=9;game.pupCoins=3;game.casinoChips=100;
+ const before=JSON.stringify(game);
+ const model=buildInventoryModel(game);
+ assert.equal(JSON.stringify(game),before,'Read-only inventory may not change cloud state');
+ assert.deepEqual(model.counts,{puppies:4,accessories:2,tickets:6,upgrades:2,wallet:4});
+ assert.equal(model.puppies.find(p=>p.id==='v2_rory').name,'Little Rory');
+ assert.equal(model.puppies.find(p=>p.id==='v2_rory').favorite,true);
+ assert.equal(model.puppies.find(p=>p.id==='v2_rory').current,true);
+ assert.equal(model.puppies.find(p=>p.id==='unlisted_pup').known,false);
+ assert.equal(model.accessories.find(a=>a.name==='Bow').equipped,true);
+ assert.equal(model.tickets.find(t=>t.rarity==='EPIC').count,3);
+ assert.equal(model.upgrades.find(u=>u.id==='better_treats').count,4);
+ assert.equal(model.wallet.find(w=>w.key==='treats').amount,1205);
+ assert.equal(inventoryNumber(1205),'1,205');
+ assert.equal(buildInventoryModel(game,'little').puppies.length,1);
+ assert.equal(buildInventoryModel(game,'frost').puppies[0].id,'v2_frost');
+ assert.equal(buildInventoryModel(game,'NONE').puppies.length,0);
+});
+test('Phone and desktop both use one real native Inventory with actual artwork and protected refresh',()=>{
+ const screen=read('src/components/WebsiteInventoryScreen.jsx');
+ const app=read('App.js');
+ const shell=read('src/components/WebsiteDesktopShell.jsx');
+ const settings=read('src/components/SettingsScreen.jsx');
+ const images=read('src/assets/puppies.js');
+ assert.match(screen,/android-inventory-screen/);
+ assert.match(screen,/android-inventory-puppy-grid/);
+ assert.match(screen,/PUPPY_IMAGES\[puppy\.id\]/);
+ assert.match(screen,/Search puppies/);
+ assert.match(screen,/Purchased upgrades/);
+ assert.match(screen,/Upgrade tickets/);
+ assert.match(screen,/Read-only inventory/);
+ assert.match(screen,/onRefresh/);
+ assert.match(screen,/onOpen\('roster'\)/);
+ assert.match(screen,/onOpen\('account-details'\)/);
+ assert.match(app,/if\(secondary==='inventory'\)return <WebsiteInventoryScreen game=\{g\}/);
+ assert.match(app,/onRefresh=\{refreshInventory\}/);
+ assert.match(app,/profileReturnTo/);
+ assert.match(app,/setProfileReturnTo\(secondary==='inventory'\?'inventory':'settings'\)/);
+ assert.match(app,/accessibilityLabel="Open inventory"/);
+ assert.match(settings,/View Inventory/);
+ assert.match(shell,/WebsiteDesktopInventory.*WebsiteInventoryScreen\.jsx/);
+ assert.match(images,/v2_rory:/);
+ assert.doesNotMatch(screen,/<(?:div|article|aside|section)\b|\b(?:window|document|localStorage)\s*\./);
+ assert.doesNotMatch(screen, /(?:act\(|dispatch\(|cloud-save-write|setGame\()/);
+ assert.doesNotThrow(()=>transformSync(screen,{babelrc:false,configFile:false,plugins:[jsx]}));
+});
+test('Android uses the website-style Play scene on phone and DeX, with Inventory available',()=>{
+ const app=read('App.js');
+ const play=read('src/components/WebsitePlayScreen.jsx');
+ assert.match(app,/<WebsitePlayScreen game=\{g\}/);
+ assert.match(app,/<WebsiteDesktopDashboard game=\{g\}/);
+ assert.match(play,/android-website-play-stage/);
+ assert.match(play,/Current Puppy/);
+ assert.match(play,/Care bonus/);
+ assert.match(play,/android-tap-button/);
+ assert.match(play,/android-next-reward/);
+ assert.match(app,/onPress=\{doTap\}/);
+});

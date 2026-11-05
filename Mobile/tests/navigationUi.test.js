@@ -11,6 +11,7 @@ import {initialState,transition} from '../src/state/reducer.js';
 import {mergeRoster,categoriesForRoster} from '../src/engine/dynamicRoster.js';
 import {ROSTER} from '../src/engine/game.js';
 import * as theme from '../src/theme.js';
+import {t as websiteTranslate} from '../src/production/websiteI18n.js';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const backHandlers=new Set();
 const native=Object.fromEntries(['View','Text','TextInput','Pressable','Image','ImageBackground','ScrollView','Modal','StatusBar'].map(n=>[n,n]));
@@ -19,7 +20,7 @@ const animation=()=>({start(){},stop(){}});
 native.Animated={Value,View:'View',Image:'Image',createAnimatedComponent:x=>x,loop:animation,timing:animation,spring:animation,sequence:animation,parallel:animation,delay:animation};
 native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={vibrate(){}};
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
-native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
+let viewport={width:393,height:852};native.useWindowDimensions=()=>viewport;native.useColorScheme=()=> 'dark';
 native.NativeModules={PuppyBetaAccount:{readStartupCrash:async()=>({exists:false}),clearStartupCrash:async()=>true}};
 let fixture={},latestState;
 let setupComplete=true;
@@ -42,10 +43,59 @@ new Function('require','module','exports',source)(id=>{
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
  if(id==='./src/state/useLocalDiagnostics.js')return {useLocalDiagnostics:()=>({summary:'',clear(){}})};
  if(id==='./src/assets/puppies.js')return {PUPPY_IMAGES:Object.fromEntries(ROSTER.map(p=>[p.id,1]))};
+ if(id==='./src/shared-ui/PupGameChrome.jsx'){
+  const uiFile=new URL('../src/shared-ui/PupGameChrome.jsx',import.meta.url);
+  const uiModule={exports:{}};
+  const uiCode=transformSync(readFileSync(uiFile,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',uiCode)(name=>name==='react-native'?native:require(name),uiModule,uiModule.exports);
+  return uiModule.exports;
+ }
  if(id==='./src/assets/gacha.js')return {GACHA_ART:{}};
  if(id.endsWith('.png'))return 1;
+ if(id==='./src/production/websiteLanguage.js')return {useWebsiteLanguage:()=>({language:'en',setLanguage:()=>{},t:(key,params)=>websiteTranslate('en',key,params)})};
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
  if(id==='./src/components/PuppyPointer.jsx')return {__esModule:true,default:({children,...p})=>React.createElement('View',p,children)};
+ if(id==='./src/components/WebsiteDesktopDashboard.jsx')
+  return {__esModule:true,default:({play})=>React.createElement('View',{testID:'android-desktop-dashboard'},play)};
+ if(id==='./src/components/WebsiteDesktopShell.jsx')
+  return {
+   WebsiteDesktopNavigation:({tabs,route,onOpen})=>React.createElement('View',{testID:'android-desktop-navigation'},
+    tabs.map(([id,icon,label])=>React.createElement('Pressable',{key:id,accessibilityRole:'tab',
+     accessibilityLabel:label,accessibilityState:{selected:route===id},onPress:()=>onOpen(id)},label))),
+   WebsiteDesktopTopBar:()=>React.createElement('View',{testID:'android-desktop-top-bar'}),
+   WebsiteDesktopInventory:()=>React.createElement('Text',null,'Inventory'),
+   WebsiteDesktopHelp:()=>React.createElement('Text',null,'Help')
+  };
+ if(id==='./src/components/WebsiteInventoryScreen.jsx')return {
+  __esModule:true,default:({game,onBack})=>React.createElement('View',{testID:'android-inventory-screen'},
+   React.createElement('Text',null,'Pup Account Inventory'),
+   React.createElement('Pressable',{accessibilityRole:'button',accessibilityLabel:'Back to game',onPress:onBack},'Back'))
+ };
+ if(id==='./src/components/WebsiteCareShopScreens.jsx'||
+    id==='./src/components/WebsiteRewardsScreens.jsx'||
+    id==='./src/components/WebsiteRosterPrestigeScreens.jsx'||
+    id==='./src/components/WebsiteCasinoGachaScreens.jsx'){
+  const name=id.split('/').at(-1);
+  const path=new URL('../src/components/'+name,import.meta.url);
+  const generated={exports:{}};
+  const code=transformSync(readFileSync(path,'utf8'),{babelrc:false,configFile:false,
+   plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',code)(name=>
+   name==='react-native'?native:require(name),generated,generated.exports);
+  return generated.exports;
+ }
+ if(id==='./src/components/WebsitePlayScreen.jsx'){
+  const screenFile=new URL('../src/components/WebsitePlayScreen.jsx',import.meta.url);
+  const screenModule={exports:{}};
+  const compiled=transformSync(readFileSync(screenFile,'utf8'),{babelrc:false,configFile:false,
+   plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',compiled)(name=>
+   name==='react-native'?native:
+   name.endsWith('/theme.js')?theme:
+   name==='../engine/game.js'?require('./src/engine/game.js'):
+   require(name),screenModule,screenModule.exports);
+  return screenModule.exports;
+ }
  if(id.startsWith('./src/components/'))return {__esModule:true,default:()=>null};
  return require(id);
 },module,module.exports);
@@ -65,7 +115,12 @@ test('primary navigation preserves Play, Care, Roster, Shop and Rewards with wor
   const names=tabs().map(p=>text(p));assert.ok(names.some(n=>n.includes('Roster')),'Roster is missing from the primary bar');assert.ok(names.some(n=>n.includes('Rewards')),'Rewards is missing from the primary bar');
   assert.equal(names.length,5);assert.ok(!names.some(n=>n.includes('Settings')||n.includes('Prestige')));
   await act(()=>tabs().find(p=>text(p).includes('Roster')).props.onPress());assert.match(text(renderer.root),/Puppy Roster/);
-  await act(()=>tabs().find(p=>text(p)==='🎁 Rewards').props.onPress());assert.match(text(renderer.root),/Today’s goals/);assert.match(text(renderer.root),/Puppy Casino/);
+  await act(()=>tabs().find(p=>text(p)==='🎁 Rewards').props.onPress());assert.match(text(renderer.root),/Today’s goals/);
+  const adventures=renderer.root.findAllByType('Pressable').find(p=>
+   String(p.props.accessibilityLabel||'').includes('Adventures'));
+  assert.ok(adventures,'Website Rewards adventures accordion is missing');
+  await act(()=>adventures.props.onPress());
+  assert.match(text(renderer.root),/Puppy Casino/);
  }finally{await act(()=>renderer.unmount());}
 });
 test('header Settings keeps the current primary destination and hides its bar until Back',async()=>{
@@ -124,5 +179,41 @@ test('Care keeps unaffordable actions disabled and shows the tired threshold cor
   for(const label of ['Feed, costs 20 Treats','Play, costs 1 Bone and 12 energy','Clean, costs 10 Treats'])assert.equal(renderer.root.findByProps({accessibilityLabel:label}).props.disabled,true);
   assert.match(text(renderer.root),/Rest above 10% energy/);
   await pressLabel(renderer,'Rest, free, restores 30 energy');assert.equal(latestState.game.energy,40);assert.equal(latestState.game.treats,0);assert.equal(latestState.game.bones,0);
+ }finally{await act(()=>renderer.unmount());}
+});
+
+test('Chromebook and DeX desktop layout uses sidebar, hides mobile tabs, and resizes back',async()=>{
+ viewport={width:1280,height:800};
+ let renderer;
+ try{
+  renderer=await render();
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-window'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-navigation'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-dashboard'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-top-bar'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-phone-window'}).length,0);
+  await act(()=>renderer.root.findAllByType('Pressable')
+   .find(p=>p.props.accessibilityRole==='tab'&&p.props.accessibilityLabel==='Care').props.onPress());
+  assert.match(text(renderer.root),/Pup Care/);
+  viewport={width:820,height:700};
+  await act(()=>renderer.update(React.createElement(App)));
+  assert.equal(renderer.root.findAllByProps({testID:'android-phone-window'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-navigation'}).length,0);
+ }finally{
+  viewport={width:393,height:852};
+  if(renderer)await act(()=>renderer.unmount());
+ }
+});
+
+test('phone Play header opens website-style Inventory and returns to Play',async()=>{
+ const renderer=await render();
+ try{
+  const control=renderer.root.findByProps({accessibilityLabel:'Open inventory'});
+  await act(()=>control.props.onPress());
+  assert.equal(renderer.root.findAllByProps({testID:'android-inventory-screen'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'game-bottom-bar'}).length,0);
+  await act(()=>renderer.root.findByProps({accessibilityLabel:'Back to game'}).props.onPress());
+  assert.equal(renderer.root.findAllByProps({testID:'android-inventory-screen'}).length,0);
+  assert.equal(renderer.root.findAllByProps({testID:'game-bottom-bar'}).length,1);
  }finally{await act(()=>renderer.unmount());}
 });

@@ -3,7 +3,7 @@
     "name": "Puppy Clicker",
     "slug": "puppy-clicker-native",
     "version": "1.8.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "automatic",
     "scheme": "puppyclicker",
     "android": {
@@ -24,6 +24,7 @@
     },
     "icon": "./assets/logos/puppy_clicker.png",
     "plugins": [
+      "./plugins/withPuppyDesktopMode.cjs",
       "./plugins/withPuppyPointer.cjs",
       "./plugins/withPuppyProductionAuthority.cjs",
       "expo-notifications"

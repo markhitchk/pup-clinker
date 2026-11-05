@@ -7,9 +7,31 @@ import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts
 
 const NAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_SYMBOLS = new Set(["!","@","#","$","%","^","&","*","(",")","_","+","-","=","[","]","{","}",";","'","\\",":","\"","|","<",">","?",",",".","/","`","~"]);
+const strongPassword = (value: string) => value.length >= 8 && value.length <= 128 &&
+  /[A-Z]/.test(value) && /[a-z]/.test(value) && /[0-9]/.test(value) &&
+  [...value].some(char => PASSWORD_SYMBOLS.has(char));
 const TERMS_VERSION = 1;
 const PRIVACY_VERSION = 1;
 const GRANT_MS = 7 * 24 * 60 * 60 * 1000;
+const JOIN_SOURCES = new Set(["friend","discord","youtube","tiktok","instagram","reddit","google","play_store","other"]);
+function parseJoinSource(payload: any) {
+  const source = payload?.joinSource;
+  const details = payload?.joinDetails == null ? "" :
+    typeof payload.joinDetails === "string" ? payload.joinDetails.trim() : null;
+  if (details === null || details.length > 120 || /[\x00-\x1f\x7f]/.test(details)) {
+    throw new HttpError(400, "PUP_JOIN_SOURCE_INVALID", "Invalid optional registration source details.");
+  }
+  if (source == null || source === "") {
+    if (details) throw new HttpError(400, "PUP_JOIN_SOURCE_INVALID", "Registration source is required when details are set.");
+    return {source: null, details: null};
+  }
+  if (typeof source !== "string" || !JOIN_SOURCES.has(source)) {
+    throw new HttpError(400, "PUP_JOIN_SOURCE_INVALID", "Unknown registration source.");
+  }
+  return {source, details: details || null};
+}
+
 
 
 function authClient() {
@@ -166,9 +188,10 @@ Deno.serve(async (req: Request) => {
       const username = requiredString(envelope.payload.username, "username").trim();
       const password = requiredString(envelope.payload.password, "password");
       const contactEmail = supportEmail(envelope.payload.contactEmail ?? envelope.payload.email);
+      const discovery = parseJoinSource(envelope.payload);
       requireLegalConsent(envelope.payload);
-      if (!NAME_RE.test(username) || password.length < 8 || password.length > 128) {
-        throw new HttpError(400, "PUP_CREDENTIAL_INVALID", "Enter a 3–20 character username and an 8–128 character password.");
+      if (!NAME_RE.test(username) || !strongPassword(password)) {
+        throw new HttpError(400, "PUP_PASSWORD_COMPLEXITY_REQUIRED", "Use a 3–20 character username and an 8–128 character password with upper/lowercase letters, a number and a special character.");
       }
       const [{ data: taken, error: te }, { data: own, error: oe },
         { data: grant, error: ge }] = await Promise.all([
@@ -253,6 +276,19 @@ Deno.serve(async (req: Request) => {
           .eq("id", session.player.id).is("discord_user_id", null);
       }
       const outcome = await finishPasswordSignIn(admin, session, accepted, authId);
+      // Optional discovery metadata is non-authoritative: failure cannot undo a verified
+      // Pup Account or its cloud save. Do not write this when adding a password to an
+      // existing Discord-linked Pup Account.
+      if (createdAccount && discovery.source) {
+        try {
+          const {error: sourceError} = await admin.from("pup_registration_sources").insert({
+            account_uuid: account.id, source: discovery.source, details: discovery.details,
+          });
+          if (sourceError) console.error("Optional Pup registration source could not be saved");
+        } catch {
+          console.error("Optional Pup registration source could not be saved");
+        }
+      }
       return json(200, outcome);
     }
 
