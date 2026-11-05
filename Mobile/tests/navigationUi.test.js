@@ -60,7 +60,9 @@ new Function('require','module','exports',source)(id=>{
    plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
   new Function('require','module','exports',compiled)(name=>
    name==='react-native'?native:
-   name.endsWith('/theme.js')?theme:require(name),screenModule,screenModule.exports);
+   name.endsWith('/theme.js')?theme:
+   name==='../engine/game.js'?require('./src/engine/game.js'):
+   require(name),screenModule,screenModule.exports);
   return screenModule.exports;
  }
  if(id.startsWith('./src/components/'))return {__esModule:true,default:()=>null};
