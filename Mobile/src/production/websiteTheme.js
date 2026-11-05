@@ -3,12 +3,8 @@
 // This maps CSS colors to React Native; never inject browser CSS or DOM into Android.
 import {paletteFor} from '../engine/settings.js';
 
-export const WEBSITE_DARK_TOKENS=Object.freeze({
- bg:'#0A0C12',surface:'#12151F',card:'#1A1E2B',modal:'#161A25',
- cyan:'#00E5FF',cyanSoft:'#00C4E0',purple:'#7B5CFF',pink:'#FF5C9D',
- gold:'#FFD166',green:'#34D399',text:'#FFFFFF',muted:'#A0A8C0',
- tertiary:'#6B7280',onAccent:'#07141B'
-});
+export {WEBSITE_DARK_TOKENS} from './websiteDesignTokens.js';
+import {WEBSITE_DARK_TOKENS} from './websiteDesignTokens.js';
 const colorRgb=color=>[1,3,5].map(i=>parseInt(color.slice(i,i+2),16));
 export function websitePaletteFor(preferences={},systemDark=true){
  const base=paletteFor(preferences,systemDark);
