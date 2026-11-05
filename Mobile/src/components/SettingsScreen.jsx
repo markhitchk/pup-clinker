@@ -7,6 +7,7 @@ import {guestLevel} from '../engine/progression.js';
 import {PUPPY_IMAGES} from '../assets/puppies.js';
 import {validBirthday} from '../engine/onboarding.js';
 import {WEBSITE_SETTINGS_LABELS} from '../production/websiteSettingsContract.js';
+import {accountStandingPresentation,fairplayPresentation} from '../production/websitePupEyePresentation.js';
 import {useWebsiteLanguage} from '../production/websiteLanguage.js';
 
 const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text,muted&&s.muted,style]}>{children}</Text>;
@@ -154,7 +155,23 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   </>)}
   {section('advanced','▾','Advanced','Roster, PupEye, Online Assets, Release Hub and About',<T muted>Open the items below when you need them.</T>)}
   {section('roster','🐶','Puppy Roster','Manage streamed puppy roster content and refresh assets',<><Action onPress={()=>onOpen('roster')}>Open Puppy Roster</Action><Action disabled={registry.refreshing} onPress={registry.refresh}>Refresh Puppy Assets</Action></>)}
-  {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',pending)}
+  {section('pupeye','👁','PupEye Protection','Fair-play and save integrity',<>
+   <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
+    <Image source={require('../../assets/logos/PupEye.png')} resizeMode="contain"
+     accessibilityLabel="PupEye Anticheat logo" style={{width:54,height:54}}/>
+    <View style={{flex:1,gap:5}}>
+     <T style={s.bold}>PupEye Anticheat</T>
+     <T muted>{accountStandingPresentation(account).title}</T>
+    </View>
+   </View>
+   <T muted>{accountStandingPresentation(account).detail}</T>
+   <T style={s.bold}>{fairplayPresentation(null).title}</T>
+   <T muted>{fairplayPresentation(null).detail}</T>
+   <T muted>Android uses signed PupEye account and gameplay verification. Website fair-play warnings and temporary tap holds must be checked on the server; this screen does not infer them from tapping speed or an app-side flag.</T>
+   <Action onPress={()=>Linking.openURL('https://puppy-clicker.vercel.app/pupeye/status')}>👁️ Check my PupEye status</Action>
+   <Action onPress={()=>Linking.openURL('https://puppy-clicker.vercel.app/pupeye')}>About PupEye Anticheat</Action>
+   <T muted>The status page verifies your own signed-in website session. Browser fair-play checks are separate from Android device attestation.</T>
+  </>)}
   {section('assets','☁','Online Assets','Streamed asset, roster and cache status',<>
    <T>Roster source: {registry.source}</T><T>Visible puppies: {registry.items.length}</T><T muted>{registry.status}</T><Action disabled={registry.refreshing} onPress={registry.refresh}>{registry.refreshing?'Refreshing…':'Refresh Assets'}</Action><Action disabled={registry.refreshing} onPress={registry.clearCache}>Clear Asset Cache</Action>
   </>)}
