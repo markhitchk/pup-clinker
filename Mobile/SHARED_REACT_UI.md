@@ -22,8 +22,21 @@ Run from the Android repository:
 
 Android phone: website-like compact Play stage, puppy platform, name badge, care/energy strip, cyan tap pill, Next Reward card, resource strip, bottom navigation and dark translucent panels. Support Android screen cutouts, TalkBack, font scaling and reduced motion.
 
-Android tablet/DeX: preserve larger layouts without truncation; browser's HTML desktop sidebar must be ported separately before claiming desktop 1:1 parity.
+Android Chromebook / DeX: the Android beta now includes a native translation of the website's desktop sidebar, XP/streak header, two-column Play dashboard, Resources, Today's goals and Pup Care Status panels, and side-by-side Roster/Shop on wide screens. These views read the same signed Pup Account gameplay state as the phone UI. Window width >=960dp enables desktop; smaller windows automatically restore the phone layout. The activity allows both orientations and explicitly opts into resizable multi-window mode via `plugins/withPuppyDesktopMode.cjs`. Desktop inventory and Help are native, read-only/help views.
+
+The **website-only DOM/CSS and its browser interactions** are not bundled in Android. Some secondary screens still use their existing responsive React Native implementations; keyboard/mouse QA on real Chromebook and DeX hardware is needed before claiming exact 1:1 parity.
 
 PupEye, save transactions, auth, queue, notification permissions and signing stay in native adapters. Do not replace them with browser-side code or guest gameplay.
 
 The original website remains unchanged. Work here is an incremental Android visual migration, not a claim that all website screens already have identical native rendering.
+
+## Android desktop mode files
+
+- `Mobile/src/production/desktopLayout.js` — same 960dp breakpoint as the website, recomputed from `useWindowDimensions()`.
+- `Mobile/src/components/WebsiteDesktopShell.jsx` — side navigation, player-level/streak top bar, inventory and help.
+- `Mobile/src/components/WebsiteDesktopDashboard.jsx` — Play's Resources, Today's Goals and Pup Care Status sidebar panels.
+- `Mobile/src/components/WebsitePlayScreen.jsx` — existing native puppy stage expanded for desktop while preserving signed tap commands.
+- `Mobile/app.json` and `Mobile/plugins/withPuppyDesktopMode.cjs` — unlocked orientation and resizable freeform window support.
+
+Do not use UA strings or hardcoded ChromeOS/DeX device lists. Viewport size is the responsive source of truth; window resizing can change layout without replacing the Pup Account. Native Android activity restarts, if any, still follow secure startup and cloud verification.
+
