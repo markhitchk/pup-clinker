@@ -22,6 +22,8 @@ test('canonical website Rewards markup stays a native generated UI source',()=>{
   assert.ok(body.includes(text),'missing website Rewards behavior '+text);
  assert.doesNotMatch(body,/<(?:div|article|section|button)\b/);
  assert.ok(app.includes('createWebsiteRewardsScreens'));
+ assert.ok(app.includes('pendingTaps={queuedTaps||0}'));
+ assert.ok(read('src/state/useGame.js').includes('queuedTaps:pendingTapIntents.length'));
  assert.ok(app.includes('webServerRewardsDate:nativeRewardDate'));
  assert.ok(app.includes('webServerEpochDay:nativeRewardEpoch'));
 });
