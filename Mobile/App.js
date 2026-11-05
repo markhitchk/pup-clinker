@@ -150,6 +150,8 @@ function PlayScreen({g,act,clock,schedule,viewportHeight,desktop=false}){
  const rotation=useRef(new Animated.Value(0)).current;
  const lift=useRef(new Animated.Value(0)).current;
  const [ticketVisible,setTicketVisible]=useState(false);
+ const [renameOpen,setRenameOpen]=useState(false);
+ const [renameDraft,setRenameDraft]=useState('');
  useEffect(()=>{
   if(!animate){for(const [value,target] of [[tapScale,1],[rotation,0],[lift,0]]){value.stopAnimation();value.setValue(target);}}
  },[animate,tapScale,rotation,lift]);
@@ -186,7 +188,10 @@ function PlayScreen({g,act,clock,schedule,viewportHeight,desktop=false}){
    </Pressable>}
    onTap={doTap} cooldown={cooldown} bonus={bonus} next={next} ticketVisible={ticketVisible}/>;
  }
- return <WebsitePlayScreen game={g} viewportHeight={viewportHeight} desktop={desktop}
+ return <>
+ <WebsitePlayScreen game={g} viewportHeight={viewportHeight} desktop={desktop}
+  identityPortrait={desktop?<Portrait puppy={pup} size={64} accessory={g.accessory}/>:null}
+  onRename={desktop?()=>{setRenameDraft(g.puppyName);setRenameOpen(true);}:undefined}
   wallet={desktop?null:<Wallet game={g} compact={viewportHeight<585}/>}
   portrait={<Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
    accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
@@ -198,7 +203,39 @@ function PlayScreen({g,act,clock,schedule,viewportHeight,desktop=false}){
    </Animated.View>
   </Pressable>}
   onTap={doTap} cooldown={cooldown} bonus={bonus} next={next}
-  ticketVisible={ticketVisible}/>;
+  ticketVisible={ticketVisible}/>
+ {renameOpen?<Modal visible transparent animationType="fade"
+  onRequestClose={()=>setRenameOpen(false)}>
+  <View style={{flex:1,justifyContent:'center',alignItems:'center',
+   backgroundColor:'rgba(0,0,0,0.75)',padding:20}}>
+   <View style={{width:'100%',maxWidth:400,backgroundColor:C.surface,borderRadius:24,
+    borderWidth:1,borderColor:C.line,padding:20,gap:14}}>
+    <Txt style={{fontSize:22,fontWeight:'800',color:C.text}}>Rename Puppy</Txt>
+    <Txt muted style={{fontSize:12}}>Update your active puppy's name in your Pup Account.</Txt>
+    <TextInput accessibilityLabel="New puppy name" value={renameDraft} onChangeText={setRenameDraft}
+     placeholder="Puppy name" placeholderTextColor={C.muted} maxLength={18}
+     style={{color:C.text,backgroundColor:C.card,borderColor:C.line,borderWidth:1,
+      borderRadius:14,padding:12,minHeight:44}}/>
+    <View style={{flexDirection:'row',gap:10}}>
+     <Pressable accessibilityRole="button" accessibilityLabel="Cancel rename"
+      onPress={()=>setRenameOpen(false)}
+      style={{flex:1,borderWidth:1,borderColor:C.line,borderRadius:999,padding:12,alignItems:'center'}}>
+      <Txt style={{color:C.accent,fontWeight:'800'}}>Cancel</Txt>
+     </Pressable>
+     <Pressable accessibilityRole="button" accessibilityLabel="Save puppy name"
+      accessibilityState={{disabled:!renameDraft.trim()}}
+      disabled={!renameDraft.trim()}
+      onPress={()=>{const name=renameDraft.trim().replace(/\\n/g,' ').slice(0,18);
+       if(name)act({type:'rename',name,now:Date.now()});setRenameOpen(false);}}
+      style={{flex:1,borderRadius:999,padding:12,alignItems:'center',
+       backgroundColor:C.accent,opacity:renameDraft.trim()?1:0.5}}>
+      <Txt style={{color:C.onAccent,fontWeight:'800'}}>Save</Txt>
+     </Pressable>
+    </View>
+   </View>
+  </View>
+ </Modal>:null}
+ </>;
 }
 // Shipped PuppyRevampedCareScreen, preserving the existing care reducer effects.
 function CareScreen({g,act,viewportHeight}){
