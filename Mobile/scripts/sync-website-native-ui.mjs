@@ -12,6 +12,12 @@ const NAVIGATION_SOURCE='src/native/src/engine/playRevamp.js';
 const NAVIGATION_TARGET='src/production/websiteNavigation.js';
 const CARE_SHOP_SOURCE='src/native/App.jsx';
 const CARE_SHOP_TARGET='src/components/WebsiteCareShopScreens.jsx';
+const ROSTER_PRESTIGE_SOURCE='src/native/App.jsx';
+const ROSTER_PRESTIGE_TARGET='src/components/WebsiteRosterPrestigeScreens.jsx';
+const PUPPY_NAMES_SOURCE='src/nameSuggestions.js';
+const PUPPY_NAMES_TARGET='src/production/websiteNameSuggestions.js';
+const INVENTORY_CONTRACT_SOURCE='src/InventoryScreen.jsx';
+const INVENTORY_CONTRACT_TARGET='src/production/websiteInventoryContract.js';
 const REWARDS_SOURCE='src/native/App.jsx';
 const REWARDS_TARGET='src/components/WebsiteRewardsScreens.jsx';
 const SOURCE_MODULES=Object.freeze([
@@ -24,7 +30,9 @@ const COMPONENTS=Object.freeze([
  {source:'src/native/src/components/NotificationInbox.jsx',
   target:'src/components/NotificationInbox.jsx'},
  {source:'src/native/src/production/AccountOnboarding.jsx',
-  target:'src/production/AccountOnboarding.jsx'}
+  target:'src/production/AccountOnboarding.jsx'},
+ {source:'src/native/src/components/PuppyDetailsDialog.jsx',
+  target:'src/components/PuppyDetailsDialog.jsx'}
 ]);
 // Only stable, reviewed RN Image-source substitutions are permitted.
 // Unexpected website artwork references fail sync rather than silently diverging.
@@ -48,6 +56,12 @@ function adaptWebsiteImages(source,body){
   if(count!==expected)
    throw Error('Website UI artwork adapter needs review: '+source+' '+uri);
   body=body.split(original).join(replacement);
+ }
+ if(source==='src/native/src/components/PuppyDetailsDialog.jsx'){
+  const browserImport="from '../../../nameSuggestions.js'";
+  if(body.split(browserImport).length!==2)
+   throw Error('Website profile name generator import changed; review adapter');
+  body=body.replace(browserImport,"from '../production/websiteNameSuggestions.js'");
  }
  return body;
 }
@@ -127,6 +141,50 @@ function adaptPureWebsiteModule(item,body){
  }
  return body;
 }
+function generateRosterPrestige(source){
+ const prestige=extractWebsitePart(source,'PrestigeScreen','\nfunction RosterScreen(');
+ const roster=extractWebsitePart(source,'RosterScreen','\nfunction GachaScreen(')
+  .replace(/\n\/\/ Part 4:[\s\S]*$/,'').trimEnd();
+ if(!roster.includes('puppy-roster-grid')||!roster.includes('current-puppy-hero')||
+   !prestige.includes('Permanent skill tree')||
+   /<(?:div|section|article|button)\b|\b(?:window|document|localStorage)\s*\./.test(roster+prestige))
+  throw Error('Website Roster/Prestige structure changed; review before mirroring');
+ const deps='ROSTER,LEGACY_V6_PUPPIES,legacyRosterSections,unlockedLegacyCount,PageHeader,Txt,Portrait,styles,C,Button,PuppyDetailsDialog,Card,suggestPuppyName,PRESTIGE_SKILLS,PRESTIGE_SKILL_PRESENTATION,prestigeOffer,canBuySkill,skillCost,v6Format';
+ return '// GENERATED. Canonical source: Puppy-Clicker/src/native/App.jsx.\n'+
+ '// Website-owned Prestige and Roster JSX; all signed native actions are callbacks.\n'+
+ '// Do not hand-edit: regenerate using scripts/sync-website-native-ui.mjs.\n'+
+ "import React,{useEffect,useState} from 'react';\n"+
+ "import {Alert,Pressable,ScrollView,TextInput,View,useWindowDimensions} from 'react-native';\n\n"+
+ 'export function createWebsiteRosterPrestigeScreens({'+deps+'}){\n'+
+ prestige+'\n\n'+roster+'\n\n return {PrestigeScreen,RosterScreen};\n}\n';
+}
+function extractInventoryAssignment(source,name){
+ const match=source.match(new RegExp('const '+name+'=([\\s\\S]*?);\\n'));
+ if(!match)throw Error('Website Inventory contract changed: '+name);
+ return match[1].trim();
+}
+function generateInventoryContract(source){
+ const names=['currencies','accessoryIcons','rarityIcons','sections'];
+ return '// GENERATED from the canonical website Puppy-Clicker/src/InventoryScreen.jsx.\n'+
+ '// Presentation-only inventory categories and labels; NO account or save permissions.\n'+
+ names.map(name=>'export const WEBSITE_INVENTORY_'+name.toUpperCase()+
+  '=Object.freeze('+extractInventoryAssignment(source,name)+');').join('\n')+'\n';
+}
+function generatePuppyNames(source){
+ const names=extractInventoryAssignment(source,'puppies');
+ return '// GENERATED from Puppy-Clicker/src/nameSuggestions.js (puppies catalog only).\n'+
+ '// Cosmetic suggestions may use Math.random: NEVER use this generator for passwords,\n'+
+ '// authentication tokens, friend codes, reward determination, or signed gameplay.\n'+
+ 'const puppies='+names+';\n'+
+ "export function suggestPuppyName(previous=''){\n"+
+ " const current=String(previous||'').trim().toLowerCase();\n"+
+ " for(let i=0;i<5;i++){\n"+
+ "  const name=puppies[Math.floor(Math.random()*puppies.length)];\n"+
+ "  if(name.toLowerCase()!==current)return name;\n"+
+ " }\n"+
+ " return puppies.find(name=>name.toLowerCase()!==current)||'Buddy';\n"+
+ '}\n';
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -172,7 +230,20 @@ async function verify(){
   if(blobSha(current)!==saved.blobSha)
    throw Error('Website source drift: '+item.target);
  }
- console.log('Canonical website UI sources, native screens and Rewards hashes verified');
+ const more=[
+  {key:'rosterPrestige',source:ROSTER_PRESTIGE_SOURCE,target:ROSTER_PRESTIGE_TARGET},
+  {key:'puppyNames',source:PUPPY_NAMES_SOURCE,target:PUPPY_NAMES_TARGET},
+  {key:'inventoryContract',source:INVENTORY_CONTRACT_SOURCE,target:INVENTORY_CONTRACT_TARGET}
+ ];
+ for(const item of more){
+  const saved=manifest[item.key];
+  if(!saved||saved.source!==item.source||saved.target!==item.target||
+     !/^[a-f0-9]{40}$/.test(saved.sourceSha)||!/^[a-f0-9]{40}$/.test(saved.blobSha))
+   throw Error('Missing pinned website Part 4 source '+item.key);
+  if(blobSha(await readFile(resolve(MOBILE,item.target),'utf8'))!==saved.blobSha)
+   throw Error('Website Part 4 source drift: '+item.target);
+ }
+ console.log('Canonical website UI sources, Part 4 screens and contracts verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -235,7 +306,28 @@ else{
   syncedModules[item.key]={source:item.source,target:item.target,
    sourceSha:blobSha(raw),blobSha:blobSha(body)};
  }
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules},null,2)+'\n';
+ const rosterGenerated=generateRosterPrestige(sourceApp);
+ if((await readFile(resolve(MOBILE,ROSTER_PRESTIGE_TARGET),'utf8').catch(()=>null))!==rosterGenerated)
+  await writeFile(resolve(MOBILE,ROSTER_PRESTIGE_TARGET),rosterGenerated);
+ const rosterPrestige={source:ROSTER_PRESTIGE_SOURCE,target:ROSTER_PRESTIGE_TARGET,
+  sourceSha:blobSha(sourceApp),blobSha:blobSha(rosterGenerated)};
+ const srcNames=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+PUPPY_NAMES_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const nameGenerated=generatePuppyNames(srcNames);
+ if((await readFile(resolve(MOBILE,PUPPY_NAMES_TARGET),'utf8').catch(()=>null))!==nameGenerated)
+  await writeFile(resolve(MOBILE,PUPPY_NAMES_TARGET),nameGenerated);
+ const puppyNames={source:PUPPY_NAMES_SOURCE,target:PUPPY_NAMES_TARGET,
+  sourceSha:blobSha(srcNames),blobSha:blobSha(nameGenerated)};
+ const srcInventory=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+INVENTORY_CONTRACT_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const inventoryGenerated=generateInventoryContract(srcInventory);
+ if((await readFile(resolve(MOBILE,INVENTORY_CONTRACT_TARGET),'utf8').catch(()=>null))!==inventoryGenerated)
+  await writeFile(resolve(MOBILE,INVENTORY_CONTRACT_TARGET),inventoryGenerated);
+ const inventoryContract={source:INVENTORY_CONTRACT_SOURCE,target:INVENTORY_CONTRACT_TARGET,
+  sourceSha:blobSha(srcInventory),blobSha:blobSha(inventoryGenerated)};
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules,rosterPrestige,puppyNames,inventoryContract},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
