@@ -15,10 +15,10 @@ Run from the Android repository:
 - `node Mobile/scripts/sync-website-ui.mjs --verify`: checks Android-native source/style integration offline.
 - `node Mobile/scripts/sync-website-ui.mjs`: reads the *unchanged* website `main` stylesheet and regenerates native design tokens.
 - `node Mobile/scripts/sync-website-native-ui.mjs --verify`: checks exact Git blob hashes for allowlisted website-owned, React Native-compatible components without network access.
-- `node Mobile/scripts/sync-website-native-ui.mjs`: mirrors reviewed UI source from an immutable website commit; `websiteUiSources.json` pins revision, paths and checksums.
+- `node Mobile/scripts/sync-website-native-ui.mjs`: mirrors reviewed UI source from an immutable website commit **and** generates `websiteNavigation.js` from the website's `MAIN_TABS` definition; `websiteUiSources.json` pins source, generated paths and checksums.
 - `.github/workflows/sync-website-ui.yml`: scheduled every six hours and manually dispatched; proposes **Android-only** pull requests after tests when website color tokens or allowlisted native UI components change.
 
-**Scope of automation:** website CSS color tokens plus the allowlisted account-details, notifications inbox, and account-onboarding native UI screens. Reviewed Image source substitutions adapt website asset URLs to bundled Android `require()` calls, without changing UI logic. The website owns the editable implementation, and Android's checked-in output is generated only (not a separately maintained screen). See `Mobile/PORT_MATRIX.md` for ownership and staged migration. Other website HTML elements, CSS layout, animation keyframes, browser router and web-only APIs cannot execute as native React Native JSX. They must be translated into native components screen by screen, preserving behavior. They do not auto-sync to installed APKs. We do not modify website UI as a prerequisite.
+**Scope of automation:** website CSS color tokens, the canonical five primary tabs, plus the allowlisted account-details, notifications inbox, and account-onboarding native UI screens. Reviewed Image source substitutions adapt website asset URLs to bundled Android `require()` calls, without changing UI logic. The website owns the editable implementation, and Android's checked-in output is generated only (not a separately maintained screen). See `Mobile/PORT_MATRIX.md` for ownership and staged migration. Other website HTML elements, CSS layout, animation keyframes, browser router and web-only APIs cannot execute as native React Native JSX. They must be translated into native components screen by screen, preserving behavior. They do not auto-sync to installed APKs. We do not modify website UI as a prerequisite.
 
 ## Visual parity acceptance
 
@@ -26,7 +26,7 @@ Android phone: website-like compact Play stage, puppy platform, name badge, care
 
 Android Chromebook / DeX: the Android beta now includes a native translation of the website's desktop sidebar, XP/streak header, two-column Play dashboard, Resources, Today's goals and Pup Care Status panels, and side-by-side Roster/Shop on wide screens. These views read the same signed Pup Account gameplay state as the phone UI. Window width >=960dp enables desktop; smaller windows automatically restore the phone layout. The activity allows both orientations and explicitly opts into resizable multi-window mode via `plugins/withPuppyDesktopMode.cjs`. Desktop inventory and Help are native, read-only/help views.
 
-The **website-only DOM/CSS and its browser interactions** are not bundled in Android. Some secondary screens still use their existing responsive React Native implementations; keyboard/mouse QA on real Chromebook and DeX hardware is needed before claiming exact 1:1 parity.
+The desktop Play night-yard image uses the actual published website scene URL (`/assets/scenes/night-yard-v1.webp`), with a native dark background as a fallback when that remote image is unavailable; a bundled offline artwork copy is still pending. The **website-only DOM/CSS and its browser interactions** are not bundled in Android. Some secondary screens still use their existing responsive React Native implementations; keyboard/mouse QA on real Chromebook and DeX hardware is needed before claiming exact 1:1 parity.
 
 PupEye, save transactions, auth, queue, notification permissions and signing stay in native adapters. Do not replace them with browser-side code or guest gameplay.
 
@@ -42,3 +42,12 @@ The original website remains unchanged. Work here is an incremental Android visu
 
 Do not use UA strings or hardcoded ChromeOS/DeX device lists. Viewport size is the responsive source of truth; window resizing can change layout without replacing the Pup Account. Native Android activity restarts, if any, still follow secure startup and cloud verification.
 
+ 
+## Part 2 — native navigation and responsive Play
+
+- Five primary tab labels/icons/order are generated from `Puppy-Clicker/src/native/src/engine/playRevamp.js`, imported directly into Android `App.js` and enforced by an offline hash test. No Android-handwritten duplicate navigation array is used for the shell.
+- `desktopLayoutForWindow` matches the website `desktop-reference.css` sidebar `clamp(180px,16.15vw,248px)` and dashboard `1.366fr 1fr` columns, including the page gutters and 18dp gap. It recalculates when the freeform window changes.
+- The native desktop Play stage mirrors the website night-yard background, large heading, puppy identity and rename action, transparent stage, cyan tap pill and translucent Next Reward card. Physical device screenshot comparison and full DOM-to-RN UI extraction remain outstanding.
+- The Player Level/Streak topbar proportions and desktop sidebar sizing now follow the existing website reference.
+- Smaller phone viewports use compact puppy artwork and allow vertical scrolling when necessary to avoid clipping controls; ordinary height continues with a fixed five-tab bottom bar.
+- Account, gameplay commands, PupEye, notifications and backend writes remain native; this does not add a browser login or WebView.
