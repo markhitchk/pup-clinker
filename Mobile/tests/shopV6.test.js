@@ -20,7 +20,8 @@ const coins=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppy
 const rn=readFileSync(new URL('../App.js',import.meta.url),'utf8');
 const websiteScreens=readFileSync(new URL('../src/components/WebsiteCareShopScreens.jsx',import.meta.url),'utf8');
 const shop=websiteScreens.slice(websiteScreens.indexOf('function ShopScreen('),websiteScreens.indexOf('return {CareScreen,ShopScreen};'));
-const prestigeScreen=rn.slice(rn.indexOf('function PrestigeScreen('),rn.indexOf('function RosterScreen('));
+const rosterPrestige=readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
+const prestigeScreen=rosterPrestige.slice(rosterPrestige.indexOf('function PrestigeScreen('),rosterPrestige.indexOf('function RosterScreen('));
 
 test('Part 3 Shop ports the launched Kotlin V6 layout and three distinct price sections',()=>{
  for(const x of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins','🎫 Redeem Code','🐶 Pups']){
