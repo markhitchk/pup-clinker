@@ -15,6 +15,7 @@ const engine=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pupp
 const reward=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyCasinoPuppyRewards.kt',import.meta.url),'utf8');
 const component=readFileSync(new URL('../src/components/LuckyWheelV6.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
 function ready(chips=200){const s=initialState();s.ready=true;s.game.casinoChips=chips;return s;}
 
 test('Part 5F matches Kotlin seven slices, probabilities, chip payouts and source wagers',()=>{
@@ -192,9 +193,9 @@ test('mutated spin, payout, puppy ID, segment or future schema are never paid',(
 
 test('Casino page uses the dedicated wheel screen, saved resume card and no legacy instant payout',()=>{
  assert.ok(app.includes("import LuckyWheelV6 from './src/components/LuckyWheelV6.jsx'"));
- assert.ok(app.includes("g.pendingWheel?'wheel':'hub'"));
- assert.ok(app.includes('Unfinished Lucky Pup Wheel Spin'));
- assert.ok(app.includes("page==='wheel'?<LuckyWheelV6"));
+ assert.ok(casino.includes("g.pendingWheel?'wheel':'hub'"));
+ assert.ok(casino.includes('Unfinished Lucky Pup Wheel Spin'));
+ assert.ok(casino.includes("page==='wheel'?<LuckyWheelV6"));
  assert.ok(!component.includes("type:'casino',gameType:'wheel'"));
  for(const t of ['Casino Chip Wallet','Lucky Pup Wheel','LUCKY PUP WHEEL',
   'Published wheel','82.5%','WHEEL_V6.wagers','wheelStart','wheelReveal']){
@@ -210,7 +211,7 @@ test('all other Casino screens visibly disable wagers during a committed wheel s
   const source=readFileSync(new URL('../src/components/'+name,import.meta.url),'utf8');
   assert.ok(source.includes('game.pendingWheel'),name+' UI must block active wheel wager');
  }
- assert.ok(app.includes('g.pendingWheel'), 'Casino navigation restores pending wheel');
+ assert.ok(casino.includes('g.pendingWheel'), 'Casino navigation restores pending wheel');
  const s=ready(200);
  const playing=transition(s,{type:'wheelStart',wager:20,roll:63,now:1730000000000});
  for(const action of [
