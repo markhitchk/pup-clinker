@@ -7,6 +7,10 @@ import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts
 
 const NAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_SYMBOLS = new Set(["!","@","#","$","%","^","&","*","(",")","_","+","-","=","[","]","{","}",";","'","\\",":","\"","|","<",">","?",",",".","/","`","~"]);
+const strongPassword = (value: string) => value.length >= 8 && value.length <= 128 &&
+  /[A-Z]/.test(value) && /[a-z]/.test(value) && /[0-9]/.test(value) &&
+  [...value].some(char => PASSWORD_SYMBOLS.has(char));
 const TERMS_VERSION = 1;
 const PRIVACY_VERSION = 1;
 const GRANT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -186,8 +190,8 @@ Deno.serve(async (req: Request) => {
       const contactEmail = supportEmail(envelope.payload.contactEmail ?? envelope.payload.email);
       const discovery = parseJoinSource(envelope.payload);
       requireLegalConsent(envelope.payload);
-      if (!NAME_RE.test(username) || password.length < 8 || password.length > 128) {
-        throw new HttpError(400, "PUP_CREDENTIAL_INVALID", "Enter a 3–20 character username and an 8–128 character password.");
+      if (!NAME_RE.test(username) || !strongPassword(password)) {
+        throw new HttpError(400, "PUP_PASSWORD_COMPLEXITY_REQUIRED", "Use a 3–20 character username and an 8–128 character password with upper/lowercase letters, a number and a special character.");
       }
       const [{ data: taken, error: te }, { data: own, error: oe },
         { data: grant, error: ge }] = await Promise.all([
