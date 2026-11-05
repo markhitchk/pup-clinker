@@ -55,6 +55,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
   {betaMode?section('pup-account','🔐','Pup Account','Manage your sign-in and contact details',<>
     <T muted>Sign-in and cloud progress load automatically during startup.</T>
     <Action onPress={()=>onOpen('account-details')}>View Account Details</Action>
+    <Action onPress={()=>onOpen('inventory')}>🎒 View Inventory</Action>
     <Action onPress={onConnectAccount}>Manage Pup Account Sign-in</Action>
    </>):null}
    {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>Discord sign-in and account management remain available in Settings.</T></>:pending)}
