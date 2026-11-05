@@ -10,7 +10,8 @@ const clamp=(value,min,max)=>Math.min(max,Math.max(min,Number(value)||0));
 const pct=(value,max)=>max>0?100*clamp(value,0,max)/max:0;
 
 export default function WebsitePlayScreen({
- game,viewportHeight,wallet,portrait,onTap,cooldown,bonus,next,ticketVisible,desktop=false
+ game,viewportHeight,wallet,portrait,onTap,cooldown,bonus,next,ticketVisible,desktop=false,
+ identityPortrait,onRename
 }){
  const height=desktop?Math.max(690,(Number(viewportHeight)||700)-12):Math.max(350,Number(viewportHeight)||560);
  const short=!desktop&&height<540;
@@ -27,6 +28,24 @@ export default function WebsitePlayScreen({
    <Text accessibilityRole="header" style={[styles.pageTitle,{fontSize:short?24:29}]}>Play</Text>
    <Text style={[styles.secondaryText,{fontSize:short?11:13}]}>Tap your puppy and earn treats.</Text>
   </View>
+  {desktop?<View testID="android-desktop-puppy-identity"
+   style={[styles.identity,{borderColor:C.line,backgroundColor:C.surface}]}>
+   <View style={styles.identityPortrait}>{identityPortrait}</View>
+   <View style={{flex:1,minWidth:0,gap:6}}>
+    <Text numberOfLines={1} style={[styles.identityName,{color:C.text}]}>{game.puppyName}</Text>
+    <Text style={[styles.identityMeta,{color:C.muted}]}>
+     {game.puppyStyle?.startsWith('v2_')?game.puppyStyle:'v1_'+game.puppyStyle}
+     {' · '}{game.puppyStyle?.startsWith('v2_')?'V2':'V1'} Puppies
+    </Text>
+    <View style={styles.identityActions}>
+     <Text style={[styles.identityBadge,{color:C.accent,borderColor:C.accent}]}>Current Puppy</Text>
+     {onRename?<Pressable accessibilityRole="button" accessibilityLabel="Rename current puppy"
+      onPress={onRename} style={[styles.renameButton,{borderColor:C.line}]}>
+      <Text style={{color:C.accent,fontSize:12,fontWeight:'800'}}>✎ Rename</Text>
+     </Pressable>:null}
+    </View>
+   </View>
+  </View>:null}
   {wallet}
   <View testID="android-website-play-stage"
    style={[styles.stage,{padding:desktop?17:short?8:12,gap:desktop?12:short?5:9}]}>
@@ -95,6 +114,16 @@ export default function WebsitePlayScreen({
 }
 const styles={
  page:{width:'100%',paddingHorizontal:2},
+ identity:{flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,
+  borderRadius:20,paddingHorizontal:14,paddingVertical:12,minHeight:104},
+ identityPortrait:{width:72,height:72,alignItems:'center',justifyContent:'center'},
+ identityName:{fontSize:20,fontWeight:'800'},
+ identityMeta:{fontSize:12},
+ identityActions:{flexDirection:'row',alignItems:'center',gap:8,flexWrap:'wrap'},
+ identityBadge:{borderRadius:999,borderWidth:1,paddingHorizontal:10,paddingVertical:5,
+  fontSize:11,fontWeight:'800',overflow:'hidden'},
+ renameButton:{borderRadius:999,borderWidth:1,paddingHorizontal:10,paddingVertical:7},
+
  heading:{justifyContent:'center',paddingHorizontal:3,gap:1},
  pageTitle:{fontWeight:'800',letterSpacing:-.5,color:C.text},
  secondaryText:{color:C.muted},
