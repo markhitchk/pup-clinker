@@ -8,6 +8,8 @@ import {fileURLToPath} from 'node:url';
 const MOBILE=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const UPSTREAM='markhitchk/Puppy-Clicker';
 const MANIFEST=resolve(MOBILE,'src/production/websiteUiSources.json');
+const NAVIGATION_SOURCE='src/native/src/engine/playRevamp.js';
+const NAVIGATION_TARGET='src/production/websiteNavigation.js';
 const COMPONENTS=Object.freeze([
  {source:'src/native/src/components/AccountDetailsScreen.jsx',
   target:'src/components/AccountDetailsScreen.jsx'},
@@ -52,6 +54,15 @@ function assertNativeComponent(value,path){
  if(/<(?:div|article|section|header|nav|span|button|input)\b|\b(?:window|document|localStorage|sessionStorage)\s*\./.test(value))
   throw Error('Website browser-only code cannot be copied to Android: '+path);
 }
+function extractWebsiteTabs(source){
+ const matches=[...source.matchAll(/export const MAIN_TABS=Object\\.freeze\\((\\[[^\\n]*\\])\\);/g)];
+ if(matches.length!==1)throw Error('Review canonical website tab definition before syncing');
+ const tabIds=[...matches[0][1].matchAll(/\\['([^']+)','[^']+','[^']+'\\]/g)].map(item=>item[1]);
+ if(tabIds.join(',')!=='play,care,roster,shop,rewards')
+  throw Error('Website primary tab membership changed; review required');
+ return '// GENERATED from website '+NAVIGATION_SOURCE+'. Do not hand-edit.\\n'+
+  'export const MAIN_TABS=Object.freeze('+matches[0][1]+');\\n';
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -66,7 +77,16 @@ async function verify(){
   if(blobSha(local)!==saved.blobSha)
    throw Error('Website UI component drift: '+component.target+'; re-run website UI sync');
  }
- console.log('Canonical website native UI component hashes verified');
+ const nav=manifest.navigation;
+ if(!nav||nav.source!==NAVIGATION_SOURCE||nav.target!==NAVIGATION_TARGET||
+    !/^[a-f0-9]{40}$/.test(nav.sourceSha)||!/^[a-f0-9]{40}$/.test(nav.blobSha))
+  throw Error('Missing website-owned five-tab navigation provenance');
+ const generated=await readFile(resolve(MOBILE,NAVIGATION_TARGET),'utf8');
+ if(blobSha(generated)!==nav.blobSha)
+  throw Error('Website navigation drift: '+NAVIGATION_TARGET);
+ if(!generated.includes("export const MAIN_TABS=Object.freeze("))
+  throw Error('Invalid generated website navigation');
+ console.log('Canonical website native UI and navigation hashes verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -96,7 +116,15 @@ else{
   if(previous!==body)await writeFile(targetPath,body);
   components.push({...item,sourceSha:blobSha(raw),blobSha:blobSha(body)});
  }
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components},null,2)+'\n';
+ const navRaw=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+NAVIGATION_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const navGenerated=extractWebsiteTabs(navRaw);
+ if((await readFile(resolve(MOBILE,NAVIGATION_TARGET),'utf8').catch(()=>null))!==navGenerated)
+  await writeFile(resolve(MOBILE,NAVIGATION_TARGET),navGenerated);
+ const navigation={source:NAVIGATION_SOURCE,target:NAVIGATION_TARGET,
+  sourceSha:blobSha(navRaw),blobSha:blobSha(navGenerated)};
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
