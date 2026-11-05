@@ -5,6 +5,8 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {transformSync} from '@babel/core';
+import jsx from '@babel/plugin-transform-react-jsx';
 import {MAIN_TABS} from '../src/production/websiteNavigation.js';
 
 const mobile=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -40,7 +42,27 @@ test('website-owned account details UI has no independent Android copy drift',()
   assert.match(body,/from 'react-native'/);
   assert.doesNotMatch(body,/<(?:div|button|section)\b|\b(?:window|document|localStorage)\s*\./);
  }
- const check=spawnSync(process.execPath,['scripts/sync-website-native-ui.mjs','--verify'],{
+ for(const key of ['careShop','rewards','languageCatalog','goalState']){
+  const item=source[key];
+  assert.equal(item.target.startsWith('src/'),true,key);
+  assert.match(item.sourceSha,/^[a-f0-9]{40}$/,key+' canonical SHA');
+  assert.equal(blobSha(load(item.target)),item.blobSha,key+' generated SHA');
+ }
+ const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx'];
+ for(const screen of screens){
+  const body=load(screen);
+  assert.doesNotMatch(body,/<(?:div|article|section|button)\\b/,screen);
+  assert.doesNotThrow(()=>transformSync(body,{babelrc:false,configFile:false,plugins:[jsx]}),screen);
+ }
+ assert.match(load('src/components/WebsiteCareShopScreens.jsx'),/function CareScreen/);
+ assert.match(load('src/components/WebsiteCareShopScreens.jsx'),/function ShopScreen/);
+ assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsGroup/);
+ assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsScreen/);
+ assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function DailyGoalCard/);
+ assert.doesNotMatch(app,/function CareScreen\\(|function ShopScreen\\(|function RewardsScreen\\(|function DailyGoalCard\\(/);
+ assert.ok(app.includes('createWebsiteCareShopScreens'));
+ assert.ok(app.includes('createWebsiteRewardsScreens'));
+  const check=spawnSync(process.execPath,['scripts/sync-website-native-ui.mjs','--verify'],{
   cwd:mobile,encoding:'utf8'
  });
  assert.equal(check.status,0,check.stderr||check.stdout);
