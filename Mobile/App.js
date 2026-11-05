@@ -729,10 +729,11 @@ export function PuppyApp({betaMode=false}){
  const desktop=desktopLayout.desktop;
  const [tab,setTab]=useState('play');
  const [secondary,setSecondary]=useState(null);
+ const [profileReturnTo,setProfileReturnTo]=useState('settings');
  const [bet,setBet]=useState(20);
  const [clock,setClock]=useState(Date.now());
  const [contentHeight,setContentHeight]=useState(600);
- useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!secondary)return false;setSecondary(null);return true;});return ()=>sub.remove();},[secondary]);
+ useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!secondary)return false;setSecondary(secondary==='account-details'?profileReturnTo:null);return true;});return ()=>sub.remove();},[secondary,profileReturnTo]);
  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return ()=>clearInterval(timer);},[]);
  const saved=betaMode?{...gameForDisplay,...Object.fromEntries(Object.keys(DEFAULT_PREFERENCES).map(name=>[name,onboarding.setup[name]??state.game[name]])),birthdayMonth:onboarding.setup.birthdayMonth,birthdayDay:onboarding.setup.birthdayDay}:state.game;
  applyAppearance(saved,systemDark);
@@ -747,7 +748,7 @@ export function PuppyApp({betaMode=false}){
  };
  const notifications=useNotifications({game:saved,ready:betaMode?(onboarding.ready&&onboarding.setup.setupComplete&&account?.status==='VERIFIED'&&account?.legalAccepted===true):(state.ready&&saved.onboardingComplete),act,onOpen:()=>setInboxOpen(true)});
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
- const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
+ const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else if(id==='account-details'){setProfileReturnTo(secondary==='inventory'?'inventory':'settings');setSecondary(id);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
   if(secondary==='inventory')return <WebsiteInventoryScreen game={g} onOpen={openScreen}
@@ -757,7 +758,7 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} pendingTaps={queuedTaps||0} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} account={account} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='account-details')return <AccountDetailsScreen account={account} cloudState={cloudState}
-   onBack={()=>setSecondary('settings')} onManage={()=>openAccount('signin')} onRefresh={refreshAccount}/>;
+   onBack={()=>setSecondary(profileReturnTo)} onManage={()=>openAccount('signin')} onRefresh={refreshAccount}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='exchange')return <PuppyExchangeScreen game={g} registry={registry} account={account} onBack={()=>setSecondary(null)} onRefresh={refreshAccount}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary){
