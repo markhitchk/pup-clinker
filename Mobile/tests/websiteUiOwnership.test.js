@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {MAIN_TABS} from '../src/production/websiteNavigation.js';
 
 const mobile=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const load=path=>readFileSync(resolve(mobile,path),'utf8');
@@ -21,6 +22,17 @@ test('website-owned account details UI has no independent Android copy drift',()
   ['src/native/src/components/NotificationInbox.jsx','src/components/NotificationInbox.jsx'],
   ['src/native/src/production/AccountOnboarding.jsx','src/production/AccountOnboarding.jsx']
  ]);
+ assert.equal(source.navigation.source,'src/native/src/engine/playRevamp.js');
+ assert.equal(source.navigation.target,'src/production/websiteNavigation.js');
+ assert.match(source.navigation.sourceSha,/^[a-f0-9]{40}$/);
+ assert.equal(blobSha(load(source.navigation.target)),source.navigation.blobSha);
+ assert.deepEqual(MAIN_TABS.map(([id,emoji,label])=>[id,emoji,label]),[
+  ['play','🐾','Play'],['care','💖','Care'],['roster','🐶','Roster'],
+  ['shop','🛍️','Shop'],['rewards','🎁','Rewards']
+ ]);
+ const app=load('App.js');
+ assert.ok(app.includes("from './src/production/websiteNavigation.js'"));
+ assert.ok(app.includes("onPress={()=>openScreen(id)}"));
  for(const item of source.components){
   const body=load(item.target);
   assert.match(item.sourceSha,/^[a-f0-9]{40}$/);
