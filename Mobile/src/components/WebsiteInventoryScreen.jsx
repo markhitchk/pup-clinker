@@ -89,6 +89,7 @@ export default function WebsiteInventoryScreen({
    </View>
    <View style={styles.actions}>
     {onBack?<Action text="← Back to game" onPress={onBack}/>:null}
+    <Action text="👤 Pup Account" onPress={()=>onOpen('account-details')}/>
     {onRefresh?<Action text={refreshing?'Refreshing…':'↻ Refresh'} onPress={onRefresh}
      disabled={refreshing} primary/>:null}
    </View>
