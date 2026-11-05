@@ -1136,7 +1136,7 @@ export function PuppyApp({betaMode=false}){
   </View>):null}
 
 {state.notice?<Pressable accessibilityRole="button" onPress={()=>act({type:'dismiss'})} style={styles.notice}><Txt style={styles.small}>{state.notice}  ✕</Txt></Pressable>:null}
-  <ScrollView key={secondary||tab} scrollEnabled={desktop||Boolean(secondary)||tab!=='play'} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:desktop?undefined:width>650?670:undefined,
+  <ScrollView key={secondary||tab} scrollEnabled={desktop||windowHeight<560||Boolean(secondary)||tab!=='play'} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:desktop?undefined:width>650?670:undefined,
     paddingHorizontal:desktop?20:undefined,
     paddingVertical:desktop?14:undefined}]} keyboardShouldPersistTaps="handled">
    {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
