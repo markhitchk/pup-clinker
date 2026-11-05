@@ -5,7 +5,8 @@
 export function startupGate({account,cloudState,setupReady,setupProblem,gameReady}){
  if(!setupReady&&setupProblem)return 'setup-error';
  if(account?.status==='CHECKING'||cloudState==='NOT_LOADED'||cloudState==='CACHED_VERIFYING'||!setupReady)return 'loading';
- if(cloudState==='CONNECTION_ERROR'||cloudState==='CACHED_OFFLINE'||
+ if(cloudState==='IDENTITY_RECOVERY_REQUIRED'||account?.status==='IDENTITY_RECOVERY_REQUIRED'||
+  cloudState==='CONNECTION_ERROR'||cloudState==='CACHED_OFFLINE'||
   account?.status==='CONNECTION_ERROR'||account?.status==='NATIVE_MODULE_MISSING'||
   account?.status==='DEVICE_TRANSFER_REQUIRED'||
    account?.status==='DATABASE_LAYOUT_UNSUPPORTED')return 'connection-error';
