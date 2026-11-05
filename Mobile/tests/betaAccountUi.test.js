@@ -10,7 +10,7 @@ import commonjs from '@babel/plugin-transform-modules-commonjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
-const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
+const native=Object.fromEntries(['ActivityIndicator','Image','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
 native.NativeModules={};
 native.Linking={
@@ -21,6 +21,7 @@ const file=new URL('../src/production/BetaAccountEntry.jsx',import.meta.url);
 const require=createRequire(file),module={exports:{}};
 const compiled=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
 new Function('require','module','exports',compiled)(id=>
+ id.endsWith('.png')?{testImage:id}:
  id==='react-native'?native:
  id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:require(id),module,module.exports);
 const Entry=module.exports.default;
@@ -67,7 +68,8 @@ test('username password setup errors do not require SMTP or another email',async
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('StrongPup1!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('StrongPup1!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
@@ -91,7 +93,8 @@ test('Discord account offers linking to the same Pup username',async()=>{
   assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.editable,false);
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('StrongPup1!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('StrongPup1!');
   });
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();});
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Add password to Pup Account'}).props.onPress();await flush();});
@@ -114,7 +117,8 @@ test('Pup Account signup and username/password signin use their own native metho
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('StrongPup1!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('StrongPup1!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
