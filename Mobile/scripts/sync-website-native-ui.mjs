@@ -31,7 +31,8 @@ const REWARDS_SOURCE='src/native/App.jsx';
 const REWARDS_TARGET='src/components/WebsiteRewardsScreens.jsx';
 const SOURCE_MODULES=Object.freeze([
  {key:'languageCatalog',source:'src/communityI18n.js',target:'src/production/websiteI18n.js'},
- {key:'goalState',source:'src/native/web/webGoalState.js',target:'src/production/websiteGoalState.js'}
+ {key:'goalState',source:'src/native/web/webGoalState.js',target:'src/production/websiteGoalState.js'},
+ {key:'pupeyeStatus',source:'src/pupeyeStatusPresentation.js',target:'src/production/websitePupEyePresentation.js'}
 ]);
 const COMPONENTS=Object.freeze([
  {source:'src/native/src/components/AccountDetailsScreen.jsx',
