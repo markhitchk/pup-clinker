@@ -10,6 +10,8 @@ const UPSTREAM='markhitchk/Puppy-Clicker';
 const MANIFEST=resolve(MOBILE,'src/production/websiteUiSources.json');
 const NAVIGATION_SOURCE='src/native/src/engine/playRevamp.js';
 const NAVIGATION_TARGET='src/production/websiteNavigation.js';
+const CARE_SHOP_SOURCE='src/native/App.jsx';
+const CARE_SHOP_TARGET='src/components/WebsiteCareShopScreens.jsx';
 const COMPONENTS=Object.freeze([
  {source:'src/native/src/components/AccountDetailsScreen.jsx',
   target:'src/components/AccountDetailsScreen.jsx'},
@@ -63,6 +65,28 @@ function extractWebsiteTabs(source){
  return '// GENERATED from website '+NAVIGATION_SOURCE+'. Do not hand-edit.\n'+
   'export const MAIN_TABS=Object.freeze('+matches[0][1]+');\n';
 }
+function extractWebsiteScreen(source,name){
+ const at=source.indexOf('function '+name+'(');
+ if(at<0)throw Error('Missing canonical screen '+name);
+ const end=source.indexOf('\\nfunction ',at+1);
+ if(end<0)throw Error('Invalid canonical screen boundary: '+name);
+ return source.slice(at,end).replace(/\\n\\/\\/ Part 3:[^\\n]*\\s*$/,'').trimEnd();
+}
+function generateCareShop(source){
+ const care=extractWebsiteScreen(source,'CareScreen');
+ const shop=extractWebsiteScreen(source,'ShopScreen');
+ if(!care.includes('Care actions')||!shop.includes('Pup Coin Shop')||
+    /<(?:div|section|article|button)\\b|\\b(?:window|document|localStorage)\\./.test(care+'\\n'+shop))
+  throw Error('Website Care/Shop changed native structure; review extraction');
+ const deps='ROSTER,careTapBonus,mood,wellness,canPerformCare,Txt,styles,C,PageHeader,Portrait,upgradesForShopTab,Wallet,Button,RARITIES,accessoryPrices,accessoryOffer,v6Format,TICKET_RARITY_PRESENTATION,ticketShopOffer,MAX_UPGRADES_PER_ITEM,upgradeOffer,Card';
+ return '// GENERATED, DO NOT EDIT. Source: markhitchk/Puppy-Clicker/src/native/App.jsx\\n'+
+ '// The website owns these React Native-compatible Care and Shop screen bodies.\\n'+
+ '// Native PupEye/gameplay callbacks and presentation dependencies are injected by the shell.\\n'+
+ "import React,{useState} from 'react';\\n"+
+ "import {Alert,Pressable,View} from 'react-native';\\n\\n"+
+ 'export function createWebsiteCareShopScreens({'+deps+'}){\\n'+
+ care+'\\n\\n'+shop+'\\n\\n return {CareScreen,ShopScreen};\\n}\\n';
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -86,7 +110,14 @@ async function verify(){
   throw Error('Website navigation drift: '+NAVIGATION_TARGET);
  if(!generated.includes("export const MAIN_TABS=Object.freeze("))
   throw Error('Invalid generated website navigation');
- console.log('Canonical website native UI and navigation hashes verified');
+ const careShop=manifest.careShop;
+ if(!careShop||careShop.source!==CARE_SHOP_SOURCE||careShop.target!==CARE_SHOP_TARGET||
+    !/^[a-f0-9]{40}$/.test(careShop.sourceSha)||!/^[a-f0-9]{40}$/.test(careShop.blobSha))
+  throw Error('Missing canonical website Care/Shop provenance');
+ const generatedCareShop=await readFile(resolve(MOBILE,CARE_SHOP_TARGET),'utf8');
+ if(blobSha(generatedCareShop)!==careShop.blobSha)
+  throw Error('Website Care/Shop UI drift; regenerate before merging');
+ console.log('Canonical website native UI and navigation and Care/Shop hashes verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -124,7 +155,16 @@ else{
   await writeFile(resolve(MOBILE,NAVIGATION_TARGET),navGenerated);
  const navigation={source:NAVIGATION_SOURCE,target:NAVIGATION_TARGET,
   sourceSha:blobSha(navRaw),blobSha:blobSha(navGenerated)};
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation},null,2)+'\n';
+ const sourceApp=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+CARE_SHOP_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const careShopGenerated=generateCareShop(sourceApp);
+ const generatedTarget=resolve(MOBILE,CARE_SHOP_TARGET);
+ if((await readFile(generatedTarget,'utf8').catch(()=>null))!==careShopGenerated)
+  await writeFile(generatedTarget,careShopGenerated);
+ const careShop={source:CARE_SHOP_SOURCE,target:CARE_SHOP_TARGET,
+  sourceSha:blobSha(sourceApp),blobSha:blobSha(careShopGenerated)};
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
