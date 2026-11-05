@@ -22,6 +22,9 @@ test('startup classifies network, auth, device, integrity, cloud, native and ren
  assert.equal(classify({source:'setup'}),'PUPPY-START-101');
  assert.equal(classify({account:{status:'NATIVE_MODULE_MISSING'}}),'PUPPY-START-102');
  assert.equal(classify({cloudState:'CACHED_OFFLINE'}),'PUPPY-NET-701');
+ assert.equal(classify({error:{code:'BETA_PLAYER_ID_RETIRED'},cloudState:'CACHED_OFFLINE'}),'PUPEYE-ID-402');
+ assert.equal(classify({error:{code:'BETA_FRIEND_CODE_RETIRED'},cloudState:'CONNECTION_ERROR'}),'PUPEYE-ID-402');
+ assert.equal(classify({account:{status:'IDENTITY_RECOVERY_REQUIRED'},cloudState:'CACHED_OFFLINE'}),'PUPEYE-ID-402');
  assert.equal(classify({error:{code:'BETA_TRANSPORT_FAILURE'},cloudState:'CONNECTION_ERROR'}),'PUPPY-NET-702');
  assert.equal(classify({error:{code:'BETA_SESSION_EXPIRED'}}),'PUPPY-AUTH-801');
  assert.equal(classify({error:{code:'BETA_OWNER_DEVICE_UNAVAILABLE'}}),'PUPEYE-ID-401');
