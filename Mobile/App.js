@@ -1201,7 +1201,7 @@ const styles=themedStyles(()=>({
  tapCaption:{fontSize:13,color:C.accentInk,fontWeight:'800',letterSpacing:0.5},
  statsRow:{flexDirection:'row',justifyContent:'space-between'},
  meter:{gap:4},meters:{gap:10},
- track:{height:8,backgroundColor:C.line,borderRadius:8,overflow:'hidden'},fill:{height:'100%',borderRadius:8},
+ track:{height:8,backgroundColor:C.dark?'#2B3140':'#D5D9E2',borderRadius:8,overflow:'hidden'},fill:{height:'100%',borderRadius:8},
  pair:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:9},actions:{flexDirection:'row',gap:7,flexWrap:'wrap',alignItems:'center'},
  actionGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:12},half:{width:'47.5%',gap:4},
  button:{backgroundColor:C.accent,borderRadius:11,minHeight:40,paddingHorizontal:12,paddingVertical:10,alignItems:'center',justifyContent:'center',flexGrow:1},
