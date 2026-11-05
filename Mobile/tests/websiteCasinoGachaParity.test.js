@@ -86,13 +86,15 @@ test('website Casino presents explicit simulated currency consent and six playab
   assert.match(text(renderer),/No real money is used/);
   await act(()=>press(renderer,'Continue').props.onPress());
   for(const [id,emoji,title,label] of pages){
+   // A new mounted screen emulates returning to the Casino from Rewards.
+   await act(()=>renderer.update(React.createElement(ui.CasinoScreen,{
+    key:id,g,state:{blackjack:null},bet:20,setBet:()=>{},
+    act:a=>actions.push(a),onBack:()=>{}
+   })));
+   await act(()=>press(renderer,'Continue').props.onPress());
    assert.match(text(renderer),new RegExp(title),'missing '+id+' from casino hub');
    await act(()=>press(renderer,title).props.onPress());
    assert.match(text(renderer),new RegExp('COMPONENT '+label),'missing '+id+' game');
-   // Each stub screen is intentionally isolated: callbacks are tested by casino engine tests.
-   await act(()=>renderer.update(React.createElement(ui.CasinoScreen,{
-    g,state:{blackjack:null},bet:20,setBet:()=>{},act:a=>actions.push(a),onBack:()=>{}
-   })));
   }
   assert.deepEqual(actions,[]);
  }finally{if(renderer)await act(()=>renderer.unmount());}
