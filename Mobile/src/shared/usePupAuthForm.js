@@ -2,27 +2,11 @@
 // The website remains unchanged; native auth uses a signed PupEye transport.
 import {useState} from 'react';
 
-export const JOIN_SOURCE_OPTIONS=Object.freeze([
- ['friend','A friend, family member or another player'],
- ['discord','A Discord server or message'],
- ['youtube','YouTube'],['tiktok','TikTok'],['instagram','Instagram'],
- ['reddit','Reddit'],['google','Google search'],['play_store','Google Play Store'],
- ['other','Somewhere else']
-]);
+import {websitePasswordRules,WEBSITE_JOIN_SOURCE_OPTIONS} from '../production/websiteAccountContract.js';
+export const JOIN_SOURCE_OPTIONS=WEBSITE_JOIN_SOURCE_OPTIONS;
+export const passwordRules=websitePasswordRules;
 export const USERNAME_PATTERN=/^[A-Za-z0-9_-]{3,20}$/;
 export const SUPPORT_EMAIL_PATTERN=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_SYMBOLS=new Set(["!","@","#","$","%","^","&","*","(",")","_","+","-","=","[","]","{","}",";","'","\\",":","\"","|","<",">","?",",",".","/","`","~"]);
-
-export function passwordRules(value=''){
- const password=String(value);
- return [
-  {label:'8–128 characters',passed:password.length>=8&&password.length<=128},
-  {label:'Uppercase letter',passed:/[A-Z]/.test(password)},
-  {label:'Lowercase letter',passed:/[a-z]/.test(password)},
-  {label:'Number',passed:/[0-9]/.test(password)},
-  {label:'Special character',passed:[...password].some(c=>PASSWORD_SYMBOLS.has(c))}
- ];
-}
 export function registrationError({username='',password='',confirm='',contactEmail='',terms=false,privacy=false}={}){
  if(!USERNAME_PATTERN.test(String(username).trim()))
   return 'Username must be 3–20 letters, numbers, underscores or hyphens.';
