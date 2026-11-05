@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Image,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
+import {ActivityIndicator,Image,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
@@ -16,6 +16,8 @@ const isCallback=url=>typeof url==='string'&&
 
 export default function BetaAccountEntry({visible=true,onVerified,onClose,onboarding=false,initialMode='signin',requiredAtStartup=false}){
  const insets=useSafeAreaInsets();
+ const {width:windowWidth}=useWindowDimensions();
+ const desktop=windowWidth>=960;
  const [state,setState]=useState({status:'CHECKING'});
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState('');
@@ -186,7 +188,20 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  return <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={requiredAtStartup?()=>{}:close}>
  <View style={[styles.root,{paddingTop:insets.top+18,paddingBottom:insets.bottom+20}]}>
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
-  <ScrollView contentContainerStyle={styles.content}>
+  <ScrollView contentContainerStyle={[styles.content,desktop&&styles.desktopContent]}
+   keyboardShouldPersistTaps="handled">
+   {desktop?<View style={styles.desktopIntro}>
+    <Image source={require('../../assets/logos/puppy_clicker.png')}
+     accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={styles.desktopLogo}/>
+    <Text style={styles.logo}>{WEBSITE_ACCOUNT_COPY.eyebrow}</Text>
+    <Text accessibilityRole="header" style={styles.desktopTitle}>
+     {mode==='signup'?WEBSITE_ACCOUNT_COPY.registerTitle:WEBSITE_ACCOUNT_COPY.signinTitle}
+    </Text>
+    <Text style={styles.body}>{WEBSITE_ACCOUNT_COPY.intro}</Text>
+    {WEBSITE_ACCOUNT_COPY.benefits.map(benefit=><Text key={benefit} style={styles.desktopBenefit}>{benefit}</Text>)}
+    <Text style={styles.desktopFoot}>Harley's Studios · Puppy Clicker</Text>
+   </View>:null}
+   <View style={desktop?styles.desktopForm:styles.mobileForm}>
    {!requiredAtStartup?<Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>:null}
    <View style={{alignItems:'center',gap:9}}>
     <Image source={require('../../assets/logos/puppy_clicker.png')} accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={{width:88,height:88}}/>
@@ -339,6 +354,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     <Text style={styles.body}>Live: Treats, XP, shop purchases, daily rewards, Gacha, and server-settled casino games. Unsupported redeem codes and restricted entitlement grants remain disabled.</Text>
     <Text style={styles.body}>If Android asks which app should receive Discord authorization, choose Puppy Clicker [Beta].</Text>
    </View>:null}
+   </View>
   </ScrollView>
   <Modal visible={Boolean(policy)} animationType="slide" onRequestClose={()=>setPolicy(null)}><View style={[styles.root,{paddingTop:insets.top+20,paddingBottom:insets.bottom+20,paddingHorizontal:20}]}><Text style={styles.title}>{policy==='terms'?'Terms of Use':'Privacy Policy'}</Text><ScrollView style={{flex:1}}><Text style={styles.body} selectable>{policy?legal[policy]:''}</Text></ScrollView><Pressable accessibilityRole="button" accessibilityLabel="Close policy" style={styles.button} onPress={()=>setPolicy(null)}><Text style={styles.buttonText}>Close</Text></Pressable></View></Modal>
  </View>
@@ -347,6 +363,14 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
 const styles=StyleSheet.create({
  root:{flex:1,backgroundColor:'#0A0C12'},
  content:{padding:22,gap:18,maxWidth:600,width:'100%',alignSelf:'center'},
+ desktopContent:{maxWidth:1240,minHeight:'100%',flexDirection:'row',alignItems:'stretch',gap:0,padding:22},
+ desktopIntro:{width:'43%',backgroundColor:'#102632',padding:28,justifyContent:'center',gap:18,borderTopLeftRadius:24,borderBottomLeftRadius:24,borderWidth:1,borderColor:'#2D5364'},
+ desktopLogo:{width:115,height:115,alignSelf:'center'},
+ desktopTitle:{color:'#FFFFFF',fontWeight:'900',fontSize:34,lineHeight:41},
+ desktopBenefit:{color:'#D9F5FF',fontSize:15,fontWeight:'700',backgroundColor:'rgba(0,229,255,0.08)',borderRadius:999,paddingHorizontal:14,paddingVertical:11},
+ desktopFoot:{color:'#B1C7D6',fontSize:12,marginTop:15},
+ desktopForm:{flex:1,minWidth:0,backgroundColor:'#12151F',padding:28,gap:18,borderTopRightRadius:24,borderBottomRightRadius:24,borderWidth:1,borderColor:'#2D5364'},
+ mobileForm:{width:'100%',gap:18},
  benefits:{width:'100%',flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'center',gap:7,marginVertical:2},
  benefit:{backgroundColor:'rgba(0,229,255,0.08)',borderWidth:1,borderColor:'rgba(0,229,255,0.25)',borderRadius:999,paddingHorizontal:11,paddingVertical:7},
  benefitText:{color:'#D9F5FF',fontSize:11,fontWeight:'700'},
