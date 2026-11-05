@@ -20,5 +20,11 @@
       "sourceSha": "edd0ba93326ffea1af04ce5517bdbc5ce8eb950d",
       "blobSha": "a91358d96e0abd12f8e1232c9f9ca05ef86b91b8"
     }
-  ]
+  ],
+  "navigation": {
+    "source": "src/native/src/engine/playRevamp.js",
+    "target": "src/production/websiteNavigation.js",
+    "sourceSha": "babd6f51094bacdd01cdd29da179759219ad4f7d",
+    "blobSha": "e4d125946bd4073df7653e34a82125fde3360582"
+  }
 }
