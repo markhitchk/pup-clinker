@@ -13,6 +13,7 @@ import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
+import WebsitePlayScreen from './src/components/WebsitePlayScreen.jsx';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
@@ -181,23 +182,19 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
    </Pressable>}
    onTap={doTap} cooldown={cooldown} bonus={bonus} next={next} ticketVisible={ticketVisible}/>;
  }
- return <View testID="android-play-screen" style={[styles.restoredPlay,{height:Math.max(340,viewportHeight),gap:layout.gap}]}>
-  <PageHeader title="Play"/>
-  <Wallet game={g} compact/>
-  <View style={[styles.restoredStage,{minHeight:layout.minStageHeight,backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
-   <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
-    <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
-     <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
-    </Animated.View>
-   </Pressable>
-   <Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.restoredEnergy,g.energy<=10&&{color:C.danger}]}>{g.energy<=10?'⚡ Energy '+g.energy+'% · Rest in Pup Care to keep playing':'⚡ Energy '+g.energy+'% · Care bonus +'+bonus+' 🍪/tap'}</Txt>
-   <Pressable testID="android-tap-button" accessibilityRole="button" accessibilityLabel={label} disabled={cooldown>0} onPress={doTap} style={[styles.restoredTap,{height:layout.tapHeight},cooldown>0&&styles.buttonDisabled]}><Txt numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75} style={{color:C.onAccent,fontWeight:'900',textAlign:'center'}}>{label}</Txt></Pressable>
-  </View>
-  <View style={styles.restoredNextReward}>
-   <Txt style={{fontSize:22}}>🎁</Txt><View style={{flex:1,gap:5}}><View style={styles.pair}><Txt numberOfLines={1} style={[styles.small,{fontWeight:'900',flex:1}]}>{next.title}</Txt><Txt style={styles.small}>{next.allClaimed?'✓':next.progress+'/'+next.target}</Txt></View><View accessibilityRole="progressbar" accessibilityLabel="Next reward progress" accessibilityValue={{min:0,max:next.target,now:next.progress}} style={[styles.track,{height:5}]}><View style={[styles.fill,{backgroundColor:C.accent,width:(100*next.progress/next.target)+'%',height:5}]}/></View></View><Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.small}>{next.allClaimed?'All claimed':next.rewardTreats+' 🍪'}</Txt>
-  </View>
-  {ticketVisible?<View pointerEvents="none" style={[styles.ticketOverlay,{top:2}]}><Txt style={styles.ticketOverlayTitle}>🎟️ {g.lastTicketDrop} UPGRADE TICKET</Txt></View>:null}
- </View>;
+ return <WebsitePlayScreen game={g} viewportHeight={viewportHeight}
+  wallet={<Wallet game={g} compact={viewportHeight<585}/>}
+  portrait={<Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'}
+   accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
+   <Animated.View style={{transform:[{scale:tapScale},
+    {rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},
+    {translateY:lift}]}}>
+    <Portrait puppy={pup} size={Math.min(layout.portrait,viewportHeight<540?132:viewportHeight<650?166:214)}
+     accessory={g.accessory}/>
+   </Animated.View>
+  </Pressable>}
+  onTap={doTap} cooldown={cooldown} bonus={bonus} next={next}
+  ticketVisible={ticketVisible}/>;
 }
 // Shipped PuppyRevampedCareScreen, preserving the existing care reducer effects.
 function CareScreen({g,act,viewportHeight}){
