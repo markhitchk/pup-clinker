@@ -44,7 +44,7 @@ export default function InventoryScreen({game,onRefresh,onBack,cloudState,update
    {onBack?<Pressable accessibilityRole="button" onPress={onBack} style={{borderRadius:12,borderWidth:1,borderColor:C.line,
     backgroundColor:C.surface,padding:11}}><Text style={labelStyle}>← Back</Text></Pressable>:null}
    {onRefresh?<Pressable accessibilityRole="button" disabled={refreshing} onPress={()=>void refresh()}
-    style={{borderRadius:12,borderWidth:1,borderColor:C.accent,padding:11,opacity:refreshing?.5:1}}>
+    style={{borderRadius:12,borderWidth:1,borderColor:C.accent,padding:11,opacity:refreshing ? 0.5 : 1}}>
     <Text style={{color:C.accentInk,fontWeight:'800'}}>{refreshing?'Refreshing…':'↻ Refresh cloud save'}</Text>
    </Pressable>:null}
   </View>
