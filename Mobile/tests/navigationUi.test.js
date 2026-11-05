@@ -42,6 +42,13 @@ new Function('require','module','exports',source)(id=>{
  if(id==='./src/state/useNotifications.js')return {useNotifications:()=>({check(){},request(){}})};
  if(id==='./src/state/useLocalDiagnostics.js')return {useLocalDiagnostics:()=>({summary:'',clear(){}})};
  if(id==='./src/assets/puppies.js')return {PUPPY_IMAGES:Object.fromEntries(ROSTER.map(p=>[p.id,1]))};
+ if(id==='./src/shared-ui/PupGameChrome.jsx'){
+  const uiFile=new URL('../src/shared-ui/PupGameChrome.jsx',import.meta.url);
+  const uiModule={exports:{}};
+  const uiCode=transformSync(readFileSync(uiFile,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',uiCode)(name=>name==='react-native'?native:require(name),uiModule,uiModule.exports);
+  return uiModule.exports;
+ }
  if(id==='./src/assets/gacha.js')return {GACHA_ART:{}};
  if(id.endsWith('.png'))return 1;
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
