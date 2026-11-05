@@ -24,6 +24,7 @@
     },
     "icon": "./assets/logos/puppy_clicker.png",
     "plugins": [
+      "./plugins/withPuppyDesktopMode.cjs",
       "./plugins/withPuppyPointer.cjs",
       "./plugins/withPuppyProductionAuthority.cjs",
       "expo-notifications"
