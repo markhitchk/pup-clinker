@@ -1,6 +1,6 @@
 // Single-source React Native UI components for Puppy Clicker website + Android.
-// Canonical source: markhitchk/Puppy-Clicker/src/shared-ui/PupGameChrome.jsx
-// Android receives this exact source through sync-website-ui.mjs. No browser APIs.
+// Native rendering adapter following the EXISTING website's resource/care UI.
+// Browser CSS is not executable on Android. Website remains unchanged.
 import React from 'react';
 import {Alert,Pressable,Text,View} from 'react-native';
 
