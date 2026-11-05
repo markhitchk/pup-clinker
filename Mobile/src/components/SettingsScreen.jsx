@@ -50,11 +50,12 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T style={s.bold}>Birthday</T><T muted>No birth year is stored. Leave both fields empty to skip.</T><View style={s.choices}><TextInput accessibilityLabel="Birthday month" placeholder="Month (1–12)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={month} onChangeText={setMonth} style={[s.input,{flex:1}]}/><TextInput accessibilityLabel="Birthday day" placeholder="Day (1–31)" placeholderTextColor={C.muted} keyboardType="number-pad" maxLength={2} value={day} onChangeText={setDay} style={[s.input,{flex:1}]}/></View><Action disabled={!validBirthday(Number(month),Number(day))} onPress={()=>{
      if(betaMode){void onUpdateBirthday?.({birthdayMonth:Number(month),birthdayDay:Number(day)}).then(ok=>setProfileMessage(ok?'✓ Birthday saved securely on this device.':'Unable to save birthday.')).catch(()=>setProfileMessage('Unable to save birthday.'));}
      else act({type:'onboardBirthday',month:Number(month),day:Number(day)});
-    }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action>
+    }}>Save Birthday</Action><Action onPress={()=>onOpen('achievements')}>Achievements & XP</Action><Action onPress={()=>onOpen('inventory')}>🎒 View Inventory</Action>
   </>)}
   {betaMode?section('pup-account','🔐','Pup Account','Manage your sign-in and contact details',<>
     <T muted>Sign-in and cloud progress load automatically during startup.</T>
     <Action onPress={()=>onOpen('account-details')}>View Account Details</Action>
+    <Action onPress={()=>onOpen('inventory')}>View Pup Account Inventory</Action>
     <Action onPress={onConnectAccount}>Manage Pup Account Sign-in</Action>
    </>):null}
    {section('discord','◉','Discord','Connect or manage your Discord account',betaMode?<><Action onPress={onConnectAccount}>Connect Pup Account with Discord</Action><T muted>Discord sign-in and account management remain available in Settings.</T></>:pending)}
