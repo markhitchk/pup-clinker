@@ -1,9 +1,10 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
+import {ActivityIndicator,Image,Linking,Modal,NativeModules,Pressable,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
 import {supportsDatabaseLayout} from './dbSchemaLayout.js';
+import {usePupAuthForm,registrationError,loginError,passwordRules,JOIN_SOURCE_OPTIONS} from '../shared/usePupAuthForm.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -18,17 +19,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState('');
  const [cloud,setCloud]=useState(null);
- const [mode,setMode]=useState(initialMode);
- const [username,setUsername]=useState('');
- const [email,setEmail]=useState('');
- const [login,setLogin]=useState('');
- const [password,setPassword]=useState('');
+ const {mode,setMode,chooseMode,username,setUsername,login,setLogin,password,setPassword,confirm,setConfirm,
+  contactEmail:email,setContactEmail:setEmail,joinSource,setJoinSource,joinDetails,setJoinDetails,
+  terms:tos,setTerms:setTos,privacy,setPrivacy,clearSecrets}=usePupAuthForm(initialMode);
  const [notice,setNotice]=useState('');
  const [linkNative,setLinkNative]=useState(false);
- const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
+ const [policy,setPolicy]=useState(null);
  const [contactEmail,setContactEmail]=useState('');
  useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
- const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
+ const close=useCallback(()=>{clearSecrets();setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -103,22 +102,22 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  },[]);
  const submit=useCallback(async()=>{
   if(busy)return;
-  if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||password.length<8||(email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())))){
-   setProblem('Enter a valid username, password of at least 8 characters, and optional support contact email.');return;
+  if(mode==='signup'){
+   const invalid=registrationError({username,password,confirm,contactEmail:email,terms:tos,privacy});
+   if(invalid){setProblem(invalid);return;}
   }
-  if(mode==='signup'&&(!tos||!privacy)){setProblem('Accept both the Terms of Use and Privacy Policy.');return;}
   if(linkNative&&mode==='signup'&&state.status==='VERIFIED'&&username.trim().toLowerCase()!==String(state.username||'').toLowerCase()){
    setProblem('Keep your existing Pup username when adding password sign-in.');return;
   }
-  if(mode==='signin'&&(!login.trim()||!password)){
-   setProblem('Enter your Pup username and password.');return;
-  }
+  const missing=mode!=='signup'?loginError(login,password):'';
+  if(missing){setProblem(missing);return;}
   setBusy(true);setProblem('');setNotice('');
   try{
    const result=mode==='signup'
-    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,publishableKey)
+    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,
+      joinSource,joinSource?joinDetails.trim():'',publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
-   setPassword('');
+   clearSecrets();
    if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
     setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
     setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
@@ -145,7 +144,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    };
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
- },[busy,mode,username,email,login,password,tos,privacy,onVerified,linkNative]);
+ },[busy,mode,username,email,login,password,confirm,tos,privacy,joinSource,joinDetails,onVerified,linkNative]);
  const saveSupportContact=useCallback(async()=>{
   if(busy)return;
   setBusy(true);setProblem('');setNotice('');
