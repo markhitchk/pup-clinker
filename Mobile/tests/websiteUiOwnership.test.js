@@ -59,7 +59,7 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsGroup/);
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsScreen/);
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function DailyGoalCard/);
- assert.doesNotMatch(app,/function CareScreen\\(|function ShopScreen\\(|function RewardsScreen\\(|function DailyGoalCard\\(/);
+ for(const name of ['CareScreen','ShopScreen','RewardsScreen','DailyGoalCard'])assert.ok(!app.includes('function '+name+'('),name+' must not have a handwritten Android duplicate');
  assert.ok(app.includes('createWebsiteCareShopScreens'));
  assert.ok(app.includes('createWebsiteRewardsScreens'));
   const check=spawnSync(process.execPath,['scripts/sync-website-native-ui.mjs','--verify'],{
