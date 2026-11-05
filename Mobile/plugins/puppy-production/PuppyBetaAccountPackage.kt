@@ -88,6 +88,14 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    gen.generateKey()
   }
  }
+ private fun newLocalPlayerIdentity():Pair<String,String> {
+  val bytes=ByteArray(16).also(random::nextBytes)
+  val id="PC-"+bytes.joinToString(""){"%02X".format(it.toInt() and 255)}
+  val alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  val raw=(0 until 12).map{alphabet[random.nextInt(alphabet.length)]}.joinToString("")
+  val friend="PUP-"+raw.substring(0,4)+"-"+raw.substring(4,8)+"-"+raw.substring(8,12)
+  return Pair(id,friend)
+ }
  private fun initializeBetaIdentity() {
   beta()
   if(!store.containsAlias(keyAlias)){
@@ -107,11 +115,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    .put("installationId",UUID.randomUUID().toString()).put("generation",1)
    .put("hardFlags",JSONArray()).put("events",JSONArray()))
   if(!player.contains("player_id")){
-   val bytes=ByteArray(16).also(random::nextBytes)
-   val id="PC-"+bytes.joinToString(""){"%02X".format(it.toInt() and 255)}
-   val alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-   val raw=(0 until 12).map{alphabet[random.nextInt(alphabet.length)]}.joinToString("")
-   val friend="PUP-"+raw.substring(0,4)+"-"+raw.substring(4,8)+"-"+raw.substring(8,12)
+   val (id,friend)=newLocalPlayerIdentity()
    check(player.edit().putString("player_id",id).putString("friend_code",friend)
     .putString("username","localplayer").commit())
   }
@@ -179,6 +183,32 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   require(token.isNotBlank()&&result.getLong("expiresAtEpochMs")>System.currentTimeMillis())
   write(sessionFile,JSONObject().put("token",token).put("expiresAtEpochMs",result.getLong("expiresAtEpochMs")))
   return token
+ }
+ // A local installation may still hold Player ID/Friend Code values which
+ // the operator deliberately retired after deleting the corresponding record.
+ // No automatic rotation: only an explicit user confirmation can request a
+ // new beta-local identity, and the server must FIRST confirm retirement.
+ // Keep the Android Keystore signing key and installation ID so existing
+ // installation restrictions cannot be evaded by creating a new device key.
+ @ReactMethod fun replaceRetiredLocalIdentity(key:String,p:Promise)=runAsync(p){
+  publishable(key)
+  initializeBetaIdentity()
+  val retired=try{
+   register(key)
+   false
+  }catch(e:ApiError){
+   if(e.code !in setOf("PLAYER_ID_RETIRED","FRIEND_CODE_RETIRED"))throw e
+   true
+  }
+  if(!retired)throw ApiError("IDENTITY_RECOVERY_NOT_NEEDED")
+  val (newId,newCode)=newLocalPlayerIdentity()
+  check(player.edit().putString("player_id",newId)
+   .putString("friend_code",newCode).putString("username","localplayer").commit())
+  // These are beta-local sealed snapshots only. Never delete the Pup Account
+  // cloud save, server registration, device signing key, or original Play app.
+  sessionFile.delete()
+  accountPreviewFile.delete()
+  Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
  }
  private fun session(key:String):String {
   val s=runCatching{read(sessionFile)}.getOrNull()
@@ -248,6 +278,10 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
     "CLOUD_SAVE_CONFLICT" -> "A newer cloud save exists. Reload it before retrying."
     "CLOUD_SAVE_REQUIRED" -> "The original Play cloud save must be synced first."
     "BETA_GAMEPLAY_NOT_PORTED" -> "This gameplay action is not yet implemented."
+    "PLAYER_ID_RETIRED","FRIEND_CODE_RETIRED" ->
+     "This beta's deleted local player identity cannot be restored. Create a new beta identity and sign in to your Pup Account."
+    "IDENTITY_RECOVERY_NOT_NEEDED" ->
+     "This installation is not using a retired identity. Retry the existing account connection."
     else -> "PupEye server rejected login ("+e.code.take(64)+")."
    }
    p.reject("BETA_"+e.code.take(64),message)

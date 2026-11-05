@@ -1015,7 +1015,7 @@ export default function App(){return <SafeAreaProvider><WebDiscordHandoff/><Pupp
 export function PuppyApp({betaMode=false}){
  const insets=useSafeAreaInsets();
  const systemDark=useColorScheme()==='dark';
- const {state,gameForDisplay,act:gameAct,account,cloudState,startupError,syncStatus,refreshAccount,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
+ const {state,gameForDisplay,act:gameAct,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName}=useGame({mode:betaMode?'beta':'guest'});
  const onboarding=useAccountOnboarding({enabled:betaMode,account,activateAccount:refreshAccount});
  const act=useCallback(action=>{
   gameAct(action);
@@ -1039,6 +1039,14 @@ export function PuppyApp({betaMode=false}){
   if(startupRetryBusy)return;
   setStartupRetryBusy(true);
   void Promise.allSettled([refreshAccount(),onboarding.reload()])
+   .finally(()=>setStartupRetryBusy(false));
+ };
+ const recoverRetiredIdentityAtStartup=()=>{
+  if(startupRetryBusy)return;
+  setStartupRetryBusy(true);
+  void recoverRetiredIdentity()
+   .catch(()=>Alert.alert('Beta identity recovery unsuccessful',
+    'The server could not approve a new local identity. Your Pup Account and cloud saves were not reset. Retry or contact Puppy Clicker Support.'))
    .finally(()=>setStartupRetryBusy(false));
  };
  const retryPreviousCrash=()=>{
@@ -1098,7 +1106,8 @@ export function PuppyApp({betaMode=false}){
  if(betaMode&&(startPhase==='loading'||startPhase==='connection-error'||startPhase==='setup-error'))
   return <PuppyStartupScreen phase={startPhase} issue={classifyStartupFailure({
    source:startPhase==='setup-error'?'setup':'account',error:startupError,account,cloudState
-  })} busy={startupRetryBusy||onboarding.busy} retry={retryStartup}/>;
+  })} busy={startupRetryBusy||onboarding.busy} retry={retryStartup}
+   onRecoverIdentity={recoverRetiredIdentityAtStartup}/>;
  if(betaMode&&(startPhase==='signin'||startPhase==='legal'))return <>
   <PuppyStartupScreen phase="loading"/>
   <BetaAccountEntry visible requiredAtStartup initialMode="signin" onboarding

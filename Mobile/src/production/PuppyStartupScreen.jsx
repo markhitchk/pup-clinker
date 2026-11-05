@@ -1,11 +1,11 @@
 import React from 'react';
-import {ActivityIndicator,Image,Pressable,Share,StatusBar,Text,View} from 'react-native';
+import {ActivityIndicator,Alert,Image,Pressable,Share,StatusBar,Text,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors as C,themedStyles} from '../theme.js';
 import {publicStartupIssue} from './startupErrors.js';
 
 /** Startup failures show only a public catalog entry; never a raw exception. */
-export default function PuppyStartupScreen({phase='loading',retry,busy=false,issue}){
+export default function PuppyStartupScreen({phase='loading',retry,busy=false,issue,onRecoverIdentity}){
  const insets=useSafeAreaInsets();
  const failed=phase==='connection-error'||phase==='setup-error'||phase==='crash';
  const safe=publicStartupIssue(issue?.code||(phase==='setup-error'?'PUPPY-START-101':
@@ -26,6 +26,15 @@ export default function PuppyStartupScreen({phase='loading',retry,busy=false,iss
    </View>:null}
    {!failed?<ActivityIndicator accessibilityLabel="Loading Pup Account" size="large" color={C.accent}/>:null}
    {failed?<View style={s.actions}>
+    {safe.code==='PUPEYE-ID-402'&&onRecoverIdentity?
+     <Pressable accessibilityRole="button" accessibilityLabel="Create new beta-only local identity"
+      disabled={busy} onPress={()=>Alert.alert(
+       'Create a new beta identity?',
+       'PupEye confirms that this beta\'s former Player ID or Friend Code was deleted. This will create fresh local identifiers for this beta only. It does not delete your existing Pup Account or cloud saves. You must sign in again.',
+       [{text:'Cancel',style:'cancel'},{text:'Create New Beta Identity',onPress:onRecoverIdentity}]
+      )} style={[s.button,busy&&{opacity:.55}]}>
+      <Text style={s.buttonText}>Create New Beta Identity</Text>
+     </Pressable>:null}
     <Pressable accessibilityRole="button" accessibilityLabel="Retry startup" disabled={busy||!retry}
      onPress={retry} style={[s.button,(busy||!retry)&&{opacity:.55}]}>
      {busy?<ActivityIndicator color={C.onAccent}/>:<Text style={s.buttonText}>Try Again</Text>}

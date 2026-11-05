@@ -89,6 +89,19 @@ export function useGame({mode='guest'}={}){
   }catch(error){
    if(request!==currentRequest.current)return false;
    const code=String(error?.code||'')+' '+String(error?.message||'');
+   // Preserve the database's tombstone protection. A deleted Player ID or
+   // Friend Code is not an offline error, even when an old preview was cached.
+   // Do not silently replace a player identity or reuse any old signed save.
+   if(/PLAYER_ID_RETIRED|FRIEND_CODE_RETIRED/.test(code)){
+    liveVerified.current=false;cachedPreview.current=false;
+    setPendingTapIntents([]);
+    setStartupError({code:'PUPEYE_IDENTITY_RETIRED'});
+    setAccount({status:'IDENTITY_RECOVERY_REQUIRED'});
+    setCloudState('IDENTITY_RECOVERY_REQUIRED');
+    setSyncStatus(previous=>({...previous,state:'BLOCKED',errorCode:'IDENTITY_RECOVERY_REQUIRED'}));
+    dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+    return false;
+   }
    if(error?.code==='DATABASE_LAYOUT_UNSUPPORTED'){
     liveVerified.current=false;cachedPreview.current=false;
     setPendingTapIntents([]);
@@ -347,6 +360,28 @@ export function useGame({mode='guest'}={}){
   });
   return ()=>sub.remove();
  },[beta,account?.status,account?.gameplayWritable,act]);
+ // An explicit user-initiated recovery replaces only two beta-local
+ // identifiers. Native first demands a fresh PLAYER_ID_RETIRED or
+ // FRIEND_CODE_RETIRED rejection from the server; it never resets accounts.
+ const recoverRetiredIdentity=useCallback(async()=>{
+  if(!beta||account?.status!=='IDENTITY_RECOVERY_REQUIRED')
+   throw new Error('No retired local identity requires recovery.');
+  const native=NativeModules.PuppyBetaAccount;
+  if(typeof native?.replaceRetiredLocalIdentity!=='function')
+   throw new Error('Update Android beta to recover its local identity.');
+  const result=await native.replaceRetiredLocalIdentity(PUBLISHABLE_KEY);
+  if(result?.status!=='NEEDS_ACCOUNT')
+   throw new Error('Beta identity recovery was not confirmed.');
+  ++currentRequest.current;
+  liveVerified.current=false;cachedPreview.current=false;
+  setPendingTapIntents([]);
+  setStartupError(null);
+  setAccount({status:'NEEDS_ACCOUNT'});
+  setCloudState('SIGN_IN_REQUIRED');
+  setSyncStatus({state:'NOT_VERIFIED',revision:null,savedAt:null,errorCode:null,notice:null});
+  dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
+  return true;
+ },[beta,account?.status]);
  const updateAccountName=useCallback(async displayName=>{
   if(!beta||account?.status!=='VERIFIED')throw new Error('Sign in before editing your Pup Account.');
   const updated=await NativeModules.PuppyBetaAccount.updateDisplayName(displayName,PUBLISHABLE_KEY);
@@ -355,5 +390,5 @@ export function useGame({mode='guest'}={}){
   return updated;
  },[beta,account?.status,refreshAccount]);
  const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
- return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,updateAccountName};
+ return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
 }
