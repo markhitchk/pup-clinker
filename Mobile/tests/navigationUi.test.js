@@ -53,6 +53,16 @@ new Function('require','module','exports',source)(id=>{
  if(id.endsWith('.png'))return 1;
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
  if(id==='./src/components/PuppyPointer.jsx')return {__esModule:true,default:({children,...p})=>React.createElement('View',p,children)};
+ if(id==='./src/components/WebsitePlayScreen.jsx'){
+  const screenFile=new URL('../src/components/WebsitePlayScreen.jsx',import.meta.url);
+  const screenModule={exports:{}};
+  const compiled=transformSync(readFileSync(screenFile,'utf8'),{babelrc:false,configFile:false,
+   plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+  new Function('require','module','exports',compiled)(name=>
+   name==='react-native'?native:
+   name.endsWith('/theme.js')?theme:require(name),screenModule,screenModule.exports);
+  return screenModule.exports;
+ }
  if(id.startsWith('./src/components/'))return {__esModule:true,default:()=>null};
  return require(id);
 },module,module.exports);
