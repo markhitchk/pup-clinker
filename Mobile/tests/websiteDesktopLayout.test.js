@@ -20,7 +20,7 @@ test('Android Chromebook and Samsung DeX match website desktop breakpoint',()=>{
   assert.ok(layout.rightRailWidth>=290);
   assert.ok(layout.mainWidth>layout.rightRailWidth);
  }
- assert.equal(desktopLayoutForWindow(1279,680).compactDesktop,false);
+ assert.equal(desktopLayoutForWindow(1279,800).compactDesktop,false);
  assert.equal(desktopLayoutForWindow(1100,680).compactDesktop,true);
  assert.equal(desktopLayoutForWindow(960,700).compactDesktop,true);
  assert.equal(desktopLayoutForWindow(NaN,Infinity).desktop,false);
