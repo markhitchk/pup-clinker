@@ -18,6 +18,12 @@ const PUPPY_NAMES_SOURCE='src/nameSuggestions.js';
 const PUPPY_NAMES_TARGET='src/production/websiteNameSuggestions.js';
 const INVENTORY_CONTRACT_SOURCE='src/InventoryScreen.jsx';
 const INVENTORY_CONTRACT_TARGET='src/production/websiteInventoryContract.js';
+const AUTH_CONTRACT_TARGET='src/production/websiteAccountContract.js';
+const SETTINGS_CONTRACT_SOURCE='src/native/web/WebSettings.jsx';
+const SETTINGS_CONTRACT_TARGET='src/production/websiteSettingsContract.js';
+const AUTH_SOURCES=Object.freeze([
+ 'src/WebRegister.jsx','src/native/web/AccountGate.jsx','src/JoinSourceFields.jsx'
+]);
 const REWARDS_SOURCE='src/native/App.jsx';
 const REWARDS_TARGET='src/components/WebsiteRewardsScreens.jsx';
 const SOURCE_MODULES=Object.freeze([
@@ -185,6 +191,44 @@ function generatePuppyNames(source){
  " return puppies.find(name=>name.toLowerCase()!==current)||'Buddy';\n"+
  '}\n';
 }
+
+function generateWebsiteAccountContract(register,gate,joinFields){
+ const start=register.indexOf('const PASSWORD_SYMBOLS=');
+ const stop=register.indexOf('// Reused inside',start);
+ if(start<0||stop<start||stop-start>1300)
+  throw Error('Website password policy changed; review before syncing');
+ const rules=register.slice(start,stop).replace('const passwordRules=value=>',
+  'export const websitePasswordRules=value=>').trimEnd();
+ if(!rules.includes('export const websitePasswordRules=value=>'))
+  throw Error('Website password requirements signature changed');
+ const options=joinFields.match(/const SOURCES=([\s\S]*?);\nexport default/);
+ const titles=gate.match(/<h1>\{recovery\?"([^"]+)":mode==="register"\?"([^"]+)":"([^"]+)"\}<\/h1>/);
+ const benefits=gate.match(/<div className="pup-auth-benefits"><span>([^<]+)<\/span><span>([^<]+)<\/span><span>([^<]+)<\/span><\/div>/);
+ const intro=gate.match(/<p>(One Pup Account for your puppies, rewards and linked progress across the website and Android\.)<\/p>/);
+ const signin=gate.match(/<p>(Sign in using the same Pup Account you use on Android\. Your linked progress is preserved\.)<\/p>/);
+ if(!options||!titles||!benefits||!intro||!signin)
+  throw Error('Website canonical login/registration contract changed; review adapter');
+ const copy={recoverTitle:titles[1],registerTitle:titles[2],signinTitle:titles[3],
+  intro:intro[1],signinDescription:signin[1],benefits:benefits.slice(1,4),
+  eyebrow:'PUPPY CLICKER · PUP ACCOUNT'};
+ return '// GENERATED from website Pup Account login, registration and Join Source sources.\n'+
+ '// Cosmetic/validation contract only: Android retains signed native PupEye credential transport.\n'+
+ '// Do not hand-edit. Run scripts/sync-website-native-ui.mjs.\n'+
+ rules+'\nexport const WEBSITE_JOIN_SOURCE_OPTIONS=Object.freeze('+options[1].trim()+');\n'+
+ 'export const WEBSITE_ACCOUNT_COPY=Object.freeze('+JSON.stringify(copy,null,2)+');\n';
+}
+function generateWebsiteSettingsContract(source){
+ const items=[...source.matchAll(/\bsection\('([^']+)','([^']+)','([^']+)'/g)]
+  .map(item=>({id:item[1],title:item[2],description:item[3]}));
+ if(items.length!==7||!items.some(item=>item.id==='account')||
+    !items.some(item=>item.id==='notifications'))
+  throw Error('Website settings sections changed; review contract');
+ return '// GENERATED from website src/native/web/WebSettings.jsx section titles and descriptions.\n'+
+ '// Android-specific notifications/permissions remain platform-native.\n'+
+ 'export const WEBSITE_SETTINGS_SECTIONS=Object.freeze('+JSON.stringify(items,null,2)+');\n'+
+ 'export const WEBSITE_SETTINGS_LABELS=Object.freeze(Object.fromEntries(\n'+
+ ' WEBSITE_SETTINGS_SECTIONS.map(item=>[item.id,item.title])));\n';
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -243,7 +287,25 @@ async function verify(){
   if(blobSha(await readFile(resolve(MOBILE,item.target),'utf8'))!==saved.blobSha)
    throw Error('Website Part 4 source drift: '+item.target);
  }
- console.log('Canonical website UI sources, Part 4 screens and contracts verified');
+ const auth=manifest.authContract;
+ if(!auth||auth.target!==AUTH_CONTRACT_TARGET||!Array.isArray(auth.sources)||
+  auth.sources.length!==AUTH_SOURCES.length||!/^[a-f0-9]{40}$/.test(auth.blobSha))
+  throw Error('Missing canonical website login/registration manifest');
+ for(const path of AUTH_SOURCES){
+  if(!auth.sources.some(item=>item.source===path&&/^[a-f0-9]{40}$/.test(item.sourceSha)))
+   throw Error('Website login/registration source is not pinned: '+path);
+ }
+ if(blobSha(await readFile(resolve(MOBILE,AUTH_CONTRACT_TARGET),'utf8'))!==auth.blobSha)
+  throw Error('Website login/registration contract drift');
+ const settings=manifest.settingsContract;
+ if(!settings||settings.source!==SETTINGS_CONTRACT_SOURCE||
+  settings.target!==SETTINGS_CONTRACT_TARGET||
+  !/^[a-f0-9]{40}$/.test(settings.sourceSha)||
+  !/^[a-f0-9]{40}$/.test(settings.blobSha))
+  throw Error('Missing website settings source SHA');
+ if(blobSha(await readFile(resolve(MOBILE,SETTINGS_CONTRACT_TARGET),'utf8'))!==settings.blobSha)
+  throw Error('Website settings contract drift');
+ console.log('Canonical website UI sources, Part 5 auth and settings contracts verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -327,7 +389,29 @@ else{
   await writeFile(resolve(MOBILE,INVENTORY_CONTRACT_TARGET),inventoryGenerated);
  const inventoryContract={source:INVENTORY_CONTRACT_SOURCE,target:INVENTORY_CONTRACT_TARGET,
   sourceSha:blobSha(srcInventory),blobSha:blobSha(inventoryGenerated)};
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules,rosterPrestige,puppyNames,inventoryContract},null,2)+'\n';
+ const websiteAuthSources=[];
+ for(const path of AUTH_SOURCES){
+  const source=await fetchText(
+   'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+path,
+   {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+  websiteAuthSources.push({source:path,body:source,sourceSha:blobSha(source)});
+ }
+ const accountBody=generateWebsiteAccountContract(
+  websiteAuthSources[0].body,websiteAuthSources[1].body,websiteAuthSources[2].body);
+ if((await readFile(resolve(MOBILE,AUTH_CONTRACT_TARGET),'utf8').catch(()=>null))!==accountBody)
+  await writeFile(resolve(MOBILE,AUTH_CONTRACT_TARGET),accountBody);
+ const authContract={target:AUTH_CONTRACT_TARGET,
+  sources:websiteAuthSources.map(({source,sourceSha})=>({source,sourceSha})),
+  blobSha:blobSha(accountBody)};
+ const websiteSettings=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+SETTINGS_CONTRACT_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const settingsBody=generateWebsiteSettingsContract(websiteSettings);
+ if((await readFile(resolve(MOBILE,SETTINGS_CONTRACT_TARGET),'utf8').catch(()=>null))!==settingsBody)
+  await writeFile(resolve(MOBILE,SETTINGS_CONTRACT_TARGET),settingsBody);
+ const settingsContract={source:SETTINGS_CONTRACT_SOURCE,target:SETTINGS_CONTRACT_TARGET,
+  sourceSha:blobSha(websiteSettings),blobSha:blobSha(settingsBody)};
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules,rosterPrestige,puppyNames,inventoryContract,authContract,settingsContract},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
