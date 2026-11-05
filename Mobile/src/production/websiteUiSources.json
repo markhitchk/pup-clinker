@@ -5,7 +5,20 @@
     {
       "source": "src/native/src/components/AccountDetailsScreen.jsx",
       "target": "src/components/AccountDetailsScreen.jsx",
+      "sourceSha": "3e16ca2d2af4f0ba474c08986ed725cdb3c3cf6d",
       "blobSha": "3e16ca2d2af4f0ba474c08986ed725cdb3c3cf6d"
+    },
+    {
+      "source": "src/native/src/components/NotificationInbox.jsx",
+      "target": "src/components/NotificationInbox.jsx",
+      "sourceSha": "229ebee752e2579b79899f0cbb34a2ee443c7fd5",
+      "blobSha": "53e586345fae05d0e8d5356482701c942d9c5a5d"
+    },
+    {
+      "source": "src/native/src/production/AccountOnboarding.jsx",
+      "target": "src/production/AccountOnboarding.jsx",
+      "sourceSha": "edd0ba93326ffea1af04ce5517bdbc5ce8eb950d",
+      "blobSha": "a91358d96e0abd12f8e1232c9f9ca05ef86b91b8"
     }
   ]
 }
