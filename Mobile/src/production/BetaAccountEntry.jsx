@@ -257,7 +257,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
        autoComplete="new-password" autoCapitalize="none" autoCorrect={false}
        placeholder="Re-enter password" placeholderTextColor="#8AA1AF"
        maxLength={128} value={confirm} onChangeText={setConfirm} style={styles.input}/>
-     </>:null
+     </>:null}
      {mode==='signup'&&!linkNative?<View style={{gap:8}}>
       <Text style={styles.label}>HOW DID YOU HEAR ABOUT PUPPY CLICKER? (OPTIONAL)</Text>
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
