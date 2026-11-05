@@ -35,7 +35,7 @@ test('saving UI and status are exclusive to Settings, with Account Details subpa
  assert.doesNotMatch(app,/Pup Account save status|Saving progress…|Progress saved to Pup Account|Save needs attention/);
  assert.match(app,/secondary==='account-details'/);
  assert.match(app,/AccountDetailsScreen/);
- assert.match(settings,/View Account Details/);
+ assert.match(settings,/Manage Pup Account/);
  assert.match(settings,/syncStatus\?\.state==='NO_CHANGE'/);
  assert.match(settings,/syncStatus\?\.notice/);
  assert.match(settings,/Check Cloud Backup/);
