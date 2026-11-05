@@ -16,6 +16,9 @@ import SettingsScreen from './src/components/SettingsScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
 import WebsitePlayScreen from './src/components/WebsitePlayScreen.jsx';
 import {createWebsiteCareShopScreens} from './src/components/WebsiteCareShopScreens.jsx';
+import {createWebsiteRewardsScreens} from './src/components/WebsiteRewardsScreens.jsx';
+import {t as websiteTranslate,normalizeLanguage} from './src/production/websiteI18n.js';
+import {webGoalState} from './src/production/websiteGoalState.js';
 import WebsiteInventoryScreen from './src/components/WebsiteInventoryScreen.jsx';
 import WebsiteDesktopDashboard from './src/components/WebsiteDesktopDashboard.jsx';
 import {WebsiteDesktopNavigation,WebsiteDesktopTopBar,WebsiteDesktopHelp} from './src/components/WebsiteDesktopShell.jsx';
@@ -127,21 +130,6 @@ function NeedPill({icon,value}){
 }
 function QuickAction({emoji,title,subtitle,onPress,disabled=false}){
  return <PupQuickAction emoji={emoji} title={title} subtitle={subtitle} onPress={onPress} disabled={disabled} styles={styles}/>;
-}
-function DailyGoalCard({g,goal,act,clock,readOnly=false}){
- const date=new Date(clock),today=localEpochDay(date),claimed=g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
- const progress=Math.max(0,progressForGoal(g,goal,date)),complete=progress>=goal.target;
- return <View style={styles.dailyGoalCard}>
-  <Txt style={{fontSize:28}}>{goal.emoji}</Txt>
-  <View style={{flex:1,gap:6}}>
-   <View style={styles.pair}><Txt style={styles.itemName}>{goal.title}</Txt><Txt style={styles.value}>{Math.min(progress,goal.target)}/{goal.target}</Txt></View>
-   <Txt muted style={styles.small}>{goal.description}</Txt>
-   <View style={styles.track}><View style={[styles.fill,{backgroundColor:C.accent,width:Math.min(100,100*progress/goal.target)+'%'}]}/></View>
-   <View style={styles.pair}><Txt muted style={styles.small}>Reward: {format(goal.rewardTreats)} 🍪 + 1 🦴 + 1 🪙</Txt>
-    {claimed?<Txt style={styles.claimedText}>✓ Claimed</Txt>:<Button compact disabled={readOnly||!complete} onPress={()=>act({type:'claimDailyGoal',goalId:goal.id,now:clock})}>{readOnly?'Not yet live':'Claim'}</Button>}
-   </View>
-  </View>
- </View>;
 }
 function PlayScreen({g,act,clock,schedule,viewportHeight,desktop=false}){
  const pup=ROSTER.find(p=>p.id===g.puppyStyle)||ROSTER[0];
@@ -566,61 +554,6 @@ function GachaScreen({g,act,state,registry,onBack}){
     </View>
    </PuppyPointer>
   </Modal>
- </View>;
-}
-function RewardsScreen({g,act,clock,schedule,onOpen,onPrestige,readOnly=false}){
- const date=new Date(clock),today=localEpochDay(date),goals=goalsForDay(schedule,date);
- const claimed=(goal)=>g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
- const active=goals.filter(goal=>!claimed(goal)),completed=goals.filter(claimed);
- const giftClaimed=g.lastDailyClaimDay===today;
- const nextStreak=g.lastDailyClaimDay===today-1?Math.min(MAX_REWARD_STREAK_DAYS,g.dailyStreak+1):1;
- const giftReward=150+Math.min(MAX_REWARD_STREAK_DAYS,nextStreak)*25+level(g)*10;
- const statuses=achievementStatuses(g);
- const park=parkPreview(g,clock);
- return <View style={styles.gamePage}>
-  <PageHeader title="Rewards" subtitle="Daily goals, adventures and permanent progression."/>
-  <View style={styles.dailyGiftCard}>
-   <Txt style={{fontSize:30}}>⭐</Txt>
-   <View style={{flex:1,gap:5}}>
-    <Txt style={styles.itemName}>{'Player Level '+level(g)+' / '+MAX_PLAYER_LEVEL}</Txt>
-    <Txt muted style={styles.small}>
-     {level(g)>=MAX_PLAYER_LEVEL?'MAX LEVEL · XP '+MAX_PLAYER_XP.toLocaleString('en-US'):
-      g.xp.toLocaleString('en-US')+' / '+nextXpTarget(g.xp).toLocaleString('en-US')+' XP'}
-    </Txt>
-    <View accessibilityRole="progressbar" accessibilityLabel="Player XP"
-     accessibilityValue={{min:0,max:100,
-      now:level(g)>=MAX_PLAYER_LEVEL?100:Math.min(100,Math.floor(100*(g.xp-levelXp(level(g)))/Math.max(1,nextXpTarget(g.xp)-levelXp(level(g))))) }}
-     style={[styles.track,{height:7}]}>
-     <View style={[styles.fill,{height:7,width:
-      (level(g)>=MAX_PLAYER_LEVEL?100:Math.min(100,100*(g.xp-levelXp(level(g)))/Math.max(1,nextXpTarget(g.xp)-levelXp(level(g)))))+'%'}]}/>
-    </View>
-   </View>
-  </View>
-  <View style={styles.streakCard}>
-   <Txt style={{fontSize:42}}>🔥</Txt>
-   <View style={{flex:1,gap:8}}><Txt style={styles.heading}>{g.dailyStreak} day streak</Txt>
-    <Txt muted style={styles.small}>Yearly gift bonus · {"up to "+MAX_REWARD_STREAK_DAYS+" consecutive days"}</Txt>
-    <View style={{flexDirection:'row',gap:6}}>{Array.from({length:7},(_,index)=><View key={index} style={[styles.streakDot,index<g.dailyStreak&&styles.streakDotFilled]}><Txt style={styles.small}>{index<g.dailyStreak?'✓':''}</Txt></View>)}</View>
-   </View>
-  </View>
-  {!giftClaimed?<View style={styles.dailyGiftCard}>
-   <Txt style={{fontSize:32}}>🎁</Txt><View style={{flex:1,gap:5}}><Txt style={styles.itemName}>{readOnly?'Daily Puppy Gift · Not yet live':'Daily Puppy Gift'}</Txt><Txt muted style={styles.small}>{format(giftReward)} Treats + 2 Bones + 3 Pup Coins</Txt></View>
-   <Button compact disabled={readOnly} onPress={()=>act({type:'daily',epochDay:today,now:clock})}>{readOnly?'Not yet live':'Claim'}</Button>
-  </View>:null}
-  <View style={styles.pair}><Txt style={styles.sectionTitle}>Today’s goals</Txt><Txt muted style={styles.small}>{monthKey(date)} · {readOnly?'Rewards not yet live':schedule?.source==='github'?'Live':schedule?.source==='cache'?'Cached':'Fallback'}</Txt></View>
-  {active.length?active.map(goal=><DailyGoalCard g={g} goal={goal} act={act} clock={clock} readOnly={readOnly} key={goal.id}/>):<Card title="🎉 All of today’s goals claimed"/>}
-  {giftClaimed||completed.length?<><Txt style={styles.sectionTitle}>Claimed</Txt>
-   {giftClaimed?<View style={styles.claimedCard}><Txt>🎁</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Daily Puppy Gift</Txt><Txt muted style={styles.small}>Treats + 2 Bones + 3 Pup Coins</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>:null}
-   {completed.map(goal=><View style={styles.claimedCard} key={goal.id}><Txt style={{fontSize:22}}>{goal.emoji}</Txt><View style={{flex:1}}><Txt style={styles.itemName}>{goal.title}</Txt><Txt muted style={styles.small}>{goal.rewardTreats} Treats + 1 Bone + 1 Pup Coin</Txt></View><Txt style={styles.claimedText}>✓ Claimed</Txt></View>)}
-  </>:null}
-  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🌳</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Dog Park Adventure</Txt><Txt muted style={styles.small}>{park.detail}</Txt></View><Button compact disabled={readOnly||park.disabled} onPress={()=>act({type:park.ready?'parkClaim':'parkStart',now:Date.now()})}>{readOnly?'View only':park.label}</Button></View>
-  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎲</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Gacha</Txt><Txt muted style={styles.small}>Earn and unlock eligible puppies</Txt></View><Button compact secondary onPress={()=>onOpen('gacha')}>Open</Button></View>
-  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>🎰</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Puppy Casino</Txt><Txt muted style={styles.small}>Slots · Roulette · Blackjack · Plinko · Scratchers · Lucky Wheel</Txt></View><Button compact secondary onPress={()=>onOpen('casino')}>Open</Button></View>
-  <View style={styles.dailyGiftCard}><Txt style={{fontSize:25}}>⭐</Txt><View style={{flex:1}}><Txt style={styles.itemName}>Prestige</Txt><Txt muted style={styles.small}>{g.prestigeCount} prestiges · {g.skillPoints} skill points</Txt></View><Button compact secondary onPress={onPrestige}>Open</Button></View>
-  <Card title="🏆 ACHIEVEMENTS" subtitle={statuses.filter(s=>s.xpRewarded).length+' / '+ACHIEVEMENTS.length+' awarded'}>
-   <Txt muted style={styles.small}>Achievements now award signed +50 XP when qualifying gameplay completes. Daily goals award +25 XP.</Txt>
-   {statuses.map(item=><View key={item.id} style={styles.shopItem}><View style={styles.shopLabel}><Txt style={styles.itemName}>{item.emoji} {item.title}</Txt><Txt muted style={styles.small}>{item.description}</Txt></View><Txt style={styles.small}>{item.xpRewarded?'✓ +50 XP':Math.min(item.progress,item.target)+' / '+item.target}</Txt></View>)}
-  </Card>
  </View>;
 }
 // The scene assets below are the SAME PNG blobs used by Kotlin's Compose casino.
@@ -1320,3 +1253,20 @@ const styles=themedStyles(()=>({
 }));
 // Website-owned screen functions are generated from src/native/App.jsx; do not duplicate their JSX here.
 const {CareScreen,ShopScreen}=createWebsiteCareShopScreens({ROSTER,careTapBonus,mood,wellness,canPerformCare,Txt,styles,C,PageHeader,Portrait,upgradesForShopTab,Wallet,Button,RARITIES,accessoryPrices,accessoryOffer,v6Format,TICKET_RARITY_PRESENTATION,ticketShopOffer,MAX_UPGRADES_PER_ITEM,upgradeOffer,Card});
+// Native cloud authorities use the Android calendar day; this adapter prevents
+// UI-only website date logic from changing signed reward transactions.
+const nativeRewardDate=timestamp=>new Date(timestamp);
+const nativeRewardEpoch=timestamp=>localEpochDay(new Date(timestamp));
+const useWebsiteLanguage=()=>{
+ let locale='en';
+ try{locale=Intl.DateTimeFormat().resolvedOptions().locale;}catch{}
+ const language=normalizeLanguage(locale);
+ return {language,t:(key,params)=>websiteTranslate(language,key,params)};
+};
+const {DailyGoalCard,RewardsScreen}=createWebsiteRewardsScreens({
+ Txt,styles,C,PageHeader,Button,Card,format,goalsForDay,monthKey,level,
+ MAX_PLAYER_LEVEL,MAX_PLAYER_XP,nextXpTarget,levelXp,MAX_REWARD_STREAK_DAYS,
+ achievementStatuses,parkPreview,ACHIEVEMENTS,webGoalState,
+ webServerRewardsDate:nativeRewardDate,webServerEpochDay:nativeRewardEpoch,
+ useLanguage:useWebsiteLanguage
+});
