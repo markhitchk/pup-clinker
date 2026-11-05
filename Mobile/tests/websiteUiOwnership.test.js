@@ -43,7 +43,7 @@ test('website-owned account details UI has no independent Android copy drift',()
   assert.match(body,/from 'react-native'/);
   assert.doesNotMatch(body,/<(?:div|button|section)\b|\b(?:window|document|localStorage)\s*\./);
  }
- for(const key of ['careShop','rewards','languageCatalog','goalState','rosterPrestige','puppyNames','inventoryContract']){
+ for(const key of ['careShop','rewards','languageCatalog','goalState','pupeyeStatus','rosterPrestige','puppyNames','inventoryContract']){
   const item=source[key];
   assert.equal(item.target.startsWith('src/'),true,key);
   assert.match(item.sourceSha,/^[a-f0-9]{40}$/,key+' canonical SHA');
@@ -61,7 +61,13 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.equal(settings.target,'src/production/websiteSettingsContract.js');
  assert.match(settings.sourceSha,/^[a-f0-9]{40}$/);
  assert.equal(blobSha(load(settings.target)),settings.blobSha);
- const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx','src/components/WebsiteRosterPrestigeScreens.jsx'];
+ const casino=source.casinoGacha;
+ assert.equal(casino.source,'src/native/App.jsx');
+ assert.equal(casino.dialogSource,'src/native/web/WebsiteDesign.jsx');
+ assert.equal(casino.target,'src/components/WebsiteCasinoGachaScreens.jsx');
+ for(const field of ['sourceSha','dialogSha','blobSha'])assert.match(casino[field],/^[a-f0-9]{40}$/);
+ assert.equal(blobSha(load(casino.target)),casino.blobSha);
+  const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx','src/components/WebsiteRosterPrestigeScreens.jsx','src/components/WebsiteCasinoGachaScreens.jsx'];
  for(const screen of screens){
   const body=load(screen);
   assert.doesNotMatch(body,/<(?:div|article|section|button)\\b/,screen);
@@ -74,11 +80,14 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function DailyGoalCard/);
  assert.match(load('src/components/WebsiteRosterPrestigeScreens.jsx'),/function RosterScreen/);
  assert.match(load('src/components/WebsiteRosterPrestigeScreens.jsx'),/function PrestigeScreen/);
+ assert.match(load('src/components/WebsiteCasinoGachaScreens.jsx'),/function CasinoScreen/);
+ assert.match(load('src/components/WebsiteCasinoGachaScreens.jsx'),/function GachaScreen/);
  assert.match(load('src/components/PuppyDetailsDialog.jsx'),/Generate random puppy name/);
- for(const name of ['CareScreen','ShopScreen','RewardsScreen','DailyGoalCard','RosterScreen','PrestigeScreen'])assert.ok(!app.includes('function '+name+'('),name+' must not have a handwritten Android duplicate');
+ for(const name of ['CareScreen','ShopScreen','RewardsScreen','DailyGoalCard','RosterScreen','PrestigeScreen','CasinoScreen','GachaScreen'])assert.ok(!app.includes('function '+name+'('),name+' must not have a handwritten Android duplicate');
  assert.ok(app.includes('createWebsiteCareShopScreens'));
  assert.ok(app.includes('createWebsiteRewardsScreens'));
  assert.ok(app.includes('createWebsiteRosterPrestigeScreens'));
+ assert.ok(app.includes('createWebsiteCasinoGachaScreens'));
   const check=spawnSync(process.execPath,['scripts/sync-website-native-ui.mjs','--verify'],{
   cwd:mobile,encoding:'utf8'
  });
