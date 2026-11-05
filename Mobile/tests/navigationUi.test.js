@@ -111,7 +111,12 @@ test('primary navigation preserves Play, Care, Roster, Shop and Rewards with wor
   const names=tabs().map(p=>text(p));assert.ok(names.some(n=>n.includes('Roster')),'Roster is missing from the primary bar');assert.ok(names.some(n=>n.includes('Rewards')),'Rewards is missing from the primary bar');
   assert.equal(names.length,5);assert.ok(!names.some(n=>n.includes('Settings')||n.includes('Prestige')));
   await act(()=>tabs().find(p=>text(p).includes('Roster')).props.onPress());assert.match(text(renderer.root),/Puppy Roster/);
-  await act(()=>tabs().find(p=>text(p)==='🎁 Rewards').props.onPress());assert.match(text(renderer.root),/Today’s goals/);assert.match(text(renderer.root),/Puppy Casino/);
+  await act(()=>tabs().find(p=>text(p)==='🎁 Rewards').props.onPress());assert.match(text(renderer.root),/Today’s goals/);
+  const adventures=renderer.root.findAllByType('Pressable').find(p=>
+   String(p.props.accessibilityLabel||'').includes('Adventures'));
+  assert.ok(adventures,'Website Rewards adventures accordion is missing');
+  await act(()=>adventures.props.onPress());
+  assert.match(text(renderer.root),/Puppy Casino/);
  }finally{await act(()=>renderer.unmount());}
 });
 test('header Settings keeps the current primary destination and hides its bar until Back',async()=>{
