@@ -1156,7 +1156,7 @@ export function PuppyApp({betaMode=false}){
    {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'&&secondary!=='inventory'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
-  {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View style={[styles.bottomBar,g.playLayoutV2Enabled&&{backgroundColor:C.card,borderTopColor:C.accentSoft}]}>
+  {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View testID="game-bottom-bar" style={[styles.bottomBar,g.playLayoutV2Enabled&&{backgroundColor:C.card,borderTopColor:C.accentSoft}]}>
    {TABS.map(([id,icon,label])=><Pressable key={id} accessibilityRole="tab" accessibilityState={{selected:tab===id&&!secondary}} onPress={()=>{setTab(id);setSecondary(null);}} style={[styles.tab,(tab===id&&!secondary)&&styles.tabSelected]}>
     <Txt style={styles.tabEmoji}>{icon}</Txt><Txt style={[styles.tabLabel,(tab===id&&!secondary)&&{color:C.accentInk}]}>{label}</Txt>
    </Pressable>)}
