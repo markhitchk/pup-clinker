@@ -380,7 +380,8 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   require(joinSource.isNotBlank()||joinDetails.isBlank()){"Join details require a source"}
   val body=JSONObject().put("username",username).put("contactEmail",contactEmail.trim())
    .put("password",password).put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)
-   .put("joinSource",joinSource.ifBlank{JSONObject.NULL}).put("joinDetails",joinDetails.ifBlank{JSONObject.NULL})
+   .put("joinSource",if(joinSource.isBlank())JSONObject.NULL else joinSource)
+   .put("joinDetails",if(joinDetails.isBlank())JSONObject.NULL else joinDetails)
   post("pup-credentials",envelope("native-sign-up",body),key,session(key))
   account(key)
  }
