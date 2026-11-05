@@ -22,10 +22,17 @@ export function publicStartupIssue(code){
  const safe=typeof code==='string'&&has(code)?code:'PUPPY-START-999';
  return {code:safe,...STARTUP_ERRORS[safe]};
 }
+// A 401/409 account-link response requires sign-in, not a network retry.
+// Inspect allowlisted machine codes only; never trust raw exception messages.
+export function betaNeedsPupAccountSignIn(error){
+ const code=typeof error?.code==='string'?error.code.toUpperCase():'';
+ return /^(?:BETA_)?(?:BETA_LINK_REQUIRED|PUP_ACCOUNT_LOGIN_REQUIRED|PUP_ACCOUNT_DISCORD_REQUIRED)$/.test(code);
+}
 export function classifyStartupFailure({source='account',error,account,cloudState}={}){
  const code=typeof error?.code==='string'?error.code.toUpperCase():'';
  // Known machine codes only. Raw backend error text is never displayed.
  if(account?.status==='NATIVE_MODULE_MISSING')return publicStartupIssue('PUPPY-START-102');
+ if(betaNeedsPupAccountSignIn(error))return publicStartupIssue('PUPPY-AUTH-801');
  if(source==='setup')return publicStartupIssue('PUPPY-START-101');
  if(code.includes('DATABASE_LAYOUT_UNSUPPORTED')||account?.status==='DATABASE_LAYOUT_UNSUPPORTED')
   return publicStartupIssue('PUPPY-DB-301');
