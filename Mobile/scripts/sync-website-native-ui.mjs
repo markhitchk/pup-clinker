@@ -55,13 +55,13 @@ function assertNativeComponent(value,path){
   throw Error('Website browser-only code cannot be copied to Android: '+path);
 }
 function extractWebsiteTabs(source){
- const matches=[...source.matchAll(/export const MAIN_TABS=Object\\.freeze\\((\\[[^\\n]*\\])\\);/g)];
+ const matches=[...source.matchAll(/export const MAIN_TABS=Object\.freeze\((\[[^\n]*\])\);/g)];
  if(matches.length!==1)throw Error('Review canonical website tab definition before syncing');
- const tabIds=[...matches[0][1].matchAll(/\\['([^']+)','[^']+','[^']+'\\]/g)].map(item=>item[1]);
+ const tabIds=[...matches[0][1].matchAll(/\['([^']+)','[^']+','[^']+'\]/g)].map(item=>item[1]);
  if(tabIds.join(',')!=='play,care,roster,shop,rewards')
   throw Error('Website primary tab membership changed; review required');
- return '// GENERATED from website '+NAVIGATION_SOURCE+'. Do not hand-edit.\\n'+
-  'export const MAIN_TABS=Object.freeze('+matches[0][1]+');\\n';
+ return '// GENERATED from website '+NAVIGATION_SOURCE+'. Do not hand-edit.\n'+
+  'export const MAIN_TABS=Object.freeze('+matches[0][1]+');\n';
 }
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
