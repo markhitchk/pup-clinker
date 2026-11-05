@@ -98,5 +98,13 @@
     "target": "src/production/websiteSettingsContract.js",
     "sourceSha": "f7439525ce01ccc12a03e32d9a4e7b40e290eaa9",
     "blobSha": "597cce0879d6c8b5892efc7277a6e13a28f19241"
+  },
+  "casinoGacha": {
+    "source": "src/native/App.jsx",
+    "dialogSource": "src/native/web/WebsiteDesign.jsx",
+    "target": "src/components/WebsiteCasinoGachaScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "dialogSha": "a5a09cac9697281d9f3c88624d1feb17a8b4422f",
+    "blobSha": "8978c0c70e6cfbb955cf0dad42a2da24d6d9435a"
   }
 }
