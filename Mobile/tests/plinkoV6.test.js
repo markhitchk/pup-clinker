@@ -12,6 +12,7 @@ const kotlinEngine=readFileSync(new URL('../../App/app/src/main/java/com/harleyt
 const kotlinUI=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyPlinkoUi.kt',import.meta.url),'utf8');
 const component=readFileSync(new URL('../src/components/PlinkoV6.jsx',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const casino=readFileSync(new URL('../src/components/WebsiteCasinoGachaScreens.jsx',import.meta.url),'utf8');
 const ready=(chips=200)=>{const s=initialState();s.game.casinoChips=chips;s.ready=true;return s;};
 const start=(s,path=Array(8).fill(false),jitter=Array(8).fill(0))=>transition(s,{
  type:'plinkoStart',wager:100,pathRight:path,bounceJitterPermille:jitter,now:1730000000000
@@ -171,9 +172,9 @@ test('tampering, invalid bounce jitter and competing rounds cannot mint Casino C
 
 test('Pup Plinko screen and Casino hub use the dedicated stage, source wager and resume flow',()=>{
  assert.ok(app.includes("import PlinkoV6 from './src/components/PlinkoV6.jsx'"));
- assert.match(app,/g\.pendingPlinko\?'plinko':/);
- assert.ok(app.includes('Unfinished Plinko Drop'));
- assert.ok(app.includes('pending={g.pendingPlinko}'));
+ assert.match(casino,/g\.pendingPlinko\?'plinko':/);
+ assert.ok(casino.includes('Unfinished Plinko Drop'));
+ assert.ok(casino.includes('pending={g.pendingPlinko}'));
  for(const value of ['Pup Plinko','Casino Chip Wallet','Puppy Plinko','Drop Ball','How Pup Plinko works',
  'PLINKO_V6.betPresets','type:\'plinkoStart\'','type:\'plinkoReveal\'','art.drop','PLINKO_V6.dropMs']){
   assert.ok(component.includes(value),value);
