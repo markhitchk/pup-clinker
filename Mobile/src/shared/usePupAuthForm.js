@@ -1,6 +1,5 @@
-// Canonical cross-platform Pup Account form model.
-// Keep identical in website src/shared and Android Mobile/src/shared.
-// UI and secure session transports remain platform-specific.
+// Android React form model aligned with the existing Pup Account website flow.
+// The website remains unchanged; native auth uses a signed PupEye transport.
 import {useState} from 'react';
 
 export const JOIN_SOURCE_OPTIONS=Object.freeze([
