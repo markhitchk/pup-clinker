@@ -22,7 +22,8 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.deepEqual(source.components.map(({source,target})=>[source,target]),[
   ['src/native/src/components/AccountDetailsScreen.jsx','src/components/AccountDetailsScreen.jsx'],
   ['src/native/src/components/NotificationInbox.jsx','src/components/NotificationInbox.jsx'],
-  ['src/native/src/production/AccountOnboarding.jsx','src/production/AccountOnboarding.jsx']
+  ['src/native/src/production/AccountOnboarding.jsx','src/production/AccountOnboarding.jsx'],
+  ['src/native/src/components/PuppyDetailsDialog.jsx','src/components/PuppyDetailsDialog.jsx']
  ]);
  assert.equal(source.navigation.source,'src/native/src/engine/playRevamp.js');
  assert.equal(source.navigation.target,'src/production/websiteNavigation.js');
@@ -42,13 +43,13 @@ test('website-owned account details UI has no independent Android copy drift',()
   assert.match(body,/from 'react-native'/);
   assert.doesNotMatch(body,/<(?:div|button|section)\b|\b(?:window|document|localStorage)\s*\./);
  }
- for(const key of ['careShop','rewards','languageCatalog','goalState']){
+ for(const key of ['careShop','rewards','languageCatalog','goalState','rosterPrestige','puppyNames','inventoryContract']){
   const item=source[key];
   assert.equal(item.target.startsWith('src/'),true,key);
   assert.match(item.sourceSha,/^[a-f0-9]{40}$/,key+' canonical SHA');
   assert.equal(blobSha(load(item.target)),item.blobSha,key+' generated SHA');
  }
- const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx'];
+ const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx','src/components/WebsiteRosterPrestigeScreens.jsx'];
  for(const screen of screens){
   const body=load(screen);
   assert.doesNotMatch(body,/<(?:div|article|section|button)\\b/,screen);
@@ -59,9 +60,13 @@ test('website-owned account details UI has no independent Android copy drift',()
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsGroup/);
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function RewardsScreen/);
  assert.match(load('src/components/WebsiteRewardsScreens.jsx'),/function DailyGoalCard/);
- for(const name of ['CareScreen','ShopScreen','RewardsScreen','DailyGoalCard'])assert.ok(!app.includes('function '+name+'('),name+' must not have a handwritten Android duplicate');
+ assert.match(load('src/components/WebsiteRosterPrestigeScreens.jsx'),/function RosterScreen/);
+ assert.match(load('src/components/WebsiteRosterPrestigeScreens.jsx'),/function PrestigeScreen/);
+ assert.match(load('src/components/PuppyDetailsDialog.jsx'),/Generate random puppy name/);
+ for(const name of ['CareScreen','ShopScreen','RewardsScreen','DailyGoalCard','RosterScreen','PrestigeScreen'])assert.ok(!app.includes('function '+name+'('),name+' must not have a handwritten Android duplicate');
  assert.ok(app.includes('createWebsiteCareShopScreens'));
  assert.ok(app.includes('createWebsiteRewardsScreens'));
+ assert.ok(app.includes('createWebsiteRosterPrestigeScreens'));
   const check=spawnSync(process.execPath,['scripts/sync-website-native-ui.mjs','--verify'],{
   cwd:mobile,encoding:'utf8'
  });
