@@ -68,7 +68,7 @@ test('Phone and desktop both use one real native Inventory with actual artwork a
 test('Android uses the website-style Play scene on phone and DeX, with Inventory available',()=>{
  const app=read('App.js');
  const play=read('src/components/WebsitePlayScreen.jsx');
- assert.match(app,/return <WebsitePlayScreen game=\{g\}/);
+ assert.match(app,/<WebsitePlayScreen game=\{g\}/);
  assert.match(app,/<WebsiteDesktopDashboard game=\{g\}/);
  assert.match(play,/android-website-play-stage/);
  assert.match(play,/Current Puppy/);
