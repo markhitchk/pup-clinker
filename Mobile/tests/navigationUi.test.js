@@ -64,6 +64,11 @@ new Function('require','module','exports',source)(id=>{
    WebsiteDesktopInventory:()=>React.createElement('Text',null,'Inventory'),
    WebsiteDesktopHelp:()=>React.createElement('Text',null,'Help')
   };
+ if(id==='./src/components/WebsiteInventoryScreen.jsx')return {
+  __esModule:true,default:({game,onBack})=>React.createElement('View',{testID:'android-inventory-screen'},
+   React.createElement('Text',null,'Pup Account Inventory'),
+   React.createElement('Pressable',{accessibilityRole:'button',accessibilityLabel:'Back to game',onPress:onBack},'Back'))
+ };
  if(id==='./src/components/WebsitePlayScreen.jsx'){
   const screenFile=new URL('../src/components/WebsitePlayScreen.jsx',import.meta.url);
   const screenModule={exports:{}};
@@ -178,4 +183,17 @@ test('Chromebook and DeX desktop layout uses sidebar, hides mobile tabs, and res
   viewport={width:393,height:852};
   if(renderer)await act(()=>renderer.unmount());
  }
+});
+
+test('phone Play header opens website-style Inventory and returns to Play',async()=>{
+ const renderer=await render();
+ try{
+  const control=renderer.root.findByProps({accessibilityLabel:'Open inventory'});
+  await act(()=>control.props.onPress());
+  assert.equal(renderer.root.findAllByProps({testID:'android-inventory-screen'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'game-bottom-bar'}).length,0);
+  await act(()=>renderer.root.findByProps({accessibilityLabel:'Back to game'}).props.onPress());
+  assert.equal(renderer.root.findAllByProps({testID:'android-inventory-screen'}).length,0);
+  assert.equal(renderer.root.findAllByProps({testID:'game-bottom-bar'}).length,1);
+ }finally{await act(()=>renderer.unmount());}
 });
