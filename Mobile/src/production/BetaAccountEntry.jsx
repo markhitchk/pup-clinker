@@ -232,6 +232,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
        placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
        maxLength={20} editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
+      {!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Generate username"
+       disabled={busy} onPress={()=>void api().authSuggestion('username')
+        .then(value=>{if(typeof value==='string'){setUsername(value);setProblem('');}})
+        .catch(()=>setProblem('Secure username suggestion is unavailable.'))}>
+       <Text style={styles.secondaryText}>🎲 Generate username</Text>
+      </Pressable>:null}
       <Text style={styles.label}>SUPPORT CONTACT EMAIL (OPTIONAL)</Text>
       <TextInput accessibilityLabel="Pup email" autoCapitalize="none" autoCorrect={false}
        keyboardType="email-address" autoComplete="email" placeholder="Not used for sign-in or verification"
@@ -247,6 +253,13 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
       autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
       placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
       value={password} onChangeText={setPassword} style={styles.input}/>
+     {mode==='signup'?<Pressable accessibilityRole="button" accessibilityLabel="Generate strong password"
+      disabled={busy} onPress={()=>void api().authSuggestion('password')
+       .then(value=>{if(typeof value==='string'){setPassword(value);setConfirm(value);
+        setNotice('Strong password generated. Save it in your password manager before registering.');}})
+       .catch(()=>setProblem('Secure password generation is unavailable.'))}>
+      <Text style={styles.secondaryText}>🔐 Generate strong password</Text>
+     </Pressable>:null}
      {mode==='signup'?<>
       <Text style={styles.body}>Choose a strong password or use Android's password manager suggestion.</Text>
       <View style={{gap:4}}>{passwordRules(password).map(rule=><Text key={rule.label}
