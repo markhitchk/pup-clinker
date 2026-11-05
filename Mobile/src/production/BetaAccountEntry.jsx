@@ -185,9 +185,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   <StatusBar barStyle="light-content" backgroundColor="#0F1A23"/>
   <ScrollView contentContainerStyle={styles.content}>
    {!requiredAtStartup?<Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>:null}
-   <Text style={styles.logo}>🐶 Puppy Clicker [Beta]</Text>
-   <Text style={styles.title}>{verified?'Pup Account connected':onboarding?'Set up Pup Account':'Sign in to Puppy Clicker'}</Text>
-   <Text style={styles.body}>{onboarding?'Use a Pup username and password, or connect Discord instead. A support email is optional.':'Pup Account is Puppy Clicker’s own login system. You can use credentials or Discord, without replacing your Play app.'}</Text>
+   <View style={{alignItems:'center',gap:9}}>
+    <Image source={require('../../assets/logos/puppy_clicker.png')} accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={{width:88,height:88}}/>
+    <Text style={styles.logo}>PUPPY CLICKER · PUP ACCOUNT</Text>
+   </View>
+   <Text style={styles.title}>{verified?'Pup Account connected':mode==='signup'?'Your puppy journey starts here.':'Welcome back to your puppy world.'}</Text>
+   <Text style={styles.body}>One Pup Account for your puppies, rewards and linked progress across the website and Android.</Text>
    <View style={styles.card}>
     <Text style={styles.label}>PUP ACCOUNT</Text>
     <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':'Sign-in required'}</Text>
@@ -212,11 +215,11 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {consentNeeded?<>{agreements}<Pressable accessibilityRole="button" accessibilityLabel="Accept both policies" disabled={!tos||!privacy||busy} style={styles.button} onPress={()=>void consent()}><Text style={styles.buttonText}>Accept and continue</Text></Pressable></>:null}
    {(!verified||linkNative)?<>
     {!linkNative?<View style={styles.modes}>
-     {['signin','signup','discord'].map(item=><Pressable key={item} accessibilityRole="button"
-      accessibilityLabel={item==='signin'?'Sign in':item==='signup'?'Create account':'Discord login'}
-      onPress={()=>{setMode(item);setProblem('');setNotice('');setPassword('');}}
-      style={[styles.mode,mode===item&&styles.modeSelected]}>
-      <Text style={[styles.modeText,mode===item&&styles.modeSelectedText]}>{item==='signin'?'Sign in':item==='signup'?'Create account':'Discord'}</Text>
+     {['signin','signup'].map(item=><Pressable key={item} accessibilityRole="button"
+      accessibilityLabel={item==='signin'?'Sign In':'Create Account'}
+      onPress={()=>{chooseMode(item);setProblem('');setNotice('');}}
+      style={[styles.mode,(mode===item||(mode==='discord'&&item==='signin'))&&styles.modeSelected]}>
+      <Text style={[styles.modeText,(mode===item||(mode==='discord'&&item==='signin'))&&styles.modeSelectedText]}>{item==='signin'?'Sign In':'Create Account'}</Text>
      </Pressable>)}
     </View>:<Pressable accessibilityRole="button" style={styles.secondary} onPress={()=>{setLinkNative(false);setPassword('');setProblem('');}}>
      <Text style={styles.secondaryText}>← Back to your Pup Account</Text>
@@ -239,15 +242,42 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
        placeholder="Pup username" placeholderTextColor="#8AA1AF"
        value={login} onChangeText={setLogin} style={styles.input}/>
      </>}
-     <Text style={styles.label}>PASSWORD</Text>
+     <Text style={styles.label}>{mode==='signup'?'NEW PASSWORD':'PASSWORD'}</Text>
      <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none"
       autoCorrect={false} autoComplete={mode==='signup'?'new-password':'current-password'}
       placeholder={mode==='signup'?'At least 8 characters':'Password'} placeholderTextColor="#8AA1AF"
       value={password} onChangeText={setPassword} style={styles.input}/>
+     {mode==='signup'?<>
+      <Text style={styles.body}>Choose a strong password or use Android's password manager suggestion.</Text>
+      <View style={{gap:4}}>{passwordRules(password).map(rule=><Text key={rule.label}
+       style={{color:rule.passed?'#83E7B5':'#BBD0DF',fontSize:12}}>
+       {rule.passed?'✓':'○'} {rule.label}</Text>)}</View>
+      <Text style={styles.label}>CONFIRM PASSWORD</Text>
+      <TextInput accessibilityLabel="Confirm password" secureTextEntry
+       autoComplete="new-password" autoCapitalize="none" autoCorrect={false}
+       placeholder="Re-enter password" placeholderTextColor="#8AA1AF"
+       maxLength={128} value={confirm} onChangeText={setConfirm} style={styles.input}/>
+     </>:null
+     {mode==='signup'&&!linkNative?<View style={{gap:8}}>
+      <Text style={styles.label}>HOW DID YOU HEAR ABOUT PUPPY CLICKER? (OPTIONAL)</Text>
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+       {JOIN_SOURCE_OPTIONS.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+        accessibilityLabel={label} accessibilityState={{selected:joinSource===value}}
+        onPress={()=>{setJoinSource(joinSource===value?'':value);setJoinDetails('');}}
+        style={[styles.mode,{flexGrow:0,paddingHorizontal:10,paddingVertical:9},joinSource===value&&styles.modeSelected]}>
+        <Text style={[styles.modeText,{fontSize:12},joinSource===value&&styles.modeSelectedText]}>{label}</Text>
+       </Pressable>)}
+      </View>
+      {joinSource?<><Text style={styles.label}>{joinSource==='friend'?'WHO INVITED YOU? (OPTIONAL)':'WHERE DID YOU SEE US? (OPTIONAL)'}</Text>
+       <TextInput accessibilityLabel="Discovery source details" maxLength={120}
+        placeholder={joinSource==='friend'?'Pup username or name':'Server, channel, creator or website'}
+        placeholderTextColor="#8AA1AF" value={joinDetails} onChangeText={setJoinDetails} style={styles.input}/></>:null}
+      <Text style={styles.body}>Optional feedback only. No invite code or reward is required.</Text>
+     </View>:null}
      {mode==='signup'?agreements:null}
      <Pressable accessibilityRole="button" accessibilityLabel={linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}
       disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
-      <Text style={styles.buttonText}>{linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in with Pup Account'}</Text>
+      <Text style={styles.buttonText}>{busy?'Verifying…':linkNative?'Add password to Pup Account':mode==='signup'?'Create Pup Account':'Sign in to Pup Account'}</Text>
      </Pressable>
      {mode==='signup'?<Text style={styles.body}>No verification email or SMTP is required. Contact email is optional and used only for support; password is handled by Supabase Auth.</Text>:null}
      {mode==='signup'&&!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="I already use Discord" onPress={()=>{setMode('discord');setProblem('');setPassword('');}}>
@@ -257,6 +287,22 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void signin()}>
      <Text style={styles.buttonText}>Connect with Discord</Text>
     </Pressable>}
+    {mode!=='discord'&&!linkNative?<View style={styles.card}>
+     <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+      <Image source={require('../../assets/logos/discord.png')} resizeMode="contain" style={{width:30,height:30}}/>
+      <View style={{flex:1}}><Text style={styles.cardTitle}>Discord</Text>
+       <Text style={styles.body}>Alternative login or optional linked account</Text></View>
+     </View>
+     <Text style={styles.body}>Sign in with the Discord identity linked to your Pup Account.</Text>
+     <Pressable accessibilityRole="button" accessibilityLabel="Sign in with Discord"
+      disabled={busy} style={styles.button} onPress={()=>void signin()}>
+      <Text style={styles.buttonText}>Sign in with Discord</Text>
+     </Pressable>
+    </View>:null}
+    <Pressable accessibilityRole="button" accessibilityLabel="Recover Pup Account"
+     style={styles.secondary} onPress={()=>void Linking.openURL('https://puppy-clicker.vercel.app/recovery')}>
+     <Text style={styles.secondaryText}>Forgot your username or password? Recover account</Text>
+    </Pressable>
    </>:(!onboarding&&!requiredAtStartup)?<>
     <Pressable accessibilityRole="button" disabled={busy} style={styles.button} onPress={()=>void read()}>
      <Text style={styles.buttonText}>Verify cloud save</Text>
@@ -278,23 +324,23 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  </Modal>;
 }
 const styles=StyleSheet.create({
- root:{flex:1,backgroundColor:'#0F1A23'},
+ root:{flex:1,backgroundColor:'#0A0C12'},
  content:{padding:22,gap:18,maxWidth:600,width:'100%',alignSelf:'center'},
- logo:{fontWeight:'900',fontSize:21,color:'#FFF'},
+ logo:{fontWeight:'900',fontSize:12,color:'#00E5FF',letterSpacing:1.2},
  title:{color:'#FFF',fontSize:29,fontWeight:'900'},
  body:{color:'#D0DEE8',fontSize:15,lineHeight:24},
- card:{borderRadius:18,borderWidth:1,borderColor:'#415767',padding:18,gap:12,backgroundColor:'#1A2C38'},
+ card:{borderRadius:22,borderWidth:1,borderColor:'#2D5364',padding:18,gap:12,backgroundColor:'#12151F'},
  label:{color:'#8DD6FF',fontSize:13,fontWeight:'900',letterSpacing:1},
  value:{color:'#FFF',fontWeight:'900',fontSize:20},
  cardTitle:{color:'#FFF',fontSize:19,fontWeight:'800'},
  error:{borderWidth:1,borderColor:'#CB7777',padding:16,borderRadius:15,backgroundColor:'#38282D'},
- button:{backgroundColor:'#87D6FF',padding:18,borderRadius:14,alignItems:'center'},
+ button:{backgroundColor:'#00E5FF',padding:18,borderRadius:24,alignItems:'center'},
  buttonText:{color:'#0B1C29',fontSize:17,fontWeight:'900'},
  secondary:{borderRadius:14,borderWidth:1,borderColor:'#5D8CA9',padding:14,alignItems:'center'},
  secondaryText:{color:'#B0E5FF',fontWeight:'800'},
  disabled:{opacity:0.5},
  modes:{flexDirection:'row',gap:8},mode:{flex:1,paddingVertical:12,paddingHorizontal:5,alignItems:'center',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12},
- modeSelected:{backgroundColor:'#254C63',borderColor:'#87D6FF'},modeText:{fontSize:14,fontWeight:'800',color:'#B0E5FF'},
+ modeSelected:{backgroundColor:'#183C4D',borderColor:'#00E5FF'},modeText:{fontSize:14,fontWeight:'800',color:'#B0E5FF'},
  modeSelectedText:{color:'#FFFFFF'},
  input:{color:'#FFFFFF',backgroundColor:'#152631',borderWidth:1,borderColor:'#5D8CA9',borderRadius:12,paddingHorizontal:14,minHeight:52,fontSize:16}
 });
