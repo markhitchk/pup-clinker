@@ -370,13 +370,17 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
  }
- @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
+ @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,joinSource:String,joinDetails:String,key:String,p:Promise)=runAsync(p){
   require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
   require(password.length in 8..128){"Invalid Pup password"}
   require(contactEmail.length<=254 && (contactEmail.isBlank()||contactEmail.contains("@"))){"Invalid optional support email"}
   require(termsAccepted&&privacyAccepted){"Both legal policies must be accepted"}
+  require(joinSource.isBlank()||joinSource in setOf("friend","discord","youtube","tiktok","instagram","reddit","google","play_store","other")){"Invalid join source"}
+  require(joinDetails.length<=120&&joinDetails.none{it.code<32||it.code==127}){"Invalid join details"}
+  require(joinSource.isNotBlank()||joinDetails.isBlank()){"Join details require a source"}
   val body=JSONObject().put("username",username).put("contactEmail",contactEmail.trim())
    .put("password",password).put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)
+   .put("joinSource",joinSource.ifBlank{JSONObject.NULL}).put("joinDetails",joinDetails.ifBlank{JSONObject.NULL})
   post("pup-credentials",envelope("native-sign-up",body),key,session(key))
   account(key)
  }
