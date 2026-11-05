@@ -19,7 +19,7 @@ const animation=()=>({start(){},stop(){}});
 native.Animated={Value,View:'View',Image:'Image',createAnimatedComponent:x=>x,loop:animation,timing:animation,spring:animation,sequence:animation,parallel:animation,delay:animation};
 native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={vibrate(){}};
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
-native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
+let viewport={width:393,height:852};native.useWindowDimensions=()=>viewport;native.useColorScheme=()=> 'dark';
 native.NativeModules={PuppyBetaAccount:{readStartupCrash:async()=>({exists:false}),clearStartupCrash:async()=>true}};
 let fixture={},latestState;
 let setupComplete=true;
@@ -155,4 +155,27 @@ test('Care keeps unaffordable actions disabled and shows the tired threshold cor
   assert.match(text(renderer.root),/Rest above 10% energy/);
   await pressLabel(renderer,'Rest, free, restores 30 energy');assert.equal(latestState.game.energy,40);assert.equal(latestState.game.treats,0);assert.equal(latestState.game.bones,0);
  }finally{await act(()=>renderer.unmount());}
+});
+
+test('Chromebook and DeX desktop layout uses sidebar, hides mobile tabs, and resizes back',async()=>{
+ viewport={width:1280,height:800};
+ let renderer;
+ try{
+  renderer=await render();
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-window'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-navigation'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-dashboard'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-top-bar'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-phone-window'}).length,0);
+  await act(()=>renderer.root.findAllByType('Pressable')
+   .find(p=>p.props.accessibilityRole==='tab'&&p.props.accessibilityLabel==='Care').props.onPress());
+  assert.match(text(renderer.root),/Pup Care/);
+  viewport={width:820,height:700};
+  await act(()=>renderer.update(React.createElement(App)));
+  assert.equal(renderer.root.findAllByProps({testID:'android-phone-window'}).length,1);
+  assert.equal(renderer.root.findAllByProps({testID:'android-desktop-navigation'}).length,0);
+ }finally{
+  viewport={width:393,height:852};
+  if(renderer)await act(()=>renderer.unmount());
+ }
 });
