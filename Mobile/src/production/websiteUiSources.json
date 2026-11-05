@@ -74,5 +74,29 @@
     "target": "src/production/websiteInventoryContract.js",
     "sourceSha": "b4ffa3d48b994aa341d9f9de42f7d9145c5eae3f",
     "blobSha": "ea7e6721d412ace2969909bc68dad5f791227c2a"
+  },
+  "authContract": {
+    "target": "src/production/websiteAccountContract.js",
+    "sources": [
+      {
+        "source": "src/WebRegister.jsx",
+        "sourceSha": "4f58ae30515f1893754240a0e6159d8908ada4f7"
+      },
+      {
+        "source": "src/native/web/AccountGate.jsx",
+        "sourceSha": "e6868b12ee5a27c2ef7642cc2bed72e66d11009a"
+      },
+      {
+        "source": "src/JoinSourceFields.jsx",
+        "sourceSha": "3690df1fd7b7c4efe86fd69a220e3c9403cd47ed"
+      }
+    ],
+    "blobSha": "2f0200ed1ce1036ceb18e66c866dcbd40936767b"
+  },
+  "settingsContract": {
+    "source": "src/native/web/WebSettings.jsx",
+    "target": "src/production/websiteSettingsContract.js",
+    "sourceSha": "f7439525ce01ccc12a03e32d9a4e7b40e290eaa9",
+    "blobSha": "597cce0879d6c8b5892efc7277a6e13a28f19241"
   }
 }
