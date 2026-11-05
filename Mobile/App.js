@@ -14,6 +14,7 @@ import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
+import InventoryScreen from './src/components/InventoryScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
 import PuppyExchangeScreen from './src/components/PuppyExchangeScreen.jsx';
@@ -1076,7 +1077,8 @@ export function PuppyApp({betaMode=false}){
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} account={account} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='account-details')return <AccountDetailsScreen account={account} cloudState={cloudState}
-   onBack={()=>setSecondary('settings')} onManage={()=>openAccount('signin')} onRefresh={refreshAccount}/>;
+   onBack={()=>setSecondary('settings')} onManage={()=>openAccount('signin')} onRefresh={refreshAccount} onInventory={()=>setSecondary('inventory')}/>;
+  if(secondary==='inventory')return <InventoryScreen game={g} cloudState={betaMode?cloudState:null} updatedAt={betaMode?syncStatus?.savedAt:null} onRefresh={betaMode?refreshAccount:undefined}/>;
   if(secondary==='prestige')return <PrestigeScreen g={g} act={act} activeCasinoRound={Boolean(state.blackjack||g.pendingScratch||g.pendingSlots||g.pendingRoulette||g.pendingPlinko||g.pendingWheel)}/>;
   if(secondary==='exchange')return <PuppyExchangeScreen game={g} registry={registry} account={account} onBack={()=>setSecondary(null)} onRefresh={refreshAccount}/>;
   if(secondary==='roster'||tab==='roster'&&!secondary)return <RosterScreen g={g} act={act} registry={registry} onUse={usePuppy} onOpenExchange={()=>setSecondary('exchange')}/>;
@@ -1113,6 +1115,7 @@ export function PuppyApp({betaMode=false}){
   {state.ready&&saved.onboardingComplete?<View style={[styles.topBar,g.playLayoutV2Enabled&&{backgroundColor:C.bg,borderBottomWidth:1,borderBottomColor:C.accentSoft}]}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
+   <Pressable accessibilityRole="button" accessibilityLabel="Open inventory" onPress={()=>setSecondary('inventory')} style={styles.headerButton}><Txt style={{fontSize:23}}>🎒</Txt></Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel={'Notifications, '+saved.notificationInbox.filter(n=>!n.read).length+' unread'} onPress={()=>{notifications.check();setInboxOpen(true);}} style={styles.headerButton}><Txt style={{fontSize:23}}>🔔</Txt>{saved.notificationInbox.some(n=>!n.read)?<View style={styles.unreadDot}/>:null}</Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
