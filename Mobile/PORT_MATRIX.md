@@ -16,8 +16,8 @@
 | 1 | `src/native/src/components/NotificationInbox.jsx` | `Mobile/src/components/NotificationInbox.jsx` | **Shared with asset adapter** | Identical website component body; generated local Image require for logo |
 | 1 | `src/native/src/production/AccountOnboarding.jsx` | `Mobile/src/production/AccountOnboarding.jsx` | **Shared with asset adapter** | Identical website component body; local logo/Discord images only |
 | 1 | `src/native/web/kawaii.css` | `websiteDesignTokens.js` and `websiteTheme.js` | **Partial** | Tokens synced; typography, radii, spacing, interactions and animation parity remain |
-| 2 | `src/native/App.jsx` navigation and `web/DesktopNavigation.jsx` | `Mobile/App.js`, `WebsiteDesktopShell.jsx` | **Partial** | Exact five tabs, deep-navigation/back behavior, phone/desktop and resize QA |
-| 2 | Website `/play` PlayScreen + desktop Play | `WebsitePlayScreen.jsx`, `WebsiteDesktopDashboard.jsx` | **Partial** | Reuse the screen hierarchy/copy/animation contract; compare on real phone/Chromebook/DeX |
+| 2 | `src/native/src/engine/playRevamp.js` five-tab source and `web/DesktopNavigation.jsx` | `Mobile/src/production/websiteNavigation.js`, `Mobile/App.js`, desktop shell | **Shared tabs; partial screen UI** | Tab order/icons/labels are generated from website source; actual sidebar layout and routes still require real-device QA |
+| 2 | Website `/play` PlayScreen + desktop Play | `WebsitePlayScreen.jsx`, `WebsiteDesktopDashboard.jsx` | **Partial — updated** | Native night-yard, headings, identity, controls and responsive CSS-grid proportions are closer to website; full source-sharing and screenshot/device parity still outstanding |
 | 3 | `CareScreen`, `ShopScreen`, `RewardsScreen` | `Mobile/App.js` native functions | **Partial** | One website-owned UI implementation or generated adapter-driven contract per screen |
 | 4 | `RosterScreen`, profile, `PrestigeScreen`, redeem | `Mobile/App.js`, `AccountDetailsScreen.jsx`, `PuppyExchangeScreen.jsx` | **Partial** | Owner/metadata, layout, empty/error states, animations, accessibility |
 | 5 | `src/InventoryScreen.jsx` and account inventory | `WebsiteInventoryScreen.jsx` | **Partial** | Inventory works read-only; current website DOM layout and Android RN code remain separate |
@@ -47,3 +47,10 @@ Android remains authoritative for secure identity, PupEye/device security, signe
 - Favor safe incremental native React UI extraction over directly executing website DOM/CSS inside Android.
 - Website visual/content authority is unchanged; shared modules are upstream-owned and mirrored only by automated provenance-checked generation.
 - Do not merge PR #102 or release beta solely because the JavaScript build succeeds; the current Supabase integration fixture failure and real-device verification still require attention.
+
+## Part 2 changes committed in PR #102
+
+1. Generated `websiteNavigation.js` directly from the website `MAIN_TABS` declaration with pinned upstream and downstream SHA checks. The app uses this module for both desktop and phone navigation.
+2. Matched website CSS desktop breakpoint, sidebar clamp and the `1.366fr : 1fr` Play/right-rail ratio; responsive to width changes and Android freeform windows.
+3. Reworked the desktop Play stage around the website's published night-yard scene URL, with an offline dark fallback; adjusted player identity, background, mobile stage scaling, XP/streak distribution and minimum available button visibility.
+4. Added regression checks for navigation ownership, layout thresholds, stage structure and compilation. **CI and physical-device verification are separate release gates.**
