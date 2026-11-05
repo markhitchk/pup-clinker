@@ -70,7 +70,8 @@ new Function('require','module','exports',source)(id=>{
    React.createElement('Pressable',{accessibilityRole:'button',accessibilityLabel:'Back to game',onPress:onBack},'Back'))
  };
  if(id==='./src/components/WebsiteCareShopScreens.jsx'||
-    id==='./src/components/WebsiteRewardsScreens.jsx'){
+    id==='./src/components/WebsiteRewardsScreens.jsx'||
+    id==='./src/components/WebsiteRosterPrestigeScreens.jsx'){
   const name=id.split('/').at(-1);
   const path=new URL('../src/components/'+name,import.meta.url);
   const generated={exports:{}};
