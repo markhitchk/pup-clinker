@@ -1,0 +1,62 @@
+name: Sync website React UI to Android
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: website-react-ui-sync
+  cancel-in-progress: false
+
+jobs:
+  propose-website-ui:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Pull browser-safe React Native components from website main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUPPY_WEBSITE_UI_REF: main
+        run: node Mobile/scripts/sync-website-ui.mjs
+      - name: Check for website UI changes
+        id: diff
+        shell: bash
+        run: |
+          if git diff --quiet -- Mobile/src/shared-ui Mobile/src/shared; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Android dependencies
+        if: steps.diff.outputs.changed == 'true'
+        run: npm --prefix Mobile ci --no-audit --no-fund
+      - name: Verify Android UI parity and gameplay safety tests
+        if: steps.diff.outputs.changed == 'true'
+        run: npm --prefix Mobile test
+      - name: Publish reviewable Android UI sync pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C sync/website-ui
+          git add Mobile/src/shared-ui Mobile/src/shared
+          git commit -m "chore(ui): sync canonical website React UI source to Android"
+          git push --force-with-lease origin HEAD:sync/website-ui
+          if ! gh pr view sync/website-ui --json number >/dev/null 2>&1; then
+            gh pr create --base main --head sync/website-ui \
+              --title "chore(ui): sync website React UI to Android" \
+              --body "Automated, allowlisted website-to-Android sync. The same React Native UI sources are reviewed and tested before beta APK release. Native PupEye, secure storage and Android-only platform code are unchanged." \
+              || echo "::warning::GitHub blocked pull-request creation. Review branch sync/website-ui manually."
+          fi
