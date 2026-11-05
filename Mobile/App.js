@@ -19,7 +19,7 @@ import {createWebsiteCareShopScreens} from './src/components/WebsiteCareShopScre
 import {createWebsiteRewardsScreens} from './src/components/WebsiteRewardsScreens.jsx';
 import {createWebsiteRosterPrestigeScreens} from './src/components/WebsiteRosterPrestigeScreens.jsx';
 import {suggestPuppyName} from './src/production/websiteNameSuggestions.js';
-import {t as websiteTranslate,normalizeLanguage} from './src/production/websiteI18n.js';
+import {useWebsiteLanguage} from './src/production/websiteLanguage.js';
 import {webGoalState} from './src/production/websiteGoalState.js';
 import WebsiteInventoryScreen from './src/components/WebsiteInventoryScreen.jsx';
 import WebsiteDesktopDashboard from './src/components/WebsiteDesktopDashboard.jsx';
@@ -1087,12 +1087,6 @@ const {CareScreen,ShopScreen}=createWebsiteCareShopScreens({ROSTER,careTapBonus,
 // UI-only website date logic from changing signed reward transactions.
 const nativeRewardDate=timestamp=>new Date(timestamp);
 const nativeRewardEpoch=timestamp=>localEpochDay(new Date(timestamp));
-const useWebsiteLanguage=()=>{
- let locale='en';
- try{locale=Intl.DateTimeFormat().resolvedOptions().locale;}catch{}
- const language=normalizeLanguage(locale);
- return {language,t:(key,params)=>websiteTranslate(language,key,params)};
-};
 const {DailyGoalCard,RewardsScreen}=createWebsiteRewardsScreens({
  Txt,styles,C,PageHeader,Button,Card,format,goalsForDay,monthKey,level,
  MAX_PLAYER_LEVEL,MAX_PLAYER_XP,nextXpTarget,levelXp,MAX_REWARD_STREAK_DAYS,
