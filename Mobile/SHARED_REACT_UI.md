@@ -14,9 +14,11 @@ The **website is already approved**. Its repository, CSS, layouts, account pages
 Run from the Android repository:
 - `node Mobile/scripts/sync-website-ui.mjs --verify`: checks Android-native source/style integration offline.
 - `node Mobile/scripts/sync-website-ui.mjs`: reads the *unchanged* website `main` stylesheet and regenerates native design tokens.
-- `.github/workflows/sync-website-ui.yml`: scheduled every six hours and manually dispatched; proposes **Android-only** pull requests after tests when the website's color tokens change.
+- `node Mobile/scripts/sync-website-native-ui.mjs --verify`: checks exact Git blob hashes for allowlisted website-owned, React Native-compatible components without network access.
+- `node Mobile/scripts/sync-website-native-ui.mjs`: mirrors reviewed UI source from an immutable website commit; `websiteUiSources.json` pins revision, paths and checksums.
+- `.github/workflows/sync-website-ui.yml`: scheduled every six hours and manually dispatched; proposes **Android-only** pull requests after tests when website color tokens or allowlisted native UI components change.
 
-**Scope of automation:** website CSS color tokens only. Existing website HTML elements, CSS layout, animation keyframes, browser router and web-only APIs cannot execute as native React Native JSX. They must be translated into native components screen by screen, preserving behavior. They do not auto-sync to installed APKs. We do not modify website UI as a prerequisite.
+**Scope of automation:** website CSS color tokens plus the allowlisted native account-details UI screen. The website owns the editable implementation, and Android's checked-in output is generated only (not a separately maintained screen). See `Mobile/PORT_MATRIX.md` for ownership and staged migration. Other website HTML elements, CSS layout, animation keyframes, browser router and web-only APIs cannot execute as native React Native JSX. They must be translated into native components screen by screen, preserving behavior. They do not auto-sync to installed APKs. We do not modify website UI as a prerequisite.
 
 ## Visual parity acceptance
 
