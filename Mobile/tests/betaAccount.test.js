@@ -27,7 +27,9 @@ test('beta launches full Puppy Clicker screen hierarchy, with optional Discord s
  assert.match(root,/gameForDisplay/);
  assert.doesNotMatch(root,/Read-only original cloud progress · protected actions unavailable/);
  assert.match(root,/readOnly=\{betaMode&&!\(cloudState==='LIVE_SYNCED'/);
- assert.match(root,/disabled=\{readOnly\|\|!complete\}/);
+ const canonicalRewards=read('../src/components/WebsiteRewardsScreens.jsx');
+ assert.match(canonicalRewards,/const unavailable=readOnly\\|\\|\\(!complete&&typeof onOpen/);
+ assert.match(canonicalRewards,/disabled=\\{unavailable\\}/);
  assert.match(hook,/ToastAndroid\.show\(/);
  assert.doesNotMatch(beta,/GUEST_SAVE_KEY|serializeGuestSave|mayEnterGameplay\(true\)/);
 });
