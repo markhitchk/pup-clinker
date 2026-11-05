@@ -15,9 +15,10 @@ test('canonical website Rewards markup stays a native generated UI source',()=>{
   assert.ok(body.includes('function '+component+'('),component);
   assert.ok(!app.includes('function '+component+'('),'duplicate Android '+component);
  }
- for(const text of ['Today’s goals','Daily Puppy Gift','Dog Park Adventure','Puppy Casino','Puppy Gacha','Prestige','ACHIEVEMENTS','Claim Reward'])
+ for(const text of ['Daily Puppy Gift','Dog Park Adventure','Puppy Casino','Puppy Gacha','Prestige','ACHIEVEMENTS','Claim Reward'])
   assert.ok(body.includes(text),'missing website reward section '+text);
- for(const text of ["onOpen?.(destination)","act({type:'claimDailyGoal'","accessibilityState={{expanded:open}}","disabled={unavailable}"])
+ assert.ok(body.includes('tr("todaysGoals")'),'website Rewards daily goal label must come from i18n catalog');
+  for(const text of ["onOpen?.(destination)","act({type:'claimDailyGoal'","accessibilityState={{expanded:open}}","disabled={unavailable}"])
   assert.ok(body.includes(text),'missing website Rewards behavior '+text);
  assert.doesNotMatch(body,/<(?:div|article|section|button)\b/);
  assert.ok(app.includes('createWebsiteRewardsScreens'));
