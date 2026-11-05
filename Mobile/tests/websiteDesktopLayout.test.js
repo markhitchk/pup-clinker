@@ -67,8 +67,13 @@ test('Desktop copies website visual structure as native components',()=>{
  assert.match(app,/WebsiteDesktopNavigation tabs=\{TABS\}/);
  assert.match(app,/WebsiteDesktopTopBar game=\{g\}/);
  assert.match(app,/!desktop&&state\.ready&&g\.onboardingComplete/);
- assert.match(app,/scrollEnabled=\{desktop\|\|windowHeight<560\|\|Boolean\(secondary\)\|\|tab!=='play'\}/);
- assert.match(play,/desktop\?Math\.max\(690/);
+ assert.match(app,/scrollEnabled=\{desktop\|\|windowHeight<700\|\|contentHeight<575\|\|Boolean\(secondary\)\|\|tab!=='play'\}/);
+ assert.match(play,/desktop\?Math\.max\(620/);
+ assert.match(play,/night-yard-v1\.webp/);
+ assert.match(play,/desktopScene/);
+ assert.match(play,/desktopIdentity/);
+ assert.match(shell,/progressCard:\{flex:0\.35/);
+ assert.match(shell,/streakCard:\{flex:0\.65/);
  assert.doesNotMatch(shell+dashboard,/<(?:div|section|aside|article)\b|\bwindow\./);
  for(const component of [shell,dashboard,play])
   assert.doesNotThrow(()=>transformSync(component,{babelrc:false,configFile:false,plugins:[jsx]}));
