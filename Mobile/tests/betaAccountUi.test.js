@@ -12,6 +12,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
 const native=Object.fromEntries(['ActivityIndicator','Image','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
+native.useWindowDimensions=()=>({width:393,height:852});
 native.NativeModules={};
 native.Linking={
  getInitialURL:async()=>null,
