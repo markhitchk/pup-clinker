@@ -14,8 +14,9 @@ import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
 import WebsitePlayScreen from './src/components/WebsitePlayScreen.jsx';
+import WebsiteInventoryScreen from './src/components/WebsiteInventoryScreen.jsx';
 import WebsiteDesktopDashboard from './src/components/WebsiteDesktopDashboard.jsx';
-import {WebsiteDesktopNavigation,WebsiteDesktopTopBar,WebsiteDesktopInventory,WebsiteDesktopHelp} from './src/components/WebsiteDesktopShell.jsx';
+import {WebsiteDesktopNavigation,WebsiteDesktopTopBar,WebsiteDesktopHelp} from './src/components/WebsiteDesktopShell.jsx';
 import {desktopLayoutForWindow} from './src/production/desktopLayout.js';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
@@ -1059,12 +1060,20 @@ export function PuppyApp({betaMode=false}){
  const motion=effectiveMotion(saved);
  const g={...saved,animationsEnabled:motion.casino,tapAnimationsEnabled:motion.tap,idleAnimationsEnabled:motion.decorative&&saved.animationsEnabled,buttonMotionEnabled:motion.buttons};
  const [inboxOpen,setInboxOpen]=useState(false);
+ const [inventoryRefreshing,setInventoryRefreshing]=useState(false);
+ const refreshInventory=async()=>{
+  if(inventoryRefreshing)return;
+  setInventoryRefreshing(true);
+  try{await refreshAccount();}finally{setInventoryRefreshing(false);}
+ };
  const notifications=useNotifications({game:saved,ready:betaMode?(onboarding.ready&&onboarding.setup.setupComplete&&account?.status==='VERIFIED'&&account?.legalAccepted===true):(state.ready&&saved.onboardingComplete),act,onOpen:()=>setInboxOpen(true)});
  const diagnostics=useLocalDiagnostics(saved,secondary||tab,state.ready);
  const openScreen=id=>{if(id==='notifications'){notifications.check();setInboxOpen(true);}else if(TABS.some(tab=>tab[0]===id)){setTab(id);setSecondary(null);}else setSecondary(id);};
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
-  if(secondary==='inventory')return <WebsiteDesktopInventory game={g} onOpen={openScreen}/>;
+  if(secondary==='inventory')return <WebsiteInventoryScreen game={g} onOpen={openScreen}
+   onBack={()=>setSecondary(null)} onRefresh={refreshInventory}
+   refreshing={inventoryRefreshing} updatedAt={syncStatus?.savedAt}/>;
   if(secondary==='help')return <WebsiteDesktopHelp onOpen={openScreen}/>;
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} account={account} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
@@ -1131,6 +1140,11 @@ export function PuppyApp({betaMode=false}){
    <View style={[styles.topBar,g.playLayoutV2Enabled&&{backgroundColor:C.bg,borderBottomWidth:1,borderBottomColor:C.accentSoft}]}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
+   <Pressable accessibilityRole="button" accessibilityLabel="Open inventory"
+    testID="android-phone-inventory-button"
+    onPress={()=>openScreen('inventory')} style={styles.headerButton}>
+    <Txt style={{fontSize:23}}>🎒</Txt>
+   </Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel={'Notifications, '+saved.notificationInbox.filter(n=>!n.read).length+' unread'} onPress={()=>{notifications.check();setInboxOpen(true);}} style={styles.headerButton}><Txt style={{fontSize:23}}>🔔</Txt>{saved.notificationInbox.some(n=>!n.read)?<View style={styles.unreadDot}/>:null}</Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>):null}
@@ -1139,7 +1153,7 @@ export function PuppyApp({betaMode=false}){
   <ScrollView key={secondary||tab} scrollEnabled={desktop||windowHeight<560||Boolean(secondary)||tab!=='play'} onLayout={event=>{const height=event.nativeEvent.layout.height;if(height>0)setContentHeight(height);}} style={styles.scroll} contentContainerStyle={[styles.content,(secondary==='settings'||['play','care','roster'].includes(tab)&&!secondary)&&{paddingTop:2,paddingBottom:0,paddingHorizontal:secondary==='settings'?16:tab==='roster'?12:14,gap:0},{maxWidth:desktop?undefined:width>650?670:undefined,
     paddingHorizontal:desktop?20:undefined,
     paddingVertical:desktop?14:undefined}]} keyboardShouldPersistTaps="handled">
-   {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
+   {secondary&&secondary!=='settings'&&secondary!=='exchange'&&secondary!=='account-details'&&secondary!=='inventory'?<View style={styles.back}><Button compact secondary onPress={()=>setSecondary(null)}>← Back to {TABS.find(x=>x[0]===tab)?.[2]}</Button><Txt style={styles.heading}>{secondary.toUpperCase()}</Txt></View>:null}
    {!state.ready?<Card title={betaMode?'Loading Pup Account…':'Loading local guest data…'}><Txt muted>{betaMode?'Checking signed cloud progress.':'Reading device cache.'}</Txt></Card>:!g.onboardingComplete?<OnboardingScreen g={saved} act={act} notifications={notifications}/>:<>{secondary==='casino'?<Wallet game={g}/>:null}{main()}</>}
   </ScrollView>
   {!desktop&&state.ready&&g.onboardingComplete&&!secondary?<View style={[styles.bottomBar,g.playLayoutV2Enabled&&{backgroundColor:C.card,borderTopColor:C.accentSoft}]}>
