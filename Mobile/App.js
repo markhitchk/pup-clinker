@@ -21,6 +21,7 @@ import PuppyPointer from './src/components/PuppyPointer.jsx';
 import {useNotifications} from './src/state/useNotifications.js';
 import {useLocalDiagnostics} from './src/state/useLocalDiagnostics.js';
 import {themedStyles} from './src/theme.js';
+import {PupResourceStrip,PupNeedPill,PupQuickAction} from './src/shared-ui/PupGameChrome.jsx';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {Alert,Animated,Easing,Image,ImageBackground,Modal,NativeModules,Pressable,ScrollView,StatusBar,Text,TextInput,Vibration,View,BackHandler,useColorScheme,useWindowDimensions} from 'react-native';
 import {colors as C} from './src/theme.js';
@@ -112,33 +113,13 @@ function PageHeader({title,subtitle,action,withLogo=false}){
   </View>{action||null}</View>;
 }
 function Wallet({game,compact=false,v2=false}){
- return <View style={[styles.wallet,compact&&{paddingVertical:6,paddingHorizontal:5},v2&&{borderColor:C.accent,borderWidth:2,borderRadius:22}]}>
-  {[['🍪','Treats',game.treats],['🦴','Bones',game.bones],['🪙','Pup Coins',game.pupCoins],['🐾','Casino Chips',game.casinoChips]].map(([icon,label,value])=>
-   <Pressable key={label} accessibilityRole="button"
-    accessibilityLabel={label+' exact balance: '+Number(value).toLocaleString('en-US')}
-    onPress={()=>Alert.alert(label+' · Exact balance',Number(value).toLocaleString('en-US')+' '+label)}
-    style={styles.walletCell}>
-    <Txt style={[styles.walletEmoji,compact&&{fontSize:16}]}>{icon}</Txt>
-    <Txt numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}
-     style={[styles.walletNumber,compact&&{fontSize:14}]}>{v6WalletFormat(value,game.compactNumbers!==false)}</Txt>
-    <Txt numberOfLines={1} style={[styles.walletLabel,compact&&{fontSize:10}]}>{label}</Txt>
-   </Pressable>)}
- </View>;
+ return <PupResourceStrip game={game} styles={styles} colors={C} compact={compact} v2={v2} formatValue={v6WalletFormat}/>;
 }
 function NeedPill({icon,value}){
- const safe=Math.min(100,Math.max(0,Number(value)||0));
- return <View style={[styles.needPill,safe<=10&&styles.needPillLow]}>
-  <Txt style={styles.needPillText}>{icon} {safe}%</Txt>
-  <View accessibilityRole="progressbar" accessibilityLabel={icon+' puppy care'}
-   accessibilityValue={{min:0,max:100,now:safe}} style={styles.needMeterTrack}>
-   <View style={[styles.needMeterFill,{width:safe+'%'}]}/>
-  </View>
- </View>;
+ return <PupNeedPill icon={icon} value={value} styles={styles}/>;
 }
 function QuickAction({emoji,title,subtitle,onPress,disabled=false}){
- return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={({pressed})=>[styles.quickAction,disabled&&styles.buttonDisabled,pressed&&{opacity:0.75}]}>
-  <Txt style={styles.quickActionIcon}>{emoji}</Txt><Txt numberOfLines={1} style={styles.quickActionTitle}>{title}</Txt><Txt numberOfLines={1} style={styles.quickActionDescription}>{subtitle}</Txt>
- </Pressable>;
+ return <PupQuickAction emoji={emoji} title={title} subtitle={subtitle} onPress={onPress} disabled={disabled} styles={styles}/>;
 }
 function DailyGoalCard({g,goal,act,clock,readOnly=false}){
  const date=new Date(clock),today=localEpochDay(date),claimed=g.dailyDay===today&&g.claimedDailyTasks.includes(goal.id);
