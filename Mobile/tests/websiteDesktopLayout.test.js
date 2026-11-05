@@ -60,7 +60,7 @@ test('Desktop copies website visual structure as native components',()=>{
  assert.match(app,/WebsiteDesktopNavigation tabs=\{TABS\}/);
  assert.match(app,/WebsiteDesktopTopBar game=\{g\}/);
  assert.match(app,/!desktop&&state\.ready&&g\.onboardingComplete/);
- assert.match(app,/scrollEnabled=\{desktop\|\|Boolean\(secondary\)\|\|tab!=='play'\}/);
+ assert.match(app,/scrollEnabled=\{desktop\|\|windowHeight<560\|\|Boolean\(secondary\)\|\|tab!=='play'\}/);
  assert.match(play,/desktop\?Math\.max\(690/);
  assert.doesNotMatch(shell+dashboard,/<(?:div|section|aside|article)\b|\bwindow\./);
  for(const component of [shell,dashboard,play])
