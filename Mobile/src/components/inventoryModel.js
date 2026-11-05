@@ -1,24 +1,16 @@
 // Read-only inventory view model based on the existing website's InventoryScreen.jsx.
 // Data comes from the signed Pup Account projection already loaded by useGame.
 import {ROSTER,UPGRADES,RARITIES} from '../engine/game.js';
+import {WEBSITE_INVENTORY_CURRENCIES,WEBSITE_INVENTORY_ACCESSORYICONS,
+ WEBSITE_INVENTORY_RARITYICONS,WEBSITE_INVENTORY_SECTIONS} from '../production/websiteInventoryContract.js';
 
-export const INVENTORY_CATEGORIES=Object.freeze([
- {id:'puppies',icon:'🐶',label:'Puppies'},
- {id:'accessories',icon:'🎀',label:'Accessories'},
- {id:'tickets',icon:'🎟️',label:'Tickets'},
- {id:'upgrades',icon:'⬆️',label:'Upgrades'},
- {id:'wallet',icon:'🍪',label:'Wallet'}
-]);
-export const INVENTORY_CURRENCIES=Object.freeze([
- {icon:'🍪',label:'Treats',key:'treats'},
- {icon:'🦴',label:'Bones',key:'bones'},
- {icon:'🪙',label:'Pup Coins',key:'pupCoins'},
- {icon:'🐾',label:'Casino Chips',key:'casinoChips'}
-]);
-export const INVENTORY_ACCESSORY_ICONS=Object.freeze({Bandana:'🧣',Bow:'🎀',Crown:'👑'});
-export const INVENTORY_RARITY_ICONS=Object.freeze({
- COMMON:'⚪',UNCOMMON:'🟢',RARE:'🔵',EPIC:'🟣',LEGENDARY:'🟡'
-});
+// All category labels/icons are generated from the website InventoryScreen.jsx.
+export const INVENTORY_CATEGORIES=Object.freeze(WEBSITE_INVENTORY_SECTIONS.map(
+ ([id,icon,label])=>Object.freeze({id,icon,label})));
+export const INVENTORY_CURRENCIES=Object.freeze(WEBSITE_INVENTORY_CURRENCIES.map(
+ ([icon,label,key])=>Object.freeze({icon,label,key})));
+export const INVENTORY_ACCESSORY_ICONS=WEBSITE_INVENTORY_ACCESSORYICONS;
+export const INVENTORY_RARITY_ICONS=WEBSITE_INVENTORY_RARITYICONS;
 export const inventoryCount=value=>{
  const number=Number(value);
  return Number.isFinite(number)?Math.max(0,Math.trunc(number)):0;
