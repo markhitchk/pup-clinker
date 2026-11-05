@@ -13,8 +13,8 @@ test('account-link 401 and account-login 409 route to sign-in instead of PUPPY-N
   assert.equal(betaNeedsPupAccountSignIn({code}),false);
  }
  const hook=readFileSync(new URL('../src/state/useGame.js',import.meta.url),'utf8');
- assert.match(hook,/const signInRequired=betaNeedsPupAccountSignIn\\(error\\)/);
- assert.match(hook,/setStartupError\\(signInRequired\\?null:safeFailure\\)/);
+ assert.ok(hook.includes('const signInRequired=betaNeedsPupAccountSignIn(error);'));
+ assert.ok(hook.includes('setStartupError(signInRequired?null:safeFailure);'));
 });
 
 test('public startup codes have stable human-readable messages and recovery',()=>{
