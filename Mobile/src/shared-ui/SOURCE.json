@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "upstream": "markhitchk/Puppy-Clicker",
+  "commit": "3f15bf391458ce157aa75f5e64c9be60e5158899",
+  "files": [
+    {
+      "source": "src/shared-ui/PupGameChrome.jsx",
+      "target": "src/shared-ui/PupGameChrome.jsx",
+      "blobSha": "af8ee1948e0f2a7da4416caf426d292cc33aca9c"
+    },
+    {
+      "source": "src/shared/usePupAuthForm.js",
+      "target": "src/shared/usePupAuthForm.js",
+      "blobSha": "9ef61bc660d25ed6b9e35f27586cd27743e63fb7"
+    }
+  ]
+}
