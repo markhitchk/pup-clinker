@@ -49,7 +49,7 @@ test('Appearance opens real controls, saves light theme and collapses on Android
  await act(()=>ui.renderer.unmount());
 });
 test('Gameplay pointer switch changes a saved preference and leaves wallet intact',async()=>{
- const ui=await settings();await ui.press('Gameplay');
+ const ui=await settings();await ui.press('Play & performance');
  const pointer=ui.renderer.root.findAllByType('Switch').find(x=>x.props.accessibilityLabel==='Puppy mouse pointer');
  assert.equal(pointer.props.value,true);await act(()=>pointer.props.onValueChange(false));
  assert.equal(ui.state().game.puppyPointerEnabled,false);assert.equal(ui.state().game.treats,0);
