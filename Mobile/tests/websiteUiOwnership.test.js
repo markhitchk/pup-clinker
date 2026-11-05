@@ -49,6 +49,18 @@ test('website-owned account details UI has no independent Android copy drift',()
   assert.match(item.sourceSha,/^[a-f0-9]{40}$/,key+' canonical SHA');
   assert.equal(blobSha(load(item.target)),item.blobSha,key+' generated SHA');
  }
+ const auth=source.authContract;
+ assert.equal(auth.target,'src/production/websiteAccountContract.js');
+ assert.deepEqual(auth.sources.map(item=>item.source),[
+  'src/WebRegister.jsx','src/native/web/AccountGate.jsx','src/JoinSourceFields.jsx'
+ ]);
+ for(const item of auth.sources)assert.match(item.sourceSha,/^[a-f0-9]{40}$/);
+ assert.equal(blobSha(load(auth.target)),auth.blobSha);
+ const settings=source.settingsContract;
+ assert.equal(settings.source,'src/native/web/WebSettings.jsx');
+ assert.equal(settings.target,'src/production/websiteSettingsContract.js');
+ assert.match(settings.sourceSha,/^[a-f0-9]{40}$/);
+ assert.equal(blobSha(load(settings.target)),settings.blobSha);
  const screens=['src/components/WebsiteCareShopScreens.jsx','src/components/WebsiteRewardsScreens.jsx','src/components/WebsiteRosterPrestigeScreens.jsx'];
  for(const screen of screens){
   const body=load(screen);
