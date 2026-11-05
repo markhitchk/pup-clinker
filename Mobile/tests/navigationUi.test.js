@@ -53,6 +53,17 @@ new Function('require','module','exports',source)(id=>{
  if(id.endsWith('.png'))return 1;
  if(id==='./src/components/SettingsScreen.jsx')return {__esModule:true,default:()=>React.createElement('Text',null,'Settings page')};
  if(id==='./src/components/PuppyPointer.jsx')return {__esModule:true,default:({children,...p})=>React.createElement('View',p,children)};
+ if(id==='./src/components/WebsiteDesktopDashboard.jsx')
+  return {__esModule:true,default:({play})=>React.createElement('View',{testID:'android-desktop-dashboard'},play)};
+ if(id==='./src/components/WebsiteDesktopShell.jsx')
+  return {
+   WebsiteDesktopNavigation:({tabs,route,onOpen})=>React.createElement('View',{testID:'android-desktop-navigation'},
+    tabs.map(([id,icon,label])=>React.createElement('Pressable',{key:id,accessibilityRole:'tab',
+     accessibilityLabel:label,accessibilityState:{selected:route===id},onPress:()=>onOpen(id)},label))),
+   WebsiteDesktopTopBar:()=>React.createElement('View',{testID:'android-desktop-top-bar'}),
+   WebsiteDesktopInventory:()=>React.createElement('Text',null,'Inventory'),
+   WebsiteDesktopHelp:()=>React.createElement('Text',null,'Help')
+  };
  if(id==='./src/components/WebsitePlayScreen.jsx'){
   const screenFile=new URL('../src/components/WebsitePlayScreen.jsx',import.meta.url);
   const screenModule={exports:{}};
