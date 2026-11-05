@@ -55,6 +55,7 @@ test('Phone and desktop both use one real native Inventory with actual artwork a
  assert.match(screen,/Read-only inventory/);
  assert.match(screen,/onRefresh/);
  assert.match(screen,/onOpen\('roster'\)/);
+ assert.match(screen,/onOpen\('account-details'\)/);
  assert.match(app,/if\(secondary==='inventory'\)return <WebsiteInventoryScreen game=\{g\}/);
  assert.match(app,/onRefresh=\{refreshInventory\}/);
  assert.match(app,/accessibilityLabel="Open inventory"/);
