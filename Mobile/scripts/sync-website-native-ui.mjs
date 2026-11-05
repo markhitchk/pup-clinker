@@ -21,6 +21,9 @@ const INVENTORY_CONTRACT_TARGET='src/production/websiteInventoryContract.js';
 const AUTH_CONTRACT_TARGET='src/production/websiteAccountContract.js';
 const SETTINGS_CONTRACT_SOURCE='src/native/web/WebSettings.jsx';
 const SETTINGS_CONTRACT_TARGET='src/production/websiteSettingsContract.js';
+const CASINO_GACHA_SOURCE='src/native/App.jsx';
+const CASINO_DIALOG_SOURCE='src/native/web/WebsiteDesign.jsx';
+const CASINO_GACHA_TARGET='src/components/WebsiteCasinoGachaScreens.jsx';
 const AUTH_SOURCES=Object.freeze([
  'src/WebRegister.jsx','src/native/web/AccountGate.jsx','src/JoinSourceFields.jsx'
 ]);
@@ -229,6 +232,27 @@ function generateWebsiteSettingsContract(source){
  'export const WEBSITE_SETTINGS_LABELS=Object.freeze(Object.fromEntries(\n'+
  ' WEBSITE_SETTINGS_SECTIONS.map(item=>[item.id,item.title])));\n';
 }
+
+function generateCasinoGacha(source,websiteDesign){
+ const gacha=extractWebsitePart(source,'GachaScreen','\nfunction RewardsGroup(');
+ const rawCasino=extractWebsitePart(source,'CasinoScreen','\nfunction OnboardingScreen(');
+ const button='g.nativeCasinoRefund?<Button disabled={g.gameplayBusy}';
+ if(rawCasino.split(button).length!==2||
+    !gacha.includes("act({type:'gacha',payment})")||
+    /<(?:div|article|section|button)\b/.test(gacha+rawCasino))
+  throw Error('Website Gacha/Casino native UI changed; review secure sync adapter');
+ const casino=rawCasino.replace(button,
+  'g.nativeCasinoRefund&&g.canRecoverLegacyCasino===true?<Button disabled={g.gameplayBusy}');
+ const start=websiteDesign.indexOf('function CasinoIntroDialog(');
+ const end=websiteDesign.indexOf('\n}',start)+2;
+ if(start<0||end<=start)throw Error('Website Casino dialog was removed');
+ const dialog=websiteDesign.slice(start,end);
+ const match=dialog.match(/<p id="casino-intro-description">([^<]+)<\/p>/);
+ if(!match||!dialog.includes('Simulated Gambling')||!dialog.includes('Continue'))
+  throw Error('Casino gambling disclaimer has changed; review Android consent');
+ return "// GENERATED from Puppy-Clicker/src/native/App.jsx and src/native/web/WebsiteDesign.jsx.\n// Gacha/Casino UI and disclosures belong to the website; signed game actions remain native.\n// Android-only security adapter: legacy Casino recovery is disabled without a verified native capability.\n// Do not hand-edit: run scripts/sync-website-native-ui.mjs.\nimport React,{useEffect,useRef,useState} from 'react';\nimport {Animated,Easing,Image,Modal,Pressable,View,useWindowDimensions} from 'react-native';\n\nexport function createWebsiteCasinoGachaScreens({Txt,Button,styles,C,ROSTER,GACHA_ART,GACHA_MACHINE,gachaMachineFrame,gachaPool,GACHA_TREAT_COST,v6Format,Portrait,PuppyPointer,CASINO_PAGES,format,SlotsV6,RouletteV6,PlinkoV6,ScratchersV6,LuckyWheelV6,BlackjackV6Panel}){\n"+"function CasinoIntroDialog({onBack,onContinue}){\n return <Modal visible transparent animationType=\"fade\" onRequestClose={onBack}>\n  <View style={styles.casinoIntroOverlay}>\n   <View accessibilityRole=\"summary\" style={styles.casinoIntroPanel}>\n    <Txt style={styles.casinoIntroIcon}>🎰</Txt>\n    <Txt style={styles.casinoIntroEyebrow}>PUPPY CLICKER</Txt>\n    <Txt accessibilityRole=\"header\" style={styles.casinoIntroTitle}>Puppy Casino</Txt>\n    <Txt style={styles.casinoIntroNotice}>Simulated Gambling</Txt>\n    <Txt style={styles.casinoIntroText}>@@CASINO_DISCLOSURE@@</Txt>\n    <View style={styles.casinoIntroActions}>\n     <Button secondary onPress={onBack}>Go Back</Button>\n     <Button onPress={onContinue}>Continue →</Button>\n    </View>\n   </View>\n  </View>\n </Modal>;\n}\n".replace('@@CASINO_DISCLOSURE@@',match[1])+
+ '\n\n'+gacha+'\n\n'+casino+"\n return {GachaScreen,CasinoScreen};\n}\n";
+}
 async function verify(){
  const manifest=JSON.parse(await readFile(MANIFEST,'utf8'));
  if(manifest.upstream!==UPSTREAM||!/^[a-f0-9]{40}$/.test(manifest.commit)
@@ -305,7 +329,17 @@ async function verify(){
   throw Error('Missing website settings source SHA');
  if(blobSha(await readFile(resolve(MOBILE,SETTINGS_CONTRACT_TARGET),'utf8'))!==settings.blobSha)
   throw Error('Website settings contract drift');
- console.log('Canonical website UI sources, Part 5 auth and settings contracts verified');
+ const casino=manifest.casinoGacha;
+ if(!casino||casino.source!==CASINO_GACHA_SOURCE||
+    casino.dialogSource!==CASINO_DIALOG_SOURCE||
+    casino.target!==CASINO_GACHA_TARGET||
+    !/^[a-f0-9]{40}$/.test(casino.sourceSha)||
+    !/^[a-f0-9]{40}$/.test(casino.dialogSha)||
+    !/^[a-f0-9]{40}$/.test(casino.blobSha))
+  throw Error('Missing website Casino/Gacha provenance');
+ if(blobSha(await readFile(resolve(MOBILE,CASINO_GACHA_TARGET),'utf8'))!==casino.blobSha)
+  throw Error('Website Casino/Gacha generated UI drift');
+ console.log('Canonical website UI sources, Casino and Gacha hashes verified');
 }
 async function fetchText(url,headers){
  const response=await fetch(url,{headers});
@@ -411,7 +445,16 @@ else{
   await writeFile(resolve(MOBILE,SETTINGS_CONTRACT_TARGET),settingsBody);
  const settingsContract={source:SETTINGS_CONTRACT_SOURCE,target:SETTINGS_CONTRACT_TARGET,
   sourceSha:blobSha(websiteSettings),blobSha:blobSha(settingsBody)};
- const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules,rosterPrestige,puppyNames,inventoryContract,authContract,settingsContract},null,2)+'\n';
+ const websiteCasinoIntro=await fetchText(
+  'https://raw.githubusercontent.com/'+UPSTREAM+'/'+commit+'/'+CASINO_DIALOG_SOURCE,
+  {'User-Agent':'Puppy-Clicker-Android-UI-sync'});
+ const casinoBody=generateCasinoGacha(sourceApp,websiteCasinoIntro);
+ if((await readFile(resolve(MOBILE,CASINO_GACHA_TARGET),'utf8').catch(()=>null))!==casinoBody)
+  await writeFile(resolve(MOBILE,CASINO_GACHA_TARGET),casinoBody);
+ const casinoGacha={source:CASINO_GACHA_SOURCE,dialogSource:CASINO_DIALOG_SOURCE,
+  target:CASINO_GACHA_TARGET,sourceSha:blobSha(sourceApp),
+  dialogSha:blobSha(websiteCasinoIntro),blobSha:blobSha(casinoBody)};
+ const desired=JSON.stringify({upstream:UPSTREAM,commit,components,navigation,careShop,rewards,...syncedModules,rosterPrestige,puppyNames,inventoryContract,authContract,settingsContract,casinoGacha},null,2)+'\n';
  if((await readFile(MANIFEST,'utf8').catch(()=>null))!==desired)
   await writeFile(MANIFEST,desired);
  await verify();
