@@ -10,11 +10,11 @@ const clamp=(value,min,max)=>Math.min(max,Math.max(min,Number(value)||0));
 const pct=(value,max)=>max>0?100*clamp(value,0,max)/max:0;
 
 export default function WebsitePlayScreen({
- game,viewportHeight,wallet,portrait,onTap,cooldown,bonus,next,ticketVisible
+ game,viewportHeight,wallet,portrait,onTap,cooldown,bonus,next,ticketVisible,desktop=false
 }){
- const height=Math.max(350,Number(viewportHeight)||560);
- const short=height<540;
- const medium=height<660;
+ const height=desktop?Math.max(690,(Number(viewportHeight)||700)-12):Math.max(350,Number(viewportHeight)||560);
+ const short=!desktop&&height<540;
+ const medium=!desktop&&height<660;
  const tapTitle=cooldown
   ?'Fair-play cooldown · '+cooldown+'s'
   :game.energy<=10
@@ -22,15 +22,15 @@ export default function WebsitePlayScreen({
    :'Tap '+game.puppyName;
  const canTap=cooldown<=0;
  return <View testID="android-play-screen"
-  style={[styles.page,{height,gap:short?6:10}]}>
+  style={[styles.page,{height,gap:desktop?16:short?6:10}]}>
   <View style={[styles.heading,{minHeight:short?39:47}]}>
    <Text accessibilityRole="header" style={[styles.pageTitle,{fontSize:short?24:29}]}>Play</Text>
    <Text style={[styles.secondaryText,{fontSize:short?11:13}]}>Tap your puppy and earn treats.</Text>
   </View>
   {wallet}
   <View testID="android-website-play-stage"
-   style={[styles.stage,{padding:short?8:12,gap:short?5:9}]}>
-   <View style={[styles.puppyPlatform,{minHeight:short?128:medium?156:190}]}>
+   style={[styles.stage,{padding:desktop?17:short?8:12,gap:desktop?12:short?5:9}]}>
+   <View style={[styles.puppyPlatform,{minHeight:desktop?350:short?128:medium?156:190}]}>
     <View pointerEvents="none" style={styles.orbitOuter}>
      <View style={styles.orbitInner}/>
     </View>
