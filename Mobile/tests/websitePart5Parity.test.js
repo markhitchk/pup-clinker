@@ -37,6 +37,9 @@ test('native account screen uses website intro, benefits, tabs and password-mana
   assert.ok(source.includes('WEBSITE_ACCOUNT_COPY.'+key),key);
  assert.match(source,/accessibilityRole="tab" accessibilityState=\{\{selected:mode===item\}\}/);
  assert.match(source,/autoComplete="username"/);
+ assert.match(source,/desktop=windowWidth>=960/);
+ assert.match(source,/desktopContent/);
+ assert.match(source,/desktopIntro/);
  assert.match(source,/autoComplete=\{mode==='signup'\?'new-password':'current-password'\}/);
  assert.match(source,/autoComplete="new-password"/);
  assert.match(source,/Read Terms of Use/);
