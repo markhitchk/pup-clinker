@@ -106,5 +106,11 @@
     "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
     "dialogSha": "a5a09cac9697281d9f3c88624d1feb17a8b4422f",
     "blobSha": "8978c0c70e6cfbb955cf0dad42a2da24d6d9435a"
+  },
+  "pupeyeStatus": {
+    "source": "src/pupeyeStatusPresentation.js",
+    "target": "src/production/websitePupEyePresentation.js",
+    "sourceSha": "c182896019d5b9c2c60d6b7e7feeda4934b8f397",
+    "blobSha": "c182896019d5b9c2c60d6b7e7feeda4934b8f397"
   }
 }
