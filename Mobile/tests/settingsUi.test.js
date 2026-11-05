@@ -24,7 +24,7 @@ function load(relative){
  const file=new URL(relative,import.meta.url),require=createRequire(file);
  const compiled=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
  const module={exports:{}};
- const mocked=id=>id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:id==='react-native'?native:id==='../theme.js'?theme:id.includes('/assets/puppies')?{PUPPY_IMAGES:{classic:1}}:id.endsWith('.png')?1:id==='./PuppyPointer.jsx'?{default:'PuppyPointer',__esModule:true}:id.endsWith('.jsx')?{default:load(new URL(id,file).href),__esModule:true}:require(id);
+ const mocked=id=>id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:id==='react-native'?native:id==='../production/websiteLanguage.js'?{useWebsiteLanguage:()=>({language:'en',setLanguage:()=>{},t:key=>key})}:id==='../theme.js'?theme:id.includes('/assets/puppies')?{PUPPY_IMAGES:{classic:1}}:id.endsWith('.png')?1:id==='./PuppyPointer.jsx'?{default:'PuppyPointer',__esModule:true}:id.endsWith('.jsx')?{default:load(new URL(id,file).href),__esModule:true}:require(id);
  new Function('require','module','exports',compiled)(mocked,module,module.exports);return module.exports.default;
 }
 const Settings=load('../src/components/SettingsScreen.jsx');
