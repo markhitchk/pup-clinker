@@ -32,5 +32,23 @@
     "target": "src/components/WebsiteCareShopScreens.jsx",
     "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
     "blobSha": "d3d622686f6d98feb6529c68079702dce04d590e"
+  },
+  "rewards": {
+    "source": "src/native/App.jsx",
+    "target": "src/components/WebsiteRewardsScreens.jsx",
+    "sourceSha": "93ab87ada9614762d44ff8fd221fe395f6252f03",
+    "blobSha": "19dc606ab28a7cfede3ad8e10da190a08c4d83fb"
+  },
+  "languageCatalog": {
+    "source": "src/communityI18n.js",
+    "target": "src/production/websiteI18n.js",
+    "sourceSha": "b1f0e351654b3bc1ab578f2eb49176749e6a3e0d",
+    "blobSha": "b1f0e351654b3bc1ab578f2eb49176749e6a3e0d"
+  },
+  "goalState": {
+    "source": "src/native/web/webGoalState.js",
+    "target": "src/production/websiteGoalState.js",
+    "sourceSha": "05713ed217702f22abce23b39db0bda9d7e0a879",
+    "blobSha": "a475fd78365dd5cdf8a9212da1790b34a703c61e"
   }
 }
