@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {transformSync} from '@babel/core';
 import jsx from '@babel/plugin-transform-react-jsx';
-import {WEBSITE_DESKTOP_BREAKPOINT,desktopLayoutForWindow} from '../src/production/desktopLayout.js';
+import {WEBSITE_DESKTOP_BREAKPOINT,WEBSITE_DESKTOP_PLAY_SHARE,WEBSITE_DESKTOP_RAIL_SHARE,desktopLayoutForWindow} from '../src/production/desktopLayout.js';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const require=createRequire(import.meta.url);
@@ -18,13 +18,20 @@ test('Android Chromebook and Samsung DeX match website desktop breakpoint',()=>{
  for(const width of [960,1024,1280,1600,1920]){
   const layout=desktopLayoutForWindow(width,850);
   assert.equal(layout.desktop,true,'desktop width '+width);
-  assert.ok(layout.sidebarWidth>=200);
+  assert.equal(layout.sidebarWidth,Math.round(Math.max(180,Math.min(248,width*0.1615))));
+  assert.ok(layout.sidebarWidth>=180&&layout.sidebarWidth<=248);
   assert.ok(layout.rightRailWidth>=290);
   assert.ok(layout.mainWidth>layout.rightRailWidth);
+  const grid=layout.mainWidth-40-18;
+  assert.equal(layout.playWidth+layout.rightRailWidth,grid);
+  assert.ok(Math.abs(layout.playWidth/layout.rightRailWidth-WEBSITE_DESKTOP_PLAY_SHARE/WEBSITE_DESKTOP_RAIL_SHARE)<0.02);
  }
  assert.equal(desktopLayoutForWindow(1279,800).compactDesktop,false);
  assert.equal(desktopLayoutForWindow(1100,680).compactDesktop,true);
  assert.equal(desktopLayoutForWindow(960,700).compactDesktop,true);
+ assert.equal(desktopLayoutForWindow(959,740).desktop,false);
+ assert.equal(desktopLayoutForWindow(960,740).desktop,true);
+ assert.equal(desktopLayoutForWindow(959,740).sidebarWidth,0);
  assert.equal(desktopLayoutForWindow(NaN,Infinity).desktop,false);
 });
 test('Android manifest allows landscape/desktop freeform, without altering production package',()=>{
