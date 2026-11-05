@@ -132,6 +132,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
     PUP_USERNAME_TAKEN:'That Pup username is already taken. Choose another.',
     PUP_EMAIL_UNVERIFIED:'Please verify your email, then sign in.',
     PUP_SIGNIN_INVALID:'Incorrect Pup username or password.',
+    PUP_PASSWORD_COMPLEXITY_REQUIRED:'Use 8–128 characters with uppercase and lowercase letters, a number, and a special character.',
+    PUP_JOIN_SOURCE_INVALID:'Choose a valid optional discovery source or leave it blank.',
     PUP_SIGNUP_UNAVAILABLE:'Could not register Pup Account. You can sign in with Discord instead.',
     PUP_PASSWORD_SETUP_UNAVAILABLE:'Password registration is unavailable; Discord sign-in remains available.',
     PUP_PASSWORD_LOGIN_DISABLED:'Enable password authentication in Supabase Auth. No SMTP is needed.',
