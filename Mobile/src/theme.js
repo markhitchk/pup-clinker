@@ -1,12 +1,13 @@
-import {effectiveMotion,paletteFor,scaleStyles,uiScaleFactor} from './engine/settings.js';
+import {effectiveMotion,scaleStyles,uiScaleFactor} from './engine/settings.js';
+import {websitePaletteFor} from './production/websiteTheme.js';
 // One app surface. Existing scenes share this palette and rebuild their style
 // dictionaries only when appearance changes, never on animation frames.
-export const colors=paletteFor({},true);
+export const colors=websitePaletteFor({},true);
 export const interaction={buttons:true};
 let revision=0,scale=1,signature='';
 export function applyAppearance(preferences,systemDark){
  interaction.buttons=effectiveMotion(preferences).buttons;
- const palette=paletteFor(preferences,systemDark),nextScale=uiScaleFactor(preferences);
+ const palette=websitePaletteFor(preferences,systemDark),nextScale=uiScaleFactor(preferences);
  const next=JSON.stringify([palette,nextScale]);
  if(next!==signature){Object.assign(colors,palette);scale=nextScale;signature=next;revision++;}
  return palette;
