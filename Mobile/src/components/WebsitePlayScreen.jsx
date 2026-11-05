@@ -2,7 +2,7 @@
 // Visual reference (read-only): Puppy-Clicker/src/native/App.jsx PlayScreen,
 // Puppy-Clicker/src/native/web/kawaii.css. Gameplay remains caller-owned PupEye actions.
 import React from 'react';
-import {Pressable,Text,View} from 'react-native';
+import {ImageBackground,Pressable,Text,View} from 'react-native';
 import {colors as C} from '../theme.js';
 import {format} from '../engine/game.js';
 
@@ -13,8 +13,8 @@ export default function WebsitePlayScreen({
  game,viewportHeight,wallet,portrait,onTap,cooldown,bonus,next,ticketVisible,desktop=false,
  identityPortrait,onRename
 }){
- const height=desktop?Math.max(690,(Number(viewportHeight)||700)-12):Math.max(350,Number(viewportHeight)||560);
- const short=!desktop&&height<540;
+ const height=desktop?Math.max(620,(Number(viewportHeight)||720)-12):Math.max(320,Number(viewportHeight)||560);
+ const short=!desktop&&height<570;
  const medium=!desktop&&height<660;
  const tapTitle=cooldown
   ?'Fair-play cooldown · '+cooldown+'s'
@@ -23,13 +23,20 @@ export default function WebsitePlayScreen({
    :'Tap '+game.puppyName;
  const canTap=cooldown<=0;
  return <View testID="android-play-screen"
-  style={[styles.page,{height,gap:desktop?16:short?6:10}]}>
-  <View style={[styles.heading,{minHeight:short?39:47}]}>
-   <Text accessibilityRole="header" style={[styles.pageTitle,{fontSize:short?24:29}]}>Play</Text>
-   <Text style={[styles.secondaryText,{fontSize:short?11:13}]}>Tap your puppy and earn treats.</Text>
+  style={[styles.page,desktop&&styles.desktopPage,{height,gap:desktop?16:short?6:10}]}>
+  {desktop?<ImageBackground
+   source={{uri:'https://puppy-clicker.vercel.app/assets/scenes/night-yard-v1.webp'}}
+   accessibilityLabel="Puppy Clicker night yard"
+   resizeMode="cover" pointerEvents="none" style={styles.desktopScene}
+   imageStyle={styles.desktopSceneImage}>
+   <View style={styles.desktopSceneOverlay}/>
+  </ImageBackground>:null}
+  <View style={[styles.heading,{minHeight:desktop?67:short?39:47,zIndex:2}]}>
+   <Text accessibilityRole="header" style={[styles.pageTitle,{fontSize:desktop?44:short?24:29}]}>Play</Text>
+   <Text style={[styles.secondaryText,{fontSize:desktop?18:short?11:13}]}>Tap your puppy and earn treats.</Text>
   </View>
   {desktop?<View testID="android-desktop-puppy-identity"
-   style={[styles.identity,{borderColor:C.line,backgroundColor:C.surface}]}>
+   style={[styles.identity,styles.desktopIdentity,{borderColor:C.line,backgroundColor:'rgba(7,23,35,0.66)'}]}>
    <View style={styles.identityPortrait}>{identityPortrait}</View>
    <View style={{flex:1,minWidth:0,gap:6}}>
     <Text numberOfLines={1} style={[styles.identityName,{color:C.text}]}>{game.puppyName}</Text>
@@ -48,22 +55,22 @@ export default function WebsitePlayScreen({
   </View>:null}
   {wallet}
   <View testID="android-website-play-stage"
-   style={[styles.stage,{padding:desktop?17:short?8:12,gap:desktop?12:short?5:9}]}>
-   <View style={[styles.puppyPlatform,{minHeight:desktop?350:short?128:medium?156:190}]}>
+   style={[styles.stage,desktop&&styles.desktopStage,{padding:desktop?12:short?8:12,paddingHorizontal:desktop?50:short?8:12,gap:desktop?10:short?5:9}]}>
+   <View style={[styles.puppyPlatform,{minHeight:desktop?Math.max(195,Math.min(350,height-370)):short?72:medium?125:175}]}>
     <View pointerEvents="none" style={styles.orbitOuter}>
      <View style={styles.orbitInner}/>
     </View>
     <View style={styles.puppyPortrait}>{portrait}</View>
    </View>
-   <View style={styles.puppyName}>
+   {!desktop?<View style={styles.puppyName}>
     <Text accessibilityRole="header" numberOfLines={1}
      adjustsFontSizeToFit minimumFontScale={0.65}
      style={[styles.puppyNameText,{fontSize:short?17:21}]}>
      {game.puppyName}
     </Text>
     <Text style={styles.puppyNameBadge}>Current Puppy</Text>
-   </View>
-   <View style={[styles.playEnergy,{padding:short?7:10}]}>
+   </View>:null}
+   <View style={[styles.playEnergy,desktop&&styles.desktopEnergy,{padding:desktop?4:short?7:10}]}>
     <View style={styles.energyCell}>
      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}
       style={styles.energyText}>⚡ Energy <Text style={styles.energyValue}>{game.energy}%</Text></Text>
@@ -77,15 +84,15 @@ export default function WebsitePlayScreen({
    <Pressable testID="android-tap-button" accessibilityRole="button"
     accessibilityLabel={tapTitle} accessibilityState={{disabled:!canTap}}
     disabled={!canTap} onPress={onTap}
-    style={({pressed})=>[styles.tapButton,{minHeight:short?55:69},!canTap&&styles.disabled,pressed&&styles.pressed]}>
+    style={({pressed})=>[styles.tapButton,{minHeight:desktop?76:short?55:69},!canTap&&styles.disabled,pressed&&styles.pressed]}>
     <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}
-     style={[styles.tapTitle,{fontSize:short?17:21}]}>🐾 {tapTitle}</Text>
+     style={[styles.tapTitle,{fontSize:desktop?24:short?17:21}]}>🐾 {tapTitle}</Text>
     {!cooldown&&game.energy>10?<Text style={styles.tapReward}>
      +{format(game.clickPower+bonus)} treats
     </Text>:null}
    </Pressable>
   </View>
-  <View testID="android-next-reward" style={[styles.rewardCard,{minHeight:short?62:80,padding:short?9:14}]}>
+  <View testID="android-next-reward" style={[styles.rewardCard,desktop&&styles.desktopReward,{minHeight:desktop?88:short?62:80,padding:desktop?16:short?9:14}]}>
    <Text style={[styles.rewardEmoji,{fontSize:short?22:27}]}>🎁</Text>
    <View style={styles.rewardBody}>
     <View style={styles.rewardRow}>
@@ -113,7 +120,17 @@ export default function WebsitePlayScreen({
  </View>;
 }
 const styles={
- page:{width:'100%',paddingHorizontal:2},
+ page:{width:'100%',paddingHorizontal:2,position:'relative'},
+ desktopPage:{backgroundColor:'#0A0C12',borderColor:'#263944',borderWidth:1,
+  borderRadius:18,paddingHorizontal:18,paddingTop:16,paddingBottom:22,overflow:'hidden'},
+ desktopScene:{position:'absolute',top:0,right:0,bottom:0,left:0},
+ desktopSceneImage:{opacity:0.83},
+ desktopSceneOverlay:{flex:1,backgroundColor:'rgba(5,10,18,0.23)'},
+ desktopIdentity:{position:'absolute',top:108,left:18,zIndex:3,maxWidth:'62%',
+  borderRadius:14,paddingHorizontal:9,paddingVertical:7,minHeight:82},
+ desktopStage:{borderWidth:0,borderRadius:0,backgroundColor:'transparent'},
+ desktopEnergy:{backgroundColor:'transparent',borderWidth:0},
+ desktopReward:{backgroundColor:'rgba(8,45,64,0.86)',borderColor:'#16465A'},
  identity:{flexDirection:'row',alignItems:'center',gap:14,borderWidth:1,
   borderRadius:20,paddingHorizontal:14,paddingVertical:12,minHeight:104},
  identityPortrait:{width:72,height:72,alignItems:'center',justifyContent:'center'},
