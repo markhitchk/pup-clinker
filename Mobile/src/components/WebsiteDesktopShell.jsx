@@ -10,7 +10,7 @@ import {MAX_PLAYER_LEVEL,MAX_PLAYER_XP,levelXp,nextXpTarget} from '../engine/bal
 
 const buttonStyle=(active)=>[
  styles.navItem,
- active&&{backgroundColor:C.accentSoft,borderColor:C.line}
+ active&&{backgroundColor:'rgba(0,63,84,0.68)',borderColor:'#00C4E0'}
 ];
 function NavButton({icon,label,active,onPress,tab=false}){
  return <Pressable accessibilityRole={tab?'tab':'button'}
@@ -23,7 +23,7 @@ function NavButton({icon,label,active,onPress,tab=false}){
 }
 export function WebsiteDesktopNavigation({tabs,route,onOpen,width=204}){
  return <View testID="android-desktop-navigation"
-  style={[styles.sidebar,{width,backgroundColor:C.surface,borderRightColor:C.line}]}>
+  style={[styles.sidebar,{width,backgroundColor:'#0D1921',borderRightColor:'#23323B'}]}>
   <Pressable accessibilityRole="button" accessibilityLabel="Puppy Clicker home"
    onPress={()=>onOpen('play')} style={styles.brand}>
    <Image source={require('../../assets/logos/puppy_clicker.png')}
@@ -66,7 +66,7 @@ export function WebsiteDesktopTopBar({game,onNotifications,onSettings,onInventor
   Math.min(100,Math.max(0,100*(xp-previous)/Math.max(1,following-previous)));
  const streak=Math.max(0,Number(game.dailyStreak)||0);
  return <View testID="android-desktop-top-bar"
-  style={[styles.topBar,{backgroundColor:C.bg,borderBottomColor:C.line}]}>
+  style={[styles.topBar,{backgroundColor:'#0A1017',borderBottomColor:'#23323B'}]}>
   <View style={[styles.progressCard,{backgroundColor:C.surface,borderColor:C.line}]}>
    <Text style={styles.topEmoji}>⭐</Text>
    <View style={styles.topContent}>
@@ -92,7 +92,6 @@ export function WebsiteDesktopTopBar({game,onNotifications,onSettings,onInventor
       backgroundColor:index<streak?C.accent:C.card,color:index<streak?C.onAccent:C.muted
      }]}>{index<streak?'✓':' '}</Text>)}</View>
    </View>
-  </View>
   <View style={styles.topActions}>
    <Pressable accessibilityRole="button" accessibilityLabel="Open inventory"
     onPress={onInventory} style={[styles.iconButton,{borderColor:C.line}]}>
@@ -107,6 +106,7 @@ export function WebsiteDesktopTopBar({game,onNotifications,onSettings,onInventor
     onPress={onSettings} style={[styles.iconButton,{borderColor:C.line}]}>
     <Text style={styles.actionEmoji}>⚙️</Text>
    </Pressable>
+  </View>
   </View>
  </View>;
 }
@@ -129,32 +129,32 @@ export function WebsiteDesktopHelp({onOpen}){
  </View>;
 }
 const styles={
- sidebar:{borderRightWidth:1,paddingHorizontal:13,paddingTop:12},
+ sidebar:{borderRightWidth:1,paddingHorizontal:12,paddingTop:22},
  brand:{flexDirection:'row',alignItems:'center',gap:9,paddingHorizontal:8,
   paddingVertical:12,marginBottom:10},
- logo:{width:46,height:46},brandText:{fontSize:19,fontWeight:'900',lineHeight:21},
- navItem:{flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:12,
-  minHeight:43,borderRadius:14,borderWidth:1,borderColor:'transparent'},
- navIcon:{fontSize:21,width:28,textAlign:'center'},
- navText:{fontSize:14,flex:1},
+ logo:{width:56,height:56},brandText:{fontSize:18,fontWeight:'900',lineHeight:21},
+ navItem:{flexDirection:'row',alignItems:'center',gap:10,paddingHorizontal:10,
+  minHeight:58,borderRadius:14,borderWidth:1,borderColor:'transparent'},
+ navIcon:{fontSize:28,width:34,textAlign:'center'},
+ navText:{fontSize:16,flex:1},
  divider:{height:1,marginVertical:10},
  groupLabel:{fontSize:10,fontWeight:'800',letterSpacing:1.1,paddingLeft:11,marginBottom:3},
  sidebarFoot:{fontSize:10,textAlign:'center',padding:10},
- topBar:{minHeight:97,flexDirection:'row',alignItems:'stretch',gap:10,
-  paddingHorizontal:14,paddingVertical:10,borderBottomWidth:1},
- progressCard:{flex:1.1,minWidth:0,flexDirection:'row',alignItems:'center',
+ topBar:{minHeight:112,flexDirection:'row',alignItems:'stretch',gap:12,
+  paddingHorizontal:16,paddingVertical:14,borderBottomWidth:0},
+ progressCard:{flex:0.35,minWidth:0,flexDirection:'row',alignItems:'center',
   borderRadius:18,borderWidth:1,padding:10,gap:10},
- streakCard:{flex:0.95,minWidth:0,flexDirection:'row',alignItems:'center',
+ streakCard:{flex:0.65,minWidth:0,flexDirection:'row',alignItems:'center',
   borderRadius:18,borderWidth:1,padding:10,gap:10},
- topEmoji:{fontSize:28},topContent:{flex:1,minWidth:0,gap:3},
- topTitle:{fontSize:13,fontWeight:'800'},topSmall:{fontSize:10},
+ topEmoji:{fontSize:35},topContent:{flex:1,minWidth:0,gap:3},
+ topTitle:{fontSize:15,fontWeight:'800'},topSmall:{fontSize:11},
  progress:{height:7,borderRadius:99,backgroundColor:'#2B3140',overflow:'hidden',marginTop:4},
  progressFill:{height:'100%',borderRadius:99},
- dots:{flexDirection:'row',gap:3,marginTop:3},dot:{width:15,height:15,borderRadius:99,
+ dots:{flexDirection:'row',gap:5,marginTop:3},dot:{width:20,height:20,borderRadius:99,
   overflow:'hidden',textAlign:'center',fontSize:10,fontWeight:'900'},
  topActions:{flexDirection:'row',alignItems:'center',gap:5},
- iconButton:{width:40,height:40,alignItems:'center',justifyContent:'center',borderWidth:1,
-  borderRadius:20,position:'relative'},actionEmoji:{fontSize:20},
+ iconButton:{width:48,height:48,alignItems:'center',justifyContent:'center',borderWidth:1,
+  borderRadius:26,position:'relative'},actionEmoji:{fontSize:27},
  unreadDot:{position:'absolute',top:1,right:1,width:8,height:8,borderRadius:4},
  pageTitle:{fontSize:30,fontWeight:'800'},
  inventoryTabs:{flexDirection:'row',flexWrap:'wrap',gap:5},
