@@ -19,7 +19,7 @@ function parseJoinSource(payload: any) {
   const source = payload?.joinSource;
   const details = payload?.joinDetails == null ? "" :
     typeof payload.joinDetails === "string" ? payload.joinDetails.trim() : null;
-  if (details === null || details.length > 120 || /[\\x00-\\x1f\\x7f]/.test(details)) {
+  if (details === null || details.length > 120 || /[\x00-\x1f\x7f]/.test(details)) {
     throw new HttpError(400, "PUP_JOIN_SOURCE_INVALID", "Invalid optional registration source details.");
   }
   if (source == null || source === "") {
