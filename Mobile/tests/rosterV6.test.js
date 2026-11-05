@@ -11,8 +11,10 @@ const kotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/pupp
 const catalog=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyCatalogV6.kt',import.meta.url),'utf8');
 const gachaKotlin=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyGacha.kt',import.meta.url),'utf8');
 const rn=readFileSync(new URL('../App.js',import.meta.url),'utf8');
-const roster=rn.slice(rn.indexOf('function RosterScreen('),rn.indexOf('function GachaScreen('));
-const gacha=rn.slice(rn.indexOf('function GachaScreen('),rn.indexOf('function RewardsScreen('));
+const shared=readFileSync(new URL('../src/components/WebsiteRosterPrestigeScreens.jsx',import.meta.url),'utf8');
+const roster=shared.slice(shared.indexOf('function RosterScreen('),shared.indexOf('return {PrestigeScreen,RosterScreen};'));
+const gacha=rn.slice(rn.indexOf('function GachaScreen('),rn.indexOf('// The scene assets below'));
+
 
 test('Part 4 Collection keeps exact V1/V2 stable Kotlin source IDs, names and code locks',()=>{
  const ids=LEGACY_V6_PUPPIES.map(p=>p.id);
