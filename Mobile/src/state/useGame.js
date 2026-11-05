@@ -3,6 +3,7 @@ import {AppState,NativeModules,ToastAndroid} from 'react-native';
 import {freshGame} from '../engine/game.js';
 import {projectKotlinCloudSave} from '../production/kotlinCloudPreview.js';
 import {supportsDatabaseLayout} from '../production/dbSchemaLayout.js';
+import {betaNeedsPupAccountSignIn} from '../production/startupErrors.js';
 import {projectPendingTapDisplay} from './optimisticTaps.js';
 import {classifyBetaSaveFailure} from './saveFeedback.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -112,7 +113,8 @@ export function useGame({mode='guest'}={}){
     dispatch({type:'hydrate',game:emptyAccountView(),now:Date.now(),readOnly:true});
     return false;
    }
-   const revoked=/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
+   const signInRequired=betaNeedsPupAccountSignIn(error);
+   const revoked=signInRequired||/BETA_LINK_REQUIRED|INSTALLATION_REVOKED|PUP_ACCOUNT_BLOCKED|BETA_LINK_REVOKED|BETA_OWNER_DEVICE_UNAVAILABLE/.test(code);
    // Projected cloud parse errors are recognized locally; no exception text
    // is handed to the splash screen or persisted as diagnostics.
    const projectionError=/^(INVALID_CLOUD_SAVE|MISSING_KOTLIN_PROGRESS|UNSUPPORTED_CLOUD_SAVE|UNSUPPORTED_KOTLIN_SAVE)/.test(String(error?.message||''));
@@ -135,7 +137,7 @@ export function useGame({mode='guest'}={}){
     setCloudState('CACHED_OFFLINE');
     return false; // Cached snapshots alone never authorize gameplay.
    }
-   setStartupError(safeFailure);
+   setStartupError(signInRequired?null:safeFailure);
    setAccount({status:revoked?'NEEDS_ACCOUNT':'CONNECTION_ERROR'});
    setCloudState(revoked?'SIGN_IN_REQUIRED':'CONNECTION_ERROR');
    setSyncStatus(current=>({...current,state:'ERROR',
