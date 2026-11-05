@@ -5,6 +5,7 @@ import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
 import {supportsDatabaseLayout} from './dbSchemaLayout.js';
 import {usePupAuthForm,registrationError,loginError,passwordRules,JOIN_SOURCE_OPTIONS} from '../shared/usePupAuthForm.js';
+import {WEBSITE_ACCOUNT_COPY} from './websiteAccountContract.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -189,10 +190,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {!requiredAtStartup?<Pressable accessibilityRole="button" onPress={close} style={styles.secondary}><Text style={styles.secondaryText}>{onboarding?'← Back to account setup':'← Back to Puppy Clicker'}</Text></Pressable>:null}
    <View style={{alignItems:'center',gap:9}}>
     <Image source={require('../../assets/logos/puppy_clicker.png')} accessibilityLabel="Puppy Clicker logo" resizeMode="contain" style={{width:88,height:88}}/>
-    <Text style={styles.logo}>PUPPY CLICKER · PUP ACCOUNT</Text>
+    <Text style={styles.logo}>{WEBSITE_ACCOUNT_COPY.eyebrow}</Text>
    </View>
-   <Text style={styles.title}>{verified?'Pup Account connected':mode==='signup'?'Your puppy journey starts here.':'Welcome back to your puppy world.'}</Text>
-   <Text style={styles.body}>One Pup Account for your puppies, rewards and linked progress across the website and Android.</Text>
+   <Text style={styles.title}>{verified?'Pup Account connected':mode==='signup'?WEBSITE_ACCOUNT_COPY.registerTitle:WEBSITE_ACCOUNT_COPY.signinTitle}</Text>
+   <Text style={[styles.body,{textAlign:'center'}]}>{WEBSITE_ACCOUNT_COPY.intro}</Text>
+   <View style={styles.benefits} accessibilityLabel="Pup Account benefits">
+    {WEBSITE_ACCOUNT_COPY.benefits.map(benefit=><View key={benefit} style={styles.benefit}>
+     <Text style={styles.benefitText}>{benefit}</Text>
+    </View>)}
+   </View>
    <View style={styles.card}>
     <Text style={styles.label}>PUP ACCOUNT</Text>
     <Text style={styles.value}>{verified?'Connected':state.status==='DEVICE_TRANSFER_REQUIRED'?'DEVICE TRANSFER REQUIRED':'Sign-in required'}</Text>
@@ -217,7 +223,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    {consentNeeded?<>{agreements}<Pressable accessibilityRole="button" accessibilityLabel="Accept both policies" disabled={!tos||!privacy||busy} style={styles.button} onPress={()=>void consent()}><Text style={styles.buttonText}>Accept and continue</Text></Pressable></>:null}
    {(!verified||linkNative)?<>
     {!linkNative?<View style={styles.modes}>
-     {['signin','signup'].map(item=><Pressable key={item} accessibilityRole="button"
+     {['signin','signup'].map(item=><Pressable key={item} accessibilityRole="tab" accessibilityState={{selected:mode===item}}
       accessibilityLabel={item==='signin'?'Sign In':'Create Account'}
       onPress={()=>{chooseMode(item);setProblem('');setNotice('');}}
       style={[styles.mode,(mode===item||(mode==='discord'&&item==='signin'))&&styles.modeSelected]}>
@@ -231,7 +237,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
      {linkNative?<Text style={styles.body}>Link sign-in to your existing Discord Pup Account @{state.username}. Your puppies, Treats, and XP stay on the same account.</Text>:null}
      {mode==='signup'?<>
       <Text style={styles.label}>USERNAME</Text>
-      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false} autoComplete="username"
        placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF"
        maxLength={20} editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
       {!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Generate username"
@@ -246,7 +252,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
        placeholderTextColor="#8AA1AF" value={email} onChangeText={setEmail} style={styles.input}/>
      </>:<>
       <Text style={styles.label}>PUP USERNAME</Text>
-      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false}
+      <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false} autoComplete="username"
        placeholder="Pup username" placeholderTextColor="#8AA1AF"
        value={login} onChangeText={setLogin} style={styles.input}/>
      </>}
@@ -341,6 +347,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
 const styles=StyleSheet.create({
  root:{flex:1,backgroundColor:'#0A0C12'},
  content:{padding:22,gap:18,maxWidth:600,width:'100%',alignSelf:'center'},
+ benefits:{width:'100%',flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'center',gap:7,marginVertical:2},
+ benefit:{backgroundColor:'rgba(0,229,255,0.08)',borderWidth:1,borderColor:'rgba(0,229,255,0.25)',borderRadius:999,paddingHorizontal:11,paddingVertical:7},
+ benefitText:{color:'#D9F5FF',fontSize:11,fontWeight:'700'},
  logo:{fontWeight:'900',fontSize:12,color:'#00E5FF',letterSpacing:1.2},
  title:{color:'#FFF',fontSize:29,fontWeight:'900'},
  body:{color:'#D0DEE8',fontSize:15,lineHeight:24},
