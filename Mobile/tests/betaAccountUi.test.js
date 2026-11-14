@@ -23,7 +23,7 @@ const require=createRequire(file),module={exports:{}};
 const compiled=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
 new Function('require','module','exports',compiled)(id=>
  id==='react-native'?native:
- id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:require(id),module,module.exports);
+ id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:id.endsWith('.png')?1:require(id),module,module.exports);
 const Entry=module.exports.default;
 const contents=renderer=>renderer.root.findAllByType('Text').flatMap(t=>t.props.children).join(' ');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
