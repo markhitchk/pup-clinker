@@ -28,7 +28,7 @@ export default function AccountDetailsScreen({account,cloudState,onBack,onManage
  useEffect(()=>setPreviewFailed(false),[normalized]);
  const button=(label,fn,disabled=false)=><Pressable accessibilityRole="button"
   accessibilityLabel={label} disabled={disabled} onPress={fn}
-  style={{borderRadius:12,padding:13,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,opacity:disabled?.5:1}}>
+  style={{borderRadius:12,padding:13,backgroundColor:C.surface,borderWidth:1,borderColor:C.line,opacity:disabled ? 0.5 : 1}}>
   <Text style={{color:C.text,textAlign:'center',fontWeight:'800'}}>{label}</Text>
  </Pressable>;
  const save=async value=>{
