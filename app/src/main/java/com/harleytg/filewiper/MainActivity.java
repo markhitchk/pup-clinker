@@ -247,6 +247,68 @@ public class MainActivity extends Activity {
         deleteOnly.setEnabled(!busy && deletable > 0);
     }
 
+    private void confirmDeleteOnly() {
+        if (busy) return;
+        ArrayList<SelectedFile> selected = new ArrayList<>();
+        for (SelectedFile f : files) if (f.canDelete) selected.add(f);
+        if (selected.isEmpty()) return;
+        new AlertDialog.Builder(this)
+            .setTitle("Delete " + selected.size() + " file(s) without overwriting?")
+            .setMessage("This is ordinary Android deletion, NOT secure overwriting. " +
+                "Previous data, trash copies and backups may remain.\n\n" +
+                "Delete the selected files anyway? This cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("DELETE ONLY", (dialog, which) -> performDeleteOnly(selected))
+            .show();
+    }
+
+    private void performDeleteOnly(ArrayList<SelectedFile> selected) {
+        ArrayList<Uri> media = new ArrayList<>();
+        for (SelectedFile f : selected) {
+            if (f.mediaUri != null && Build.VERSION.SDK_INT >= 30) media.add(f.mediaUri);
+        }
+        if (!media.isEmpty()) {
+            try {
+                pendingMediaDelete.clear();
+                pendingMediaDelete.addAll(media);
+                PendingIntent intent = MediaStore.createDeleteRequest(getContentResolver(), media);
+                startIntentSenderForResult(intent.getIntentSender(), MEDIA_DELETE_REQUEST,
+                    null, 0, 0, 0);
+                status.setText("Approve deletion in Android's system dialog. No overwrite will occur.");
+            } catch (Exception e) {
+                pendingMediaDelete.clear();
+                status.setText("Android could not request deletion: " + e.getMessage());
+            }
+            return;
+        }
+
+        ArrayList<Uri> deleted = new ArrayList<>();
+        StringBuilder log = new StringBuilder();
+        busy = true;
+        redraw();
+        executor.execute(() -> {
+            for (SelectedFile f : selected) {
+                try {
+                    SelectedFile current = inspect(f.uri);
+                    if (!current.canDelete) throw new IOException("Permission changed");
+                    if (!DocumentsContract.deleteDocument(getContentResolver(), f.uri))
+                        throw new IOException("Provider refused deletion");
+                    deleted.add(f.uri);
+                    log.append("✓ ").append(f.name).append(": deleted without overwrite\n");
+                } catch (Exception e) {
+                    log.append("× ").append(f.name).append(": ").append(e.getMessage()).append("\n");
+                }
+            }
+            runOnUiThread(() -> {
+                files.removeIf(f -> deleted.contains(f.uri));
+                busy = false;
+                redraw();
+                status.setText(deleted.size() + " deleted without overwrite.\n" + log +
+                    "\nPhysical data and backups may remain.");
+            });
+        });
+    }
+
     private void confirm() {
         if (busy) return;
         ArrayList<SelectedFile> ready = new ArrayList<>();
