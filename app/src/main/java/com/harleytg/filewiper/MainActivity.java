@@ -2,6 +2,9 @@ package com.harleytg.filewiper;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.ContentUris;
+import android.provider.MediaStore;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -23,11 +26,13 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private static final int SELECT_FILES = 100;
+    private static final int MEDIA_DELETE_REQUEST = 101;
+    private final ArrayList<Uri> pendingMediaDelete = new ArrayList<>();
     private final ArrayList<SelectedFile> files = new ArrayList<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final SecureRandom random = new SecureRandom();
     private TextView selection, status;
-    private Button choose, wipe;
+    private Button choose, wipe, deleteOnly;
     private Spinner passesSpinner;
     private ProgressBar progress;
     private volatile boolean busy = false;
@@ -38,6 +43,8 @@ public class MainActivity extends Activity {
         long length;
         int flags;
         boolean eligible;
+        boolean canDelete;
+        Uri mediaUri;
     }
 
     @Override public void onCreate(Bundle state) {
@@ -81,6 +88,10 @@ public class MainActivity extends Activity {
         wipe = new Button(this);
         wipe.setText("OVERWRITE, VERIFY & DELETE");
         root.addView(wipe);
+        deleteOnly = new Button(this);
+        deleteOnly.setText("DELETE ONLY (NO OVERWRITE)");
+        root.addView(deleteOnly);
+        root.addView(label("Fallback for protected media: ordinary Android deletion with confirmation. This does NOT securely overwrite the file.", 13, 0xFFDBB7A8));
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setVisibility(View.GONE);
         root.addView(progress);
@@ -88,6 +99,7 @@ public class MainActivity extends Activity {
         root.addView(status);
         choose.setOnClickListener(v -> pick());
         wipe.setOnClickListener(v -> confirm());
+        deleteOnly.setOnClickListener(v -> confirmDeleteOnly());
         redraw();
     }
 
@@ -111,6 +123,19 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int code, int result, Intent data) {
         super.onActivityResult(code, result, data);
+        if (code == MEDIA_DELETE_REQUEST) {
+            if (result == RESULT_OK) {
+                int count = pendingMediaDelete.size();
+                files.removeIf(f -> f.mediaUri != null && pendingMediaDelete.contains(f.mediaUri));
+                status.setText("Android confirmed deletion of " + count +
+                    " media item(s) WITHOUT overwriting. Backups or cached copies may remain.");
+            } else {
+                status.setText("Android cancelled or refused media deletion.");
+            }
+            pendingMediaDelete.clear();
+            redraw();
+            return;
+        }
         if (code != SELECT_FILES || result != RESULT_OK || data == null || busy) return;
         LinkedHashSet<Uri> uris = new LinkedHashSet<>();
         if (data.getData() != null) uris.add(data.getData());
@@ -152,11 +177,15 @@ public class MainActivity extends Activity {
             // descriptor without modifying bytes, and refuse unsupported providers.
             boolean probeWritable = local && !virtual && !directory && f.length >= 0 &&
                 supportsSeekableReadWrite(f.uri, f.length);
+            f.mediaUri = mediaStoreUri(f.uri);
+            f.canDelete = local && !virtual && !directory &&
+                (deletable || (f.mediaUri != null && Build.VERSION.SDK_INT >= 30));
             f.eligible = local && probeWritable && deletable && !virtual && !directory && f.length >= 0;
             f.reason = !local ? "Unsupported (non-local) provider" :
                 virtual || directory ? "Not a regular file" :
                 f.length < 0 ? "Unknown file length" :
-                !probeWritable ? "Write access unavailable (Android storage provider restriction)" :
+                !probeWritable ? (f.canDelete ? "Overwrite blocked; DELETE ONLY available" :
+                    "Write access unavailable (Android storage provider restriction)") :
                 !deletable ? "Provider does not allow deletion after overwriting" :
                 "Ready";
             return f;
@@ -181,9 +210,11 @@ public class MainActivity extends Activity {
 
     private void redraw() {
         int ready = 0;
+        int deletable = 0;
         StringBuilder s = new StringBuilder();
         for (SelectedFile f : files) {
             if (f.eligible) ready++;
+            if (f.canDelete) deletable++;
             s.append(f.eligible ? "✓ " : "× ").append(f.name).append(" · ")
                 .append(f.length < 0 ? "unknown" : f.length + " bytes")
                 .append("\n   ").append(f.reason).append("\n");
@@ -192,6 +223,7 @@ public class MainActivity extends Activity {
         choose.setEnabled(!busy);
         passesSpinner.setEnabled(!busy);
         wipe.setEnabled(!busy && ready > 0);
+        deleteOnly.setEnabled(!busy && deletable > 0);
     }
 
     private void confirm() {
