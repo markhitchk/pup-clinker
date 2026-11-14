@@ -5,11 +5,14 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.system.Os;
 import android.system.OsConstants;
 import android.view.View;
+import android.view.WindowInsets;
+import android.graphics.Insets;
 import android.widget.*;
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -47,6 +50,22 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         scroll.addView(root);
         setContentView(scroll);
+        // Target SDK 35 draws edge-to-edge. Keep content clear of Samsung's status bar,
+        // cutout and navigation area.
+        scroll.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top, bottom;
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                top = safe.top;
+                bottom = safe.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            view.setPadding(0, top, 0, bottom);
+            return insets;
+        });
+        scroll.requestApplyInsets();
         TextView title = label("FILE WIPER", 26, 0xFFFFFFFF);
         root.addView(title);
         root.addView(label("Best-effort logical overwrite and deletion of selected local files. Flash storage may retain older physical data.", 14, 0xFFC6D3E0));
@@ -129,13 +148,29 @@ public class MainActivity extends Activity {
             boolean deletable = (f.flags & DocumentsContract.Document.FLAG_SUPPORTS_DELETE) != 0;
             boolean virtual = (f.flags & DocumentsContract.Document.FLAG_VIRTUAL_DOCUMENT) != 0;
             boolean directory = DocumentsContract.Document.MIME_TYPE_DIR.equals(mime);
-            f.eligible = local && writable && deletable && !virtual && !directory && f.length >= 0;
+            // Flags can be conservative. Probe a non-truncating, seekable r/w
+            // descriptor without modifying bytes, and refuse unsupported providers.
+            boolean probeWritable = local && !virtual && !directory && f.length >= 0 &&
+                supportsSeekableReadWrite(f.uri, f.length);
+            f.eligible = local && probeWritable && deletable && !virtual && !directory && f.length >= 0;
             f.reason = !local ? "Unsupported (non-local) provider" :
-                !writable ? "Write access unavailable" :
-                !deletable ? "Deletion unavailable" :
                 virtual || directory ? "Not a regular file" :
-                f.length < 0 ? "Unknown file length" : "Ready";
+                f.length < 0 ? "Unknown file length" :
+                !probeWritable ? "Write access unavailable (Android storage provider restriction)" :
+                !deletable ? "Provider does not allow deletion after overwriting" :
+                "Ready";
             return f;
+        }
+    }
+
+    private boolean supportsSeekableReadWrite(Uri uri, long length) {
+        try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "rw")) {
+            if (pfd == null || pfd.getStatSize() != length) return false;
+            java.io.FileDescriptor fd = pfd.getFileDescriptor();
+            if (Os.lseek(fd, 0, OsConstants.SEEK_END) != length) return false;
+            return Os.lseek(fd, 0, OsConstants.SEEK_SET) == 0;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 
