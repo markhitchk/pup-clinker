@@ -20,6 +20,6 @@ export const DISCOVERY_SOURCES=Object.freeze([
 export function validDiscoverySource(source,details){
  return (source===''||DISCOVERY_SOURCES.some(([id])=>id===source))
   &&typeof details==='string'&&details.length<=120
-  &&!/[\\x00-\\x1f\\x7f]/.test(details)
+  &&![...details].some(char=>char.charCodeAt(0)<32||char.charCodeAt(0)===127)
   &&(source!==''||details.trim()==='');
 }
