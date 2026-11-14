@@ -93,6 +93,10 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <T muted>{betaMode?'Beta gameplay uses your authenticated Pup Account, not guest progression. Taps, care, shop, Gacha, daily rewards, XP and casino settlements use signed cloud writes; unsupported actions remain blocked.':'Guest data stays on this device. Network access loads roster assets and monthly goals. PupEye and authoritative cloud saves still require migration.'}</T><T muted>{diagnostics?.summary||'No local diagnostics recorded.'}</T><Action onPress={diagnostics?.clear}>Clear Local Diagnostics</Action>
   </>)}
   {group('GAME')}
+  {section('inventory','🎒','Inventory','Puppies, accessories, tickets, upgrades and wallet',<>
+   <T muted>Read-only collection from your current Pup Account game progress.</T>
+   <Action onPress={()=>onOpen('inventory')}>Open Inventory</Action>
+  </>)}
   {section('gameplay','🎮','Gameplay','Interaction, feedback and gameplay preferences',<>
    {toggle('hapticsEnabled','Haptic feedback','Android vibration feedback for supported interactions.')}
    {g.hapticsEnabled?<Action onPress={()=>Vibration.vibrate(30)}>Test Haptic</Action>:null}
