@@ -10,8 +10,9 @@ import commonjs from '@babel/plugin-transform-modules-commonjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
-const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
+const native=Object.fromEntries(['ActivityIndicator','Image','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
+native.useWindowDimensions=()=>({width:390,height:844});
 native.NativeModules={};
 native.Linking={
  getInitialURL:async()=>null,
@@ -67,7 +68,8 @@ test('username password setup errors do not require SMTP or another email',async
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
@@ -91,7 +93,8 @@ test('Discord account offers linking to the same Pup username',async()=>{
   assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.editable,false);
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
   });
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();});
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Add password to Pup Account'}).props.onPress();await flush();});
@@ -114,7 +117,8 @@ test('Pup Account signup and username/password signin use their own native metho
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
