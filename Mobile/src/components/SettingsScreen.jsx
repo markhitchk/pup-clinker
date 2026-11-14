@@ -3,6 +3,8 @@ import DangerHoldDialog from './DangerHoldDialog.jsx';
 import {Alert,BackHandler,Image,Linking,Pressable,ScrollView,Share,Switch,Text,TextInput,Vibration,View} from 'react-native';
 import {colors as C,themedStyles} from '../theme.js';
 import {ACCENT_PRESETS} from '../engine/settings.js';
+import {Skia} from 'react-native-skia';
+import {graphicsBackendLabel} from '../graphics/vulkanPolicy.js';
 import {guestLevel} from '../engine/progression.js';
 import {PUPPY_IMAGES} from '../assets/puppies.js';
 import {validBirthday} from '../engine/onboarding.js';
@@ -66,6 +68,7 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
    <Action onPress={()=>setCustom(!custom)}>Custom Color</Action>{custom?<><TextInput accessibilityLabel="Custom accent HEX" value={hex} onChangeText={setHex} autoCapitalize="characters" maxLength={7} style={s.input}/><Action disabled={!/^#[0-9a-f]{6}$/i.test(hex)} onPress={()=>{pref('accentHex',hex);setCustom(false);}}>Apply Custom Color</Action></>:null}
    <View style={s.preview}><T style={s.bold}>THEME EXAMPLE</T><T>Puppy Clicker</T><T muted>Current theme</T><View style={[s.action,{backgroundColor:C.accent}]}><T style={{color:C.onAccent}}>Accent example</T></View><T muted>{g.themeMode} · {g.accentHex}</T></View>
    <Choices label="Performance preset" value={g.performancePreset} items={[["automatic","Automatic"],["quality","Quality"],["battery_saver","Battery Saver"]]} onChange={v=>pref('performancePreset',v)}/>
+   <T muted>Play renderer: {graphicsBackendLabel(Skia.gpu?.isAvailable===true)} · Automatic fallback if unsupported.</T>
    {toggle('animatedUi','Animated UI','Optional interface transitions and decorative movement.')}
    {toggle('buttonAnimations','Button animations','Small press and interaction motion.')}
    {toggle('reducedMotion','Reduced motion','Minimizes non-essential movement.')}
