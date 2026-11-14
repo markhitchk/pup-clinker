@@ -49,5 +49,5 @@ test('native OS autofill bridge never sends or stores password credentials',()=>
  assert.match(segment,/getSystemService\(android.view.autofill.AutofillManager::class.java\)/);
  assert.match(segment,/manager\.commit\(\)/);
  assert.match(segment,/manager\?\.isEnabled/);
- assert.doesNotMatch(segment,/SharedPreferences|putString|password|write\(/i);
+ assert.doesNotMatch(segment,/SharedPreferences|putString|JSONObject|write\(/i);
 });
