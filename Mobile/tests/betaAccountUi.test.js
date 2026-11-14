@@ -168,3 +168,65 @@ test('website-style registration generates secure suggestions and sends optional
   assert.match(contents(renderer),/Pup Account connected/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
+
+
+test('Android password autofill fields commit before successful sign-in finishes',async()=>{
+ let renderer;
+ const events=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  signInPupAccount:async(username,password)=>{
+   assert.equal(username,'PuppyFan');
+   assert.equal(password,'Secure-password9!');
+   events.push('native-signin');
+   return {status:'VERIFIED',legalAccepted:true,username:'PuppyFan'};
+  },
+  commitPupAutofill:async()=>{
+   events.push('autofill-commit');
+   // The controlled input value must remain present for AutofillManager.
+   assert.equal(renderer.root.findByProps({testID:'pup-signin-password'}).props.value,'Secure-password9!');
+   return true;
+  }
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signin',onVerified:()=>events.push('verified')}));await flush();});
+  const username=renderer.root.findByProps({testID:'pup-signin-username'});
+  const password=renderer.root.findByProps({testID:'pup-signin-password'});
+  assert.equal(username.props.autoComplete,'username');
+  assert.equal(username.props.importantForAutofill,'yes');
+  assert.equal(password.props.autoComplete,'current-password');
+  assert.equal(password.props.importantForAutofill,'yes');
+  await act(async()=>{
+   username.props.onChangeText('PuppyFan');
+   password.props.onChangeText('Secure-password9!');
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();
+   await flush();
+  });
+  assert.deepEqual(events,['native-signin','autofill-commit','verified']);
+  assert.equal(renderer.root.findAllByProps({testID:'pup-signin-password'}).length,0,'form closes after accepted auth');
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('Android password autofill does not save rejected sign-in credentials',async()=>{
+ let renderer,commits=0;
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  signInPupAccount:async()=>{throw Object.assign(new Error('invalid'),{code:'BETA_PUP_SIGNIN_INVALID'});},
+  commitPupAutofill:async()=>{commits++;return true;}
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signin'}));await flush();});
+  await act(async()=>{
+   renderer.root.findByProps({testID:'pup-signin-username'}).props.onChangeText('PuppyFan');
+   renderer.root.findByProps({testID:'pup-signin-password'}).props.onChangeText('WrongPassword9!');
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();
+   await flush();
+  });
+  assert.equal(commits,0);
+  assert.match(contents(renderer),/Incorrect Pup username or password/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
