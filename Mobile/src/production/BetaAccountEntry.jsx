@@ -4,6 +4,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
 import {supportsDatabaseLayout} from './dbSchemaLayout.js';
+import {websitePasswordRules,DISCOVERY_SOURCES,validDiscoverySource} from './pupAuthRules.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -26,6 +27,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [login,setLogin]=useState('');
  const [password,setPassword]=useState('');
  const [confirmPassword,setConfirmPassword]=useState('');
+ const [joinSource,setJoinSource]=useState('');
+ const [joinDetails,setJoinDetails]=useState('');
  const [notice,setNotice]=useState('');
  const [linkNative,setLinkNative]=useState(false);
  const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
@@ -109,7 +112,9 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   if(mode==='signup'&&(!/^[A-Za-z0-9_-]{3,20}$/.test(username)||password.length<8||(email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())))){
    setProblem('Enter a valid username, password of at least 8 characters, and optional support contact email.');return;
   }
-  if(mode==='signup'&&!linkNative&&password!==confirmPassword){setProblem('Passwords do not match.');return;}
+  if(mode==='signup'&&websitePasswordRules(password).some(rule=>!rule.passed)){setProblem('Password must be 8–128 characters with uppercase, lowercase, a number and special character.');return;}
+  if(mode==='signup'&&password!==confirmPassword){setProblem('Passwords do not match.');return;}
+  if(mode==='signup'&&!validDiscoverySource(joinSource,joinDetails)){setProblem('Choose a valid referral source or leave it empty.');return;}
   if(mode==='signup'&&(!tos||!privacy)){setProblem('Accept both the Terms of Use and Privacy Policy.');return;}
   if(linkNative&&mode==='signup'&&state.status==='VERIFIED'&&username.trim().toLowerCase()!==String(state.username||'').toLowerCase()){
    setProblem('Keep your existing Pup username when adding password sign-in.');return;
@@ -120,7 +125,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
   setBusy(true);setProblem('');setNotice('');
   try{
    const result=mode==='signup'
-    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,publishableKey)
+    ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,joinSource,joinDetails.trim(),publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
    setPassword('');
    if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
@@ -149,7 +154,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    };
    setProblem(messages[code]||'Pup Account authentication failed ('+code.slice(0,45)+'). Please retry.');
   }finally{setBusy(false);}
- },[busy,mode,username,email,login,password,tos,privacy,onVerified,linkNative]);
+ },[busy,mode,username,email,login,password,confirmPassword,tos,privacy,joinSource,joinDetails,onVerified,linkNative]);
  const saveSupportContact=useCallback(async()=>{
   if(busy)return;
   setBusy(true);setProblem('');setNotice('');
@@ -177,6 +182,17 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  },[]);
  const verified=state.status==='VERIFIED';
  const resetMode=next=>{setMode(next);setProblem('');setNotice('');setPassword('');setConfirmPassword('');};
+ const suggestUsername=async()=>{
+  try{const name=await api().suggestPupUsername();if(typeof name==='string'&&/^[A-Za-z0-9_-]{3,20}$/.test(name))setUsername(name);
+  else throw Error('Unavailable');}
+  catch{setProblem('A username suggestion is unavailable on this device. Enter a username manually.');}
+ };
+ const suggestPassword=async()=>{
+  try{const secret=await api().suggestStrongPassword();if(typeof secret==='string'&&websitePasswordRules(secret).every(rule=>rule.passed)){
+   setPassword(secret);setConfirmPassword(secret);setNotice('Strong password generated. Save it in your password manager before registering.');}
+  else throw Error('Unavailable');}
+  catch{setProblem('Secure password suggestions are unavailable. Use your password manager to create one.');}
+ };
  const openRecovery=()=>Linking.openURL('https://puppy-clicker.vercel.app/recovery').catch(()=>setProblem('Open puppy-clicker.vercel.app/recovery in your browser to recover your Pup Account.'));
  const provider=(title,detail,icon)=> <View style={styles.providerHeader}>
    <Image source={icon==='discord'?require('../../assets/logos/discord.png'):require('../../assets/logos/puppy_clicker.png')}
@@ -297,11 +313,19 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
          <TextInput accessibilityLabel="Pup username" autoComplete="username" autoCapitalize="none" autoCorrect={false}
           placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF" maxLength={20}
           editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
+         {!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Generate username" onPress={()=>void suggestUsername()} style={styles.textAction}>
+          <Text style={styles.secondaryText}>🎲 Generate username</Text></Pressable>:null}
          <Text style={styles.label}>Password</Text>
          <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password"
           placeholder="8–128 characters" maxLength={128} placeholderTextColor="#8AA1AF"
           value={password} onChangeText={setPassword} style={styles.input}/>
-         <Text style={styles.footnote}>Use a strong password suggested by Google Password Manager, Samsung Pass, Bitwarden, or another password manager.</Text>
+         <Text style={styles.footnote}>Use Google Password Manager, Samsung Pass, Bitwarden or another password manager to save a strong password.</Text>
+         <Pressable accessibilityRole="button" accessibilityLabel="Generate strong password" onPress={()=>void suggestPassword()} style={styles.textAction}>
+          <Text style={styles.secondaryText}>🔐 Generate strong password</Text></Pressable>
+         <View style={styles.rules}>
+          {websitePasswordRules(password).map(rule=><Text key={rule.label}
+           style={[styles.rule,rule.passed&&styles.rulePassed]}>{rule.passed?'✓':'○'} {rule.label}</Text>)}
+         </View>
          <Text style={styles.label}>Confirm password</Text>
          <TextInput accessibilityLabel="Confirm password" secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password"
           maxLength={128} placeholder="Re-enter password" placeholderTextColor="#8AA1AF" value={confirmPassword}
@@ -311,6 +335,27 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
           autoComplete="email" placeholder="Not used for sign-in or verification"
           placeholderTextColor="#8AA1AF" maxLength={254} value={email} onChangeText={setEmail} style={styles.input}/>
          <Text style={styles.footnote}>Contact email is only for manual support, not automatic password recovery.</Text>
+         {!linkNative?<View style={styles.discovery}>
+          <Text style={styles.label}>🐾 How did you hear about Puppy Clicker? (optional)</Text>
+          <View style={styles.discoveryOptions}>
+           <Pressable accessibilityRole="radio" accessibilityLabel="Skip discovery question"
+            accessibilityState={{selected:joinSource===''}} onPress={()=>{setJoinSource('');setJoinDetails('');}}
+            style={[styles.discoveryChoice,joinSource===''&&styles.discoverySelected]}>
+            <Text style={styles.secondaryText}>Skip</Text>
+           </Pressable>
+           {DISCOVERY_SOURCES.map(([id,label])=><Pressable accessibilityRole="radio" accessibilityLabel={label}
+            key={id} accessibilityState={{selected:joinSource===id}}
+            onPress={()=>{setJoinSource(id);setJoinDetails('');}}
+            style={[styles.discoveryChoice,joinSource===id&&styles.discoverySelected]}>
+            <Text style={styles.secondaryText}>{label}</Text>
+           </Pressable>)}
+          </View>
+          {joinSource?<><Text style={styles.label}>{joinSource==='friend'?'Who invited you? (optional)':'Where did you see us? (optional)'}</Text>
+           <TextInput accessibilityLabel="Discovery details" autoCorrect={false} maxLength={120}
+            placeholder={joinSource==='friend'?'Their Pup username or name':'Server, channel, creator or website'}
+            placeholderTextColor="#8AA1AF" value={joinDetails} onChangeText={setJoinDetails} style={styles.input}/></>:null}
+          <Text style={styles.footnote}>No invite code or referral reward is required.</Text>
+         </View>:null}
          {agreements}
          <Pressable accessibilityRole="button" accessibilityLabel={linkNative?'Add password to Pup Account':'Create Pup Account'}
           disabled={busy} style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
@@ -341,6 +386,14 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
 }
 const styles=StyleSheet.create({
  card:{padding:14,backgroundColor:'#161A25',borderColor:'rgba(0,229,255,0.23)',borderWidth:1,borderRadius:16,gap:10},
+ textAction:{alignSelf:'flex-start',padding:6},
+ rules:{flexDirection:'row',flexWrap:'wrap',gap:7},
+ rule:{color:'#B4CBD7',fontSize:12,padding:6,borderRadius:7,backgroundColor:'#0A0C12'},
+ rulePassed:{color:'#83E0BD'},
+ discovery:{gap:9,padding:12,borderWidth:1,borderColor:'rgba(0,229,255,0.20)',borderRadius:16,backgroundColor:'#0A0C12'},
+ discoveryOptions:{flexDirection:'row',flexWrap:'wrap',gap:5},
+ discoveryChoice:{borderWidth:1,borderColor:'#476579',borderRadius:10,padding:8},
+ discoverySelected:{borderColor:'#00E5FF',backgroundColor:'#193B48'},
  root:{flex:1,backgroundColor:'#0A0C12'},
  layout:{flex:1,backgroundColor:'#0A0C12'},
  desktopLayout:{flexDirection:'row'},
