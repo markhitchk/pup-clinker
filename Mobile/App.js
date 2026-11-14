@@ -13,6 +13,7 @@ import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
+import VulkanYardEffects from './src/components/VulkanYardEffects.jsx';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
 import NotificationInbox from './src/components/NotificationInbox.jsx';
 import PuppyDetailsDialog from './src/components/PuppyDetailsDialog.jsx';
@@ -204,6 +205,7 @@ function PlayScreen({g,act,clock,schedule,viewportHeight}){
   <PageHeader title="Play"/>
   <Wallet game={g} compact/>
   <View style={[styles.restoredStage,{minHeight:layout.minStageHeight,backgroundColor:`rgba(${rgb},0.065)`,borderColor:`rgba(${rgb},0.16)`}]}>
+   <VulkanYardEffects preferences={g}/>
    <Pressable accessibilityRole="button" accessibilityLabel={'Tap '+g.puppyName+' to earn Treats'} accessibilityState={{disabled:cooldown>0}} disabled={cooldown>0} onPress={doTap}>
     <Animated.View style={{transform:[{scale:tapScale},{rotate:rotation.interpolate({inputRange:[-4,4],outputRange:['-4deg','4deg']})},{translateY:lift}]}}>
      <Portrait puppy={pup} size={layout.portrait} accessory={g.accessory}/>
