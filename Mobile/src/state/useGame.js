@@ -389,6 +389,15 @@ export function useGame({mode='guest'}={}){
   await refreshAccount(updated);
   return updated;
  },[beta,account?.status,refreshAccount]);
+ const updateAccountAvatar=useCallback(async avatarUrl=>{
+  if(!beta||account?.status!=='VERIFIED')throw new Error('Sign in before editing your Pup Account.');
+  const method=NativeModules.PuppyBetaAccount?.updateAvatarUrl;
+  if(typeof method!=='function')throw new Error('Update Puppy Clicker to edit your avatar.');
+  const updated=await method(avatarUrl,PUBLISHABLE_KEY);
+  if(updated?.status!=='VERIFIED')throw new Error('Avatar update was not verified.');
+  await refreshAccount(updated);
+  return updated;
+ },[beta,account?.status,refreshAccount]);
  const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
- return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
+ return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName,updateAccountAvatar};
 }
