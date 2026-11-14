@@ -34,7 +34,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
  const [contactEmail,setContactEmail]=useState('');
  useEffect(()=>{if(visible){setMode(initialMode==='discord'?'signin':initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
- const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
+ const close=useCallback(()=>{setPassword('');setConfirmPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
   const native=api();
@@ -400,6 +400,7 @@ const styles=StyleSheet.create({
  intro:{flex:0.86,minWidth:280,backgroundColor:'#131B2C',padding:36,
   borderRightWidth:1,borderRightColor:'rgba(0,229,255,0.14)',justifyContent:'space-between'},
  introBody:{gap:14},
+ eyebrow:{color:'#00E5FF',fontWeight:'900',letterSpacing:1,fontSize:12},
  introHeading:{fontSize:42,lineHeight:47,fontWeight:'900',color:'#F3FBFF',letterSpacing:-1},
  introDescription:{color:'#B2C9D7',fontSize:16,lineHeight:27,marginBottom:14},
  introBenefit:{color:'#C4E7EF',fontSize:14,fontWeight:'700'},
