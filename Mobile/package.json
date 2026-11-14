@@ -22,7 +22,9 @@
     "expo-system-ui": "~57.0.4",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "~5.7.0"
+    "react-native-safe-area-context": "~5.7.0",
+    "expo-build-properties": "~57.0.22",
+    "react-native-skia": "3.10.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
