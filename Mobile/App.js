@@ -12,6 +12,7 @@ import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context
 import {applyAppearance,interaction} from './src/theme.js';
 import {DEFAULT_PREFERENCES,effectiveMotion} from './src/engine/settings.js';
 import SettingsScreen from './src/components/SettingsScreen.jsx';
+import InventoryScreen from './src/components/InventoryScreen.jsx';
 import V2PlayScreen from './src/components/V2PlayScreen.jsx';
 import VulkanYardEffects from './src/components/VulkanYardEffects.jsx';
 import AccountDetailsScreen from './src/components/AccountDetailsScreen.jsx';
@@ -1084,6 +1085,7 @@ export function PuppyApp({betaMode=false}){
  const usePuppy=id=>{if(!saved.unlockedPuppies.includes(id))return;act({type:'switch',id,now:Date.now()});setTab('play');setSecondary(null);};
  const main=()=>{
   if(secondary==='achievements')return <RewardsScreen g={g} act={act} clock={clock} schedule={state.monthlySchedule} onOpen={openScreen} onPrestige={()=>openScreen('prestige')} readOnly={betaMode&&!(cloudState==='LIVE_SYNCED'||(cloudState==='NO_CLOUD_SAVE'&&account?.gameplayWritable===true))}/>;
+  if(secondary==='inventory')return <InventoryScreen game={g} onOpen={openScreen} onRefresh={betaMode?refreshAccount:undefined} cloudState={cloudState}/>;
   if(secondary==='settings')return <SettingsScreen g={saved} act={act} onOpen={openScreen} registry={registry} notifications={notifications} diagnostics={diagnostics} betaMode={betaMode} account={account} onConnectAccount={()=>openAccount('signin')} onUpdateAccountName={updateAccountName} onUpdateBirthday={onboarding.update} cloudState={cloudState} syncStatus={syncStatus} onRefreshAccount={refreshAccount}/>;
   if(secondary==='account-details')return <AccountDetailsScreen account={account} cloudState={cloudState}
    onBack={()=>setSecondary('settings')} onManage={()=>openAccount('signin')} onRefresh={refreshAccount}/>;
@@ -1124,6 +1126,7 @@ export function PuppyApp({betaMode=false}){
   {state.ready&&saved.onboardingComplete?<View style={[styles.topBar,g.playLayoutV2Enabled&&{backgroundColor:C.bg,borderBottomWidth:1,borderBottomColor:C.accentSoft}]}>
    <Image source={require('./assets/logos/puppy_clicker.png')} resizeMode="contain" style={{width:32,height:32}}/>
    <Txt style={[styles.brand,{flex:1,letterSpacing:0}]}>Puppy Clicker</Txt>
+   <Pressable accessibilityRole="button" accessibilityLabel="Open inventory" onPress={()=>openScreen('inventory')} style={styles.headerButton}><Txt style={{fontSize:23}}>🎒</Txt></Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel={'Notifications, '+saved.notificationInbox.filter(n=>!n.read).length+' unread'} onPress={()=>{notifications.check();setInboxOpen(true);}} style={styles.headerButton}><Txt style={{fontSize:23}}>🔔</Txt>{saved.notificationInbox.some(n=>!n.read)?<View style={styles.unreadDot}/>:null}</Pressable>
    <Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={()=>setSecondary('settings')} style={styles.headerButton}><Txt style={{fontSize:23}}>⚙️</Txt></Pressable>
   </View>:null}
