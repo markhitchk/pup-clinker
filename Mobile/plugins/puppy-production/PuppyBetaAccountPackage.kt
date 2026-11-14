@@ -251,6 +251,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putBoolean("linkedFromPlay",obj.optBoolean("linkedFromPlay",false))
    putString("accountId",a.getString("id"));putBoolean("cloudSaveExists",save.optBoolean("exists"))
    putString("displayName",a.optString("displayName",a.getString("username")))
+   if(a.isNull("avatarUrl"))putNull("avatarUrl") else putString("avatarUrl",a.optString("avatarUrl"))
    putString("playerId",obj.optString("playerId",player.getString("player_id","")))
    putString("friendCode",obj.optString("friendCode",player.getString("friend_code","")))
    putDouble("cloudRevision",save.optDouble("revision"));putString("guildRole",obj.optString("guildRole",""))
@@ -392,6 +393,18 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    JSONObject().put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)),key,session(key))
   account(key)
  }
+ @ReactMethod fun updateAvatarUrl(url:String?,key:String,p:Promise)=runAsync(p){
+  require(url==null || (url.length<=2048 && url.startsWith("https://"))){"Invalid public HTTPS avatar URL"}
+  val payload=JSONObject().put("avatarUrl",url ?: JSONObject.NULL)
+  try{signedPost("pup-beta-link","beta-avatar-update",payload,key)}
+  catch(e:ApiError){
+   if(e.code!="BETA_LINK_REQUIRED")throw e
+   signedPost("pup-account","account-avatar-update",payload,key)
+  }
+  // Never persist unsynced image choices as authoritative local account state.
+  accountPreviewFile.delete()
+  account(key)
+ }
  @ReactMethod fun updateContactEmail(email:String,key:String,p:Promise)=runAsync(p){
   require(email.length<=254 && (email.isBlank()||email.contains("@"))){"Invalid support contact email"}
   post("pup-credentials",envelope("native-contact-update",
@@ -480,6 +493,7 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
    putBoolean("legalAccepted",obj.optBoolean("legalAccepted",false))
    putString("contactEmail",obj.optString("contactEmail",""))
    putString("displayName",a.optString("displayName",a.getString("username")))
+   if(a.isNull("avatarUrl"))putNull("avatarUrl") else putString("avatarUrl",a.optString("avatarUrl"))
    putString("accountId",a.getString("id"))
    putBoolean("readOnly",obj.optBoolean("readOnly",true))
    putBoolean("gameplayWritable",obj.optBoolean("gameplayWritable",!obj.optBoolean("readOnly",true)))
