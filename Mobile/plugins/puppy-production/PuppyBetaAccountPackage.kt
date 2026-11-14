@@ -403,6 +403,22 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   post("pup-credentials",envelope("native-sign-up",body),key,session(key))
   account(key)
  }
+
+ // Android's AutofillManager lives in the Activity. React Native keeps the
+ // account form in the same Activity, so a successful login must explicitly
+ // finish the active autofill context before JS clears its password fields.
+ // The OS credential provider alone decides whether to show a save prompt.
+ // No password is passed to or stored by this bridge.
+ @ReactMethod fun commitPupAutofill(p:Promise){
+  ctx.runOnUiQueueThread {
+   try {
+    if(Build.VERSION.SDK_INT<Build.VERSION_CODES.O){p.resolve(false);return@runOnUiQueueThread}
+    val manager=ctx.currentActivity?.getSystemService(android.view.autofill.AutofillManager::class.java)
+    if(manager?.isEnabled==true){manager.commit();p.resolve(true)}
+    else p.resolve(false)
+   }catch(_ : Exception){p.resolve(false)}
+  }
+ }
  @ReactMethod fun signInPupAccount(login:String,password:String,key:String,p:Promise)=runAsync(p){
   require(login.matches(Regex("[A-Za-z0-9_-]{3,20}"))&&password.length in 1..128){"Invalid Pup login"}
   post("pup-credentials",envelope("native-sign-in",
