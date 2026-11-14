@@ -166,6 +166,18 @@ Deno.serve(async (req: Request) => {
       const username = requiredString(envelope.payload.username, "username").trim();
       const password = requiredString(envelope.payload.password, "password");
       const contactEmail = supportEmail(envelope.payload.contactEmail ?? envelope.payload.email);
+      // Match optional website discovery fields. Never use these fields for
+      // account identity, entitlements, game saves, or referral rewards.
+      const source = envelope.payload.joinSource === "" || envelope.payload.joinSource == null
+        ? null : envelope.payload.joinSource;
+      const detail = envelope.payload.joinDetails == null ? "" : envelope.payload.joinDetails;
+      const acceptedSources = new Set(["friend","discord","youtube","tiktok","instagram","reddit","google","play_store","other"]);
+      if ((source !== null && (typeof source !== "string" || !acceptedSources.has(source))) ||
+        typeof detail !== "string" || detail.length > 120 ||
+        [...detail].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) ||
+        (source === null && detail.trim())) {
+        throw new HttpError(400, "PUP_JOIN_SOURCE_INVALID", "Choose a valid optional discovery source.");
+      }
       requireLegalConsent(envelope.payload);
       if (!NAME_RE.test(username) || password.length < 8 || password.length > 128) {
         throw new HttpError(400, "PUP_CREDENTIAL_INVALID", "Enter a 3–20 character username and an 8–128 character password.");
@@ -251,6 +263,18 @@ Deno.serve(async (req: Request) => {
       if (createdAccount) {
         await admin.from("pupeye_players").update({ username })
           .eq("id", session.player.id).is("discord_user_id", null);
+      }
+      if (createdAccount && source) {
+        try {
+          // Analytics insert is deliberately best-effort: an attribution outage
+          // must never roll back verified Pup Account registration.
+          const { error: discoveryError } = await admin.from("pup_registration_sources").insert({
+            account_uuid: accepted.id, source, details: detail.trim() || null,
+          });
+          if (discoveryError) console.error("Optional Pup Account discovery attribution unavailable");
+        } catch {
+          console.error("Optional Pup Account discovery attribution unavailable");
+        }
       }
       const outcome = await finishPasswordSignIn(admin, session, accepted, authId);
       return json(200, outcome);

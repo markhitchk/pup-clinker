@@ -24,6 +24,15 @@
     },
     "icon": "./assets/logos/puppy_clicker.png",
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "./plugins/withPuppyVulkan.cjs",
       "./plugins/withPuppyPointer.cjs",
       "./plugins/withPuppyProductionAuthority.cjs",
       "expo-notifications"

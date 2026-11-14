@@ -10,8 +10,9 @@ import commonjs from '@babel/plugin-transform-modules-commonjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const listeners=new Set();
-const native=Object.fromEntries(['ActivityIndicator','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
+const native=Object.fromEntries(['ActivityIndicator','Image','Modal','Pressable','ScrollView','StatusBar','Text','TextInput','View'].map(name=>[name,name]));
 native.StyleSheet={create:styles=>styles};
+native.useWindowDimensions=()=>({width:390,height:844});
 native.NativeModules={};
 native.Linking={
  getInitialURL:async()=>null,
@@ -22,7 +23,7 @@ const require=createRequire(file),module={exports:{}};
 const compiled=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
 new Function('require','module','exports',compiled)(id=>
  id==='react-native'?native:
- id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:require(id),module,module.exports);
+ id==='react-native-safe-area-context'?{useSafeAreaInsets:()=>({top:24,bottom:24})}:id.endsWith('.png')?1:require(id),module,module.exports);
 const Entry=module.exports.default;
 const contents=renderer=>renderer.root.findAllByType('Text').flatMap(t=>t.props.children).join(' ');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
@@ -67,7 +68,8 @@ test('username password setup errors do not require SMTP or another email',async
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
@@ -91,7 +93,8 @@ test('Discord account offers linking to the same Pup username',async()=>{
   assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.editable,false);
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
   });
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();});
   await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Add password to Pup Account'}).props.onPress();await flush();});
@@ -114,7 +117,8 @@ test('Pup Account signup and username/password signin use their own native metho
   await act(async()=>{
    renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.onChangeText('PuppyFan');
    renderer.root.findByProps({accessibilityLabel:'Pup email'}).props.onChangeText('pup@example.com');
-   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('secure-password');
+   renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.onChangeText('Secure-password9!');
+   renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.onChangeText('Secure-password9!');
    renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
    renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
   });
@@ -125,5 +129,104 @@ test('Pup Account signup and username/password signin use their own native metho
   assert.equal(calls[0][4],true);
   assert.equal(calls[0][5],true);
   assert.equal(verified,1);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+
+test('website-style registration generates secure suggestions and sends optional discovery through native PupEye',async()=>{
+ let renderer;
+ const calls=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  suggestPupUsername:async()=> 'SunnyPaw_1234',
+  suggestStrongPassword:async()=> 'Secure-password9!',
+  createPupAccount:async(...args)=>{calls.push(args);return {status:'VERIFIED',legalAccepted:true,username:'SunnyPaw_1234'};}
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signup'}));await flush();});
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Generate username'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Generate strong password'}).props.onPress();
+   await flush();
+  });
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.value,'SunnyPaw_1234');
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.value,'Secure-password9!');
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.value,'Secure-password9!');
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'YouTube'}).props.onPress();
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Discovery details'}).props.onChangeText('PuppyCreator');
+   renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
+  });
+  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Create Pup Account'}).props.onPress();await flush();});
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],'SunnyPaw_1234');
+  assert.equal(calls[0][5],'youtube');
+  assert.equal(calls[0][6],'PuppyCreator');
+  assert.match(contents(renderer),/Pup Account connected/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+
+test('Android password autofill fields commit before successful sign-in finishes',async()=>{
+ let renderer;
+ const events=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  signInPupAccount:async(username,password)=>{
+   assert.equal(username,'PuppyFan');
+   assert.equal(password,'Secure-password9!');
+   events.push('native-signin');
+   return {status:'VERIFIED',legalAccepted:true,username:'PuppyFan'};
+  },
+  commitPupAutofill:async()=>{
+   events.push('autofill-commit');
+   // The controlled input value must remain present for AutofillManager.
+   assert.equal(renderer.root.findByProps({testID:'pup-signin-password'}).props.value,'Secure-password9!');
+   return true;
+  }
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signin',onVerified:()=>events.push('verified')}));await flush();});
+  const username=renderer.root.findByProps({testID:'pup-signin-username'});
+  const password=renderer.root.findByProps({testID:'pup-signin-password'});
+  assert.equal(username.props.autoComplete,'username');
+  assert.equal(username.props.importantForAutofill,'yes');
+  assert.equal(password.props.autoComplete,'current-password');
+  assert.equal(password.props.importantForAutofill,'yes');
+  await act(async()=>{
+   username.props.onChangeText('PuppyFan');
+   password.props.onChangeText('Secure-password9!');
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();
+   await flush();
+  });
+  assert.deepEqual(events,['native-signin','autofill-commit','verified']);
+  assert.equal(renderer.root.findAllByProps({testID:'pup-signin-password'}).length,0,'form closes after accepted auth');
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
+
+test('Android password autofill does not save rejected sign-in credentials',async()=>{
+ let renderer,commits=0;
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  signInPupAccount:async()=>{throw Object.assign(new Error('invalid'),{code:'BETA_PUP_SIGNIN_INVALID'});},
+  commitPupAutofill:async()=>{commits++;return true;}
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signin'}));await flush();});
+  await act(async()=>{
+   renderer.root.findByProps({testID:'pup-signin-username'}).props.onChangeText('PuppyFan');
+   renderer.root.findByProps({testID:'pup-signin-password'}).props.onChangeText('WrongPassword9!');
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Sign in with Pup Account'}).props.onPress();
+   await flush();
+  });
+  assert.equal(commits,0);
+  assert.match(contents(renderer),/Incorrect Pup username or password/);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });

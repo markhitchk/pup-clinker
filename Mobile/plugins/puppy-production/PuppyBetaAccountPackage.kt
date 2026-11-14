@@ -370,15 +370,54 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
  }
- @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
+ // Website-equivalent suggestions. Secrets are generated with Android SecureRandom
+ // and returned only to the local account form; they are never saved or logged.
+ @ReactMethod fun suggestPupUsername(p:Promise)=runAsync(p){
+  val adjectives=listOf("Sunny","Cozy","Merry","Lucky","Cloudy","Sparkly","Gentle","Golden","Bouncy","Clever","Happy","Tiny","Dreamy","Fuzzy","Bright","Starry","Sweet")
+  val handles=listOf("Paw","Pup","Snoot","Tail","Biscuit","Buddy","Mochi","Paws","Corgi","Scout","Fluff","Zoomie")
+  adjectives[random.nextInt(adjectives.size)]+handles[random.nextInt(handles.size)]+"_"+
+   (1000+random.nextInt(9000)).toString()
+ }
+ @ReactMethod fun suggestStrongPassword(p:Promise)=runAsync(p){
+  val groups=listOf("ABCDEFGHJKLMNPQRSTUVWXYZ","abcdefghijkmnopqrstuvwxyz","23456789","!@#$%*_-?")
+  val alphabet=groups.joinToString("")
+  val chars=groups.map{it[random.nextInt(it.length)]}.toMutableList()
+  repeat(20){chars.add(alphabet[random.nextInt(alphabet.length)])}
+  for(i in chars.size-1 downTo 1){
+   val j=random.nextInt(i+1)
+   val temp=chars[i];chars[i]=chars[j];chars[j]=temp
+  }
+  chars.joinToString("")
+ }
+ @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,joinSource:String,joinDetails:String,key:String,p:Promise)=runAsync(p){
   require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
   require(password.length in 8..128){"Invalid Pup password"}
   require(contactEmail.length<=254 && (contactEmail.isBlank()||contactEmail.contains("@"))){"Invalid optional support email"}
   require(termsAccepted&&privacyAccepted){"Both legal policies must be accepted"}
+  require(joinSource.isEmpty()||joinSource in setOf("friend","discord","youtube","tiktok","instagram","reddit","google","play_store","other")){"Unknown join source"}
+  require(joinDetails.length<=120&&joinDetails.none{it.code<32||it.code==127}){"Invalid join-source details"}
+  require(joinSource.isNotEmpty()||joinDetails.isBlank()){"Join details require a source"}
   val body=JSONObject().put("username",username).put("contactEmail",contactEmail.trim())
    .put("password",password).put("termsAccepted",termsAccepted).put("privacyAccepted",privacyAccepted)
+   .put("joinSource",joinSource).put("joinDetails",joinDetails.trim())
   post("pup-credentials",envelope("native-sign-up",body),key,session(key))
   account(key)
+ }
+
+ // Android's AutofillManager lives in the Activity. React Native keeps the
+ // account form in the same Activity, so a successful login must explicitly
+ // finish the active autofill context before JS clears its password fields.
+ // The OS credential provider alone decides whether to show a save prompt.
+ // No password is passed to or stored by this bridge.
+ @ReactMethod fun commitPupAutofill(p:Promise){
+  ctx.runOnUiQueueThread {
+   try {
+    if(Build.VERSION.SDK_INT<Build.VERSION_CODES.O){p.resolve(false);return@runOnUiQueueThread}
+    val manager=ctx.currentActivity?.getSystemService(android.view.autofill.AutofillManager::class.java)
+    if(manager?.isEnabled==true){manager.commit();p.resolve(true)}
+    else p.resolve(false)
+   }catch(_ : Exception){p.resolve(false)}
+  }
  }
  @ReactMethod fun signInPupAccount(login:String,password:String,key:String,p:Promise)=runAsync(p){
   require(login.matches(Regex("[A-Za-z0-9_-]{3,20}"))&&password.length in 1..128){"Invalid Pup login"}

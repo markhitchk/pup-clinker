@@ -2,6 +2,7 @@ import React from 'react';
 import {Pressable,Text,View} from 'react-native';
 import {colors as C} from '../theme.js';
 import {format} from '../engine/game.js';
+import VulkanYardEffects from './VulkanYardEffects.jsx';
 
 // Pure React Native variant of the illustrated/browser-style Play screen.
 // The live tap callback, protected currency wallet and rewards are passed
@@ -24,6 +25,7 @@ export default function V2PlayScreen({game,layout,wallet,portrait,onTap,cooldown
    borderRadius:px(25),paddingHorizontal:px(10),paddingVertical:px(8),gap:layout.gap,
    alignItems:'center',
   }}>
+   <VulkanYardEffects preferences={game}/>
    <View style={{flex:1,minHeight:0,alignItems:'center',justifyContent:'flex-end',width:'100%'}}>
     {portrait}
    </View>
