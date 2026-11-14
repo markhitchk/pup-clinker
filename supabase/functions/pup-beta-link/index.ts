@@ -11,6 +11,7 @@ import {
   requiredString,
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
+import { normalizePublicAvatarUrl } from "../_shared/profile-avatar.ts";
 import { assertGlobalEnforcementAllowed } from "../_shared/global-enforcement.ts";
 import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
 import { applyBetaLiveGameplay } from "../_shared/beta-live-gameplay.ts";
@@ -22,7 +23,7 @@ import { applyBetaBlackjack } from "../_shared/beta-blackjack.ts";
 // The primary PupEye installation, player and cloud-write authority never move.
 const MAX_BETA_GRANT_MS = 7 * 24 * 60 * 60 * 1000;
 const hasLegalConsent = (a: any) => Number(a.terms_version) >= 1 && Number(a.privacy_version) >= 1 && Boolean(a.terms_accepted_at) && Boolean(a.privacy_accepted_at);
-const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-bootstrap", "beta-gameplay"]);
+const BETA_ACTIONS = new Set(["beta-link-discord", "beta-account-status", "beta-cloud-read", "beta-account-update", "beta-avatar-update", "beta-bootstrap", "beta-gameplay"]);
 
 Deno.serve(async (req: Request) => {
   try {
@@ -139,6 +140,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const owner = await verifyOwner(admin, account, envelope.action);
+    if (envelope.action === "beta-avatar-update") {
+      // A signed, currently authorized companion may edit profile metadata only.
+      // This does not grant cloud-save, ownership or economy permissions.
+      const avatarUrl = normalizePublicAvatarUrl(envelope.payload.avatarUrl);
+      const { error } = await admin.from("pup_accounts")
+        .update({ profile_avatar_url: avatarUrl, profile_avatar_path: null,
+                  updated_at: new Date().toISOString() })
+        .eq("id", account.id).eq("status", "active");
+      if (error) throw error;
+      await audit(admin, "BETA_PROFILE_AVATAR_UPDATED", "info",
+        { accountId: account.id }, session.player.id, session.installation.id);
+      return json(200, { updated: true, avatarUrl, gameplayReadOnly: true });
+    }
     if (envelope.action === "beta-account-update") {
       // Signed beta account profile edits only: no cloud-save or economy writes.
       const displayName = requiredString(envelope.payload.displayName, "displayName").trim();
@@ -299,7 +313,7 @@ Deno.serve(async (req: Request) => {
         account: {
           id: account.id, stage: account.stage, status: account.status,
           username: account.username, displayName: account.display_name ?? null,
-          avatarHash: account.avatar_hash ?? null,
+          avatarHash: account.avatar_hash ?? null, avatarUrl: account.profile_avatar_url ?? null,
           discordUserId: account.discord_user_id,
         },
         cloudSave: save ? {
@@ -352,7 +366,7 @@ Deno.serve(async (req: Request) => {
         status: account.status,
         username: account.username,
         displayName: account.display_name ?? null,
-        avatarHash: account.avatar_hash ?? null,
+        avatarHash: account.avatar_hash ?? null, avatarUrl: account.profile_avatar_url ?? null,
         discordUserId: account.discord_user_id,
         allowMultipleDevices: false,
       },
