@@ -131,3 +131,40 @@ test('Pup Account signup and username/password signin use their own native metho
   assert.equal(verified,1);
  }finally{if(renderer)await act(()=>renderer.unmount());}
 });
+
+
+test('website-style registration generates secure suggestions and sends optional discovery through native PupEye',async()=>{
+ let renderer;
+ const calls=[];
+ native.NativeModules.PuppyBetaAccount={
+  status:async()=>({status:'NEEDS_ACCOUNT'}),
+  suggestPupUsername:async()=> 'SunnyPaw_1234',
+  suggestStrongPassword:async()=> 'Secure-password9!',
+  createPupAccount:async(...args)=>{calls.push(args);return {status:'VERIFIED',legalAccepted:true,username:'SunnyPaw_1234'};}
+ };
+ try{
+  await act(async()=>{renderer=create(React.createElement(Entry,{initialMode:'signup'}));await flush();});
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Generate username'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Generate strong password'}).props.onPress();
+   await flush();
+  });
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup username'}).props.value,'SunnyPaw_1234');
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Pup password'}).props.value,'Secure-password9!');
+  assert.equal(renderer.root.findByProps({accessibilityLabel:'Confirm password'}).props.value,'Secure-password9!');
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'YouTube'}).props.onPress();
+  });
+  await act(async()=>{
+   renderer.root.findByProps({accessibilityLabel:'Discovery details'}).props.onChangeText('PuppyCreator');
+   renderer.root.findByProps({accessibilityLabel:'Accept Terms of Use'}).props.onPress();
+   renderer.root.findByProps({accessibilityLabel:'Accept Privacy Policy'}).props.onPress();
+  });
+  await act(async()=>{renderer.root.findByProps({accessibilityLabel:'Create Pup Account'}).props.onPress();await flush();});
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],'SunnyPaw_1234');
+  assert.equal(calls[0][5],'youtube');
+  assert.equal(calls[0][6],'PuppyCreator');
+  assert.match(contents(renderer),/Pup Account connected/);
+ }finally{if(renderer)await act(()=>renderer.unmount());}
+});
