@@ -6,6 +6,7 @@ import {ACCENT_PRESETS} from '../engine/settings.js';
 import {guestLevel} from '../engine/progression.js';
 import {PUPPY_IMAGES} from '../assets/puppies.js';
 import {validBirthday} from '../engine/onboarding.js';
+import {normalizeAvatarUrl} from '../production/avatarUrl.js';
 
 const T=({children,muted=false,style,...props})=><Text {...props} style={[s.text,muted&&s.muted,style]}>{children}</Text>;
 function Action({children,onPress,disabled=false,danger=false}){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({pressed})=>[s.action,disabled&&{opacity:.45},pressed&&{opacity:.7},danger&&{borderColor:C.danger}]}><T style={{fontWeight:'700',color:danger?C.danger:C.accentInk,textAlign:'center'}}>{children}</T></Pressable>;}
@@ -15,11 +16,15 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
  const [expanded,setExpanded]=useState(null),[flagsOpen,setFlagsOpen]=useState(false),[danger,setDanger]=useState(false),[dangerAction,setDangerAction]=useState(null);
  const [name,setName]=useState(g.guestName),[puppy,setPuppy]=useState(g.puppyName);
  const [profileBusy,setProfileBusy]=useState(false),[profileMessage,setProfileMessage]=useState('');
+ const [avatarFailed,setAvatarFailed]=useState(false);
  const [month,setMonth]=useState(String(g.birthdayMonth||'')),[day,setDay]=useState(String(g.birthdayDay||''));
  const [hex,setHex]=useState(g.accentHex),[custom,setCustom]=useState(false),[report,setReport]=useState(''),[category,setCategory]=useState('Bug');
  useEffect(()=>setHex(g.accentHex),[g.accentHex]);
+ useEffect(()=>setAvatarFailed(false),[account?.avatarUrl]);
  useEffect(()=>{if(!profileBusy)setName(g.guestName);},[g.guestName,profileBusy]);
  useEffect(()=>{const sub=BackHandler.addEventListener('hardwareBackPress',()=>{if(!expanded)return false;setExpanded(null);return true;});return ()=>sub.remove();},[expanded]);
+ const avatarUri=betaMode&&account?.status==='VERIFIED'&&!avatarFailed
+  ?normalizeAvatarUrl(account?.avatarUrl):null;
  const pref=(name,value)=>act({type:'setPreference',name,value});
  const toggle=(name,title,detail)=><Toggle title={title} detail={detail} value={g[name]} onChange={v=>pref(name,v)}/>;
  const section=(id,icon,title,subtitle,children)=><View key={id} style={s.section}>
@@ -32,7 +37,9 @@ export default function SettingsScreen({g,act,onOpen,registry,notifications,diag
  return <View style={s.page}>
   <View><T style={s.title}>Settings</T><T muted style={s.description}>Everything in one place. Tap a card to expand its settings.</T></View>
   <View style={s.identity}>
-   <Image source={PUPPY_IMAGES[g.puppyStyle]||PUPPY_IMAGES.classic} resizeMode="contain" style={s.avatar}/>
+   <Image source={avatarUri?{uri:avatarUri}:PUPPY_IMAGES[g.puppyStyle]||PUPPY_IMAGES.classic}
+     resizeMode={avatarUri?'cover':'contain'} onError={()=>setAvatarFailed(true)}
+     style={[s.avatar,avatarUri&&{borderRadius:38}]}/>
    <View style={{flex:1,gap:8}}><T numberOfLines={1} style={s.identityName}>{g.guestName}</T><View style={s.choices}><T style={s.badge}>Lv {guestLevel(g)}</T><T style={s.badge}>{g.xp} XP</T></View></View>
   </View>
   {group('ACCOUNT')}
