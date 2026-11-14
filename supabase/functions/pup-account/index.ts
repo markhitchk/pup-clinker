@@ -9,6 +9,7 @@ import {
   sha256Hex,
   verifyEnvelope,
 } from "../_shared/pupeye.ts";
+import { normalizePublicAvatarUrl } from "../_shared/profile-avatar.ts";
 
 const MAX_SAVE_BYTES = 1024 * 1024;
 import { requirePlayerAdmission } from "../_shared/queue-admission.ts";
@@ -158,7 +159,7 @@ Deno.serve(async (req: Request) => {
   try {
     assertPublishableRequest(req);
     const envelope = verifyEnvelope(await req.json());
-    if (!["account-status", "cloud-save-read", "cloud-save-write", "account-update", "account-bootstrap"].includes(envelope.action)) {
+    if (!["account-status", "cloud-save-read", "cloud-save-write", "account-update", "account-avatar-update", "account-bootstrap"].includes(envelope.action)) {
       throw new HttpError(400, "PUP_ACCOUNT_ACTION_INVALID", "Unsupported Pup Account action.");
     }
 
@@ -191,6 +192,18 @@ Deno.serve(async (req: Request) => {
       if (updateError) throw updateError;
       return json(200, { updated: true, displayName: changed.display_name });
     }
+    if (envelope.action === "account-avatar-update") {
+      // Profile-only signed write from the active verified PupEye installation.
+      // No remote image is fetched or copied into private storage.
+      const avatarUrl = normalizePublicAvatarUrl(envelope.payload.avatarUrl);
+      const { error } = await admin.from("pup_accounts")
+        .update({ profile_avatar_url: avatarUrl, profile_avatar_path: null,
+                  updated_at: new Date().toISOString() })
+        .eq("id", account.id).eq("active_installation_uuid", session.installation.id)
+        .eq("status", "active");
+      if (error) throw error;
+      return json(200, { updated: true, avatarUrl });
+    }
     if (envelope.action === "account-bootstrap") {
       const { data: save, error: saveError } = await admin.from("pup_account_saves")
         .select("revision,generation,save_schema,save_data,updated_at")
@@ -207,7 +220,7 @@ Deno.serve(async (req: Request) => {
         account: {
           id: account.id, status: account.status, stage: account.stage,
           username: account.username, displayName: account.display_name ?? null,
-          avatarHash: account.avatar_hash ?? null, discordUserId: account.discord_user_id,
+          avatarHash: account.avatar_hash ?? null, avatarUrl: account.profile_avatar_url ?? null, discordUserId: account.discord_user_id,
         },
         cloudSave: save ? {
           exists: true, revision: Number(save.revision), generation: Number(save.generation),
@@ -241,7 +254,7 @@ Deno.serve(async (req: Request) => {
           status: account.status,
           username: account.username,
           displayName: account.display_name ?? null,
-          avatarHash: account.avatar_hash ?? null,
+          avatarHash: account.avatar_hash ?? null, avatarUrl: account.profile_avatar_url ?? null,
           discordUserId: account.discord_user_id,
           allowMultipleDevices: Boolean(account.allow_multiple_devices),
         },
