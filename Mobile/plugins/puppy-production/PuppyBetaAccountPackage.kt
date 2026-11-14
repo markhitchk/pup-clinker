@@ -370,6 +370,25 @@ class PuppyBetaAccountModule(private val ctx:ReactApplicationContext):ReactConte
   if(!sessionFile.isFile)Arguments.createMap().apply{putString("status","NEEDS_ACCOUNT")}
   else account(key)
  }
+ // Website-equivalent suggestions. Secrets are generated with Android SecureRandom
+ // and returned only to the local account form; they are never saved or logged.
+ @ReactMethod fun suggestPupUsername(p:Promise)=runAsync(p){
+  val adjectives=listOf("Sunny","Cozy","Merry","Lucky","Cloudy","Sparkly","Gentle","Golden","Bouncy","Clever","Happy","Tiny","Dreamy","Fuzzy","Bright","Starry","Sweet")
+  val handles=listOf("Paw","Pup","Snoot","Tail","Biscuit","Buddy","Mochi","Paws","Corgi","Scout","Fluff","Zoomie")
+  adjectives[random.nextInt(adjectives.size)]+handles[random.nextInt(handles.size)]+"_"+
+   (1000+random.nextInt(9000)).toString()
+ }
+ @ReactMethod fun suggestStrongPassword(p:Promise)=runAsync(p){
+  val groups=listOf("ABCDEFGHJKLMNPQRSTUVWXYZ","abcdefghijkmnopqrstuvwxyz","23456789","!@#$%*_-?")
+  val alphabet=groups.joinToString("")
+  val chars=groups.map{it[random.nextInt(it.length)]}.toMutableList()
+  repeat(20){chars.add(alphabet[random.nextInt(alphabet.length)])}
+  for(i in chars.size-1 downTo 1){
+   val j=random.nextInt(i+1)
+   val temp=chars[i];chars[i]=chars[j];chars[j]=temp
+  }
+  chars.joinToString("")
+ }
  @ReactMethod fun createPupAccount(username:String,contactEmail:String,password:String,termsAccepted:Boolean,privacyAccepted:Boolean,key:String,p:Promise)=runAsync(p){
   require(username.matches(Regex("[A-Za-z0-9_-]{3,20}"))){"Invalid Pup username"}
   require(password.length in 8..128){"Invalid Pup password"}
