@@ -20,7 +20,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState('');
  const [cloud,setCloud]=useState(null);
- const [mode,setMode]=useState(initialMode);
+ const [mode,setMode]=useState(initialMode==='discord'?'signin':initialMode);
  const [username,setUsername]=useState('');
  const [email,setEmail]=useState('');
  const [login,setLogin]=useState('');
@@ -30,7 +30,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  const [linkNative,setLinkNative]=useState(false);
  const [tos,setTos]=useState(false),[privacy,setPrivacy]=useState(false),[policy,setPolicy]=useState(null);
  const [contactEmail,setContactEmail]=useState('');
- useEffect(()=>{if(visible){setMode(initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
+ useEffect(()=>{if(visible){setMode(initialMode==='discord'?'signin':initialMode);setLinkNative(false);setNotice('');setProblem('');setTos(false);setPrivacy(false);}},[visible,initialMode]);
  const close=useCallback(()=>{setPassword('');setNotice('');setProblem('');onClose?.();},[onClose]);
  const recent=useRef('');
  const check=useCallback(async()=>{
@@ -340,6 +340,7 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
  </Modal>;
 }
 const styles=StyleSheet.create({
+ card:{padding:14,backgroundColor:'#161A25',borderColor:'rgba(0,229,255,0.23)',borderWidth:1,borderRadius:16,gap:10},
  root:{flex:1,backgroundColor:'#0A0C12'},
  layout:{flex:1,backgroundColor:'#0A0C12'},
  desktopLayout:{flexDirection:'row'},
