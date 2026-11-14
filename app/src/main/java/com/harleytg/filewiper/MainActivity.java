@@ -203,6 +203,27 @@ public class MainActivity extends Activity {
         }
     }
 
+    // DocumentsProvider media IDs such as "image:123" correspond to
+    // Android MediaStore entries. Only the OS may approve their deletion.
+    private Uri mediaStoreUri(Uri documentUri) {
+        if (!"com.android.providers.media.documents".equals(documentUri.getAuthority())) return null;
+        try {
+            String[] parts = DocumentsContract.getDocumentId(documentUri).split(":");
+            if (parts.length != 2) return null;
+            long id = Long.parseLong(parts[1]);
+            Uri collection;
+            switch (parts[0]) {
+                case "image": collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI; break;
+                case "video": collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI; break;
+                case "audio": collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI; break;
+                default: return null;
+            }
+            return ContentUris.withAppendedId(collection, id);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private String readString(android.database.Cursor c, String column, String fallback) {
         int i = c.getColumnIndex(column);
         return i < 0 || c.isNull(i) ? fallback : c.getString(i);
