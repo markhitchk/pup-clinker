@@ -5,6 +5,7 @@ import legal from '../../assets/legal/documents.json';
 import {isWebDiscordCallback} from './webDiscordCallback.js';
 import {supportsDatabaseLayout} from './dbSchemaLayout.js';
 import {websitePasswordRules,DISCOVERY_SOURCES,validDiscoverySource} from './pupAuthRules.js';
+import {commitVerifiedPupCredentials} from './androidAutofill.js';
 
 // This is the project's public publishable key, not an admin/service-role secret.
 const publishableKey=process.env.EXPO_PUBLIC_PUPPY_SUPABASE_KEY||
@@ -127,12 +128,15 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
    const result=mode==='signup'
     ?await api().createPupAccount(username.trim(),email.trim(),password,tos,privacy,joinSource,joinDetails.trim(),publishableKey)
     :await api().signInPupAccount(login.trim(),password,publishableKey);
-   setPassword('');
    if(result?.status==='VERIFIED'&&!supportsDatabaseLayout(result.databaseLayoutVersion)){
     setState({status:'DATABASE_LAYOUT_UNSUPPORTED'});
     setProblem('Update Puppy Clicker Android beta before reconnecting your Pup Account.');
     return;
    }
+   // The autofill context must finish while the verified username and
+   // password fields still contain the user's accepted credentials.
+   await commitVerifiedPupCredentials(api(),result);
+   setPassword('');setConfirmPassword('');
    setState(result);setLinkNative(false);
    setContactEmail(result.contactEmail||email.trim());
    if(result.status==='VERIFIED'&&result.legalAccepted===true)onVerified?.(result);
@@ -274,10 +278,12 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
          {provider('Pup Account','Username and password sign-in')}
          <Text style={styles.body}>Sign in using the same Pup Account you use on the website. Your linked progress is preserved.</Text>
          <Text style={styles.label}>Pup username</Text>
-         <TextInput accessibilityLabel="Pup username" autoCapitalize="none" autoCorrect={false} autoComplete="username"
+         <TextInput accessibilityLabel="Pup username" testID="pup-signin-username" nativeID="pup-signin-username"
+          importantForAutofill="yes" autoComplete="username" autoCapitalize="none" autoCorrect={false} returnKeyType="next"
           placeholder="Pup Account username" placeholderTextColor="#8AA1AF" value={login} onChangeText={setLogin} style={styles.input}/>
          <Text style={styles.label}>Password</Text>
-         <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="current-password"
+         <TextInput accessibilityLabel="Pup password" testID="pup-signin-password" nativeID="pup-signin-password"
+          importantForAutofill="yes" autoComplete="current-password" secureTextEntry autoCapitalize="none" autoCorrect={false} returnKeyType="done"
           placeholder="Password" placeholderTextColor="#8AA1AF" value={password} onChangeText={setPassword} style={styles.input}/>
          <Pressable accessibilityRole="button" accessibilityLabel="Sign in with Pup Account" disabled={busy}
           style={[styles.button,busy&&styles.disabled]} onPress={()=>void submit()}>
@@ -310,13 +316,16 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
          {provider('Pup Account','Username and password registration')}
          <Text style={styles.body}>{linkNative?'Link sign-in to your existing Discord Pup Account @'+state.username+'. Your puppies, Treats, and XP stay on the same account.':'Create a new Pup Account to play on Android and the website. Already have an account? Choose Sign In.'}</Text>
          <Text style={styles.label}>Pup username</Text>
-         <TextInput accessibilityLabel="Pup username" autoComplete="username" autoCapitalize="none" autoCorrect={false}
+         <TextInput accessibilityLabel="Pup username" testID="pup-register-username" nativeID="pup-register-username"
+          importantForAutofill={linkNative?'no':'yes'} autoComplete={linkNative?'off':'username-new'}
+          autoCapitalize="none" autoCorrect={false} returnKeyType="next"
           placeholder="3–20 letters, numbers, _ or -" placeholderTextColor="#8AA1AF" maxLength={20}
           editable={!linkNative} value={username} onChangeText={setUsername} style={styles.input}/>
          {!linkNative?<Pressable accessibilityRole="button" accessibilityLabel="Generate username" onPress={()=>void suggestUsername()} style={styles.textAction}>
           <Text style={styles.secondaryText}>🎲 Generate username</Text></Pressable>:null}
          <Text style={styles.label}>Password</Text>
-         <TextInput accessibilityLabel="Pup password" secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password"
+         <TextInput accessibilityLabel="Pup password" testID="pup-register-password" nativeID="pup-register-password"
+          importantForAutofill="yes" autoComplete="new-password" secureTextEntry autoCapitalize="none" autoCorrect={false} returnKeyType="next"
           placeholder="8–128 characters" maxLength={128} placeholderTextColor="#8AA1AF"
           value={password} onChangeText={setPassword} style={styles.input}/>
          <Text style={styles.footnote}>Use Google Password Manager, Samsung Pass, Bitwarden or another password manager to save a strong password.</Text>
@@ -327,7 +336,8 @@ export default function BetaAccountEntry({visible=true,onVerified,onClose,onboar
            style={[styles.rule,rule.passed&&styles.rulePassed]}>{rule.passed?'✓':'○'} {rule.label}</Text>)}
          </View>
          <Text style={styles.label}>Confirm password</Text>
-         <TextInput accessibilityLabel="Confirm password" secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password"
+         <TextInput accessibilityLabel="Confirm password" testID="pup-register-confirm-password" nativeID="pup-register-confirm-password"
+          importantForAutofill="yes" autoComplete="new-password" secureTextEntry autoCapitalize="none" autoCorrect={false} returnKeyType="next"
           maxLength={128} placeholder="Re-enter password" placeholderTextColor="#8AA1AF" value={confirmPassword}
           onChangeText={setConfirmPassword} style={styles.input}/>
          <Text style={styles.label}>Support contact email (optional)</Text>
