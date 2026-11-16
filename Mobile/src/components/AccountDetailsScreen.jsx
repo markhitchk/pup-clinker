@@ -12,7 +12,7 @@ const line=(label,value)=><View style={{gap:5,paddingVertical:12,borderBottomWid
  * Only public account metadata; installation IDs, internal UUIDs, signing
  * keys, session tokens and raw backend response data are never displayed.
  */
-export default function AccountDetailsScreen({account,cloudState,onBack,onManage,onRefresh}){
+export default function AccountDetailsScreen({account,cloudState,onBack,onManage,onRefresh,onInventory}){
  const verified=account?.status==='VERIFIED';
  const role=account?.guildRole==='DEVELOPER'?'Developer':
   account?.guildRole==='ADMIN'?'Administrator':
@@ -36,6 +36,7 @@ export default function AccountDetailsScreen({account,cloudState,onBack,onManage
    {line('Gameplay access',verified?(account.gameplayWritable===true?'Enabled':'Unavailable'):null)}
   </View>
   {code?button('Share Friend Code',()=>void Share.share({message:code})):null}
+  {button('🎒 View Inventory',onInventory)}
   {button('Manage sign-in and contact details',onManage)}
   {button('Refresh account details',()=>void onRefresh?.())}
   {button('← Back to Settings',onBack)}
