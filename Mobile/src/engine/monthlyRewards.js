@@ -17,6 +17,19 @@ export function monthKey(date=new Date()){
 export function localEpochDay(date=new Date()){
  return Math.floor(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())/86400000);
 }
+// The web companion's economy uses the server's UTC calendar day.
+// Build a local noon date for the UTC day so Kotlin-style schedule helpers
+// (monthKey, goalsForDay, localEpochDay) agree in every browser timezone.
+// This does NOT change the Android client's local-day progression.
+export function webServerRewardsDate(timestamp=new Date()){
+ const date=timestamp instanceof Date?timestamp:new Date(timestamp);
+ return new Date(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate(),12);
+}
+export function webServerEpochDay(timestamp=new Date()){
+ const date=timestamp instanceof Date?timestamp:new Date(timestamp);
+ return Math.floor(Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate())/86400000);
+}
+
 export function fallbackGoals(day){
  const taps=[50,75,90,100][Math.max(day-1,0)%4];
  const care=[3,4,5][Math.max(day-1,0)%3];

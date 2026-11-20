@@ -17,9 +17,9 @@ const v5=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppycli
 const economy=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyEconomyV7.kt',import.meta.url),'utf8');
 const wallet=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/GameViewModel.kt',import.meta.url),'utf8');
 const coins=readFileSync(new URL('../../App/app/src/main/java/com/harleytg/puppyclicker/PuppyMainScreensRevamp.kt',import.meta.url),'utf8');
-const rn=readFileSync(new URL('../App.js',import.meta.url),'utf8');
+const rn=readFileSync(new URL('../website/src/GameplayScreens.jsx',import.meta.url),'utf8');
 const shop=rn.slice(rn.indexOf('function ShopScreen('),rn.indexOf('function PrestigeScreen('));
-const prestigeScreen=rn.slice(rn.indexOf('function PrestigeScreen('),rn.indexOf('function RosterScreen('));
+const prestigeScreen=rn.slice(rn.indexOf('function PrestigeScreen('),rn.indexOf('return {DailyGoalCard,PlayScreen'));
 
 test('Part 3 Shop ports the launched Kotlin V6 layout and three distinct price sections',()=>{
  for(const x of ['🍪 Upgrades','🎟️ Tickets','🪙 Pup Coins','🎫 Redeem Code','🐶 Pups']){

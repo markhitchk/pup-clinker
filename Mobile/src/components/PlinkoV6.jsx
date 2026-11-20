@@ -86,8 +86,8 @@ export default function PlinkoV6({game,pending,lastResult,onAction,onBack}){
  const actionRef=useRef(onAction);actionRef.current=onAction;
  const motion=game.animationsEnabled!==false;
  const display=plinkoResult(pending)||lastResult;
- const blocked=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingScratch||game.pendingWheel||game.casinoRound);
- const enabled=!blocked&&validPlinkoWager(wager)&&game.casinoChips>=wager;
+ const blocked=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingScratch||game.pendingWheel||game.nativeCasinoPending||game.casinoRound);
+ const enabled=!game.gameplayBusy&&!blocked&&validPlinkoWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
   const duration=motion?PLINKO_V6.dropMs:PLINKO_V6.reducedMotionMs;
@@ -98,10 +98,7 @@ export default function PlinkoV6({game,pending,lastResult,onAction,onBack}){
  const start=()=>{
   if(!enabled){setError('Finish the current round or choose an affordable wager.');return;}
   setError('');
-  const pathRight=Array.from({length:PLINKO_V6.rows},()=>Math.random()<.5);
-  const bounceJitterPermille=Array.from({length:PLINKO_V6.rows},
-   ()=>Math.floor(Math.random()*(PLINKO_V6.maxJitter*2+1))-PLINKO_V6.maxJitter);
-  actionRef.current({type:'plinkoStart',wager,pathRight,bounceJitterPermille,now:Date.now()});
+  actionRef.current({type:'plinkoStart',wager,now:Date.now()});
  };
  const status=pending?'Ball in motion…':
   display?'Landed on '+plinkoLabel(display.multiplierHundredths)+' • '+display.payout+' Chips returned':

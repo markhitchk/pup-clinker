@@ -19,6 +19,7 @@ const animation=()=>({start(){},stop(){}});
 native.Animated={Value,View:'View',Image:'Image',createAnimatedComponent:x=>x,loop:animation,timing:animation,spring:animation,sequence:animation,parallel:animation,delay:animation};
 native.Easing={ease:x=>x,inOut:x=>x};native.Alert={alert(){}};native.Vibration={vibrate(){}};
 native.BackHandler={addEventListener:(_event,fn)=>{backHandlers.add(fn);return {remove:()=>backHandlers.delete(fn)};}};
+native.StyleSheet={create:x=>x,absoluteFill:{}};
 native.useWindowDimensions=()=>({width:393,height:852});native.useColorScheme=()=> 'dark';
 native.NativeModules={PuppyBetaAccount:{readStartupCrash:async()=>({exists:false}),clearStartupCrash:async()=>true}};
 let fixture={},latestState;
@@ -26,7 +27,20 @@ let setupComplete=true;
 function useGame(){const [state,dispatch]=React.useReducer(transition,null,()=>{const state=initialState();state.ready=true;state.game.onboardingComplete=true;state.game.animationsEnabled=false;state.game.animatedUi=false;Object.assign(state.game,fixture);return state;});latestState=state;return {state,act:dispatch,gameForDisplay:state.game,account:{status:'VERIFIED',legalAccepted:true,gameplayWritable:true},cloudState:'LIVE_SYNCED',refreshAccount:async()=>true};}
 const file=new URL('../App.js',import.meta.url),require=createRequire(file),module={exports:{}};
 const source=transformSync(readFileSync(file,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+function loadJsx(id,resolveFrom){
+ const filename=resolveFrom.resolve(id),r=createRequire(filename),result={exports:{}};
+ const code=transformSync(readFileSync(filename,'utf8'),{babelrc:false,configFile:false,plugins:[[jsx,{runtime:'automatic'}],commonjs]}).code;
+ new Function('require','module','exports',code)(name=>{
+  if(name==='react-native')return native;
+  if(name.endsWith('/assets/puppies.js'))return {PUPPY_IMAGES:{}};
+  if(name.endsWith('.jsx'))return loadJsx(name,r);
+  return r(name);
+ },result,result.exports);
+ return result.exports;
+}
 new Function('require','module','exports',source)(id=>{
+ if(id==='./website/src/GameplayScreens.jsx'||id==='./website/src/PuppyCollectionCard.jsx')return loadJsx(id,require);
+ if(id==='./src/state/publicPuppyCatalog.ts')return {usePublicPuppyCatalog:()=>({rows:fixture.catalog||[],loading:false,error:false})};
  if(id==='react-native')return native;
  if(id==='react-native-safe-area-context')return {SafeAreaProvider:({children})=>children,useSafeAreaInsets:()=>({top:24,bottom:24})};
  if(id.endsWith('/theme.js'))return theme;
@@ -124,5 +138,20 @@ test('Care keeps unaffordable actions disabled and shows the tired threshold cor
   for(const label of ['Feed, costs 20 Treats','Play, costs 1 Bone and 12 energy','Clean, costs 10 Treats'])assert.equal(renderer.root.findByProps({accessibilityLabel:label}).props.disabled,true);
   assert.match(text(renderer.root),/Rest above 10% energy/);
   await pressLabel(renderer,'Rest, free, restores 30 energy');assert.equal(latestState.game.energy,40);assert.equal(latestState.game.treats,0);assert.equal(latestState.game.bones,0);
+ }finally{await act(()=>renderer.unmount());}
+});
+
+test('read-only inventory and published PupDex use the same native card without changing ownership',async()=>{
+ const renderer=await render({catalog:[{puppy_id:'v2_frost',rarity:'rare'},{puppy_id:'classic',rarity:'common'}]});
+ try{
+  await goTab(renderer,'Roster');
+  const openMode=label=>act(()=>renderer.root.findAllByType('Pressable').find(p=>p.props.accessibilityRole==='tab'&&text(p)===label).props.onPress());
+  await openMode('Inventory');
+  assert.ok(renderer.root.findAllByProps({accessibilityLabel:'Inspect Buddy / Classic'}).length || text(renderer.root).includes('Owned'));
+  assert.equal(renderer.root.findAllByProps({accessibilityLabel:'Open Puppy Exchange'}).length,0);
+  assert.equal(renderer.root.findAllByProps({accessibilityLabel:'Inspect Frost'}).length,0);
+  await openMode('PupDex');
+  assert.equal(renderer.root.findAllByType('Pressable').filter(p=>p.props.accessibilityLabel?.startsWith('Inspect ')).length,2);
+  assert.equal(renderer.root.findAllByProps({accessibilityLabel:'Rename current puppy'}).length,0);
  }finally{await act(()=>renderer.unmount());}
 });

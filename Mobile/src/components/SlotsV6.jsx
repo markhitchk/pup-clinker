@@ -35,7 +35,7 @@ export default function SlotsV6({game,pending,lastResult,onAction,onBack}){
  const spin=Boolean(pending);
  const displayed=slotsResultFromRound(pending)||lastResult;
  const stopped=pending?revealStep:3;
- const canSpin=!pending&&validSlotsWager(wager)&&game.casinoChips>=wager&&!game.casinoRound&&!game.pendingScratch&&!game.pendingRoulette&&!game.pendingPlinko&&!game.pendingWheel;
+ const canSpin=!game.gameplayBusy&&!pending&&validSlotsWager(wager)&&game.casinoChips>=wager&&!game.nativeCasinoPending&&!game.casinoRound&&!game.pendingScratch&&!game.pendingRoulette&&!game.pendingPlinko&&!game.pendingWheel;
  const frame=slotsFrame(sceneWidth);
  const motion=game.animationsEnabled!==false;
  useEffect(()=>{
@@ -78,7 +78,7 @@ export default function SlotsV6({game,pending,lastResult,onAction,onBack}){
  const start=()=>{
   if(!canSpin){setMessage('Finish your current round or select an affordable wager.');return;}
   setMessage('');
-  action.current({type:'slotsStart',wager,rolls:[0,0,0].map(()=>Math.floor(Math.random()*100)),now:Date.now()});
+  action.current({type:'slotsStart',wager,now:Date.now()});
  };
  const symbols=[0,1,2].map(i=>pending&&motion&&stopped<=i?
   SLOT_SYMBOLS[slotDrawIndex(i,tick)].emoji:revealAtIndex(displayed,i));

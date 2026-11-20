@@ -90,9 +90,9 @@ export default function LuckyWheelV6({game,pending,lastResult,onAction,onBack}){
  const action=useRef(onAction);action.current=onAction;
  const animationsEnabled=game.animationsEnabled!==false;
  const display=wheelResult(pending)||lastResult;
- const blocked=Boolean(pending||game.casinoRound||game.pendingSlots||game.pendingRoulette||
+ const blocked=Boolean(pending||game.nativeCasinoPending||game.casinoRound||game.pendingSlots||game.pendingRoulette||
   game.pendingPlinko||game.pendingScratch);
- const canSpin=!blocked&&validWheelWager(wager)&&game.casinoChips>=wager;
+ const canSpin=!game.gameplayBusy&&!blocked&&validWheelWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
   const delayMs=animationsEnabled?WHEEL_V6.spinMs:WHEEL_V6.reducedMotionMs;
@@ -106,7 +106,7 @@ export default function LuckyWheelV6({game,pending,lastResult,onAction,onBack}){
   setMessage('');
   // The local roll is fixed before animation. No special/role/Code puppy IDs
   // can be minted through this unverified guest preview.
-  action.current({type:'wheelStart',wager,roll:Math.floor(Math.random()*100),now:Date.now()});
+  action.current({type:'wheelStart',wager,now:Date.now()});
  };
  const status=pending?'Wheel spinning…':display?wheelResultLabel(display):'Choose a wager and spin.';
  return <View style={styles.page}>

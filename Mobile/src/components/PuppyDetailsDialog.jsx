@@ -1,5 +1,8 @@
+import {collectionCapabilities} from '../../website/src/puppyCollectionModes.js';
+import {rarityLabels,unlockText,transferText} from '../../website/src/puppyRarity.js';
+import {PUPPY_IMAGES} from '../assets/puppies.js';
 import React,{useEffect,useState} from 'react';
-import {Modal,Pressable,ScrollView,Text,TextInput,View} from 'react-native';
+import {Image,Modal,Pressable,ScrollView,Text,TextInput,View,useWindowDimensions} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors as C,themedStyles} from '../theme.js';
 
@@ -7,16 +10,18 @@ import {colors as C,themedStyles} from '../theme.js';
  * Kotlin PuppyRosterDialogSystem parity. A preview owns the Use/Rename
  * confirmation; it never mutates progress without the caller's action.
  */
-export default function PuppyDetailsDialog({puppy,visible,onClose,portrait,assetId,originalName,
+export default function PuppyDetailsDialog({area,puppy,visible,onClose,portrait,assetId,originalName,
  displayName,unlocked,current,favorite,onToggleFavorite,onRetryArtwork,onUse,onRename}){
  const insets=useSafeAreaInsets();
+ const viewport=useWindowDimensions();
+ const caps=collectionCapabilities(area,{owned:unlocked,current});
  const [mode,setMode]=useState('preview');
  const [name,setName]=useState('');
  useEffect(()=>{if(visible){setMode('preview');setName(displayName||'');}},[visible,puppy?.id,displayName]);
  if(!puppy)return null;
  const finish=()=>{setMode('preview');onClose?.();};
  const renameValue=name.trim().replace(/\n/g,' ').slice(0,18);
- const title=mode==='rename'?'Rename Puppy':mode==='use'?'Use Puppy':unlocked?'Puppy Details':'How to Unlock';
+ const title=mode==='asset'?'Puppy artwork':mode==='rename'?'Rename Puppy':mode==='use'?'Use Puppy':area==='inventory'?'Owned Puppy Details':unlocked||area==='pupdex'?'Puppy Details':'How to Unlock';
  const performUse=()=>{if(!unlocked||current)return;onUse?.(puppy.id);finish();};
  const performRename=()=>{if(!current||!renameValue)return;onRename?.(renameValue);finish();};
  return <Modal visible={Boolean(visible)} transparent statusBarTranslucent navigationBarTranslucent
@@ -27,7 +32,11 @@ export default function PuppyDetailsDialog({puppy,visible,onClose,portrait,asset
      <Pressable accessibilityRole="button" accessibilityLabel="Close puppy details" onPress={finish}
       style={s.close}><Text style={s.cross}>×</Text></Pressable></View>
     <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-     <View style={s.identity}>
+     {mode==='asset'?<View style={s.section}>
+      <Image accessibilityLabel={displayName+' full-size artwork'} resizeMode="contain" style={{width:'100%',height:Math.min(viewport.width-64,viewport.height*.54)}} source={PUPPY_IMAGES[puppy.id]||(puppy.image?{uri:puppy.image}:undefined)}/>
+      <Text selectable style={s.muted}>{assetId}</Text>
+      <Pressable accessibilityRole="button" style={s.primary} onPress={()=>setMode('preview')}><Text style={s.primaryText}>Close Viewer</Text></Pressable>
+     </View>:<View style={s.identity}>
       <View style={s.portrait}>{portrait}</View>
       <View style={{flex:1,gap:5,minWidth:0}}>
        <Text style={s.name}>{displayName||originalName}</Text>
@@ -37,24 +46,29 @@ export default function PuppyDetailsDialog({puppy,visible,onClose,portrait,asset
         <View style={s.pill}><Text style={s.pillText}>{current?'Current':unlocked?'Unlocked':'🔒 Locked'}</Text></View>
        </View>
       </View>
-     </View>
-     {mode==='preview'&&unlocked?<>
+     </View>}
+     {mode==='preview'&&<>
+      <Text style={s.sectionBody}>{rarityLabels[puppy.rarity]||'Rarity unavailable'} · {unlockText(puppy.rarity?puppy:null)}</Text>
+      {puppy.rarity&&<Text style={s.sectionBody}>{transferText(puppy)}</Text>}
+      <Pressable accessibilityRole="button" onPress={()=>setMode('asset')} style={s.secondary}><Text style={s.secondaryText}>View Asset</Text></Pressable>
+     </>}
+     {mode==='preview'&&(unlocked||area==='pupdex')?<>
       <View style={s.section}><Text style={s.sectionHeading}>About</Text>
        <Text style={s.sectionBody}>{puppy.description||'No additional puppy details are available yet.'}</Text>
       </View>
       {displayName!==originalName?<View style={s.section}><Text style={s.sectionHeading}>Original roster name</Text><Text style={s.sectionBody}>{originalName}</Text></View>:null}
       <View style={s.row}>
-       <Pressable accessibilityRole="button" accessibilityLabel={favorite?'Remove puppy from favorites':'Add puppy to favorites'}
-        onPress={onToggleFavorite} style={s.secondary}><Text style={s.secondaryText}>{favorite?'♥ Favorite':'♡ Favorite'}</Text></Pressable>
+       {caps.canFavorite&&<Pressable accessibilityRole="button" accessibilityLabel={favorite?'Remove puppy from favorites':'Add puppy to favorites'}
+        onPress={onToggleFavorite} style={s.secondary}><Text style={s.secondaryText}>{favorite?'♥ Favorite':'♡ Favorite'}</Text></Pressable>}
        <Pressable accessibilityRole="button" accessibilityLabel="Retry puppy artwork" onPress={onRetryArtwork}
         style={s.secondary}><Text style={s.secondaryText}>↻ Retry Art</Text></Pressable>
       </View>
-      {!current?<Pressable accessibilityRole="button" accessibilityLabel="Use Puppy" style={s.primary}
+      {caps.canUse?<Pressable accessibilityRole="button" accessibilityLabel="Use Puppy" style={s.primary}
        onPress={()=>setMode('use')}><Text style={s.primaryText}>Use Puppy</Text></Pressable>:null}
-      {current?<Pressable accessibilityRole="button" accessibilityLabel="Rename Puppy" style={s.secondary}
+      {caps.canRename?<Pressable accessibilityRole="button" accessibilityLabel="Rename Puppy" style={s.secondary}
        onPress={()=>{setName(displayName||'');setMode('rename');}}><Text style={s.secondaryText}>Rename Puppy</Text></Pressable>:null}
      </>:null}
-     {mode==='preview'&&!unlocked?<View style={s.section}>
+     {mode==='preview'&&!unlocked&&area!=='pupdex'?<View style={s.section}>
       <Text style={s.sectionHeading}>Unlock requirement</Text>
       <Text style={s.sectionBody}>{puppy.unlockSource||'Unlock instructions are not available yet.'}</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Retry puppy artwork" style={s.secondary} onPress={onRetryArtwork}><Text style={s.secondaryText}>↻ Retry Art</Text></Pressable>
@@ -68,7 +82,7 @@ export default function PuppyDetailsDialog({puppy,visible,onClose,portrait,asset
       <Text style={s.muted}>{name.length}/18</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Restore original puppy name" onPress={()=>setName(originalName.slice(0,18))}>
        <Text style={s.secondaryText}>Use original name</Text></Pressable></View>:null}
-     {mode==='preview'?<Pressable accessibilityRole="button" accessibilityLabel="Done" style={s.primary} onPress={finish}>
+     {mode==='asset'?null:mode==='preview'?<Pressable accessibilityRole="button" accessibilityLabel="Done" style={s.primary} onPress={finish}>
       <Text style={s.primaryText}>{unlocked?'Done':'Close'}</Text></Pressable>:
       <View style={s.row}>
        <Pressable accessibilityRole="button" accessibilityLabel="Cancel" style={s.secondary} onPress={()=>setMode('preview')}><Text style={s.secondaryText}>Cancel</Text></Pressable>

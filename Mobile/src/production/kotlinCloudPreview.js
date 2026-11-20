@@ -122,6 +122,11 @@ export function projectKotlinCloudSave(raw,username=''){
  // Suppress mutating offline-care restoration during read-only projection.
  g.lastActiveAt=Date.now();
  const projected=sanitizeGame(g);
+ projected.adventClaims=set('web_advent_2026_claimed_v1').filter(id=>/^2026-12-(0[1-9]|1[0-9]|2[0-5])$/.test(id));
+ projected.adventClockOffset=Number.isSafeInteger(document.webCompanion?.adventServerTime)?document.webCompanion.adventServerTime-Date.now():null;
+ // Server-redacted metadata only; the native shoe never enters browser state.
+ projected.nativeCasinoPending=document.webCompanion?.nativeCasinoPending===true;
+ projected.nativeCasinoRefund=Number.isSafeInteger(document.webCompanion?.nativeCasinoRefund)?document.webCompanion.nativeCasinoRefund:null;
  // The guest sanitizer deliberately rejects protected puppy prizes. Keep
  // verified signed wheel rounds for display/reveal without relaxing guest rules.
  const secureWheel=pending?.type==='LUCKY_WHEEL'?{...pending,authority:'PUPEYE'}:null;
