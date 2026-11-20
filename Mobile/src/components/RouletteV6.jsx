@@ -103,7 +103,7 @@ export default function RouletteV6({game,pending,lastResult,onAction,onBack}){
  const onActionRef=useRef(onAction);onActionRef.current=onAction;
  const motion=game.animationsEnabled!==false;
  const display=rouletteResult(pending)||lastResult;
- const canSpin=!pending&&!game.pendingSlots&&!game.pendingScratch&&!game.pendingPlinko&&!game.pendingWheel&&!game.casinoRound&&
+ const canSpin=!game.gameplayBusy&&!pending&&!game.pendingSlots&&!game.pendingScratch&&!game.pendingPlinko&&!game.pendingWheel&&!game.nativeCasinoPending&&!game.casinoRound&&
   rouletteValidWager(wager)&&game.casinoChips>=wager;
  useEffect(()=>{
   if(!pending)return;
@@ -121,7 +121,7 @@ export default function RouletteV6({game,pending,lastResult,onAction,onBack}){
  const pull=()=>{
   if(!canSpin){setMessage('Finish the current round or choose an affordable wager.');return;}
   setMessage('');
-  onActionRef.current({type:'rouletteStart',wager,bet,winningNumber:Math.floor(Math.random()*37),now:Date.now()});
+  onActionRef.current({type:'rouletteStart',wager,bet,now:Date.now()});
  };
  const rules=[['Straight number 0–36','36× total'],['Red / Black','2× total'],['Odd / Even','2× total'],['1–18 / 19–36','2× total']];
  return <View style={styles.page}>

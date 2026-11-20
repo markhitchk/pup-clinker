@@ -30,12 +30,12 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
       # Dependencies are pinned in Mobile/package-lock.json.
       - uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
@@ -43,9 +43,11 @@ jobs:
         run: echo "PUPPY_BETA_VERSION_CODE=$(( $(date -u +%s) / 60 ))" >> "$GITHUB_ENV"
       - name: Install Expo dependencies
         run: npm ci --no-audit --no-fund
+      - name: Verify website source and TypeScript
+        run: npm run verify:website && npm run typecheck
       - name: Ensure beta package and launcher label cannot replace production
         run: |
-          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; const x=c({config:a.expo}); if(x.android.package!=='com.harleytg.puppyclicker.beta'||x.name!=='Puppy Clicker [Beta]')process.exit(1)"
+          node --input-type=module -e "import c from './app.config.js';import a from './app.json' with {type:'json'}; const x=c({config:a.expo}); if(x.android.package!=='com.harleytg.puppyclicker.beta'||x.name!=='Puppy Clicker [beta]')process.exit(1)"
       - name: Test migration guard and Kotlin parity fixtures
         shell: bash
         run: npm test
@@ -70,7 +72,7 @@ jobs:
             echo "::error::Unexpected package ID; refusing to publish beta artifact"
             exit 1
           }
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "application-label:'Puppy Clicker [Beta]'" > /dev/null || {
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep -F "application-label:'Puppy Clicker [beta]'" > /dev/null || {
             echo "::error::Unexpected launcher label"
             exit 1
           }

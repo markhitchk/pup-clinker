@@ -390,5 +390,5 @@ export function useGame({mode='guest'}={}){
   return updated;
  },[beta,account?.status,refreshAccount]);
  const gameForDisplay=useMemo(()=>beta?projectPendingTapDisplay(state.game,pendingTapIntents):state.game,[beta,state.game,pendingTapIntents]);
- return {state,gameForDisplay,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
+ return {state,gameForDisplay,pendingTapCount:pendingTapIntents.length,act,account,cloudState,startupError,syncStatus,refreshAccount,recoverRetiredIdentity,updateAccountName};
 }

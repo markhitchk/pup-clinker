@@ -1,0 +1,26 @@
+{
+  "common": {
+    "rgb": "193,207,225",
+    "ink": "#ecf5ff"
+  },
+  "uncommon": {
+    "rgb": "101,224,153",
+    "ink": "#c5ffdd"
+  },
+  "rare": {
+    "rgb": "97,175,255",
+    "ink": "#c6e4ff"
+  },
+  "epic": {
+    "rgb": "206,123,255",
+    "ink": "#f1d7ff"
+  },
+  "legendary": {
+    "rgb": "255,200,82",
+    "ink": "#fff0ba"
+  },
+  "unobtainable": {
+    "rgb": "255,105,133",
+    "ink": "#ffdae3"
+  }
+}

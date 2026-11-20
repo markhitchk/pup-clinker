@@ -90,7 +90,7 @@ export function sanitizeGame(input){
   const ids=new Set(ROSTER.map(p=>p.id));
   // Kotlin loadState unions saved entitlements with DEFAULT_V6_PUPPIES.
   // A malformed/older guest save must never lock the four starter puppies.
-  b.unlockedPuppies=[...new Set(['classic','golden','poodle','spotty',...(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>ids.has(id)):[])])];
+  b.unlockedPuppies=[...new Set(['classic','golden','poodle','spotty',...(Array.isArray(b.unlockedPuppies)?b.unlockedPuppies.filter(id=>typeof id==='string'&&/^[a-z0-9_]{1,80}$/.test(id)):[])])];
   b.favoritePuppies=[...new Set(Array.isArray(b.favoritePuppies)?b.favoritePuppies.filter(id=>ids.has(id)):[])];
   if(!b.unlockedPuppies.includes(b.puppyStyle))b.puppyStyle='classic';
   b.puppyName=String(b.puppyName||'Buddy').trim().replace(/\n/g,' ').slice(0,18).trim()||'Buddy';

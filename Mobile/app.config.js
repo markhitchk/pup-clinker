@@ -1,3 +1,4 @@
+import websiteSource from './website-source.json' with {type:'json'};
 // Beta is a separate install. Production must remain an explicitly approved,
 // correctly signed in-place upgrade so no existing Kotlin player data is lost.
 // PUPPY_NATIVE_PREVIEW is retained only as an alias for older CI invocations.
@@ -14,7 +15,7 @@ export default ({config})=>{
  }
  return {
   ...config,
-  name:beta?'Puppy Clicker [Beta]':config.name,
+  name:beta?'Puppy Clicker [beta]':config.name,
   scheme:beta?'puppyclickerbeta':config.scheme,
   android:{
    ...config.android,
@@ -26,6 +27,6 @@ export default ({config})=>{
    }]:config.android.intentFilters,
    versionCode:beta?requestedBetaCode:config.android.versionCode
   },
-  extra:{...config.extra,migrationStatus:beta?'beta-account-migration-locked':'production-authentication-required'}
+  extra:{...config.extra,websiteSourceCommit:websiteSource.commit,migrationStatus:beta?'beta-account-migration-locked':'production-authentication-required'}
  };
 };

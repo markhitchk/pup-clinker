@@ -1,0 +1,92 @@
+name: Website source sync
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: puppy-website-source-sync
+  cancel-in-progress: false
+jobs:
+  detect:
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.compare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: markhitchk/Puppy-Clicker
+          ref: main
+          path: website-checkout
+          fetch-depth: 0
+          persist-credentials: false
+      - id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pinned=$(jq -r .commit Mobile/website-source.json)
+          latest=$(git -C website-checkout rev-parse HEAD)
+          git -C website-checkout diff --name-only "$pinned" "$latest" -- src public assets api supabase mobile package.json package-lock.json vite.config.js vercel.json > changed-paths.txt
+          if [[ ! -s changed-paths.txt ]]; then exit 0; fi
+          branch="sync/website-$latest"
+          open=$(gh pr list --state open --head "$branch" --json number --jq length)
+          if [[ "$open" != 0 ]]; then exit 0; fi
+          echo "sha=$latest" >> "$GITHUB_OUTPUT"
+          {
+            echo "Website changes for native compatibility review at $latest"
+            echo '~~~'
+            cat changed-paths.txt
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+  build:
+    needs: detect
+    if: needs.detect.outputs.sha != ''
+    uses: ./.github/workflows/react-native-beta-arm64.yml
+    with:
+      website_sha: ${{ needs.detect.outputs.sha }}
+  propose:
+    needs: [detect, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          repository: markhitchk/Puppy-Clicker
+          ref: ${{ needs.detect.outputs.sha }}
+          path: website-checkout
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm ci --prefix Mobile --no-audit --no-fund
+      - name: Propose the tested source revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEBSITE_SHA: ${{ needs.detect.outputs.sha }}
+        run: |
+          set -euo pipefail
+          branch="sync/website-$WEBSITE_SHA"
+          node Mobile/scripts/sync-website.mjs website-checkout "$WEBSITE_SHA"
+          git switch -c "$branch"
+          git add Mobile
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "Sync website source $WEBSITE_SHA"
+          if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null; then
+            git fetch origin "$branch"
+            git diff --exit-code HEAD FETCH_HEAD -- Mobile
+          else
+            git push origin "$branch"
+          fi
+          echo "Review the website changes listed in the build summary, including features outside the shared-file mapping. The tested APK and its source manifest are attached to this run." > "$RUNNER_TEMP/website-sync-body.md"
+          echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$RUNNER_TEMP/website-sync-body.md"
+          gh pr create --base main --head "$branch" --title "Sync Puppy Clicker website ${WEBSITE_SHA:0:12}" --body-file "$RUNNER_TEMP/website-sync-body.md"

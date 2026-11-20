@@ -15,12 +15,12 @@ export default function ScratchersV6({game,pending,lastResult,onAction,onBack}){
  const selected=cards.find(x=>x.wager===wager)||cards[0];
  const active=cards.find(x=>x.wager===pending?.wager)||selected;
  const display=lastResult||pending;
- const blocking=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingPlinko||game.pendingWheel||game.casinoRound);
- const canBuy=!blocking&&game.casinoChips>=wager;
+ const blocking=!!(pending||game.pendingSlots||game.pendingRoulette||game.pendingPlinko||game.pendingWheel||game.nativeCasinoPending||game.casinoRound);
+ const canBuy=!game.gameplayBusy&&!blocking&&game.casinoChips>=wager;
  const start=()=>{
   if(!canBuy){setMessage('Finish the current Casino round or choose a card you can afford.');return;}
   setMessage('');
-  onAction({type:'scratchStart',wager,roll:Math.floor(Math.random()*100),now:Date.now()});
+  onAction({type:'scratchStart',wager,now:Date.now()});
  };
  return <View style={s.page}>
   <Pressable accessibilityRole="button" onPress={onBack} style={s.back}>

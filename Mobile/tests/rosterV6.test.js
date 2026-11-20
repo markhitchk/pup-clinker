@@ -27,12 +27,9 @@ test('Part 4 Collection keeps exact V1/V2 stable Kotlin source IDs, names and co
  assert.ok(catalog.includes('EXTRA_PUPPY_STYLES'));
  assert.ok(kotlin.includes('V6PuppyRosterSection("V1 Puppies"'));
  assert.ok(kotlin.includes('V6PuppyRosterSection("V2 Puppies"'));
- assert.ok(roster.includes('legacyRosterSections(registry.items)'));
- assert.ok(roster.includes('title="Puppy Collection"'));
- assert.ok(roster.includes('unlockedLegacyCount(g.unlockedPuppies)'));
- assert.ok(roster.includes('disabled={!owned}'));
- assert.ok(roster.includes('accessory={selected?g.accessory'));
- assert.ok(roster.includes('Browse online V3+'));
+ assert.ok(roster.includes('PuppyCollectionCard'));
+ assert.ok(roster.includes('collectionCapabilities(area)'));
+ assert.ok(roster.includes('g.unlockedPuppies.includes'));
  assert.ok(roster.includes("type:'rename'"));
  assert.ok(roster.includes("type:'equip'"));
 });

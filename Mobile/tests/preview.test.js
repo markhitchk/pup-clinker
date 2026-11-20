@@ -18,7 +18,7 @@ function withEnv(overrides,fn){
 test('default installable Android build uses requested beta identity',()=>{
  withEnv({},()=>{
   const app=configPlugin({config:base});
-  assert.equal(app.name,'Puppy Clicker [Beta]');
+  assert.equal(app.name,'Puppy Clicker [beta]');
   assert.equal(app.android.package,'com.harleytg.puppyclicker.beta');
   assert.equal(app.android.versionCode,1000);
   assert.equal(app.extra.migrationStatus,'beta-account-migration-locked');
@@ -29,7 +29,7 @@ test('explicit beta and legacy preview flags are always isolated from Play',()=>
   assert.equal(configPlugin({config:base}).android.package,'com.harleytg.puppyclicker.beta');
  });
  withEnv({PUPPY_NATIVE_PREVIEW:'1'},()=>{
-  assert.equal(configPlugin({config:base}).name,'Puppy Clicker [Beta]');
+  assert.equal(configPlugin({config:base}).name,'Puppy Clicker [beta]');
  });
 });
 test('production identity requires explicit post-parity release approval',()=>{
